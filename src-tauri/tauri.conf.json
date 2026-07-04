@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Aster",
+  "version": "0.1.0",
+  "identifier": "app.aster.research",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Aster",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 980,
+        "minHeight": 680,
+        "center": true,
+        "resizable": true,
+        "maximizable": true,
+        "visible": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "icon": ["icons/icon.ico"],
+    "publisher": "Aster",
+    "category": "Education",
+    "shortDescription": "Local-first research assistant for papers, notes, annotations, and AI context.",
+    "longDescription": "Aster is a local-first research assistant that keeps papers, PDFs, translated PDFs, tags, notes, annotations, and AI conversations bound to the same paper record."
+  }
+}
