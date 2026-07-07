@@ -1,0 +1,17 @@
+<svg width="1600" height="420" viewBox="0 0 1600 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="420" rx="48" fill="#F6F8FC"/>
+  <g transform="translate(104 54) scale(.305)">
+    <rect width="1024" height="1024" rx="228" fill="#F6F8FC"/>
+    <rect x="122" y="122" width="780" height="780" rx="196" fill="#FFFFFF" stroke="#D8E1EA" stroke-width="24"/>
+    <path d="M666 176V276C666 293.673 680.327 308 698 308H798" fill="#EEF8F6"/>
+    <path d="M666 176V276C666 293.673 680.327 308 698 308H798" stroke="#D8E1EA" stroke-width="22" stroke-linejoin="round"/>
+    <rect x="286" y="302" width="338" height="146" rx="32" fill="#F3FBFA" stroke="#BDEBE5" stroke-width="12"/>
+    <text x="455" y="403" text-anchor="middle" fill="#1B2F4A" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="106" font-weight="820" letter-spacing="-3">A4</text>
+    <path d="M304 552H676" stroke="#1B2F4A" stroke-width="44" stroke-linecap="round"/>
+    <path d="M304 670H728" stroke="#19B7A8" stroke-width="46" stroke-linecap="round"/>
+    <circle cx="304" cy="670" r="26" fill="#19B7A8"/>
+    <circle cx="728" cy="670" r="26" fill="#19B7A8"/>
+  </g>
+  <text x="458" y="184" fill="#1B2F4A" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="108" font-weight="780" letter-spacing="0">A4Note</text>
+  <text x="464" y="276" fill="#5A6878" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="38" font-weight="520" letter-spacing="0">A for Notes. A4 for Knowledge.</text>
+</svg>

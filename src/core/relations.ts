@@ -1,4 +1,4 @@
-import type { KnowledgeGraphSnapshot, KnowledgeObject, ObjectType, PaperDocument, Relation, RelationType } from './types';
+import type { AiThreadContext, KnowledgeGraphSnapshot, KnowledgeObject, ObjectType, PaperDocument, Relation, RelationType } from './types';
 
 export type RelationDirectionFilter = 'source' | 'target' | 'both';
 
@@ -54,10 +54,11 @@ export interface KnowledgeGraphIndex {
   incomingRelations: Map<string, Relation[]>;
 }
 
-export function buildPaperKnowledgeGraph(paper: PaperDocument): KnowledgeGraphSnapshot {
+export function buildPaperKnowledgeGraph(paper: PaperDocument, options: { aiThreadContexts?: AiThreadContext[] } = {}): KnowledgeGraphSnapshot {
   const objects: KnowledgeObject[] = [];
   const relations: Relation[] = [];
   const paperObjectId = objectId('paper', paper.paperId);
+  const aiContextByThreadId = new Map(options.aiThreadContexts?.map((context) => [context.threadId, context]) ?? []);
 
   objects.push({
     id: paperObjectId,
@@ -167,7 +168,9 @@ export function buildPaperKnowledgeGraph(paper: PaperDocument): KnowledgeGraphSn
     }
   });
 
-  paper.aiThreads.forEach((threadId, index) => {
+  const aiThreadIds = Array.from(new Set([...paper.aiThreads, ...aiContextByThreadId.keys()]));
+  aiThreadIds.forEach((threadId, index) => {
+    const threadContext = aiContextByThreadId.get(threadId);
     const threadObjectId = objectId('ai_thread', threadId);
     objects.push({
       id: threadObjectId,
@@ -176,10 +179,20 @@ export function buildPaperKnowledgeGraph(paper: PaperDocument): KnowledgeGraphSn
       metadata: {
         originalId: threadId,
         paperId: paper.paperId,
+        providerId: threadContext?.providerId ?? '',
+        prompt: threadContext?.prompt ?? '',
+        contextObjectCount: threadContext?.objectIds.length ?? 0,
+        contextRelationCount: threadContext?.relationIds.length ?? 0,
       },
       source: 'sqlite',
+      createdAt: threadContext?.createdAt,
     });
     relations.push(relation(threadObjectId, paperObjectId, 'discusses'));
+    threadContext?.objectIds
+      .filter((contextObjectId) => contextObjectId !== threadObjectId && objects.some((object) => object.id === contextObjectId))
+      .forEach((contextObjectId) => {
+        relations.push(relation(threadObjectId, contextObjectId, 'generated_from', { providerId: threadContext.providerId, prompt: threadContext.prompt }));
+      });
   });
 
   paper.tags.forEach((tag) => {
@@ -197,8 +210,8 @@ export function objectId(type: string, id: string) {
   return `${type}:${id}`;
 }
 
-export function buildPaperRelationView(paper: PaperDocument, options: { currentFileId?: string; previewLimit?: number } = {}): PaperRelationView {
-  const graph = buildPaperKnowledgeGraph(paper);
+export function buildPaperRelationView(paper: PaperDocument, options: { currentFileId?: string; previewLimit?: number; aiThreadContexts?: AiThreadContext[] } = {}): PaperRelationView {
+  const graph = buildPaperKnowledgeGraph(paper, { aiThreadContexts: options.aiThreadContexts });
   const index = createKnowledgeGraphIndex(graph);
   const previewLimit = options.previewLimit ?? 8;
   const files = getRelatedObjects(index, graph.rootObjectId, { direction: 'source', types: ['attached_file'], objectTypes: ['pdf_file'] });

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import type { AnnotationType, ImportDraft, PaperDocument, PositionJson } from './types';
+import type { AnnotationType, ImportDraft, PaperDocument, PositionJson } from '../core/types';
 
 const FALLBACK_TAG = '未分类';
 

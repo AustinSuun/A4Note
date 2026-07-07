@@ -1,5 +1,7 @@
 import type { ReaderSidePanelTab, SceneId, WorkbenchArea, WorkbenchPanelContribution, WorkbenchPanelId } from './types';
 
+type ReaderWorkbenchPanelId = Extract<WorkbenchPanelId, 'reader.notes' | 'reader.annotations' | 'reader.chat' | 'reader.relations'>;
+
 export const readerPanelIdByTab: Record<ReaderSidePanelTab, WorkbenchPanelId> = {
   notes: 'reader.notes',
   annotations: 'reader.annotations',
@@ -7,7 +9,7 @@ export const readerPanelIdByTab: Record<ReaderSidePanelTab, WorkbenchPanelId> = 
   relations: 'reader.relations',
 };
 
-export const readerPanelTabById: Record<Exclude<WorkbenchPanelId, `plugin:${string}`>, ReaderSidePanelTab> = {
+export const readerPanelTabById: Record<ReaderWorkbenchPanelId, ReaderSidePanelTab> = {
   'reader.notes': 'notes',
   'reader.annotations': 'annotations',
   'reader.chat': 'chat',
@@ -15,6 +17,17 @@ export const readerPanelTabById: Record<Exclude<WorkbenchPanelId, `plugin:${stri
 };
 
 export const builtinWorkbenchPanels: WorkbenchPanelContribution[] = [
+  {
+    id: 'library.details',
+    sceneId: 'library',
+    area: 'right',
+    commandId: 'library.panel.details',
+    titleKey: 'library.details',
+    icon: 'details',
+    order: 10,
+    source: 'core',
+    context: 'paper',
+  },
   {
     id: 'reader.notes',
     sceneId: 'reader',

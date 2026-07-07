@@ -13,9 +13,10 @@ try {
       'src/core/asterCore.ts',
       'src/core/documentRepository.ts',
       'src/core/types.ts',
+      'src/core/aiProviders.ts',
       'src/core/markdown.ts',
       'src/core/relations.ts',
-      'src/core/nativeApi.ts',
+      'src/platform/nativeApi.ts',
       'src/data/seedDocuments.ts',
     ],
     options: {
@@ -42,17 +43,19 @@ try {
   }
 
   await patchRelativeImports(join(outDir, 'core/asterCore.js'));
-  await patchRelativeImports(join(outDir, 'core/nativeApi.js'));
+  await patchRelativeImports(join(outDir, 'core/aiProviders.js'));
   await patchRelativeImports(join(outDir, 'core/relations.js'));
+  await patchRelativeImports(join(outDir, 'platform/nativeApi.js'));
   await patchRelativeImports(join(outDir, 'data/seedDocuments.js'));
 
   const core = await import(pathToFileURL(join(outDir, 'core/asterCore.js')));
+  const aiProviders = await import(pathToFileURL(join(outDir, 'core/aiProviders.js')));
   const markdown = await import(pathToFileURL(join(outDir, 'core/markdown.js')));
   const relations = await import(pathToFileURL(join(outDir, 'core/relations.js')));
-  const nativeApi = await import(pathToFileURL(join(outDir, 'core/nativeApi.js')));
+  const nativeApi = await import(pathToFileURL(join(outDir, 'platform/nativeApi.js')));
   const seed = await import(pathToFileURL(join(outDir, 'data/seedDocuments.js')));
   const seedSource = await readFile('src/data/seedDocuments.ts', 'utf8');
-  const nativeApiSource = await readFile('src/core/nativeApi.ts', 'utf8');
+  const nativeApiSource = await readFile('src/platform/nativeApi.ts', 'utf8');
   const tauriSource = await readFile('src-tauri/src/lib.rs', 'utf8');
   assert.doesNotMatch(seedSource, /鏂|闃|瀵|绗|€|�/);
   assert.match(nativeApiSource, /loadPaperFileBytes\(request: \{ paperId: string; kind: PaperFileKind; fileId\?: string \}/);
@@ -76,6 +79,32 @@ try {
   assert.ok(aster.metadataSources.has('arxiv'));
   assert.ok(aster.translationSources.has('manual-pdf-binding'));
   assert.ok(aster.aiProviders.has('local-context-assistant'));
+  assert.equal(aster.aiProviders.get('local-context-assistant').kind, 'local');
+  assert.equal(aster.aiProviders.get('local-context-assistant').status, 'available');
+  assert.equal(aster.aiProviders.get('codex-cli').status, 'planned');
+  assert.equal(aster.aiProviders.get('claude-code-cli').kind, 'cli');
+  const localAiResult = await aiProviders.runAiProvider({
+    provider: aster.aiProviders.get('local-context-assistant'),
+    paper: seed.seedDocuments[0],
+    graph: relations.buildPaperKnowledgeGraph(seed.seedDocuments[0]),
+    prompt: 'summary',
+  });
+  assert.equal(localAiResult.providerId, 'local-context-assistant');
+  assert.equal(localAiResult.fallbackUsed, false);
+  assert.equal(localAiResult.usedContext.paperId, seed.seedDocuments[0].paperId);
+  assert.equal(localAiResult.usedContext.rootObjectId, `paper:${seed.seedDocuments[0].paperId}`);
+  assert.ok(localAiResult.usedContext.objectIds.length > 1);
+  assert.ok(localAiResult.usedContext.relationIds.length > 1);
+  const plannedAiResult = await aiProviders.runAiProvider({
+    provider: aster.aiProviders.get('codex-cli'),
+    paper: seed.seedDocuments[0],
+    graph: relations.buildPaperKnowledgeGraph(seed.seedDocuments[0]),
+    prompt: 'summary',
+  });
+  assert.equal(plannedAiResult.fallbackUsed, true);
+  assert.match(plannedAiResult.content, /暂时使用本地上下文助手/);
+  assert.ok(aster.workbenchPanels.list().some((panel) => panel.id === 'library.details'));
+  assert.ok(aster.workbenchPanels.list().some((panel) => panel.id === 'reader.annotations'));
 
   let observedImport = null;
   const plugin = aster.registerPlugin({
@@ -95,11 +124,31 @@ try {
       context.aiProviders.set('sample-ai', {
         id: 'sample-ai',
         name: 'Sample AI Provider',
+        kind: 'api',
+        status: 'planned',
       });
       context.commands.register({
         id: 'sample.echo',
         title: 'Echo from sample plugin',
         run: (payload) => `echo:${payload.text}`,
+      });
+      context.commands.register({
+        id: 'sample.paletteCommand',
+        title: 'Sample palette command',
+        group: 'Sample Plugin',
+        visibleInPalette: true,
+        run: () => 'palette-ok',
+      });
+      context.workbenchPanels.register({
+        id: 'plugin:sample.local-plugin.context',
+        sceneId: 'reader',
+        area: 'right',
+        commandId: 'sample.openContextPanel',
+        titleKey: 'sample.contextPanel',
+        icon: 'plugin',
+        order: 90,
+        source: 'plugin:sample.local-plugin',
+        context: 'paper',
       });
       context.events.on('document.imported', (paper) => {
         observedImport = paper.paperId;
@@ -113,6 +162,11 @@ try {
   assert.ok(aster.metadataSources.has('sample-metadata'));
   assert.ok(aster.aiProviders.has('sample-ai'));
   assert.equal(aster.commands.execute('sample.echo', { text: 'ok' }), 'echo:ok');
+  const paletteCommand = aster.commands.list().find((command) => command.id === 'sample.paletteCommand');
+  assert.equal(paletteCommand.visibleInPalette, true);
+  assert.equal(paletteCommand.source, 'plugin:sample.local-plugin');
+  assert.equal(aster.commands.execute('sample.paletteCommand'), 'palette-ok');
+  assert.ok(aster.workbenchPanels.list().some((panel) => panel.id === 'plugin:sample.local-plugin.context'));
 
   const draft = core.createImportDraft(String.raw`D:\papers\Aster E2E Sample Paper 2026.pdf`);
   assert.equal(draft.title, 'Aster E2E Sample Paper 2026');
@@ -173,6 +227,20 @@ try {
   assert.ok(graph.relations.some((relation) => relation.type === 'attached_file'));
   assert.ok(graph.relations.some((relation) => relation.type === 'has_note'));
   assert.ok(graph.relations.some((relation) => relation.type === 'annotates' && relation.metadata.page === 1));
+  const aiContextGraph = relations.buildPaperKnowledgeGraph(graphPaper, {
+    aiThreadContexts: [
+      {
+        threadId: 'thread-context-smoke',
+        providerId: 'local-context-assistant',
+        prompt: 'explain context',
+        objectIds: [graph.rootObjectId, `annotation:${annotation.id}`],
+        relationIds: graph.relations.map((relation) => relation.id),
+      },
+    ],
+  });
+  assert.ok(aiContextGraph.objects.some((object) => object.id === 'ai_thread:thread-context-smoke'));
+  assert.ok(aiContextGraph.relations.some((relation) => relation.type === 'discusses' && relation.sourceObjectId === 'ai_thread:thread-context-smoke'));
+  assert.ok(aiContextGraph.relations.some((relation) => relation.type === 'generated_from' && relation.targetObjectId === `annotation:${annotation.id}`));
   const graphIndex = relations.createKnowledgeGraphIndex(graph);
   assert.equal(relations.getObject(graphIndex, graph.rootObjectId).title, graphPaper.title);
   const relatedFiles = relations.getRelatedObjects(graphIndex, graph.rootObjectId, {
@@ -254,6 +322,8 @@ try {
   plugin.dispose();
   assert.equal(aster.plugins.has('sample.local-plugin'), false);
   assert.equal(aster.commands.list().some((command) => command.id === 'sample.echo'), false);
+  assert.equal(aster.commands.list().some((command) => command.id === 'sample.paletteCommand'), false);
+  assert.equal(aster.workbenchPanels.list().some((panel) => panel.id === 'plugin:sample.local-plugin.context'), false);
 
   console.log('Aster core smoke verification passed');
 } finally {

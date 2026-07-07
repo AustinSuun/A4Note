@@ -1,5 +1,6 @@
 ﻿import type {
   Annotation,
+  AiProviderContribution,
   AsterPlugin,
   Command,
   EventHandler,
@@ -9,8 +10,10 @@
   RegisteredPlugin,
   SceneContribution,
   SettingContribution,
+  WorkbenchPanelContribution,
 } from './types';
 import { LocalDocumentRepository, type DocumentRepository } from './documentRepository';
+import { builtinWorkbenchPanels } from './workbench';
 
 const FALLBACK_TAG = '未分类';
 
@@ -206,6 +209,31 @@ export function createImportDraft(filePath: string): ImportDraft {
   };
 }
 
+class AsterWorkbenchPanelRegistry {
+  private panels = new Map<string, WorkbenchPanelContribution>();
+
+  constructor(
+    private readonly events: AsterEventBus,
+    initialPanels: WorkbenchPanelContribution[],
+  ) {
+    initialPanels.forEach((panel) => this.panels.set(panel.id, panel));
+  }
+
+  register(panel: WorkbenchPanelContribution) {
+    if (this.panels.has(panel.id)) throw new Error(`Workbench panel already registered: ${panel.id}`);
+    this.panels.set(panel.id, panel);
+    this.events.emit('workbench.panel.registered', panel);
+    return () => {
+      this.panels.delete(panel.id);
+      this.events.emit('workbench.panel.disposed', panel);
+    };
+  }
+
+  list() {
+    return Array.from(this.panels.values()).sort((left, right) => left.sceneId.localeCompare(right.sceneId) || left.area.localeCompare(right.area) || left.order - right.order);
+  }
+}
+
 function normalizeTags(tags: string[]) {
   const seen = new Set<string>();
   const cleaned: string[] = [];
@@ -226,34 +254,68 @@ export function createAsterCore(documents: PaperDocument[], scenes: SceneContrib
   const commands = new AsterCommandRegistry(events);
   const documentStore = new AsterDocumentStore(events, initialDocuments, repository);
   const sceneRegistry = new AsterSceneRegistry(events, scenes);
+  const workbenchPanels = new AsterWorkbenchPanelRegistry(events, builtinWorkbenchPanels);
   const settings = new Map<string, SettingContribution>();
   const metadataSources = new Map<string, ProviderContribution>();
   const translationSources = new Map<string, ProviderContribution>();
-  const aiProviders = new Map<string, ProviderContribution>();
+  const aiProviders = new Map<string, AiProviderContribution>();
   const plugins = new Map<string, RegisteredPlugin>();
 
   commands.register<{ paperId: string; content: string }, PaperDocument | null>({
     id: 'document.updatePrimaryNote',
     title: 'Update primary markdown note',
+    source: 'core',
     run: ({ paperId, content }) => documentStore.updatePrimaryNote(paperId, content),
   });
 
   commands.register<{ paperId: string; annotation: Partial<Annotation> }, Annotation | null>({
     id: 'document.addAnnotation',
     title: 'Add PDF annotation',
+    source: 'core',
     run: ({ paperId, annotation }) => documentStore.addAnnotation(paperId, annotation),
   });
 
   commands.register<ImportDraft, PaperDocument>({
     id: 'document.importFromDraft',
     title: 'Import PDF from confirmed draft',
+    source: 'core',
     run: (draft) => documentStore.importPaper(draft),
   });
 
   metadataSources.set('crossref', { id: 'crossref', name: 'DOI / Crossref', enabledByDefault: true });
   metadataSources.set('arxiv', { id: 'arxiv', name: 'arXiv', enabledByDefault: true });
   translationSources.set('manual-pdf-binding', { id: 'manual-pdf-binding', name: '手动译文 PDF 绑定', enabledByDefault: true });
-  aiProviders.set('local-context-assistant', { id: 'local-context-assistant', name: '本地上下文助手', enabledByDefault: true });
+  aiProviders.set('local-context-assistant', {
+    id: 'local-context-assistant',
+    name: '本地上下文助手',
+    kind: 'local',
+    status: 'available',
+    modelLabel: 'Aster Local Context',
+    description: '使用当前文献、笔记、标注和标签生成本地上下文回复。',
+    supportsContextObjects: true,
+    supportsStreaming: false,
+    enabledByDefault: true,
+  });
+  aiProviders.set('codex-cli', {
+    id: 'codex-cli',
+    name: 'Codex CLI',
+    kind: 'cli',
+    status: 'planned',
+    modelLabel: 'Codex',
+    description: '预留通过本地 Codex CLI 处理知识对象上下文的 Provider。',
+    supportsContextObjects: true,
+    supportsStreaming: true,
+  });
+  aiProviders.set('claude-code-cli', {
+    id: 'claude-code-cli',
+    name: 'Claude Code CLI',
+    kind: 'cli',
+    status: 'planned',
+    modelLabel: 'Claude Code',
+    description: '预留通过 Claude Code CLI 接入本地工作区上下文的 Provider。',
+    supportsContextObjects: true,
+    supportsStreaming: true,
+  });
 
   const registerPlugin = (plugin: AsterPlugin) => {
     if (plugins.has(plugin.id)) throw new Error(`Plugin already registered: ${plugin.id}`);
@@ -261,7 +323,7 @@ export function createAsterCore(documents: PaperDocument[], scenes: SceneContrib
     const context = {
       commands: {
         register: <TPayload, TResult>(command: Command<TPayload, TResult>) => {
-          const dispose = commands.register(command);
+          const dispose = commands.register({ ...command, source: `plugin:${plugin.id}` });
           disposers.push(dispose);
           return dispose;
         },
@@ -276,6 +338,14 @@ export function createAsterCore(documents: PaperDocument[], scenes: SceneContrib
         },
       },
       settings,
+      workbenchPanels: {
+        register: (panel: WorkbenchPanelContribution) => {
+          const dispose = workbenchPanels.register(panel);
+          disposers.push(dispose);
+          return dispose;
+        },
+        list: () => workbenchPanels.list(),
+      },
       metadataSources,
       translationSources,
       aiProviders,
@@ -302,6 +372,7 @@ export function createAsterCore(documents: PaperDocument[], scenes: SceneContrib
     commands,
     documents: documentStore,
     scenes: sceneRegistry,
+    workbenchPanels,
     settings,
     metadataSources,
     translationSources,

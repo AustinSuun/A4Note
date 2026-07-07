@@ -1,9 +1,9 @@
 ﻿import { type MouseEvent, type WheelEvent, useEffect, useMemo, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import type { AnnotationColor, AnnotationDraft, AnnotationType, PaperDocument, PositionJson, ReaderTool } from '../core/types';
-import { isTauriRuntime, loadPaperFileBytes, type PaperFileKind } from '../core/nativeApi';
-import { zh } from './zh';
+import type { AnnotationColor, AnnotationDraft, AnnotationType, PaperDocument, PositionJson, ReaderTool } from '../../../core/types';
+import { isTauriRuntime, loadPaperFileBytes, type PaperFileKind } from '../../../platform/nativeApi';
+import { zh } from '../../../ui/zh';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 

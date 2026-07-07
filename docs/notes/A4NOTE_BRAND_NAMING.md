@@ -1,319 +1,423 @@
-# A4Note Brand Naming Notes
+# A4Note 命名与品牌说明
 
-## Core Direction
+## 1. 核心定位
 
-The product should not be limited to scientific research or paper management.
+`A4Note` 不应该被限制为科研工具或文献管理工具。
 
-It should be positioned as a local-first, extensible knowledge workspace that combines:
+它更适合被定位为：
 
-- Obsidian-like note taking, backlinks, graph relationships, and knowledge operations.
-- Zotero-like PDF reading, highlighting, annotation, metadata, and reference management.
-- General-purpose personal knowledge management for notes, reading, writing, projects, learning, and research.
+> 一个本地优先、可扩展的知识笔记工作台。
 
-## Recommended Product Name
+它要同时覆盖：
+
+- 类似 Obsidian 的笔记体验：Markdown、双链、反向链接、知识图谱、关系操作。
+- 类似 Zotero 的 PDF 能力：阅读、高亮、下划线、批注、区域标注、摘录、元数据和引用管理。
+- 通用个人知识管理场景：读书笔记、项目资料、课程学习、行业研究、写作素材、文献整理、长期知识库。
+
+## 2. 推荐产品名
 
 ### A4Note
 
-`A4Note` is the current leading name.
+`A4Note` 是当前最推荐的产品名。
 
-It works because:
+它的优势：
 
-- `A4` immediately connects to paper, pages, PDFs, notes, drafts, and blank writing space.
-- `Note` clearly communicates the note-taking core.
-- `A4` can also be interpreted as `A for`, giving the name a stronger brand explanation.
-- `A4` naturally connects with the 4A knowledge workflow.
+- `A4` 有非常强的视觉记忆点，天然联想到纸张、页面、PDF、笔记、草稿和手稿。
+- `Note` 直接表达笔记核心，用户不需要猜产品类型。
+- `A4` 可以解释成 `A for ...`，让名字不只是纸张规格，而是有品牌含义。
+- `A4` 可以自然承载 4A 知识流：`Acquire -> Annotate -> Associate -> Author`。
+- 名字不局限科研，后续可以扩展到更广泛的知识管理、写作和资料管理场景。
 
-## A4 Meaning
+## 3. A4 的三层含义
 
-### Surface Meaning
+### 3.1 表层含义：A4 纸
 
-`A4` refers to:
+`A4` 直接关联：
 
-- A4 paper.
-- A blank page.
-- A note page.
-- A PDF page.
-- A manuscript or draft page.
+- A4 纸
+- 空白页
+- 笔记页
+- PDF 页面
+- 草稿页
+- 手稿页
 
-### Brand Meaning
+这个含义直观、好懂，也方便做视觉设计。
 
-`A4` can be read as:
+### 3.2 品牌含义：A for ...
+
+`A4` 可以读成 `A for`。
+
+可用解释：
 
 > A for Notes.
 
-or:
+也可以解释成：
 
 > A for Knowledge.
 
-This gives the name a memorable explanation beyond just the paper size.
-
-### Method Meaning
-
-`A4` also connects to the 4A knowledge flow:
-
-> Acquire -> Annotate -> Associate -> Author
-
-This makes `A4Note` mean more than a note app. It becomes a full knowledge workflow from material collection to finished writing.
-
-## 4A Knowledge Flow
-
-### Acquire
-
-Collect and import source materials.
-
-Related product features:
-
-- PDF import.
-- Web clipping.
-- Document library.
-- Literature and file metadata.
-- Project materials.
-- Images, excerpts, and external references.
-
-### Annotate
-
-Read, mark, and extract useful information.
-
-Related product features:
-
-- PDF reader.
-- Highlighting.
-- Underline.
-- Area selection.
-- Comments.
-- Quote extraction.
-- Annotation lists.
-- Reference locations.
-
-### Associate
-
-Connect notes, annotations, files, and ideas.
-
-Related product features:
-
-- Backlinks.
-- Bidirectional links.
-- Tags.
-- Knowledge graph.
-- Relationship view.
-- Block references.
-- Linked notes.
-- Contextual navigation.
-
-### Author
-
-Turn collected and connected knowledge into output.
-
-Related product features:
-
-- Markdown editor.
-- Manuscript editor.
-- Outlines.
-- Drafts.
-- Reading notes.
-- Reports.
-- Essays.
-- Research notes.
-- AI-assisted writing and restructuring.
-
-## Brand Slogans
-
-### Short Brand Slogan
-
-> A for Notes. A4 for Knowledge.
-
-Use this for:
-
-- Logo subtitle.
-- Website hero.
-- App splash screen.
-- Social media profile.
-- Short product introduction.
-
-Chinese direction:
+这让 `A4Note` 不只是“一个 A4 纸规格相关的笔记软件”，而是：
 
 > 为笔记而生，为知识而成。
 
-Alternative Chinese lines:
+### 3.3 方法含义：4A 知识流
 
-> 一张 A4，写下你的知识。
+`A4` 也可以和 4A 知识流绑定：
 
-> 从笔记开始，连接你的知识。
+> Acquire -> Annotate -> Associate -> Author
 
-### Functional Slogan
+中文解释：
+
+> 获取 -> 标注 -> 关联 -> 成稿
+
+这套方法让 `A4Note` 从普通笔记软件升级为完整知识工作流：
+
+> 从资料进入，到阅读标注，到知识关联，最后形成自己的笔记、文章、报告或手稿。
+
+## 4. 4A 知识流
+
+### 4.1 Acquire：获取
+
+含义：收集和导入原始资料。
+
+对应功能：
+
+- PDF 导入
+- 网页剪藏
+- 文件资料库
+- 文献元数据
+- 项目资料
+- 图片、摘录和外部引用
+- 本地知识库归档
+
+中文关键词：
+
+> 获取、收集、导入、归档、沉淀素材。
+
+### 4.2 Annotate：标注
+
+含义：阅读、标记、批注和摘录。
+
+对应功能：
+
+- PDF 阅读器
+- 高亮
+- 下划线
+- 区域标注
+- 批注
+- 摘录
+- 标注列表
+- 引用定位
+
+中文关键词：
+
+> 阅读、标注、摘录、批注、理解资料。
+
+### 4.3 Associate：关联
+
+含义：把笔记、资料、标注和想法连接起来。
+
+对应功能：
+
+- 双链
+- 反向链接
+- 标签
+- 知识图谱
+- 关系视图
+- 块引用
+- 关联笔记
+- 上下文导航
+
+中文关键词：
+
+> 连接、关联、双链、图谱、知识网络。
+
+### 4.4 Author：成稿
+
+含义：把资料、标注和关联后的知识整理成输出。
+
+对应功能：
+
+- Markdown 编辑器
+- 手稿编辑器
+- 大纲
+- 草稿
+- 读书笔记
+- 报告
+- 文章
+- 项目文档
+- AI 辅助整理和写作
+
+中文关键词：
+
+> 写作、整理、输出、成稿、形成自己的知识。
+
+## 5. 品牌口号
+
+### 5.1 主口号
+
+英文：
+
+> A for Notes. A4 for Knowledge.
+
+中文：
+
+> 为笔记而生，为知识而成。
+
+适合使用在：
+
+- Logo 副标题
+- 官网首页
+- App 启动页
+- 小红书简介
+- GitHub 仓库简介
+- 产品一句话介绍
+
+### 5.2 功能型口号
+
+英文：
 
 > A for Notes. Built for the 4A knowledge flow: Acquire, Annotate, Associate, Author.
 
-Use this for:
-
-- Product documentation.
-- Landing page feature section.
-- Investor or roadmap material.
-- Onboarding explanation.
-
-Chinese direction:
+中文：
 
 > 为笔记而生，围绕 4A 知识流构建：获取、标注、关联、成稿。
 
-### Combined Brand Expression
+适合使用在：
+
+- README
+- 产品文档
+- 功能介绍页
+- 路线图
+- 产品规划材料
+
+### 5.3 组合表达
+
+英文：
 
 > A4Note  
 > A for Notes. A4 for Knowledge.  
 > Built for the 4A knowledge flow: Acquire, Annotate, Associate, Author.
 
-Chinese direction:
+中文：
 
 > A4Note  
 > 为笔记而生，为知识而成。  
 > 围绕 4A 知识流构建：获取、标注、关联、成稿。
 
-## Product Positioning
+## 6. 产品定位文案
 
-### English
-
-> A4Note is a local-first knowledge workspace for notes, PDFs, annotations, links, and drafts.
-
-More complete:
-
-> A4Note is a local-first, extensible knowledge workspace that turns sources, annotations, and linked notes into structured drafts through the 4A flow: Acquire, Annotate, Associate, Author.
-
-### Chinese
+### 6.1 简短版
 
 > A4Note 是一个本地优先的知识笔记工作台，连接笔记、PDF 标注、资料库和知识关系。
 
-More complete:
+### 6.2 完整版
 
-> A4Note 是一个本地优先、可扩展的知识工作台，通过获取、标注、关联、成稿的 4A 知识流，把资料、笔记和 PDF 标注沉淀成可复用的知识手稿。
+> A4Note 是一个本地优先、可扩展的知识工作台，通过获取、标注、关联、成稿的 4A 知识流，把资料、笔记和 PDF 标注沉淀成可复用的个人知识。
 
-## Chinese Naming Options
+### 6.3 仓库描述版
 
-`A4Note` can keep its English name as the main brand. The Chinese name can be used as a subtitle or local-market alias.
+> A4Note 是一个本地优先、可扩展的知识笔记工作台，围绕 4A 知识流构建：Acquire 获取资料、Annotate 阅读标注、Associate 知识关联、Author 沉淀成稿。它连接笔记、PDF 标注、资料库与双链关系，帮助用户把分散信息整理成可复用的个人知识。
 
-### Strong Candidates
+### 6.4 小红书/介绍页版本
 
-#### A4本
+> A4Note 不只是笔记本，也是一张会连接知识的 A4 纸。你可以在这里收集资料、标注 PDF、建立双链关系，并把分散的内容整理成自己的知识手稿。
 
-Pros:
+## 7. 中文名候选
 
-- Short and memorable.
-- Directly connects to notebook and A4 paper.
-- Easy for Chinese users to understand.
+`A4Note` 可以作为主品牌名，中文名可以作为副标题、国内市场别名或宣传文案使用。
 
-Cons:
+### 7.1 A4本
 
-- Slightly casual.
-- Less premium than a more abstract brand name.
+优点：
 
-#### 爱思录
+- 简短好记。
+- 直接关联 A4 纸和笔记本。
+- 中文用户容易理解。
 
-Pros:
+不足：
 
-- Sounds related to `A4`.
-- `思` connects to thinking.
-- `录` connects to notes, records, and knowledge capture.
-- More brand-like than `A4 笔记`.
+- 稍微偏口语。
+- 高级感弱于更抽象的品牌名。
 
-Cons:
+适合方向：
 
-- Needs some explanation at first.
+> 大众化、好传播、强调笔记本心智。
 
-#### 爱思笺
+### 7.2 爱思录
 
-Pros:
+优点：
 
-- Has handwritten note and manuscript feeling.
-- More refined and lifestyle-friendly.
-- Good for users who value aesthetics.
+- `爱思` 和 `A4` 有谐音关系。
+- `思` 表达思考。
+- `录` 表达记录、笔记、沉淀。
+- 比 `A4 笔记` 更有品牌感。
 
-Cons:
+不足：
 
-- Less direct for power-user knowledge management.
+- 初期需要解释和教育。
 
-#### 知页
+适合方向：
 
-Pros:
+> 更平衡，兼顾笔记、思考、知识管理和品牌感。
 
-- Modern and clean.
-- Connects to knowledge pages, notes, and A4 paper.
-- Works well with graph-based note systems.
+### 7.3 爱思笺
 
-Cons:
+优点：
 
-- Weaker connection to `A4` pronunciation.
+- `笺` 有纸页、便笺、手写记录和手稿感。
+- 更有审美和生活方式气质。
+- 适合偏小红书审美的表达。
 
-### Practical Recommendation
+不足：
 
-Use:
+- 对重度知识管理用户来说，功能感略弱。
+
+适合方向：
+
+> 更温柔、更精致、更偏个人知识手稿。
+
+### 7.4 知页
+
+优点：
+
+- 现代、干净。
+- 关联知识页面、笔记页面和 A4 纸。
+- 适合双链、知识图谱、页面化知识库。
+
+不足：
+
+- 和 `A4` 的谐音关系较弱。
+
+适合方向：
+
+> 更现代、更偏知识管理和知识库。
+
+### 7.5 当前建议
+
+主品牌：
 
 > A4Note
 
-as the primary product name.
+中文辅助名可按语气选择：
 
-Use one of these as Chinese supporting names depending on tone:
+- `A4本`：最直接、最好懂。
+- `爱思录`：最平衡，适合作为中文品牌名。
+- `爱思笺`：更有手稿感和审美气质。
+- `知页`：更现代，更偏知识管理。
 
-- `A4本`: most direct and memorable.
-- `爱思录`: most balanced for brand and note-taking.
-- `爱思笺`: more refined and manuscript-like.
-- `知页`: more modern and knowledge-management oriented.
+## 8. 功能模块命名
 
-## Feature Naming Architecture
+如果 `A4Note` 作为主品牌，后续模块可以沿用 `A4 + 功能词` 的结构。
 
-If `A4Note` becomes the main brand, feature modules can follow the same naming logic:
+推荐模块：
 
-- `A4Mark`: PDF annotation, highlights, excerpts, and Markdown marking.
-- `A4Link`: backlinks, bidirectional links, graph, and relationship operations.
-- `A4Know`: knowledge base and structured knowledge management.
-- `A4Draft`: manuscript, drafts, long-form writing, and output.
-- `A4Page`: individual note pages and document pages.
-- `A4Vault`: local-first personal knowledge vault.
+- `A4Note`：笔记主体。
+- `A4Mark`：PDF 标注、高亮、摘录、Markdown 标记。
+- `A4Link`：双链、反链、知识图谱、关系操作。
+- `A4Know`：知识库、结构化知识管理。
+- `A4Draft`：草稿、手稿、长文写作、最终输出。
+- `A4Page`：单篇笔记、页面、文档页。
+- `A4Vault`：本地优先的个人知识库。
 
-Recommended module mapping:
+推荐映射：
 
-- Notes: `A4Note`
-- PDF annotation: `A4Mark`
-- Knowledge graph: `A4Link`
-- Writing output: `A4Draft`
-- Local knowledge library: `A4Vault`
+- 笔记：`A4Note`
+- PDF 标注：`A4Mark`
+- 知识图谱：`A4Link`
+- 写作输出：`A4Draft`
+- 本地资料库：`A4Vault`
 
-## Names Considered
+## 9. 曾考虑过的命名方向
 
-### Aster
+### 9.1 Aster
 
-Good international name, but it leans toward stars and does not directly express the current feature direction.
+优点：
 
-### ManuFlow
+- 国际化。
+- 短，容易做品牌。
 
-Good connection to manuscript and workflow, but the Chinese translation `手稿流` feels too direct and less product-like.
+不足：
 
-### ManuLink / ManuMark / ManuDesk
+- 更偏星星意象。
+- 无法直接表达笔记、PDF 标注、知识管理和关系操作。
 
-Good function clarity, but `Manu` may not be obvious to Chinese users because it comes from `manuscript`.
+结论：
 
-### AMS
+> 可以作为早期项目名，但不如 `A4Note` 贴合当前产品方向。
 
-Possible meaning:
+### 9.2 ManuFlow
+
+优点：
+
+- `Manu` 来自 `manuscript`，有手稿含义。
+- `Flow` 表达从资料到成稿的流程。
+
+不足：
+
+- 中文翻译 `手稿流` 太直译。
+- 中文用户未必理解 `Manu` 和手稿的关系。
+
+结论：
+
+> 概念不错，但传播成本高于 `A4Note`。
+
+### 9.3 ManuLink / ManuMark / ManuDesk
+
+优点：
+
+- 功能清晰。
+- 能分别表达关联、标注和工作台。
+
+不足：
+
+- `Manu` 对中文用户不够直观。
+- 整体不如 `A4Note` 好记。
+
+结论：
+
+> 可作为参考，但不建议作为主品牌。
+
+### 9.4 AMS
+
+可解释为：
 
 > Annotate, Manage, Synthesize
 
-Chinese options:
+中文方向：
 
 - 爱墨思
 - 安墨思
 - 案墨思
 
-This direction has brand potential, but it is less immediately clear than `A4Note`.
+优点：
 
-## Current Best Choice
+- 有品牌感。
+- 可以解释成标注、管理、综合整理。
 
-Recommended brand structure:
+不足：
 
-> Product name: A4Note
+- 和 A4、笔记、纸张、4A 的关联较弱。
+- 功能需要额外解释。
 
-> Main slogan: A for Notes. A4 for Knowledge.
+结论：
 
-> Product logic: Built for the 4A knowledge flow: Acquire, Annotate, Associate, Author.
+> 有潜力，但不如 `A4Note` 清楚。
 
-> Chinese positioning: 本地优先的知识笔记工作台。
+## 10. 当前最佳方案
 
-> Extended Chinese positioning: 获取、标注、关联、成稿，把资料和笔记沉淀成你的知识手稿。
+推荐品牌结构：
+
+> 产品名：A4Note
+
+> 主口号：A for Notes. A4 for Knowledge.
+
+> 方法论：Built for the 4A knowledge flow: Acquire, Annotate, Associate, Author.
+
+> 中文定位：本地优先的知识笔记工作台。
+
+> 扩展定位：获取、标注、关联、成稿，把资料和笔记沉淀成你的个人知识。
+
+最终表达：
+
+> A4Note 是一个本地优先、可扩展的知识笔记工作台。它围绕 4A 知识流构建，从获取资料、阅读标注、知识关联到最终成稿，帮助用户把分散的信息整理成可复用的个人知识。
 

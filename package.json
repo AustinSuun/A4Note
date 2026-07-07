@@ -11,6 +11,7 @@
     "test:pdfjs": "node scripts/verify-pdfjs.mjs",
     "test:reader": "node scripts/verify-reader-rendering.mjs",
     "test:ui-state": "node scripts/verify-ui-state.mjs",
+    "test:architecture": "node scripts/verify-architecture-boundaries.mjs",
     "test:library-export": "node scripts/verify-library-export.mjs",
     "test:error-boundary": "node scripts/verify-error-boundary.mjs",
     "tauri": "tauri",

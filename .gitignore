@@ -43,3 +43,6 @@ Thumbs.db
 # Local agent/tooling state
 .agents/
 .codex/
+
+# External/local nested repositories
+CodexCont/

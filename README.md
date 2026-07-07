@@ -18,7 +18,9 @@ Aster 是一个本地优先、可扩展的通用知识工作台。它不只服�
 - 设置：界面密度、默认阅读布局、元数据源偏好、本地资料库路径、备份、诊断信息和扩展能力状态。
 - 默认指南：首次初始化会创建 `Aster 使用指南`，作为真实文献记录进入文献库。
 
-长期目标见 [GOAL.md](docs/notes/GOAL.md)。其中“主要功能范围清单（审阅版）”列出了 P0/P1/P2 功能和待确认项，方便继续评审。后续重点会从单一文献库扩展为通用资料库，加入 Obsidian 式双链、目录构建、关系链查看、AI Provider、插件系统，以及接近 Obsidian / VS Code 的可组合工作台布局。
+长期目标见 [GOAL.md](docs/notes/GOAL.md)。其中“主要功能范围清单（审阅版）”列出了 P0/P1/P2 功能和待确认项，方便继续评审。模块边界、依赖方向、插件边界和渐进式重构规则见 [ARCHITECTURE.md](docs/notes/ARCHITECTURE.md)。协作开发流程见 [DEVELOPMENT_WORKFLOW.md](docs/notes/DEVELOPMENT_WORKFLOW.md)，代码标准见 [CODING_STANDARDS.md](docs/notes/CODING_STANDARDS.md)，UI 规范见 [UI_GUIDELINES.md](docs/notes/UI_GUIDELINES.md)，模块 owner 建议见 [MODULE_OWNERS.md](docs/notes/MODULE_OWNERS.md)。后续重点会从单一文献库扩展为通用资料库，加入 Obsidian 式双链、目录构建、关系链查看、AI Provider、插件系统，以及接近 Obsidian / VS Code 的可组合工作台布局。
+
+下一阶段可分配任务见 [DEVELOPMENT_TASKS.md](docs/notes/DEVELOPMENT_TASKS.md)。
 
 ## 技术栈
 
@@ -32,6 +34,19 @@ Aster 是一个本地优先、可扩展的通用知识工作台。它不只服�
 ## 开发环境准备
 
 建议开发系统：Windows 10/11。
+
+多人协作前建议先读：
+
+```text
+README.md
+docs/notes/GOAL.md
+docs/notes/ARCHITECTURE.md
+docs/notes/DEVELOPMENT_WORKFLOW.md
+docs/notes/CODING_STANDARDS.md
+docs/notes/UI_GUIDELINES.md
+docs/notes/MODULE_OWNERS.md
+docs/notes/DEVELOPMENT_TASKS.md
+```
 
 需要安装：
 
@@ -126,18 +141,23 @@ npm run test:core
 npm run test:pdfjs
 npm run test:reader
 npm run test:ui-state
+npm run test:architecture
 npm run test:library-export
 npm run test:error-boundary
 ```
 
-其中 `npm run verify` 会串行执行前端构建、核心 smoke、PDF.js、阅读器渲染、UI 状态、导出、错误边界和 Rust 测试。
+其中 `npm run verify` 会串行执行前端构建、核心 smoke、PDF.js、阅读器渲染、UI 状态、架构边界、导出、错误边界和 Rust 测试。
 
 ## 目录结构
 
 ```text
 Aster/
   src/
-    core/            前端核心类型、文献模型、native API 封装、Markdown 渲染
+    core/            前端核心类型、文献模型、关系图、工作台注册表、Markdown 渲染
+    features/        按业务能力拆分的前端模块，目前已落地 library/reader/ai/settings 入口
+    workbench/       工作台框架组件和面板 Host
+    shared/          通用 UI、hooks、utils 的稳定入口
+    platform/        Tauri native API 封装、本地文件和数据库能力边界
     data/            浏览器预览用 seed 数据
     ui/              React UI、阅读器、样式、中文文案、标签输入
     main.tsx         前端入口
@@ -197,12 +217,15 @@ AsterData/
 - UI 文案默认中文，主要集中在 `src/ui/zh.ts`。
 - 编辑中文文件时必须保持 UTF-8，避免再次出现乱码。
 - 手动代码修改优先保持现有风格，不引入新的 UI 框架。
+- 多人协作时遵守 [DEVELOPMENT_WORKFLOW.md](docs/notes/DEVELOPMENT_WORKFLOW.md) 和 [MODULE_OWNERS.md](docs/notes/MODULE_OWNERS.md)，不要直接向 `main` 合并未验证的大改动。
+- 新增或调整模块时遵守 [CODING_STANDARDS.md](docs/notes/CODING_STANDARDS.md)，优先通过模块 `index.ts` 暴露接口。
 - UI 开发需要遵守 [GOAL.md](docs/notes/GOAL.md) 中的“UI、易用性和审美原则”“场景级设计分配”和“设计参考分级”：专业、克制、高密度、低视觉噪音、键盘可用、状态清晰、可撤销、阅读空间优先。主要参考 NN/g、WCAG/WAI、IBM Carbon 和 VS Code UX Guidelines，不直接套用某个视觉系统。
-- 阅读器相关代码主要在 `src/ui/PdfReader.tsx`，标注持久化命令在 `src-tauri/src/lib.rs`。
+- UI 具体实现规范见 [UI_GUIDELINES.md](docs/notes/UI_GUIDELINES.md)。新增 UI 优先复用或沉淀到 `src/shared/ui/`。
+- 阅读器 PDF 核心代码主要在 `src/features/reader/pdf/PdfReader.tsx`，标注持久化命令在 `src-tauri/src/lib.rs`。
 - Tauri 命令需要同时修改：
   - Rust request/command/database 函数
   - `tauri::generate_handler!`
-  - `src/core/nativeApi.ts`
+  - `src/platform/nativeApi.ts`
 - 前端构建偶尔可能出现 Vite/Rolldown 输出路径错误，通常清理 `dist` 后重跑即可：
 
 ```powershell

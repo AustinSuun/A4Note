@@ -7,6 +7,7 @@ const steps = [
   ['npm', ['run', 'test:pdfjs']],
   ['npm', ['run', 'test:reader']],
   ['npm', ['run', 'test:ui-state']],
+  ['npm', ['run', 'test:architecture']],
   ['npm', ['run', 'test:library-export']],
   ['npm', ['run', 'test:error-boundary']],
   ['cargo', ['test', '--manifest-path', 'src-tauri/Cargo.toml']],

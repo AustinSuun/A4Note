@@ -75,6 +75,7 @@ export type WorkbenchArea = 'left' | 'right' | 'bottom' | 'center';
 export type WorkbenchPanelSource = 'core' | `plugin:${string}`;
 export type WorkbenchPanelContext = 'global' | 'paper' | 'selection' | 'workspace';
 export type WorkbenchPanelId =
+  | 'library.details'
   | 'reader.notes'
   | 'reader.annotations'
   | 'reader.chat'
@@ -169,6 +170,10 @@ export interface ImportDraft {
 export interface Command<TPayload = unknown, TResult = unknown> {
   id: string;
   title: string;
+  group?: string;
+  source?: 'core' | `plugin:${string}`;
+  shortcut?: string;
+  visibleInPalette?: boolean;
   run: (payload: TPayload) => TResult;
 }
 
@@ -186,6 +191,46 @@ export interface ProviderContribution {
   enabledByDefault?: boolean;
 }
 
+export interface AiProviderContribution extends ProviderContribution {
+  kind: 'local' | 'cli' | 'api';
+  status: 'available' | 'planned' | 'disabled';
+  description?: string;
+  modelLabel?: string;
+  supportsStreaming?: boolean;
+  supportsContextObjects?: boolean;
+}
+
+export interface AiProviderRunRequest {
+  provider: AiProviderContribution;
+  paper: PaperDocument;
+  graph: KnowledgeGraphSnapshot;
+  prompt: string;
+}
+
+export interface AiProviderRunResult {
+  providerId: string;
+  content: string;
+  fallbackUsed: boolean;
+  usedContext: {
+    rootObjectId: string;
+    paperId: string;
+    objectIds: string[];
+    relationIds: string[];
+    noteIds: string[];
+    annotationIds: string[];
+    tags: string[];
+  };
+}
+
+export interface AiThreadContext {
+  threadId: string;
+  providerId: string;
+  prompt: string;
+  objectIds: string[];
+  relationIds: string[];
+  createdAt?: string;
+}
+
 export interface AsterPluginContext {
   commands: {
     register: <TPayload, TResult>(command: Command<TPayload, TResult>) => () => void;
@@ -196,9 +241,13 @@ export interface AsterPluginContext {
     on: <TPayload>(eventName: string, handler: EventHandler<TPayload>) => () => void;
   };
   settings: Map<string, SettingContribution>;
+  workbenchPanels: {
+    register: (panel: WorkbenchPanelContribution) => () => void;
+    list: () => WorkbenchPanelContribution[];
+  };
   metadataSources: Map<string, ProviderContribution>;
   translationSources: Map<string, ProviderContribution>;
-  aiProviders: Map<string, ProviderContribution>;
+  aiProviders: Map<string, AiProviderContribution>;
 }
 
 export interface AsterPlugin {

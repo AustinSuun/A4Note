@@ -42,6 +42,7 @@ export const zh = {
     openRelationsPanel: '打开关系面板',
   },
   library: {
+    recentImport: (title: string) => `最近导入：${title}`,
     title: '文献库',
     subtitle: '导入、检索和整理本地论文。',
     shortcutsHint: '快捷键：Ctrl+K 命令面板，Ctrl+O 导入，Ctrl+F 搜索，Ctrl+Enter 阅读，Ctrl+1/2/3 切换场景。',
@@ -133,6 +134,7 @@ export const zh = {
     tagsHint: '输入标签后回车，可搜索已有标签；没有匹配时会直接新建。',
   },
   importDialog: {
+    selecting: '正在等待选择 PDF...',
     eyebrow: 'PDF 导入',
     title: '从 PDF 自动生成文献草稿',
     close: '关闭',
@@ -265,7 +267,7 @@ export const zh = {
     send: '发送',
     saveFailed: '对话已显示，但保存到本地资料库失败。请检查数据库权限后重试。',
     resetFailed: '清空 AI 对话失败，本地记录已保留。请检查数据库权限后重试。',
-    systemMessage: (count: number) => `我可以使用已绑定的 PDF、Markdown 笔记和 ${count} 条标注。`,
+    systemMessage: (count: number, provider: string) => `当前 AI Provider：${provider}。我可以使用已绑定的 PDF、Markdown 笔记和 ${count} 条标注。`,
     userPrompt: '提取和我研究问题最相关的部分。',
     providerHint: '对话会保存到本地资料库，并始终绑定当前 paper_id。',
   },

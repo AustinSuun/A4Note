@@ -1,0 +1,21 @@
+﻿* { box-sizing: border-box; }
+body { margin: 0; min-width: 920px; height: 100vh; overflow: hidden; background: var(--bg); color: var(--ink); }
+button, input, textarea { font: inherit; }
+button { border: 0; cursor: pointer; }
+h1, h2, p { margin: 0; }
+
+input, textarea, select {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius);
+  background: rgba(255,255,255,.9);
+  color: var(--ink);
+  outline: none;
+  box-shadow: 0 1px 2px rgba(26,41,33,.04);
+}
+input { height: 34px; padding: 0 11px; }
+select { height: 34px; padding: 0 11px; color: var(--ink); }
+
+@media (max-width: 1100px) {
+  body { min-width: 760px; }
+}
