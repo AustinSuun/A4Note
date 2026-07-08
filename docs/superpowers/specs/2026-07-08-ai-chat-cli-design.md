@@ -1,16 +1,16 @@
-# Aster AI Chat CLI Design
+# Aster AI 对话 CLI 设计方案
 
-## Goal
+## 目标
 
-Build a standalone AI chat scene for Aster that lets users talk to local AI CLI tools from inside the app. The user experience should reference Paseo where it is useful: provider selection, model selection, permission mode selection, long-running sessions, streaming output, stop/resume controls, and clear unavailable-provider states.
+为 Aster 建立一个独立的 AI 对话场景，让用户可以在应用内直接使用本机已经安装和登录的 AI CLI 工具。界面和体验参考 Paseo 中对我们有用的部分：Provider 选择、模型选择、权限模式选择、长期会话、流式输出、停止/继续、以及清晰的不可用状态。
 
-This is not a clone of Paseo's workspace/product model. Aster's AI chat is for the local knowledge base: papers, PDFs, notes, annotations, tags, and relations.
+这不是复制 Paseo 的工作区或代码项目管理模型。Aster 的 AI 对话服务对象是本地知识库，包括文献、PDF、笔记、标注、标签和关系。
 
-## First Version Scope
+## 第一版范围
 
-The first version focuses on the standalone `AI Chat` scene only. The reader side-panel AI chat remains unchanged until this flow is stable.
+第一版只实现独立的 `AI 对话` 场景。阅读场景右侧栏里的 AI 对话暂时不改，等独立场景稳定后再复用同一套 Provider 和会话能力。
 
-Supported providers are limited to:
+第一版只支持以下 Provider：
 
 - Claude
 - Codex
@@ -18,41 +18,41 @@ Supported providers are limited to:
 - OpenCode
 - Pi
 
-There is no custom provider marketplace, no generic API-provider setup, and no additional provider family in this version. A provider can be shown as unavailable when its CLI is missing, not logged in, or not supported by the current platform.
+本版本不做自定义 Provider，不做 Provider 市场，不接入其它 API 服务，也不扩展其它 Provider 家族。某个 Provider 如果本机没有安装 CLI、没有登录、或当前平台不支持，就在界面中显示为“未配置”或“错误”，但不影响其它 Provider 使用。
 
-## Product Behavior
+## 产品行为
 
-The chat scene contains:
+AI 对话场景包含：
 
-- A left rail with saved conversations and provider status.
-- A main message timeline with streaming assistant output.
-- A bottom composer with message input, send/stop button, attachment entry, `@` context entry, provider selector, model selector, permission selector, and context controls.
-- Clear empty, loading, running, stopped, failed, and unavailable states.
+- 左侧栏：会话列表、Provider 状态和当前上下文摘要。
+- 主区域：消息流，支持 assistant 回复流式展示。
+- 底部输入框：消息输入、发送/停止、附件入口、`@` 上下文入口、Provider 选择、模型选择、权限模式选择和上下文控制。
+- 明确的空状态、加载状态、运行状态、已停止状态、失败状态和 Provider 不可用状态。
 
-The central workflow is:
+核心流程：
 
-1. User opens the AI chat scene.
-2. Aster detects supported local CLI providers.
-3. User chooses a provider, model, permission mode, and optional fixed context.
-4. User sends a prompt.
-5. Aster builds a knowledge-context prompt from automatic retrieval plus any fixed `@` references.
-6. Tauri starts or reuses a local CLI session for the selected provider.
-7. Output streams into the message timeline.
-8. Messages and context references are saved to the local library.
+1. 用户打开 AI 对话场景。
+2. Aster 检测本机支持的 CLI Provider。
+3. 用户选择 Provider、模型、权限模式，以及可选的固定上下文。
+4. 用户发送问题。
+5. Aster 根据自动检索结果和用户固定的 `@` 引用构造知识库上下文。
+6. Tauri 后端启动或复用对应 Provider 的本地 CLI 会话。
+7. CLI 输出流式进入消息区域。
+8. 对话消息和上下文引用保存到本地资料库。
 
-## Knowledge Context
+## 知识库上下文
 
-Context mode is hybrid:
+上下文采用混合模式：
 
-- Automatic retrieval is always available. Aster searches current library data for related papers, notes, annotations, tags, and relations.
-- Manual fixed context is available through `@paper`, `@note`, `@annotation`, and `@tag` entries in the composer.
-- The final prompt contains a structured context block followed by the user's message.
+- 默认支持自动检索。Aster 会从当前知识库中检索相关文献、笔记、标注、标签和关系。
+- 支持用户通过 `@paper`、`@note`、`@annotation`、`@tag` 固定具体上下文。
+- 最终传给 CLI 的 prompt 由结构化上下文块和用户问题组成。
 
-The first version uses existing in-memory document data and relation helpers. It does not require a new vector index. If retrieval quality is not enough, later versions can add full-text search or embeddings without changing the provider interface.
+第一版使用现有内存中的文献数据和关系 helper，不要求新增向量索引。如果后续自动检索质量不够，可以再加入全文检索或 embedding，但不改变 Provider 接口。
 
-## Provider Model
+## Provider 模型
 
-Each provider has a dedicated adapter:
+每个 Provider 使用独立 adapter：
 
 - `codexAdapter`
 - `claudeAdapter`
@@ -60,125 +60,125 @@ Each provider has a dedicated adapter:
 - `opencodeAdapter`
 - `piAdapter`
 
-Each adapter owns:
+每个 adapter 负责：
 
-- CLI detection.
-- Availability and login diagnostics.
-- Supported model list.
-- Permission-mode mapping.
-- Session start.
-- Message send.
-- Streaming output parsing.
-- Stop and cleanup behavior.
-- Error normalization.
+- 检测 CLI 是否存在。
+- 检测是否可运行、是否已登录。
+- 提供支持的模型列表。
+- 映射权限模式。
+- 启动会话。
+- 发送消息。
+- 解析流式输出。
+- 停止和清理进程。
+- 统一错误信息。
 
-Adapters expose one common interface to the app. Provider-specific command flags and stream formats do not leak into React components.
+React 组件只依赖统一接口，不直接知道各 Provider 的命令参数和输出格式。
 
-## Permission Modes
+## 权限模式
 
-The UI exposes three shared permission modes:
+界面提供三个通用权限模式：
 
-- `Default permissions`: use the provider's normal approval and sandbox behavior.
-- `Auto-review`: conservative mode for analysis, summaries, checks, and review-like tasks.
-- `Full access`: explicit high-permission mode for users who want the CLI to act with fewer restrictions.
+- `Default permissions`：使用 Provider 默认审批和沙箱策略。
+- `Auto-review`：保守模式，适合总结、检查、问答和 review 类任务。
+- `Full access`：用户明确选择后才启用的高权限模式。
 
-Adapters map these modes to provider-specific flags. For Codex, this maps to approval and sandbox options such as `--ask-for-approval`, `--sandbox`, and related config overrides. Other providers map the same UI modes to their own CLI options where available. When a provider cannot support a mode, the UI marks that mode unavailable for that provider.
+各 Provider adapter 负责把这三个模式映射为自己的 CLI 参数。对 Codex 来说，主要映射到 `--ask-for-approval`、`--sandbox` 和相关配置覆盖。其它 Provider 如果有对应权限参数，就做相应映射；如果不支持某个模式，界面中标记为不可用。
 
-Aster-owned data writes remain controlled. If an AI response proposes creating notes, tags, relations, or other knowledge-base changes, Aster shows a confirmation before writing to SQLite. CLI providers must not directly mutate the Aster database.
+Aster 自有数据写入必须受控。如果 AI 回复提出创建笔记、标签、关系或其它知识库变更，Aster 需要先展示变更内容并让用户确认，再写入 SQLite。CLI Provider 不能直接修改 Aster 数据库。
 
-## Long-Running Sessions
+## 长期会话
 
-The target effect follows Paseo's local-CLI chat feel: the user should not feel like Aster is making a one-shot API call. A session can be running, streaming, stopped, failed, or closed.
+目标体验接近 Paseo 的本地 CLI 对话感：用户不应该感觉 Aster 只是做了一次性 API 调用。一个会话可以处于运行中、流式输出中、已停止、失败或已关闭状态。
 
-Implementation boundary:
+实现边界：
 
-- Tauri owns process lifecycle.
-- Frontend owns UI state and sends commands through Tauri.
-- A session is associated with a saved Aster AI thread.
-- Stopping a generation should terminate or interrupt the underlying CLI process safely.
-- If a provider does not support true interactive continuation, its adapter may emulate continuation by starting a new CLI invocation with conversation history and context.
+- Tauri 后端负责进程生命周期。
+- 前端负责 UI 状态，并通过 Tauri 命令发送操作。
+- 一个 CLI 会话绑定到一个 Aster AI thread。
+- 停止生成时，需要安全中断或终止底层 CLI 进程。
+- 如果某个 Provider 不支持真正的交互式持续会话，它的 adapter 可以用“带历史和上下文重新启动一次 CLI 调用”的方式模拟继续对话。
 
-This gives the UI a single long-running-session model while still allowing provider-specific fallback behavior.
+这样前端始终面对统一的长期会话模型，同时允许不同 Provider 用自己的方式实现。
 
-## Data Model
+## 数据模型
 
-Reuse the current tables:
+继续复用现有表：
 
 - `ai_threads`
 - `ai_messages`
 
-The implementation should extend stored metadata as needed so a thread can remember:
+实现时可以按需增加元数据字段，让 thread 能记住：
 
-- Provider id.
-- Model id.
-- Permission mode.
-- Context references.
-- Session status.
+- Provider id。
+- Model id。
+- Permission mode。
+- 上下文引用。
+- 会话状态。
 
-If schema changes are required, they should be additive. Existing AI messages must continue to load.
+如果需要改 schema，必须是增量迁移。已有 AI 对话记录必须继续可加载。
 
-## UI Boundaries
+## UI 边界
 
-`src/features/ai` owns the standalone AI chat scene:
+`src/features/ai` 负责独立 AI 对话场景：
 
-- Chat shell.
-- Conversation list.
-- Message timeline.
-- Composer.
-- Provider picker.
-- Model picker.
-- Permission picker.
-- Context picker.
-- Hook/state for chat sessions.
+- 对话页面外壳。
+- 会话列表。
+- 消息流。
+- 输入框。
+- Provider picker。
+- Model picker。
+- Permission picker。
+- Context picker。
+- 会话 hook 和状态管理。
 
-`src/core` owns shared AI types and provider registry types.
+`src/core` 负责共享 AI 类型和 Provider 注册类型。
 
-`src/platform` owns frontend wrappers for Tauri commands.
+`src/platform` 负责封装前端调用 Tauri 的 API。
 
-`src-tauri` owns local CLI execution and process management.
+`src-tauri` 负责本地 CLI 执行和进程管理。
 
-The reader-side `ReaderChatPanel` remains a simple panel for now. It can later reuse the same provider/session primitives after the standalone scene is stable.
+阅读器侧边栏的 `ReaderChatPanel` 第一版保持现状。等独立 AI 对话场景稳定后，它可以复用同一套 Provider 和 session primitive。
 
-## Error Handling
+## 错误处理
 
-Provider states should be explicit:
+Provider 状态必须明确：
 
-- Installed and ready.
-- Installed but not logged in.
-- Missing CLI.
-- Unsupported platform.
-- Failed to start.
-- Running.
-- Stopped by user.
-- Exited with error.
+- 已安装且可用。
+- 已安装但未登录。
+- CLI 缺失。
+- 当前平台不支持。
+- 启动失败。
+- 运行中。
+- 用户停止。
+- 异常退出。
 
-Errors should be shown inside the chat scene without breaking the rest of the app. Aster should preserve user messages even when a provider run fails.
+错误显示在 AI 对话场景内，不能导致整个应用崩溃。即使 Provider 运行失败，Aster 也应该保留用户已发送的消息。
 
-## Testing And Verification
+## 测试和验证
 
-Minimum verification for implementation:
+实现完成后的最低验证：
 
 - `npm run build`
 - `npm run test:architecture`
-- Tauri/Rust tests for provider detection and process command construction where practical.
-- Manual desktop verification with at least Codex CLI.
+- 能覆盖时，为 Provider 检测和进程命令构造增加 Tauri/Rust 测试。
+- 至少用 Codex CLI 做一次桌面端手动验证。
 
-When reader side-panel AI is touched in a later task, run reader-specific tests as well.
+如果后续任务改到阅读器侧边栏 AI，再额外运行 reader 相关测试。
 
-## Non-Goals
+## 非目标
 
-This version does not implement:
+本版本不做：
 
-- Reader side-panel AI chat replacement.
-- A provider marketplace.
-- Custom provider authoring UI.
-- Cloud-hosted AI API integration.
-- Embedding/vector retrieval.
-- Direct AI writes to SQLite without user confirmation.
-- Full Paseo workspace management, Git workspace tabs, or multi-workspace history.
+- 替换阅读器侧边栏 AI 对话。
+- Provider 市场。
+- 自定义 Provider 编写界面。
+- 云端 AI API 接入。
+- embedding 或向量检索。
+- 未经用户确认直接写 SQLite。
+- Paseo 的完整 workspace 管理、Git workspace 标签页或多 workspace 历史。
 
-## Implementation Notes
+## 实现说明
 
-Codex and Claude are installed on the current development machine. Copilot, OpenCode, and Pi may not be installed locally. The app should still ship their providers as first-class entries, with unavailable states when their binaries cannot be found.
+当前开发机能检测到 Codex 和 Claude。Copilot、OpenCode 和 Pi 可能没有安装。应用仍然应该把这几个 Provider 作为第一版固定入口展示；如果找不到对应 binary，就显示不可用状态。
 
-Provider adapter behavior must be verified against each CLI before enabling a provider as ready. If a CLI is present but its streaming protocol is not stable, that provider can initially use the emulated-continuation fallback while still appearing in the same UI.
+每个 Provider adapter 的实际行为必须基于对应 CLI 验证后再标记为可用。如果某个 CLI 存在但流式协议不稳定，该 Provider 可以先使用“模拟继续对话”的 fallback，同时仍然出现在统一 UI 中。
