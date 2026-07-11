@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
 import type { AnnotationType, PaperDocument, ReaderSidePanelTab, WorkbenchPanelContribution } from '../../core/types';
-import type { PaperFileKind } from '../../platform/nativeApi';
 import { zh } from '../../ui/zh';
 import { AnnotationsIcon, ChatIcon, NotesIcon, RelationsIcon } from './ReaderIcons';
-import type { ReaderContentMode, ReaderSaveState, ReaderSidePanelDefinition } from './types';
+import type { ReaderContentMode, ReaderFileMode, ReaderSaveState, ReaderSidePanelDefinition } from './types';
 
 export function createReaderSidePanelDefinitions(panels: WorkbenchPanelContribution[]): ReaderSidePanelDefinition[] {
   return panels
@@ -21,7 +20,7 @@ export function preferredReaderMode(paper: PaperDocument | null): ReaderContentM
   return 'pdf';
 }
 
-export function preferredReaderFile(paper: PaperDocument | null): PaperFileKind {
+export function preferredReaderFile(paper: PaperDocument | null): ReaderFileMode {
   if (!paper) return 'source';
   return paper.sourcePdf ? 'source' : paper.translatedPdfs.length ? 'translated' : 'source';
 }
@@ -37,14 +36,19 @@ export function readerPanelCommandTitle(tab: ReaderSidePanelTab) {
     annotations: zh.command.openAnnotationsPanel,
     chat: zh.command.openChatPanel,
     relations: zh.command.openRelationsPanel,
+    cite: '打开引用面板',
   };
-  return labels[tab];
+  return labels[tab] ?? labels.cite;
 }
 
 export function annotationLabelText(type: AnnotationType) {
   if (type === 'comment') return zh.reader.commentLabel;
   if (type === 'underline') return zh.reader.underlineLabel;
   if (type === 'area') return zh.reader.areaLabel;
+  if (type === 'text') return zh.reader.textLabel;
+  if (type === 'ink') return zh.reader.inkLabel;
+  if (type === 'rect') return zh.reader.rectLabel;
+  if (type === 'arrow') return zh.reader.arrowLabel;
   return zh.reader.highlightLabel;
 }
 
@@ -59,7 +63,7 @@ function readerPanelTabFromWorkbenchId(panelId: string): ReaderSidePanelTab | nu
   const prefix = 'reader.';
   if (!panelId.startsWith(prefix)) return null;
   const value = panelId.slice(prefix.length);
-  return value === 'notes' || value === 'annotations' || value === 'chat' || value === 'relations' ? value : null;
+  return value === 'notes' || value === 'annotations' || value === 'chat' || value === 'relations' || value === 'cite' ? value : null;
 }
 
 function readerPanelLabel(tab: ReaderSidePanelTab) {
@@ -68,8 +72,9 @@ function readerPanelLabel(tab: ReaderSidePanelTab) {
     annotations: zh.reader.panelAnnotations,
     chat: zh.reader.panelChat,
     relations: zh.reader.panelRelations,
+    cite: '引用',
   };
-  return labels[tab];
+  return labels[tab] ?? labels.cite;
 }
 
 function readerPanelIcon(icon: WorkbenchPanelContribution['icon']): () => ReactNode {
@@ -78,6 +83,7 @@ function readerPanelIcon(icon: WorkbenchPanelContribution['icon']): () => ReactN
     annotations: AnnotationsIcon,
     chat: ChatIcon,
     relations: RelationsIcon,
+    cite: RelationsIcon,
   };
   return icons[icon] ?? NotesIcon;
 }

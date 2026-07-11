@@ -1,8 +1,8 @@
 export type SceneId = 'library' | 'reader' | 'aiChat';
 export type ReaderLayout = 'focus' | 'note' | 'ai';
-export type ReaderSidePanelTab = 'notes' | 'annotations' | 'chat' | 'relations';
-export type AnnotationType = 'highlight' | 'comment' | 'underline' | 'area';
-export type ReaderTool = 'cursor' | AnnotationType;
+export type ReaderSidePanelTab = 'notes' | 'chat' | 'cite' | 'annotations' | 'relations';
+export type AnnotationType = 'highlight' | 'comment' | 'underline' | 'area' | 'text' | 'ink' | 'rect' | 'arrow';
+export type ReaderTool = 'cursor' | 'eraser' | AnnotationType;
 export type AnnotationColor = 'yellow' | 'green' | 'blue' | 'purple' | `#${string}`;
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type PositionJson = Record<string, JsonValue>;
@@ -80,6 +80,7 @@ export type WorkbenchPanelId =
   | 'reader.annotations'
   | 'reader.chat'
   | 'reader.relations'
+  | 'reader.cite'
   | `plugin:${string}`;
 
 export interface WorkbenchPanelContribution {

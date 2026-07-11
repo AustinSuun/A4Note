@@ -1,7 +1,7 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { createImportDraft, type createAsterCore } from '../../core/asterCore';
 import type { ImportDraft, PaperDocument } from '../../core/types';
-import { preferredReaderFile, preferredReaderMode, preferredTranslatedFileId } from '../reader';
+import { preferredReaderFile, preferredReaderMode, preferredTranslatedFileId, type ReaderFileMode } from '../reader';
 import type { ImportState } from './types';
 import {
   extractPdfMetadata,
@@ -36,7 +36,7 @@ export function useImportFlow({
   openReaderForPaper: (paperId: string) => void;
   setSelectedPaperId: (paperId: string) => void;
   setReaderContentMode: (mode: ReturnType<typeof preferredReaderMode>) => void;
-  setReaderFileMode: (mode: PaperFileKind) => void;
+  setReaderFileMode: (mode: ReaderFileMode) => void;
   setReaderTranslatedFileId: Dispatch<SetStateAction<string>>;
   setActiveTag: (tag: string) => void;
   setRevision: Dispatch<SetStateAction<number>>;

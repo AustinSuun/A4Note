@@ -164,9 +164,9 @@ export function useAnnotationHistory({
     setAnnotationRedoStack([]);
   };
 
-  const createAnnotation = async (annotation: AnnotationDraft & { page: number }) => {
+  const createAnnotation = async (annotation: AnnotationDraft & { page: number }, fileKind = readerFileMode) => {
     if (!selectedPaper) return;
-    const fileId = readerFileMode === 'translated' ? preferredTranslatedFileId(selectedPaper, readerTranslatedFileId) : selectedPaper.sourceFileId;
+    const fileId = fileKind === 'translated' ? preferredTranslatedFileId(selectedPaper, readerTranslatedFileId) : selectedPaper.sourceFileId;
     if (isTauriRuntime() && fileId) {
       try {
         const { page, ...annotationPayload } = annotation;
@@ -181,8 +181,9 @@ export function useAnnotationHistory({
           createdAt: new Date().toISOString(),
         };
         if (localPaper && !localPaper.annotations.some((item) => item.id === created.id)) {
-          localPaper.annotations.push(nextAnnotation);
-          localPaper.annotations.sort((left, right) => left.page - right.page || (left.createdAt ?? '').localeCompare(right.createdAt ?? ''));
+          localPaper.annotations = [...localPaper.annotations, nextAnnotation].sort(
+            (left, right) => left.page - right.page || (left.createdAt ?? '').localeCompare(right.createdAt ?? ''),
+          );
         }
         pushAnnotationHistory({ kind: 'create', annotation: cloneAnnotation(nextAnnotation) });
         setRevision((current) => current + 1);
@@ -193,7 +194,8 @@ export function useAnnotationHistory({
         throw error;
       }
     }
-    const created = aster.commands.execute<unknown, { id: string } | null>('document.addAnnotation', { paperId: selectedPaper.paperId, annotation });
+    const annotationForFile = { ...annotation, fileId };
+    const created = aster.commands.execute<unknown, { id: string } | null>('document.addAnnotation', { paperId: selectedPaper.paperId, annotation: annotationForFile });
     if (created?.id) {
       const localPaper = aster.documents.get(selectedPaper.paperId);
       const createdAnnotation = localPaper?.annotations.find((item) => item.id === created.id);

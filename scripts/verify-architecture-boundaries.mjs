@@ -12,6 +12,15 @@ const requiredFiles = [
   'src/features/reader/index.ts',
   'src/features/reader/ReaderScene.tsx',
   'src/features/reader/pdf/PdfReader.tsx',
+  'src/features/reader/pdf/PdfPageView.tsx',
+  'src/features/reader/pdf/PdfTextLayer.tsx',
+  'src/features/reader/pdf/AnnotationOverlay.tsx',
+  'src/features/reader/pdf/AnnotationMark.tsx',
+  'src/features/reader/pdf/types.ts',
+  'src/features/reader/pdf/pdfGeometry.ts',
+  'src/features/reader/pdf/pdfSelection.ts',
+  'src/features/reader/pdf/pdfAnnotationHelpers.ts',
+  'src/features/reader/pdf/pdfInteraction.ts',
   'src/features/reader/types.ts',
   'src/features/reader/readerHelpers.ts',
   'src/features/reader/readerConstants.ts',
@@ -68,6 +77,15 @@ const readerConstantsSource = await readFile('src/features/reader/readerConstant
 const readerToolbarSource = await readFile('src/features/reader/ReaderToolbar.tsx', 'utf8');
 const readerDocumentPaneSource = await readFile('src/features/reader/ReaderDocumentPane.tsx', 'utf8');
 const readerPdfSource = await readFile('src/features/reader/pdf/PdfReader.tsx', 'utf8');
+const readerPdfPageViewSource = await readFile('src/features/reader/pdf/PdfPageView.tsx', 'utf8');
+const readerPdfTextLayerSource = await readFile('src/features/reader/pdf/PdfTextLayer.tsx', 'utf8');
+const readerPdfAnnotationOverlaySource = await readFile('src/features/reader/pdf/AnnotationOverlay.tsx', 'utf8');
+const readerPdfAnnotationMarkSource = await readFile('src/features/reader/pdf/AnnotationMark.tsx', 'utf8');
+const readerPdfTypesSource = await readFile('src/features/reader/pdf/types.ts', 'utf8');
+const readerPdfGeometrySource = await readFile('src/features/reader/pdf/pdfGeometry.ts', 'utf8');
+const readerPdfSelectionSource = await readFile('src/features/reader/pdf/pdfSelection.ts', 'utf8');
+const readerPdfAnnotationHelpersSource = await readFile('src/features/reader/pdf/pdfAnnotationHelpers.ts', 'utf8');
+const readerPdfInteractionSource = await readFile('src/features/reader/pdf/pdfInteraction.ts', 'utf8');
 const readerSideDrawerSource = await readFile('src/features/reader/ReaderSideDrawer.tsx', 'utf8');
 const readerSidePanelContentSource = await readFile('src/features/reader/ReaderSidePanelContent.tsx', 'utf8');
 const readerMarkdownSource = await readFile('src/features/reader/ReaderMarkdown.tsx', 'utf8');
@@ -168,12 +186,40 @@ assert.match(readerHelpersSource, /export function preferredReaderMode/);
 assert.match(readerHelpersSource, /export function annotationLabelText/);
 assert.match(readerConstantsSource, /export const annotationPresetColors/);
 assert.match(readerToolbarSource, /export function ReaderToolbar\(/);
-assert.match(readerToolbarSource, /sidePanels\.map\(\(panel\) =>/);
+assert.doesNotMatch(readerToolbarSource, /sidePanels\.map\(\(panel\) =>/);
+assert.match(readerToolbarSource, /className=\{`reader-workspace-toggle/);
 assert.match(readerDocumentPaneSource, /const PdfReader = lazy\(\(\) => import\('\.\/pdf\/PdfReader'\)\)/);
 assert.match(readerPdfSource, /export default function PdfReader\(/);
+assert.match(readerPdfSource, /from '\.\/types'/);
+assert.match(readerPdfSource, /from '\.\/pdfGeometry'/);
+assert.match(readerPdfSource, /from '\.\/pdfSelection'/);
+assert.match(readerPdfSource, /from '\.\/pdfAnnotationHelpers'/);
+assert.match(readerPdfSource, /from '\.\/pdfInteraction'/);
+assert.match(readerPdfSource, /from '\.\/PdfPageView'/);
+assert.match(readerPdfSource, /from '\.\/AnnotationOverlay'/);
+assert.doesNotMatch(readerPdfSource, /function PdfPageView\(/);
+assert.doesNotMatch(readerPdfSource, /function PdfTextLayer\(/);
+assert.doesNotMatch(readerPdfSource, /function AnnotationOverlay\(/);
+assert.doesNotMatch(readerPdfSource, /function AnnotationMark\(/);
+assert.match(readerPdfPageViewSource, /export function PdfPageView\(/);
+assert.match(readerPdfPageViewSource, /from '\.\/PdfTextLayer'/);
+assert.match(readerPdfTextLayerSource, /export function PdfTextLayer\(/);
+assert.match(readerPdfAnnotationOverlaySource, /export function AnnotationOverlay\(/);
+assert.match(readerPdfAnnotationOverlaySource, /from '\.\/AnnotationMark'/);
+assert.match(readerPdfAnnotationMarkSource, /export function AnnotationMark\(/);
+assert.match(readerPdfTypesSource, /export type PageMeta =/);
+assert.match(readerPdfGeometrySource, /export function outputScaleForViewport/);
+assert.match(readerPdfSelectionSource, /export function textSelectionFromDrag/);
+assert.match(readerPdfSelectionSource, /export function mergeRectsIntoLineSegments/);
+assert.match(readerPdfAnnotationHelpersSource, /export function buildAnnotationDraft/);
+assert.match(readerPdfInteractionSource, /export function pointFromEvent/);
+assert.match(readerPdfInteractionSource, /export function scrollPageIntoViewIfNeeded/);
+assert.match(readerPdfInteractionSource, /export function createDragDraft/);
+assert.match(readerPdfInteractionSource, /export function stickyPositionFromDrag/);
 assert.match(readerDocumentPaneSource, /export function ReaderDocumentPane\(/);
 assert.match(readerSideDrawerSource, /export function ReaderSideDrawer\(/);
-assert.match(readerSideDrawerSource, /<WorkspacePanelHost/);
+assert.doesNotMatch(readerSideDrawerSource, /<WorkspacePanelHost/);
+assert.match(readerSideDrawerSource, /<ReaderSidePanelContent/);
 assert.match(readerSidePanelContentSource, /export function ReaderSidePanelContent\(/);
 assert.match(readerSidePanelContentSource, /<AnnotationListPanel/);
 assert.match(readerMarkdownSource, /export function MarkdownNotePanel\(/);

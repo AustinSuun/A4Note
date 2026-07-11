@@ -106,7 +106,7 @@ function AnnotationListItem({
   };
 
   return (
-    <div className={`annotation-list-item ${focused ? 'focused' : ''}`} onClick={() => onFocusAnnotation(annotation.id)}>
+    <div className={`annotation-list-item annotation-list-item-${annotation.type} ${focused ? 'focused' : ''}`} onClick={() => onFocusAnnotation(annotation.id)}>
       <div className="annotation-list-meta">
         <span>{zh.reader.annotationPage(annotation.page)}</span>
         <span>{annotationLabelText(annotation.type)}</span>
@@ -122,36 +122,38 @@ function AnnotationListItem({
       >
         <TrashIcon />
       </button>
-      <button
-        type="button"
-        className="annotation-quote"
-        onClick={(event) => {
-          event.stopPropagation();
-          onAppendToNote(annotation.id);
-        }}
-      >
-        {zh.reader.appendAnnotationToNote}
-      </button>
-      <div className="annotation-list-color-row" onClick={(event) => event.stopPropagation()}>
-        {annotationPresetColors.map((color) => (
-          <button
-            key={color}
-            type="button"
-            className={annotation.color === color ? `active ${color}` : color}
-            title={color}
-            onClick={() => void onUpdateAnnotationColor(annotation.id, color)}
-          />
-        ))}
-        <label className="annotation-color-custom" title={zh.reader.highlight}>
-          <input
-            type="color"
-            value={annotation.color.startsWith('#') ? annotation.color : '#ffc94a'}
-            onChange={(event) => {
-              const value = event.target.value;
-              void onUpdateAnnotationColor(annotation.id, value as AnnotationColor);
-            }}
-          />
-        </label>
+      <div className="annotation-list-actions">
+        <button
+          type="button"
+          className="annotation-quote"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAppendToNote(annotation.id);
+          }}
+        >
+          {zh.reader.appendAnnotationToNote}
+        </button>
+        <div className="annotation-list-color-row" onClick={(event) => event.stopPropagation()}>
+          {annotationPresetColors.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={annotation.color === color ? `active ${color}` : color}
+              title={color}
+              onClick={() => void onUpdateAnnotationColor(annotation.id, color)}
+            />
+          ))}
+          <label className="annotation-color-custom" title={zh.reader.highlight}>
+            <input
+              type="color"
+              value={annotation.color.startsWith('#') ? annotation.color : '#ffc94a'}
+              onChange={(event) => {
+                const value = event.target.value;
+                void onUpdateAnnotationColor(annotation.id, value as AnnotationColor);
+              }}
+            />
+          </label>
+        </div>
       </div>
       {annotation.type === 'comment' && (
         <div className="sticky-style-row" onClick={(event) => event.stopPropagation()}>

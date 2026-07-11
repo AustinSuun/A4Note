@@ -12,8 +12,13 @@ import type {
 } from '../../core/types';
 import type { PaperFileKind } from '../../platform/nativeApi';
 import type { WorkspacePanelDefinition } from '../../workbench';
+import { defaultReaderToolSettings } from './pdf/types';
+
+export type { ArrowEnding, ArrowStyle, EraserShape, ReaderToolSettings, ShapeKind } from './pdf/types';
+export { defaultReaderToolSettings };
 
 export type ReaderContentMode = 'pdf' | 'markdown';
+export type ReaderFileMode = PaperFileKind | 'parallel';
 
 export type NoteDraftPatch = { append?: string };
 
@@ -30,8 +35,10 @@ export type ReaderSceneProps = {
   paper: PaperDocument;
   layout: ReaderLayout;
   contentMode: ReaderContentMode;
-  fileMode: PaperFileKind;
+  fileMode: ReaderFileMode;
   translatedFileId: string;
+  activeParallelFileKind: PaperFileKind;
+  parallelSyncLocked: boolean;
   activeAnnotationTool: ReaderTool;
   zoom: number;
   requestedPage: number | null;
@@ -41,8 +48,10 @@ export type ReaderSceneProps = {
   sidePanels: ReaderSidePanelDefinition[];
   onLayoutChange: (layout: ReaderLayout) => void;
   onContentModeChange: (mode: ReaderContentMode) => void;
-  onFileModeChange: (mode: PaperFileKind) => void;
+  onFileModeChange: (mode: ReaderFileMode) => void;
   onTranslatedFileIdChange: (fileId: string) => void;
+  onActiveParallelFileKindChange: (kind: PaperFileKind) => void;
+  onParallelSyncLockedChange: (locked: boolean) => void;
   onSelectAnnotationTool: (type: ReaderTool) => void;
   onSelectAnnotationColor: (color: AnnotationColor) => void;
   customAnnotationColor: string;
@@ -51,7 +60,7 @@ export type ReaderSceneProps = {
   onFitWidth: () => void;
   onSidePanelOpenChange: (open: boolean) => void;
   onSidePanelTabChange: (tab: ReaderSidePanelTab) => void;
-  onCreateAnnotation: (annotation: AnnotationDraft & { page: number }) => void | Promise<string | undefined>;
+  onCreateAnnotation: (annotation: AnnotationDraft & { page: number }, fileKind?: PaperFileKind) => void | Promise<string | undefined>;
   onUpdateAnnotationComment: (annotationId: string, comment: string) => void | Promise<void>;
   onUpdateAnnotationPosition: (annotationId: string, positionJson: PositionJson) => void | Promise<void>;
   onUpdateAnnotationColor: (annotationId: string, color: AnnotationColor) => void | Promise<void>;

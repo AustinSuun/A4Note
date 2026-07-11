@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import type { LibrarySortDirection, LibrarySortKey } from '../../features/library';
 import { defaultSettings, type AppSettings } from '../../features/settings';
-import type { ReaderContentMode } from '../../features/reader';
-import type { PaperFileKind } from '../../platform/nativeApi';
+import type { ReaderContentMode, ReaderFileMode } from '../../features/reader';
 import type { AnnotationColor, ReaderLayout, ReaderSidePanelTab, SceneId, WorkbenchPanelId, WorkspaceLayoutState } from '../../core/types';
 import { isReaderPanelTab, readerPanelIdFromTab, readerPanelTabFromId } from '../../core/workbench';
 
@@ -16,7 +15,7 @@ export type PersistedUiState = {
   librarySort: { key: LibrarySortKey; direction: LibrarySortDirection };
   readerLayout: ReaderLayout;
   readerContentMode: ReaderContentMode;
-  readerFileMode: PaperFileKind;
+  readerFileMode: ReaderFileMode;
   readerTranslatedFileId: string;
   readerAnnotationColor: AnnotationColor;
   readerZoom: number;
@@ -142,7 +141,8 @@ function loadUiState(settings: AppSettings, knownWorkbenchPanelIds: readonly Wor
       librarySort: isLibrarySort(parsed.librarySort) ? parsed.librarySort : fallback.librarySort,
       readerLayout: isReaderLayout(parsed.readerLayout) ? parsed.readerLayout : fallback.readerLayout,
       readerContentMode: parsed.readerContentMode === 'markdown' || parsed.readerContentMode === 'pdf' ? parsed.readerContentMode : fallback.readerContentMode,
-      readerFileMode: parsed.readerFileMode === 'translated' || parsed.readerFileMode === 'source' ? parsed.readerFileMode : fallback.readerFileMode,
+      readerFileMode:
+        parsed.readerFileMode === 'translated' || parsed.readerFileMode === 'source' || parsed.readerFileMode === 'parallel' ? parsed.readerFileMode : fallback.readerFileMode,
       readerTranslatedFileId: typeof parsed.readerTranslatedFileId === 'string' ? parsed.readerTranslatedFileId : fallback.readerTranslatedFileId,
       readerAnnotationColor:
         parsed.readerAnnotationColor === 'yellow' ||

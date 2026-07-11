@@ -18,7 +18,7 @@ Aster 是一个本地优先、可扩展的通用知识工作台。它不只服�
 - 设置：界面密度、默认阅读布局、元数据源偏好、本地资料库路径、备份、诊断信息和扩展能力状态。
 - 默认指南：首次初始化会创建 `Aster 使用指南`，作为真实文献记录进入文献库。
 
-长期目标见 [GOAL.md](docs/notes/GOAL.md)。其中“主要功能范围清单（审阅版）”列出了 P0/P1/P2 功能和待确认项，方便继续评审。模块边界、依赖方向、插件边界和渐进式重构规则见 [ARCHITECTURE.md](docs/notes/ARCHITECTURE.md)。协作开发流程见 [DEVELOPMENT_WORKFLOW.md](docs/notes/DEVELOPMENT_WORKFLOW.md)，代码标准见 [CODING_STANDARDS.md](docs/notes/CODING_STANDARDS.md)，UI 规范见 [UI_GUIDELINES.md](docs/notes/UI_GUIDELINES.md)，模块 owner 建议见 [MODULE_OWNERS.md](docs/notes/MODULE_OWNERS.md)。后续重点会从单一文献库扩展为通用资料库，加入 Obsidian 式双链、目录构建、关系链查看、AI Provider、插件系统，以及接近 Obsidian / VS Code 的可组合工作台布局。
+长期目标见 [GOAL.md](docs/notes/GOAL.md)。其中“主要功能范围清单（审阅版）”列出了 P0/P1/P2 功能和待确认项，方便继续评审。模块边界、依赖方向、插件边界和渐进式重构规则见 [ARCHITECTURE.md](docs/notes/ARCHITECTURE.md)。阅读器阶段 2 的功能基线见 [READER_BASELINE.md](docs/notes/READER_BASELINE.md)。协作开发流程见 [DEVELOPMENT_WORKFLOW.md](docs/notes/DEVELOPMENT_WORKFLOW.md)，代码标准见 [CODING_STANDARDS.md](docs/notes/CODING_STANDARDS.md)，UI 规范见 [UI_GUIDELINES.md](docs/notes/UI_GUIDELINES.md)，模块 owner 建议见 [MODULE_OWNERS.md](docs/notes/MODULE_OWNERS.md)。后续重点会从单一文献库扩展为通用资料库，加入 Obsidian 式双链、目录构建、关系链查看、AI Provider、插件系统，以及接近 Obsidian / VS Code 的可组合工作台布局。
 
 下一阶段可分配任务见 [DEVELOPMENT_TASKS.md](docs/notes/DEVELOPMENT_TASKS.md)。
 
@@ -41,6 +41,7 @@ Aster 是一个本地优先、可扩展的通用知识工作台。它不只服�
 README.md
 docs/notes/GOAL.md
 docs/notes/ARCHITECTURE.md
+docs/notes/READER_BASELINE.md
 docs/notes/DEVELOPMENT_WORKFLOW.md
 docs/notes/CODING_STANDARDS.md
 docs/notes/UI_GUIDELINES.md

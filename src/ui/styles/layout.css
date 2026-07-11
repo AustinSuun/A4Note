@@ -1,4 +1,4 @@
-﻿.app-shell { display: grid; grid-template-columns: 44px 1fr; width: 100vw; height: 100vh; }
+﻿.app-shell { display: grid; grid-template-columns: 52px 1fr; width: 100vw; height: 100vh; }
 .error-boundary-shell {
   display: grid;
   width: 100vw;
@@ -49,17 +49,30 @@
 .scene-utility-buttons { display: flex; flex-direction: column; gap: 8px; }
 .scene-button {
   position: relative;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 38px;
+  height: 38px;
   border-radius: 9px;
   background: transparent;
   color: var(--muted);
 }
 .scene-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.scene-button-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity .1s ease;
+  white-space: nowrap;
+}
 .scene-button:hover { background: rgba(238,243,239,.88); color: var(--ink); }
 .scene-button.active { background: var(--accent-soft); color: var(--accent-strong); }
+.scene-button.active .scene-button-label { opacity: 1; }
 .scene-button.active::before { content: ""; position: absolute; left: -5px; width: 3px; height: 18px; border-radius: 0 3px 3px 0; background: var(--accent); }
 .scene-button.settings { margin-top: 0; }
 

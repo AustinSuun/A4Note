@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createAsterCore } from '../core/asterCore';
-import { AIChatScene, useChatThreads } from '../features/ai';
+import { AIChatScene, useChatThreads, type AiReasoningLevel, type AiRunMode, type AiToolProviderId } from '../features/ai';
 import { ImportDialog, LibraryScene, TagInput, useImportFlow, type LibrarySortDirection, type LibrarySortKey } from '../features/library';
 import {
   ReaderScene,
-  annotationLabelText,
   createReaderSidePanelDefinitions,
   preferredReaderFile,
   preferredReaderMode,
@@ -13,6 +12,7 @@ import {
   useAnnotationHistory,
   type NoteDraftPatch,
   type ReaderContentMode,
+  type ReaderFileMode,
   type ReaderSidePanelDefinition,
 } from '../features/reader';
 import {
@@ -137,8 +137,16 @@ export default function App() {
   const [selectedPaperId, setSelectedPaperId] = useState(persistedUiState.selectedPaperId || initialDocuments[0]?.paperId || '');
   const [readerLayout, setReaderLayout] = useState<ReaderLayout>(persistedUiState.readerLayout || settings.defaultReaderLayout);
   const [readerContentMode, setReaderContentMode] = useState<ReaderContentMode>(persistedUiState.readerContentMode || preferredReaderMode(initialDocuments[0] ?? null));
-  const [readerFileMode, setReaderFileMode] = useState<PaperFileKind>(persistedUiState.readerFileMode || preferredReaderFile(initialDocuments[0] ?? null));
+  const initialReaderFileMode = persistedUiState.readerFileMode || preferredReaderFile(initialDocuments[0] ?? null);
+  const [readerFileMode, setReaderFileMode] = useState<ReaderFileMode>(initialReaderFileMode);
+  const [readerActiveFileKind, setReaderActiveFileKind] = useState<PaperFileKind>(initialReaderFileMode === 'translated' ? 'translated' : 'source');
+  const [readerParallelSyncLocked, setReaderParallelSyncLocked] = useState(true);
   const [readerTranslatedFileId, setReaderTranslatedFileId] = useState(persistedUiState.readerTranslatedFileId || initialDocuments[0]?.translatedFileIds[0] || '');
+  const [aiProviderId, setAiProviderId] = useState<AiToolProviderId>('codex');
+  const [aiModelId, setAiModelId] = useState('gpt-5.5');
+  const [aiReasoningLevel, setAiReasoningLevel] = useState<AiReasoningLevel>('extraHigh');
+  const [aiPermissionMode, setAiPermissionMode] = useState('autoReview');
+  const [aiRunMode, setAiRunMode] = useState<AiRunMode>('fast');
   const [query, setQuery] = useState(persistedUiState.query);
   const [activeTag, setActiveTag] = useState(persistedUiState.activeTag);
   const [workspaceLayouts] = useState<WorkspaceLayoutsByScene>(persistedUiState.workspaceLayouts);
@@ -220,6 +228,13 @@ export default function App() {
     selectedPaperId,
   ]);
 
+  const changeReaderFileMode = (mode: ReaderFileMode) => {
+    setReaderFileMode(mode);
+    if (mode !== 'parallel') {
+      setReaderActiveFileKind(mode);
+    }
+  };
+
   const refreshNativeDocuments = async (preferredPaperId?: string) => {
     if (!isTauriRuntime()) return;
     const nativeDocuments = await loadNativeDocuments();
@@ -239,7 +254,9 @@ export default function App() {
     setSelectedPaperId(nextSelected);
     const nextPaper = nativeDocuments.find((paper) => paper.paperId === nextSelected) ?? nativeDocuments[0];
     setReaderContentMode(preferredReaderMode(nextPaper));
-    setReaderFileMode(preferredReaderFile(nextPaper));
+    const nextReaderFileMode = preferredReaderFile(nextPaper);
+    setReaderFileMode(nextReaderFileMode);
+    if (nextReaderFileMode !== 'parallel') setReaderActiveFileKind(nextReaderFileMode);
     setReaderTranslatedFileId((current) => preferredTranslatedFileId(nextPaper, current));
     setLibraryStatus(zh.app.loaded(nativeDocuments.length));
     setRevision((current) => current + 1);
@@ -284,6 +301,7 @@ export default function App() {
     translation: aster.translationSources.size,
     ai: aster.aiProviders.size,
   };
+  const annotationFileMode = readerFileMode === 'parallel' ? readerActiveFileKind : readerFileMode;
   const { chatMessages, chatDraft, chatError, getAiThreadContextsForPaper, updateChatDraft, sendChatMessage, resetChatThread } = useChatThreads({
     aster,
     selectedPaper,
@@ -304,7 +322,7 @@ export default function App() {
   } = useAnnotationHistory({
     aster,
     selectedPaper,
-    readerFileMode,
+    readerFileMode: annotationFileMode,
     readerTranslatedFileId,
     setReaderFocusedAnnotationId,
     setRevision,
@@ -331,11 +349,25 @@ export default function App() {
     if (readerContentMode === 'markdown' && !selectedPaper.notes.length && (selectedPaper.sourcePdf || selectedPaper.translatedPdfs.length)) {
       setReaderContentMode('pdf');
     }
-    if (readerFileMode === 'translated' && !selectedPaper.translatedPdfs.length) {
+    if ((readerFileMode === 'translated' || readerFileMode === 'parallel') && !selectedPaper.translatedPdfs.length) {
       setReaderFileMode(preferredReaderFile(selectedPaper));
     }
+    if (readerFileMode !== 'parallel') {
+      setReaderActiveFileKind(readerFileMode);
+    } else if (readerActiveFileKind === 'translated' && !selectedPaper.translatedPdfs.length) {
+      readerFileMode === 'parallel' && setReaderActiveFileKind('source');
+    }
     setReaderTranslatedFileId((current) => preferredTranslatedFileId(selectedPaper, current));
-  }, [readerContentMode, readerFileMode, selectedPaper?.paperId, selectedPaper?.sourcePdf, selectedPaper?.translatedPdfs.length, selectedPaper?.translatedFileIds.join('|'), selectedPaper?.notes.length]);
+  }, [
+    readerActiveFileKind,
+    readerContentMode,
+    readerFileMode,
+    selectedPaper?.paperId,
+    selectedPaper?.sourcePdf,
+    selectedPaper?.translatedPdfs.length,
+    selectedPaper?.translatedFileIds.join('|'),
+    selectedPaper?.notes.length,
+  ]);
 
   useEffect(() => {
     const anchor = readerZoomAnchorRef.current;
@@ -425,6 +457,7 @@ export default function App() {
       setSelectedPaperId('');
       setReaderContentMode('pdf');
       setReaderFileMode('source');
+      setReaderActiveFileKind('source');
       setReaderTranslatedFileId('');
       return;
     }
@@ -436,7 +469,9 @@ export default function App() {
     const nextPaper = remainingDocuments.find((paper) => paper.paperId === nextSelectedPaper) ?? remainingDocuments[0];
     setSelectedPaperId(nextSelectedPaper);
     setReaderContentMode(preferredReaderMode(nextPaper));
-    setReaderFileMode(preferredReaderFile(nextPaper));
+    const nextReaderFileMode = preferredReaderFile(nextPaper);
+    setReaderFileMode(nextReaderFileMode);
+    if (nextReaderFileMode !== 'parallel') setReaderActiveFileKind(nextReaderFileMode);
     setReaderTranslatedFileId((current) => preferredTranslatedFileId(nextPaper, current));
   };
 
@@ -446,7 +481,9 @@ export default function App() {
     setReaderFocusedAnnotationId(null);
     const paper = aster.documents.get(paperId) ?? documents.find((candidate) => candidate.paperId === paperId) ?? null;
     setReaderContentMode(preferredReaderMode(paper));
-    setReaderFileMode(preferredReaderFile(paper));
+    const nextReaderFileMode = preferredReaderFile(paper);
+    setReaderFileMode(nextReaderFileMode);
+    if (nextReaderFileMode !== 'parallel') setReaderActiveFileKind(nextReaderFileMode);
     setReaderTranslatedFileId((current) => preferredTranslatedFileId(paper, current));
     setScene('reader');
   };
@@ -492,7 +529,7 @@ export default function App() {
     openReaderForPaper,
     setSelectedPaperId,
     setReaderContentMode,
-    setReaderFileMode,
+    setReaderFileMode: changeReaderFileMode,
     setReaderTranslatedFileId,
     setActiveTag,
     setRevision,
@@ -618,8 +655,12 @@ export default function App() {
           m: 'cursor',
           h: 'highlight',
           u: 'underline',
-          k: 'comment',
           b: 'area',
+          t: 'text',
+          p: 'ink',
+          e: 'eraser',
+          r: 'rect',
+          a: 'arrow',
         };
         const nextTool = toolByKey[readerKey];
         if (nextTool) {
@@ -878,10 +919,8 @@ export default function App() {
     if (!selectedPaper) return;
     const annotation = selectedPaper.annotations.find((item) => item.id === annotationId);
     if (!annotation) return;
-    const quote = annotation.quote && annotation.quote !== annotationLabelText(annotation.type) ? `\n> ${annotation.quote}` : '';
-    const comment = annotation.comment ? `\n- Comment: ${annotation.comment}` : '';
     setNoteDraftPatch({
-      append: `\n\n## Page ${annotation.page} - ${annotationLabelText(annotation.type)}${quote}${comment}\n`,
+      append: `\n\n@annotation(${annotation.id})\n`,
     });
     setReaderSidePanelOpen(true);
     setReaderSidePanelTab('notes');
@@ -1023,6 +1062,7 @@ export default function App() {
               onClick={() => setScene(scene.id)}
             >
               <SceneIcon id={scene.id} />
+              <span className="scene-button-label">{sceneLabels[scene.id]}</span>
             </button>
           ))}
         </div>
@@ -1087,6 +1127,8 @@ export default function App() {
                 contentMode={readerContentMode}
                 fileMode={readerFileMode}
                 translatedFileId={readerTranslatedFileId}
+                activeParallelFileKind={readerActiveFileKind}
+                parallelSyncLocked={readerParallelSyncLocked}
                 activeAnnotationTool={activeAnnotationTool}
                 zoom={readerZoom}
                 requestedPage={readerRequestedPage}
@@ -1110,8 +1152,10 @@ export default function App() {
                   }
                 }}
                 onContentModeChange={setReaderContentMode}
-                onFileModeChange={setReaderFileMode}
+                onFileModeChange={changeReaderFileMode}
                 onTranslatedFileIdChange={setReaderTranslatedFileId}
+                onActiveParallelFileKindChange={setReaderActiveFileKind}
+                onParallelSyncLockedChange={setReaderParallelSyncLocked}
                 onSelectAnnotationTool={setActiveAnnotationTool}
                 onSelectAnnotationColor={setActiveAnnotationColor}
                 customAnnotationColor={customAnnotationColor.value}
@@ -1152,8 +1196,18 @@ export default function App() {
                 messages={chatMessages}
                 draft={chatDraft}
                 error={chatError}
+                providerId={aiProviderId}
+                modelId={aiModelId}
+                reasoningLevel={aiReasoningLevel}
+                permissionMode={aiPermissionMode}
+                runMode={aiRunMode}
                 onSelectPaper={setSelectedPaperId}
                 onDraftChange={(draft) => updateChatDraft(selectedPaper.paperId, draft)}
+                onAiProviderChange={setAiProviderId}
+                onAiModelChange={setAiModelId}
+                onAiReasoningChange={setAiReasoningLevel}
+                onAiPermissionChange={setAiPermissionMode}
+                onAiRunModeChange={setAiRunMode}
                 onSend={() => void sendChatMessage(selectedPaper.paperId)}
                 onReset={() => confirmResetChatThread(selectedPaper.paperId)}
               />
@@ -1605,4 +1659,3 @@ function Icon({ path }: { path: string }) {
     </svg>
   );
 }
-

@@ -288,7 +288,7 @@ npm run test:reader
 
 ## 4. 阶段 2：阅读器核心功能补全与 UI 重整
 
-**阶段状态：** Ready
+**阶段状态：** Done
 
 **阶段目标：**
 
@@ -362,7 +362,7 @@ P2R-6 阅读器视觉低噪音调整
 
 ### Task P2R-0: 梳理阅读器功能缺口和第一版功能基线
 
-**状态：** Ready
+**状态：** Done
 
 **建议分支：**
 
@@ -381,11 +381,11 @@ docs/notes/DEVELOPMENT_TASKS.md
 
 **目标：**
 
-把当前阅读器功能按“已实现、部分实现、未实现、本阶段不做”梳理清楚，并定义阶段 2 的第一版阅读器功能基线。
+把当前阅读器功能按“已实现、部分实现、未实现、本阶段不做”梳理清楚，并定义阶段 2 的第一版阅读器功能基线。当前基线见 `READER_BASELINE.md`。
 
 **验收标准：**
 
-- 文档中列出 PDF 阅读、原文/译文切换、布局模式、标注工具、笔记、AI、关系回跳、持久化、快捷键和错误状态。
+- `READER_BASELINE.md` 列出 PDF 阅读、原文/译文切换、并排同步、阅读辅助抽屉、标注工具、笔记、AI、标注引用和回跳。
 - 每项能力都有状态：`done / partial / missing / later`。
 - 阶段 2 必做范围和不做范围清楚。
 - 后续 P2R 任务能对应到缺口清单。
@@ -398,7 +398,7 @@ npm run test:architecture
 
 ### Task P2R-1: 制定阅读器 UI 调整方案
 
-**状态：** Backlog
+**状态：** Done
 
 **建议分支：**
 
@@ -435,7 +435,7 @@ npm run test:architecture
 
 ### Task P2R-2: 拆 `PdfReader` 类型和 helper
 
-**状态：** Backlog
+**状态：** Done
 
 **建议分支：**
 
@@ -476,7 +476,7 @@ npm run verify
 
 ### Task P2R-3: 拆 `PdfPageView` 和 `PdfTextLayer`
 
-**状态：** Backlog
+**状态：** Done
 
 **建议分支：**
 
@@ -517,7 +517,7 @@ npm run verify
 
 ### Task P2R-4: 拆 `AnnotationOverlay` 和 `AnnotationMark`
 
-**状态：** Backlog
+**状态：** Done
 
 **建议分支：**
 
@@ -558,7 +558,7 @@ npm run verify
 
 ### Task P2R-5: 拆 PDF 交互 helper
 
-**状态：** Backlog
+**状态：** Done
 
 **建议分支：**
 
@@ -599,7 +599,7 @@ npm run verify
 
 ### Task P2R-6: 阅读器视觉低噪音调整
 
-**状态：** Backlog
+**状态：** Done
 
 **建议分支：**
 
@@ -909,4 +909,324 @@ P2-1 Rust 后端拆分期间，避免其他人同时改 src-tauri/src/lib.rs。
 1. P2R-0 梳理阅读器功能缺口和第一版功能基线
 2. P2R-1 制定阅读器 UI 调整方案
 3. P2R-2 拆 PdfReader 类型和 helper
+```
+
+---
+
+## 9. 阶段 3：阅读器 UI 全面重组
+
+**阶段状态：** Paused
+
+**设计文档：** `docs/notes/READER_UI_REDESIGN.md`
+
+**暂停原因：** 用户后续明确要求撤销标签页式设计方向。阶段 3 旧方案暂时只作为历史归档保留，不应继续执行；当前阅读器 UI 工作以现有结构上的工具栏优化、常用入口直达和标注工具可见性为主。
+
+**阶段目标：**
+
+在阶段 2 完成的代码边界拆分和低噪音视觉调整基础上，对阅读器进行全面的 UI 重组，使其具备成熟文献阅读工具的布局能力：三区布局（左侧导航 + PDF 主区 + 右侧辅助）、工具栏三区化、右侧 tab 收敛、PDF 大纲面板和选中弹出标注工具。
+
+**核心目标：**
+
+1. 抽取 `ReaderContext`，消除 App.tsx 向 ReaderScene 传递 ~30 个 props 的现状，为后续 UI 扩展打好基础。
+2. 工具栏从单行全塞改为左/中/右三区，功能分组清晰。
+3. 右侧抽屉 tab 从 4 个收敛为 3 个（笔记 / AI / 引用）。
+4. 新增左侧可折叠面板，第一版实现 PDF 目录大纲。
+5. 新增文字选中弹出工具（SelectionPopup），参考 Zotero 模式。
+6. App Shell scene rail 视觉细化（宽度 52px，active 状态带 label）。
+
+**阶段退出标准：**
+
+- `ReaderContext` 建立，子组件通过 context 取状态，不再依赖 ~30 个 props 链。
+- 工具栏三区化，高度 ≤ 38px，PDF/Markdown 模式下控件正确显示/隐藏。
+- 右侧 tab 为 3 个（笔记 / AI / 引用），引用 tab 内包含标注列表和文献关系。
+- 左侧面板可以通过工具栏 icon 折叠/展开，PDF 大纲可点击跳页。
+- 选中文本后弹出快捷标注工具，点击直接创建标注。
+- Scene rail 宽 52px，active 状态有中文 label。
+- `npm run verify` 通过。
+- `npm run build` 通过。
+
+**本阶段不做：**
+
+- 不做页面缩略图面板。
+- 不做完整标注筛选/导出。
+- 不做 Obsidian 双链。
+- 不做多窗口 / docking。
+- 不引入新的 UI 框架。
+- 不重写 PDF.js 渲染策略。
+- 不改标注数据模型。
+
+## 10. 阶段 3 任务
+
+> 暂停说明：以下 P3 任务来自旧的标签页式/全面重组方案。除非用户重新确认恢复该方案，否则不要继续按这些任务拆阅读器 UI。
+
+### Task P3R-0: 抽取 ReaderContext
+
+**状态：** Paused
+
+**建议分支：**
+
+```text
+refactor/reader-context
+```
+
+**负责人角色：** Reader / Workbench
+
+**影响文件：**
+
+```text
+src/features/reader/ReaderContext.tsx        新建
+src/features/reader/index.ts                 导出 ReaderProvider / useReaderContext
+src/features/reader/ReaderScene.tsx          包裹 ReaderProvider，去掉 ~30 个 prop
+src/features/reader/ReaderToolbar.tsx        改用 useReaderContext
+src/features/reader/ReaderDocumentPane.tsx   改用 useReaderContext
+src/features/reader/ReaderSideDrawer.tsx     改用 useReaderContext
+src/features/reader/AnnotationListPanel.tsx  改用 useReaderContext
+src/features/reader/ReaderMarkdown.tsx       改用 useReaderContext
+src/ui/App.tsx                               传入 annotationHandlers 和 paper，减少 reader props
+```
+
+**目标：**
+
+把 App.tsx 中的 reader 状态迁入 `ReaderContext`。迁移策略：App.tsx 仍持有状态初值，通过 `initialState` + `onPersistState` 与 context 同步，避免一次性重写引发功能回退。
+
+**验收标准：**
+
+- `ReaderScene` 的 props 从 ~30 个减少到 ≤ 8 个（paper、initialState、onPersistState、annotationHandlers、noteSave、noteCreate、aiThreadContexts、sidePanels）。
+- 所有原有功能（模式切换、缩放、页码跳转、标注、笔记、AI、关系、撤销/重做）行为不回退。
+- `npm run test:reader` 通过。
+- `npm run verify` 通过。
+
+**验证命令：**
+
+```powershell
+npm run test:reader
+npm run verify
+```
+
+### Task P3R-1: 工具栏三区重组
+
+**状态：** Backlog（依赖 P3R-0 完成）
+
+**建议分支：**
+
+```text
+ui/reader-toolbar-three-section
+```
+
+**负责人角色：** Reader / UI System
+
+**影响文件：**
+
+```text
+src/features/reader/ReaderToolbar.tsx
+src/ui/styles/reader.css
+```
+
+**目标：**
+
+把工具栏从单行全塞改为左/中/右三区。去掉 `reader-title-block`。中区只在 PDF 模式显示标注工具；左区放文件模式和左面板开关；右区放缩放、布局和面板开关。工具栏高度降至 38px。
+
+**验收标准：**
+
+- 三区布局：`.reader-toolbar-left`、`.reader-toolbar-center`、`.reader-toolbar-right`。
+- Markdown 模式下中区（标注工具）隐藏。
+- 所有现有控件功能不变，只是重新分组。
+- 工具栏高度 ≤ 38px。
+- `npm run build` 通过，`npm run test:reader` 通过。
+
+**验证命令：**
+
+```powershell
+npm run build
+npm run test:reader
+```
+
+### Task P3R-2: 右侧抽屉 Tab 收敛
+
+**状态：** Backlog（可与 P3R-1 并行，依赖 P3R-0）
+
+**建议分支：**
+
+```text
+ui/reader-drawer-cite-tab
+```
+
+**负责人角色：** Reader
+
+**影响文件：**
+
+```text
+src/features/reader/ReaderSidePanelContent.tsx
+src/features/reader/CitationPanel.tsx              新建
+src/features/reader/readerHelpers.ts
+src/features/reader/types.ts
+src/core/types.ts
+src/ui/styles/reader.css
+```
+
+**目标：**
+
+把右侧抽屉 tab 从 `notes / annotations / chat / relations` 收敛为 `notes / chat / cite`。新建 `CitationPanel.tsx`，内部用折叠区组织 `AnnotationListPanel` 和 `RelationPanel`。`ReaderSidePanelTab` 类型增加 `'cite'`，移除 `'annotations'` 和 `'relations'`（内部实现文件保留不改）。
+
+**验收标准：**
+
+- 右侧抽屉只有 3 个 tab：笔记 / AI / 引用。
+- 引用 tab 内标注列表和文献关系可展示，仍可点击跳转。
+- 所有已有标注跳转、引用回跳行为不回退。
+- `npm run test:reader` 通过，`npm run verify` 通过。
+
+**验证命令：**
+
+
+```powershell
+npm run test:reader
+npm run verify
+```
+
+
+### Task P3R-3: 左侧面板 — PDF 大纲
+
+**状态：** Backlog（依赖 P3R-0、P3R-1 完成）
+
+**建议分支：**
+
+```text
+feature/reader-left-panel-outline
+```
+
+**负责人角色：** Reader
+
+**影响文件：**
+
+```text
+src/features/reader/ReaderLeftPanel.tsx          新建
+src/features/reader/pdf/PdfOutlinePanel.tsx      新建
+src/features/reader/ReaderScene.tsx              集成左侧面板
+src/features/reader/ReaderToolbar.tsx            左区加左面板开关
+src/ui/styles/reader.css
+```
+
+**目标：**
+
+新增可折叠左侧面板，第一版只实现 PDF 大纲（Outline/目录）。调用 `pdfDocument.getOutline()` 获取书签结构，批量解析页码（`pdfDocument.getPageIndex()`），渲染为可点击条目列表，点击跳转对应页码。支持多级层次缩进（最多 4 层）。无大纲的 PDF 显示空状态提示。
+
+**验收标准：**
+
+- 工具栏左区有大纲开关 icon，点击折叠/展开左侧面板（240px ↔ 0）。
+- 有大纲的 PDF：显示层级目录，点击跳转。
+- 无大纲的 PDF："本文档没有目录"。
+- Markdown 模式下左侧面板隐藏。
+- 折叠/展开使用 CSS transition（≤ 150ms）。
+- `npm run build` 通过，`npm run test:reader` 通过。
+
+**验证命令：**
+
+```powershell
+npm run build
+npm run test:reader
+```
+
+### Task P3R-4: 文字选中弹出标注工具（SelectionPopup）
+
+**状态：** Backlog（依赖 P3R-0 完成）
+
+**建议分支：**
+
+```text
+feature/reader-selection-popup
+```
+
+**负责人角色：** Reader
+
+**影响文件：**
+
+```text
+src/features/reader/pdf/SelectionPopup.tsx       新建
+src/features/reader/pdf/PdfReader.tsx            集成 SelectionPopup
+src/ui/styles/reader.css
+```
+
+**目标：**
+
+参考 Zotero 模式，在用户鼠标选中文本后，在选区右上角弹出浮层，包含：高亮、下划线、添加批注（3 个按钮） + 当前颜色色块。点击即创建标注，无需提前切换工具。工具栏处于 locked 模式（高亮/下划线工具激活）时不显示弹层，保持现有行为。
+
+**验收标准：**
+
+- 光标模式下选中文本后弹出 SelectionPopup，位置在选区右上方。
+- 点击高亮/下划线按钮：用当前颜色立即创建对应标注，弹层消失。
+- 点击批注按钮：创建高亮，弹出批注编辑 popover。
+- 点击外部或按 Escape：弹层消失，不创建标注。
+- 工具栏处于 locked 模式时 SelectionPopup 不出现。
+- `npm run test:reader` 通过，`npm run build` 通过。
+
+**验证命令：**
+
+```powershell
+npm run build
+npm run test:reader
+```
+
+### Task P3U-1: App Shell 视觉细化
+
+**状态：** Backlog（可与 P3R-1 并行）
+
+**建议分支：**
+
+```text
+ui/app-shell-scene-rail-polish
+```
+
+**负责人角色：** UI System
+
+**影响文件：**
+
+```text
+src/ui/styles/layout.css
+src/ui/App.tsx
+```
+
+**目标：**
+
+将 scene-rail 宽度从 44px 扩至 52px，scene-button 从 34px 扩至 38px。active 状态在 icon 下方加中文 label（2–3字，10px，字重 600）。非 active 状态不显示 label，保持紧凑。
+
+**验收标准：**
+
+- `.app-shell` grid-template-columns 更新为 52px。
+- `.scene-button` 为 `flex-direction: column; gap: 2px`。
+- `.scene-button-label` active 时 `opacity: 1`，其余 `opacity: 0`。
+- 场景切换、键盘快捷键和命令面板行为不变。
+- `npm run build` 通过。
+
+**验证命令：**
+
+```powershell
+npm run build
+```
+
+## 11. 阶段 3 分配建议
+
+可以并行的任务：
+
+```text
+P3R-1  工具栏三区重组（依赖 P3R-0）
+P3R-2  右侧抽屉 tab 收敛（依赖 P3R-0）
+P3R-4  SelectionPopup（依赖 P3R-0）
+P3U-1  App Shell 视觉细化（独立）
+```
+
+需要串行或谨慎安排的任务：
+
+```text
+P3R-0  ReaderContext 是阶段 3 前置，必须优先完成，再进入 P3R-1 至 P3R-4。
+P3R-3  左侧面板依赖 P3R-0（状态）和 P3R-1（左区工具栏开关），建议 P3R-1 后进行。
+P3R-1 和 P3R-2 都会改 ReaderToolbar / ReaderSidePanelContent，避免同时进行。
+P3R-4 会改 PdfReader.tsx，避免与 P3R-3 同时大改同一区域。
+P1-3 useImportFlow 和 P1-4 useChatThreads（Backlog 延续）都会改 App.tsx，避免与 P3R-0 同期进行。
+```
+
+建议第一批领取：
+
+```text
+1. P3R-0  抽取 ReaderContext（前置，优先）
+2. P3U-1  App Shell 视觉细化（独立，低风险，可并行）
 ```

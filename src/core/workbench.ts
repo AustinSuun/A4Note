@@ -1,12 +1,13 @@
 import type { ReaderSidePanelTab, SceneId, WorkbenchArea, WorkbenchPanelContribution, WorkbenchPanelId } from './types';
 
-type ReaderWorkbenchPanelId = Extract<WorkbenchPanelId, 'reader.notes' | 'reader.annotations' | 'reader.chat' | 'reader.relations'>;
+type ReaderWorkbenchPanelId = Extract<WorkbenchPanelId, 'reader.notes' | 'reader.annotations' | 'reader.chat' | 'reader.relations' | 'reader.cite'>;
 
 export const readerPanelIdByTab: Record<ReaderSidePanelTab, WorkbenchPanelId> = {
   notes: 'reader.notes',
   annotations: 'reader.annotations',
   chat: 'reader.chat',
   relations: 'reader.relations',
+  cite: 'reader.cite',
 };
 
 export const readerPanelTabById: Record<ReaderWorkbenchPanelId, ReaderSidePanelTab> = {
@@ -14,6 +15,7 @@ export const readerPanelTabById: Record<ReaderWorkbenchPanelId, ReaderSidePanelT
   'reader.annotations': 'annotations',
   'reader.chat': 'chat',
   'reader.relations': 'relations',
+  'reader.cite': 'cite',
 };
 
 export const builtinWorkbenchPanels: WorkbenchPanelContribution[] = [
@@ -62,13 +64,24 @@ export const builtinWorkbenchPanels: WorkbenchPanelContribution[] = [
     context: 'paper',
   },
   {
+    id: 'reader.cite',
+    sceneId: 'reader',
+    area: 'right',
+    commandId: 'reader.panel.cite',
+    titleKey: 'reader.panelRelations',
+    icon: 'cite',
+    order: 40,
+    source: 'core',
+    context: 'paper',
+  },
+  {
     id: 'reader.relations',
     sceneId: 'reader',
     area: 'right',
     commandId: 'reader.panel.relations',
     titleKey: 'reader.panelRelations',
     icon: 'relations',
-    order: 40,
+    order: 50,
     source: 'core',
     context: 'paper',
   },

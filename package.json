@@ -10,6 +10,8 @@
     "test:core": "node scripts/verify-core-smoke.mjs",
     "test:pdfjs": "node scripts/verify-pdfjs.mjs",
     "test:reader": "node scripts/verify-reader-rendering.mjs",
+    "test:reader-helpers": "node --experimental-strip-types scripts/verify-reader-helpers.mjs",
+    "test:ai-toolbar": "node scripts/verify-ai-toolbar.mjs",
     "test:ui-state": "node scripts/verify-ui-state.mjs",
     "test:architecture": "node scripts/verify-architecture-boundaries.mjs",
     "test:library-export": "node scripts/verify-library-export.mjs",

@@ -6,6 +6,8 @@ const steps = [
   ['npm', ['run', 'test:core']],
   ['npm', ['run', 'test:pdfjs']],
   ['npm', ['run', 'test:reader']],
+  ['npm', ['run', 'test:reader-helpers']],
+  ['npm', ['run', 'test:ai-toolbar']],
   ['npm', ['run', 'test:ui-state']],
   ['npm', ['run', 'test:architecture']],
   ['npm', ['run', 'test:library-export']],

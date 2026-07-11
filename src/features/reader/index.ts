@@ -1,4 +1,6 @@
 export { ReaderScene } from './ReaderScene';
+export { ReaderProvider, useReaderContext } from './ReaderContext';
+export type { ReaderContextValue, ReaderProviderProps } from './ReaderContext';
 export {
   annotationLabelText,
   createReaderSidePanelDefinitions,
@@ -8,4 +10,4 @@ export {
   readerPanelCommandTitle,
 } from './readerHelpers';
 export { useAnnotationHistory } from './useAnnotationHistory';
-export type { NoteDraftPatch, ReaderContentMode, ReaderSidePanelDefinition } from './types';
+export type { NoteDraftPatch, ReaderContentMode, ReaderFileMode, ReaderSidePanelDefinition } from './types';
