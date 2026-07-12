@@ -1,6 +1,6 @@
-# Aster Desktop
+# A4Note Desktop
 
-Aster 是一个本地优先、可扩展的通用知识工作台。它不只服务科研文献管理，也服务课程学习、项目资料整理、个人知识库构建、目录体系搭建、资料阅读、笔记沉淀和 AI 辅助处理。
+A4Note 是一个本地优先、可扩展的知识笔记工作台。它围绕获取、标注、关联、成稿的 4A 知识流，连接资料、PDF、笔记和知识关系。
 
 当前版本仍以“资料库 / 文献库 + PDF 阅读 + Markdown 笔记 + PDF 标注 + 本地上下文 AI 对话”作为最小可用闭环。文献管理是第一阶段的核心场景之一，但长期设计目标是“知识对象 + 统一信息关联系统”：文献、PDF、Markdown 笔记、标注、摘录、AI 对话片段、主题页面、项目资料和插件数据都能被稳定关联、查找和复用。
 
@@ -16,7 +16,7 @@ Aster 是一个本地优先、可扩展的通用知识工作台。它不只服�
 - 笔记：Markdown 笔记与文献绑定，支持编辑、预览和保存。
 - AI 对话：本地上下文对话界面，当前先保存对话记录并绑定当前文献，真实 CLI/Provider 接入后续扩展。
 - 设置：界面密度、默认阅读布局、元数据源偏好、本地资料库路径、备份、诊断信息和扩展能力状态。
-- 默认指南：首次初始化会创建 `Aster 使用指南`，作为真实文献记录进入文献库。
+- 默认指南：首次初始化会创建 `A4Note 使用指南`，作为真实文献记录进入文献库。
 
 长期目标见 [GOAL.md](docs/notes/GOAL.md)。其中“主要功能范围清单（审阅版）”列出了 P0/P1/P2 功能和待确认项，方便继续评审。模块边界、依赖方向、插件边界和渐进式重构规则见 [ARCHITECTURE.md](docs/notes/ARCHITECTURE.md)。阅读器阶段 2 的功能基线见 [READER_BASELINE.md](docs/notes/READER_BASELINE.md)。协作开发流程见 [DEVELOPMENT_WORKFLOW.md](docs/notes/DEVELOPMENT_WORKFLOW.md)，代码标准见 [CODING_STANDARDS.md](docs/notes/CODING_STANDARDS.md)，UI 规范见 [UI_GUIDELINES.md](docs/notes/UI_GUIDELINES.md)，模块 owner 建议见 [MODULE_OWNERS.md](docs/notes/MODULE_OWNERS.md)。后续重点会从单一文献库扩展为通用资料库，加入 Obsidian 式双链、目录构建、关系链查看、AI Provider、插件系统，以及接近 Obsidian / VS Code 的可组合工作台布局。
 
@@ -29,7 +29,7 @@ Aster 是一个本地优先、可扩展的通用知识工作台。它不只服�
 - PDF 阅读：PDF.js
 - 后端：Rust
 - 本地数据库：SQLite，使用 `rusqlite` bundled SQLite
-- 本地文件库：应用数据目录下的 `AsterData/files/papers`
+- 本地文件库：应用数据目录下的兼容目录 `AsterData/files/papers`
 
 ## 开发环境准备
 
@@ -122,7 +122,7 @@ npm run tauri:build
 src-tauri/target/release/aster.exe
 ```
 
-如果构建时报无法覆盖 `aster.exe`，通常是因为旧程序还在运行。先关闭 Aster，或在任务管理器里结束 `aster.exe` 进程后重新构建。
+如果构建时报无法覆盖 `a4note.exe`，通常是因为旧程序还在运行。先关闭 A4Note，或在任务管理器里结束 `a4note.exe` 进程后重新构建。
 
 ## 验证命令
 
@@ -174,7 +174,7 @@ Aster/
 
 ## 本地资料库
 
-Aster 会在系统应用数据目录里创建本地资料库，结构类似：
+A4Note 会在系统应用数据目录里使用本地资料库。为兼容早期版本，当前仍保留以下旧目录和数据库文件名：
 
 ```text
 AsterData/
@@ -193,7 +193,7 @@ AsterData/
 
 当前落地模型仍以 `papers` 为第一类知识对象实现文献工作流。后续架构会逐步抽象出更通用的 `KnowledgeObject` 和 `Relation` 层，让文献、笔记、主题页面、项目资料、AI 对话片段和插件数据都能通过统一关系系统管理。
 
-统一关系系统是 Aster 的核心架构方向，详细设计见 [GOAL.md](docs/notes/GOAL.md) 的“统一信息关联系统”。开发时应按“对象和关系分离、稳定 ID、类型可扩展、关系可双向查询、插件通过受控 API 写入”的原则设计。
+统一关系系统是 A4Note 的核心架构方向，详细设计见 [GOAL.md](docs/notes/GOAL.md) 的“统一信息关联系统”。开发时应按“对象和关系分离、稳定 ID、类型可扩展、关系可双向查询、插件通过受控 API 写入”的原则设计。
 
 核心实体：
 

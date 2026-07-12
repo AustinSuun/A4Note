@@ -1,3 +1,3 @@
 fn main() {
-    aster_lib::run();
+    a4note_lib::run();
 }
