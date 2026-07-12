@@ -16,13 +16,13 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Erro
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error('Aster UI crashed', error, info);
+    console.error('A4Note UI crashed', error, info);
   }
 
   private copyError = async () => {
     if (!this.state.error) return;
     const details = [
-      'Aster UI error',
+      'A4Note UI error',
       `Message: ${this.state.error.message}`,
       `Stack: ${this.state.error.stack ?? 'unavailable'}`,
       `User agent: ${navigator.userAgent}`,
@@ -41,7 +41,7 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Erro
     return (
       <main className="error-boundary-shell">
         <section className="error-boundary-card">
-          <div className="eyebrow">Aster</div>
+          <div className="eyebrow">A4Note</div>
           <h1>界面遇到异常</h1>
           <p>当前窗口没有关闭。可以先复制错误信息用于排查，然后重新载入界面。</p>
           <pre>{this.state.error.message}</pre>

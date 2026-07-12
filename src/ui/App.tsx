@@ -279,7 +279,7 @@ export default function App() {
     if (!settingsOpen || !isTauriRuntime()) return;
     getAsterPaths()
       .then(setAsterPaths)
-      .catch((error) => console.error('Failed to load Aster paths', error));
+      .catch((error) => console.error('Failed to load A4Note paths', error));
     getAppDiagnostics()
       .then(setAppDiagnostics)
       .catch((error) => console.error('Failed to load app diagnostics', error));
@@ -1535,7 +1535,7 @@ function comparePaper(left: PaperDocument, right: PaperDocument, sort: { key: Li
 }
 
 function formatPapersAsMarkdown(papers: PaperDocument[]) {
-  const lines = ['# Aster Library Export', '', `Count: ${papers.length}`, ''];
+  const lines = ['# A4Note Library Export', '', `Count: ${papers.length}`, ''];
   papers.forEach((paper, index) => {
     lines.push(`## ${index + 1}. ${paper.title || zh.importDialog.untitledDocument}`);
     lines.push(`- Authors: ${paper.authors || zh.library.unknownAuthors}`);

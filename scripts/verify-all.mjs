@@ -1,4 +1,10 @@
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
+const tauriSource = readFileSync('src-tauri/src/lib.rs', 'utf8');
+if ((tauriSource.match(/format!\("Failed to open path: \{error\}"\)/g) ?? []).length < 3) {
+  throw new Error('Cross-platform path opening errors must use valid Rust format strings.');
+}
 
 const isWindows = process.platform === 'win32';
 const steps = [
@@ -21,7 +27,7 @@ for (const [command, args] of steps) {
   await run(command, args);
 }
 
-console.log('\nAster verification passed');
+console.log('\nA4Note verification passed');
 
 function run(command, args) {
   return new Promise((resolve, reject) => {

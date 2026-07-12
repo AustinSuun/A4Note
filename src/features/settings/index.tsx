@@ -96,8 +96,8 @@ export function SettingsScene({
   };
   const copyDiagnostics = async () => {
     const lines = [
-      `Aster diagnostics`,
-      `${zh.settings.productName}: ${diagnostics?.product_name ?? 'Aster'}`,
+      `A4Note diagnostics`,
+      `${zh.settings.productName}: ${diagnostics?.product_name ?? 'A4Note'}`,
       `${zh.settings.version}: ${diagnostics?.version ?? '0.1.0'}`,
       `${zh.settings.identifier}: ${diagnostics?.identifier ?? 'app.aster.research'}`,
       `${zh.settings.platform}: ${diagnostics?.platform ?? zh.settings.pathUnavailable}`,
@@ -283,7 +283,7 @@ export function SettingsScene({
         <div className="soft-panel">
           <div className="panel-title">{zh.settings.about}</div>
           <div className="diagnostics-grid">
-            <DiagnosticItem label={zh.settings.productName} value={diagnostics?.product_name ?? 'Aster'} />
+            <DiagnosticItem label={zh.settings.productName} value={diagnostics?.product_name ?? 'A4Note'} />
             <DiagnosticItem label={zh.settings.version} value={diagnostics?.version ?? '0.1.0'} />
             <DiagnosticItem label={zh.settings.identifier} value={diagnostics?.identifier ?? 'app.aster.research'} />
             <DiagnosticItem label={zh.settings.platform} value={diagnostics?.platform ?? zh.settings.pathUnavailable} />

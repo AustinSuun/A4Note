@@ -1,12 +1,12 @@
 [package]
-name = "aster"
-version = "0.1.0"
-description = "Aster research assistant desktop app"
-authors = ["Aster"]
+name = "a4note"
+version = "0.1.1"
+description = "A4Note knowledge workspace desktop app"
+authors = ["A4Note"]
 edition = "2021"
 
 [lib]
-name = "aster_lib"
+name = "a4note_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

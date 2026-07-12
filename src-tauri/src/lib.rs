@@ -12,8 +12,8 @@ const FALLBACK_TAG: &str = "未分类";
 const GUIDE_PAPER_ID: &str = "paper-aster-guide";
 const GUIDE_FILE_ID: &str = "file-aster-guide-source";
 const GUIDE_NOTE_ID: &str = "note-aster-guide";
-const GUIDE_TITLE: &str = "Aster 使用指南";
-const GUIDE_AUTHORS: &str = "Aster";
+const GUIDE_TITLE: &str = "A4Note 使用指南";
+const GUIDE_AUTHORS: &str = "A4Note";
 const GUIDE_YEAR: i64 = 2026;
 const GUIDE_VENUE: &str = "内置指南";
 const GUIDE_PDF: &[u8] = include_bytes!("../assets/aster-guide.pdf");
@@ -330,7 +330,7 @@ fn get_app_diagnostics(app: AppHandle) -> Result<AppDiagnostics, String> {
     let database_path = PathBuf::from(&paths.database);
     let file_stats = library_file_stats(&database_path)?;
     Ok(AppDiagnostics {
-        product_name: "Aster".to_string(),
+        product_name: "A4Note".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         identifier: "app.aster.research".to_string(),
         platform: std::env::consts::OS.to_string(),
@@ -556,7 +556,7 @@ fn open_path_in_file_manager(path: &Path) -> Result<(), String> {
         Command::new("open")
             .arg(path)
             .spawn()
-            .map_err(|error| format!("鏃犳硶鎵撳紑璺緞锛歿error}"))?;
+            .map_err(|error| format!("Failed to open path: {error}"))?;
         return Ok(());
     }
 
@@ -565,7 +565,7 @@ fn open_path_in_file_manager(path: &Path) -> Result<(), String> {
         Command::new("xdg-open")
             .arg(path)
             .spawn()
-            .map_err(|error| format!("鏃犳硶鎵撳紑璺緞锛歿error}"))?;
+            .map_err(|error| format!("Failed to open path: {error}"))?;
         return Ok(());
     }
 }
@@ -761,7 +761,7 @@ fn seed_default_guide(root: &Path, database_path: &Path) -> Result<(), String> {
         year: Some(GUIDE_YEAR),
         venue: GUIDE_VENUE.to_string(),
         doi: String::new(),
-        tags: vec!["指南".to_string(), "入门".to_string(), "Aster".to_string()],
+        tags: vec!["指南".to_string(), "入门".to_string(), "A4Note".to_string()],
     };
     if exists == 0 {
         insert_imported_document(database_path, GUIDE_PAPER_ID, GUIDE_FILE_ID, &path_to_string(&pdf_path), None, &request)?;
@@ -790,7 +790,7 @@ fn seed_default_guide(root: &Path, database_path: &Path) -> Result<(), String> {
         UpsertNoteRequest {
             paper_id: GUIDE_PAPER_ID.to_string(),
             note_id: Some(GUIDE_NOTE_ID.to_string()),
-            title: "Aster 使用指南笔记".to_string(),
+            title: "A4Note 使用指南笔记".to_string(),
             content: GUIDE_MARKDOWN.to_string(),
         },
     )?;
@@ -2265,6 +2265,6 @@ pub fn run() {
             clear_ai_threads
         ])
         .run(tauri::generate_context!())
-        .expect("failed to run Aster");
+        .expect("failed to run A4Note");
 }
 

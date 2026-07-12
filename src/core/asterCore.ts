@@ -290,7 +290,7 @@ export function createAsterCore(documents: PaperDocument[], scenes: SceneContrib
     name: '本地上下文助手',
     kind: 'local',
     status: 'available',
-    modelLabel: 'Aster Local Context',
+    modelLabel: 'A4Note Local Context',
     description: '使用当前文献、笔记、标注和标签生成本地上下文回复。',
     supportsContextObjects: true,
     supportsStreaming: false,
