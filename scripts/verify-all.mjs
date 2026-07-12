@@ -5,6 +5,10 @@ const tauriSource = readFileSync('src-tauri/src/lib.rs', 'utf8');
 if ((tauriSource.match(/format!\("Failed to open path: \{error\}"\)/g) ?? []).length < 3) {
   throw new Error('Cross-platform path opening errors must use valid Rust format strings.');
 }
+const tauriMainSource = readFileSync('src-tauri/src/main.rs', 'utf8');
+if (!tauriMainSource.includes('#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]')) {
+  throw new Error('Windows release builds must not open a console window.');
+}
 
 const isWindows = process.platform === 'win32';
 const steps = [
