@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
@@ -45,7 +45,14 @@ jobs:
 
       - name: Build and publish release bundle
         uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tagName: v__VERSION__
+          releaseName: A4Note v__VERSION__
+          releaseBody: Automated Windows and macOS release for A4Note.
+          releaseDraft: false
+          prerelease: false
           args: --bundles ${{ matrix.bundles }}
 
       - name: Upload installer artifact
