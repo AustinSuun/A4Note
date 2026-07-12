@@ -46,6 +46,26 @@ assert.deepEqual(point, { x: 50, y: 50 });
 assert.equal(prevented, true);
 assert.equal(stopped, true);
 
+const pageRelativePoint = interaction.pointFromEvent(
+  {
+    clientX: 160,
+    clientY: 120,
+    preventDefault() {},
+    stopPropagation() {},
+    currentTarget: {
+      getBoundingClientRect() {
+        return { left: 150, top: 110, width: 20, height: 20 };
+      },
+    },
+  },
+  {
+    getBoundingClientRect() {
+      return { left: 60, top: 20, width: 200, height: 200 };
+    },
+  },
+);
+assert.deepEqual(pageRelativePoint, { x: 50, y: 50 });
+
 const dragDraft = interaction.createDragDraft(4, { x: 12, y: 24 });
 assert.deepEqual(dragDraft, { page: 4, startX: 12, startY: 24, currentX: 12, currentY: 24 });
 assert.deepEqual(interaction.updateDragDraftPoint(dragDraft, { x: 18, y: 30 }), { ...dragDraft, currentX: 18, currentY: 30 });
@@ -56,6 +76,14 @@ assert.deepEqual(
     { x: 50, y: 60 },
   ),
   { x: 45, y: 53, width: 16, height: 8, textColor: '#111111' },
+);
+assert.deepEqual(
+  interaction.stickyPositionFromDrag(
+    { x: 8, y: 12, width: 5, height: 3, shapeKind: 'ellipse' },
+    { annotationId: 'shape-1', page: 4, offsetX: 2, offsetY: 1 },
+    { x: 40, y: 50 },
+  ),
+  { x: 38, y: 49, width: 5, height: 3, shapeKind: 'ellipse' },
 );
 
 const pages = [

@@ -1,14 +1,17 @@
-import type { MouseEvent } from 'react';
+import type { MouseEvent, PointerEvent } from 'react';
 import type { PositionJson } from '../../../core/types';
 import type { DragDraft, StickyDrag } from './types';
 
 const PAGE_VISIBLE_MARGIN = 0.3;
 const PAGE_VISIBLE_THRESHOLD = 0.08;
 
-export function pointFromEvent(event: MouseEvent<HTMLDivElement>) {
+export function pointFromEvent(
+  event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>,
+  coordinateTarget: Pick<HTMLElement, 'getBoundingClientRect'> = event.currentTarget,
+) {
   event.preventDefault();
   event.stopPropagation();
-  const rect = event.currentTarget.getBoundingClientRect();
+  const rect = coordinateTarget.getBoundingClientRect();
   return {
     x: clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100),
     y: clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100),
@@ -47,12 +50,14 @@ export function arrowPositionFromDrag(draft: DragDraft): PositionJson {
 }
 
 export function stickyPositionFromDrag(positionJson: PositionJson, stickyDrag: StickyDrag, point: { x: number; y: number }): PositionJson {
+  const width = Math.max(numberValue(positionJson.width, 20), 0.1);
+  const height = Math.max(numberValue(positionJson.height, 9), 0.1);
   return {
     ...positionJson,
-    x: clamp(point.x - stickyDrag.offsetX, 0, 96),
-    y: clamp(point.y - stickyDrag.offsetY, 0, 96),
-    width: Math.max(numberValue(positionJson.width, 20), 12),
-    height: Math.max(numberValue(positionJson.height, 9), 7),
+    x: clamp(point.x - stickyDrag.offsetX, 0, Math.max(100 - width, 0)),
+    y: clamp(point.y - stickyDrag.offsetY, 0, Math.max(100 - height, 0)),
+    width,
+    height,
   };
 }
 

@@ -39,13 +39,14 @@ export function AnnotationMark({
   const segments = annotationSegments(annotation.positionJson);
   const annotationId = annotation.id;
   const isTextBox = annotation.type === 'comment' || annotation.type === 'text';
+  const isMovable = isTextBox || annotation.type === 'rect';
   const customColorStyle = annotation.color.startsWith('#') ? annotationCustomColorStyle(annotation.type, annotation.color) : undefined;
 
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
     if (!annotation.id) return;
     event.preventDefault();
     event.stopPropagation();
-    if (isTextBox && !eraserActive) {
+    if (isMovable && !eraserActive) {
       onBeginStickyDrag?.(annotation.id, annotation.page, event);
     }
   };
@@ -53,7 +54,7 @@ export function AnnotationMark({
   const handleMouseUp = (event: MouseEvent<HTMLDivElement>) => {
     if (!annotation.id) return;
     event.preventDefault();
-    if (!isTextBox) {
+    if (!isMovable) {
       event.stopPropagation();
     }
   };
@@ -118,7 +119,8 @@ export function AnnotationMark({
         </button>
         <button
           type="button"
-          className={`annotation-color-pill ${annotation.color}`}
+          className="annotation-color-pill"
+          style={{ background: colorToCss(annotation.color) }}
           title="选择颜色"
           aria-expanded={colorPaletteOpen}
           onClick={(event) => {
@@ -127,7 +129,7 @@ export function AnnotationMark({
             setColorPaletteOpen((current) => !current);
           }}
         >
-          <ColorSwatchIcon color={annotation.color} />
+          <ColorSwatchIcon color={colorToCss(annotation.color)} />
         </button>
         {colorPaletteOpen && (
           <div className="annotation-color-palette" onClick={(event) => event.stopPropagation()}>
@@ -175,6 +177,8 @@ export function AnnotationMark({
     const arrow = arrowLine(annotation.positionJson);
     const arrowStyle = arrowStyleFromPosition(annotation.positionJson);
     const arrowEnding = arrowEndingFromPosition(annotation.positionJson);
+    const arrowStrokeWidth = Math.max(numberValue(annotation.positionJson.strokeWidth, 3.4), 1);
+    const arrowHeadSize = Math.min(Math.max(arrowStrokeWidth * 2 + 8, 11), 26);
     const markerId = `arrow-head-${safeSvgId(annotation.id ?? 'draft')}`;
     return (
       <div
@@ -185,17 +189,27 @@ export function AnnotationMark({
         onClick={handleClick}
         style={{ ...positionStyle(annotation.positionJson), ...vectorColorStyle(annotation.color), ...strokeWidthStyle(annotation.positionJson) }}
       >
-        <svg className={`annotation-vector annotation-arrow-vector arrow-style-${arrowStyle} arrow-ending-${arrowEnding}`} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <svg className={`annotation-vector annotation-arrow-vector arrow-style-${arrowStyle} arrow-ending-${arrowEnding}`} aria-hidden="true">
           <defs>
-            <marker id={markerId} markerWidth="9" markerHeight="9" refX="7.8" refY="4.5" orient="auto-start-reverse" markerUnits="strokeWidth">
-              <path d="M0,0 L8,4 L0,8 Z" />
+            <marker
+              id={markerId}
+              markerWidth={arrowHeadSize}
+              markerHeight={arrowHeadSize}
+              refX="10.5"
+              refY="6"
+              orient="auto-start-reverse"
+              markerUnits="userSpaceOnUse"
+              viewBox="0 0 12 12"
+            >
+              <path className="annotation-arrow-head" d="M1.5 1.5 10.5 6 1.5 10.5" />
             </marker>
           </defs>
           <line
-            x1={arrow.x1}
-            y1={arrow.y1}
-            x2={arrow.x2}
-            y2={arrow.y2}
+            x1={`${arrow.x1}%`}
+            y1={`${arrow.y1}%`}
+            x2={`${arrow.x2}%`}
+            y2={`${arrow.y2}%`}
+            vectorEffect="non-scaling-stroke"
             strokeDasharray={arrowStyle === 'dashed' ? '7 5' : undefined}
             markerStart={arrowEnding === 'arrow' && arrowStyle === 'double' ? `url(#${markerId})` : undefined}
             markerEnd={arrowEnding === 'arrow' ? `url(#${markerId})` : undefined}
@@ -380,8 +394,7 @@ function TrashIcon() {
 function ColorSwatchIcon({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="7.1" fill="currentColor" className={color} />
-      <circle cx="12" cy="12" r="8.7" />
+      <circle cx="12" cy="12" r="8" fill={color} stroke="none" />
     </svg>
   );
 }

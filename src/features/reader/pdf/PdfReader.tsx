@@ -1,4 +1,5 @@
 ﻿import { type MouseEvent, type WheelEvent, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, PointerEvent } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import type { AnnotationColor, AnnotationDraft, AnnotationType, PaperDocument, PositionJson, ReaderTool } from '../../../core/types';
@@ -42,6 +43,7 @@ export default function PdfReader({
   activeTool,
   activeAnnotationColor,
   toolSettings,
+  onCompleteOneShotTool,
   zoom,
   onZoomChange,
   requestedPage,
@@ -64,6 +66,7 @@ export default function PdfReader({
   activeTool: ReaderTool;
   activeAnnotationColor: AnnotationColor;
   toolSettings: ReaderToolSettings;
+  onCompleteOneShotTool?: () => void;
   zoom: number;
   onZoomChange: (zoom: number, anchor?: { x: number; y: number }) => void;
   requestedPage?: number | null;
@@ -87,6 +90,8 @@ export default function PdfReader({
   const [dragDraft, setDragDraft] = useState<DragDraft | null>(null);
   const [inkDraft, setInkDraft] = useState<InkDraft | null>(null);
   const inkDraftRef = useRef<InkDraft | null>(null);
+  const inkPointerIdRef = useRef<number | null>(null);
+  const inkPointerTargetRef = useRef<HTMLDivElement | null>(null);
   const [commentPopover, setCommentPopover] = useState<CommentPopover | null>(null);
   const [stickyDrag, setStickyDrag] = useState<StickyDrag | null>(null);
   const [stickyDragPreview, setStickyDragPreview] = useState<StickyDragPreview | null>(null);
@@ -202,6 +207,13 @@ export default function PdfReader({
   useEffect(() => {
     setDraftAnnotations([]);
     setDragDraft(null);
+    const pointerId = inkPointerIdRef.current;
+    const pointerTarget = inkPointerTargetRef.current;
+    if (pointerId !== null && pointerTarget?.hasPointerCapture(pointerId)) {
+      pointerTarget.releasePointerCapture(pointerId);
+    }
+    inkPointerIdRef.current = null;
+    inkPointerTargetRef.current = null;
     inkDraftRef.current = null;
     setInkDraft(null);
     setCommentPopover(null);
@@ -217,6 +229,17 @@ export default function PdfReader({
   useEffect(() => {
     if (activeTool !== 'eraser') {
       setEraserCursor(null);
+    }
+    if (activeTool !== 'ink') {
+      const pointerId = inkPointerIdRef.current;
+      const pointerTarget = inkPointerTargetRef.current;
+      inkPointerIdRef.current = null;
+      inkPointerTargetRef.current = null;
+      inkDraftRef.current = null;
+      setInkDraft(null);
+      if (pointerId !== null && pointerTarget?.hasPointerCapture(pointerId)) {
+        pointerTarget.releasePointerCapture(pointerId);
+      }
     }
   }, [activeTool]);
 
@@ -405,31 +428,40 @@ export default function PdfReader({
     setIsPanning(false);
   };
 
-  const beginAnnotationDrag = (pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
-    if (status !== 'ready') return;
-    if (activeTool === 'ink') {
-      const point = pointFromEvent(event);
-      const nextDraft = { page: pageNumber, points: [point] };
-      inkDraftRef.current = nextDraft;
-      setInkDraft(nextDraft);
+  const beginInkStroke = (pageNumber: number, event: PointerEvent<HTMLDivElement>) => {
+    if (status !== 'ready' || event.button !== 0 || !event.isPrimary) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    inkPointerIdRef.current = event.pointerId;
+    inkPointerTargetRef.current = event.currentTarget;
+    const point = pointFromEvent(event);
+    const nextDraft = { page: pageNumber, points: [point] };
+    inkDraftRef.current = nextDraft;
+    setInkDraft(nextDraft);
+  };
+
+  const updateInkStroke = (pageNumber: number, event: PointerEvent<HTMLDivElement>) => {
+    if (inkPointerIdRef.current !== event.pointerId || !inkDraftRef.current || inkDraftRef.current.page !== pageNumber) return;
+    if ((event.buttons & 1) === 0) {
+      finishInkPointer(event);
       return;
     }
+    const point = pointFromEvent(event);
+    const currentDraft = inkDraftRef.current;
+    const previous = currentDraft.points[currentDraft.points.length - 1];
+    if (previous && Math.abs(previous.x - point.x) + Math.abs(previous.y - point.y) < 0.16) return;
+    const nextDraft = { ...currentDraft, points: [...currentDraft.points, point] };
+    inkDraftRef.current = nextDraft;
+    setInkDraft(nextDraft);
+  };
+
+  const beginAnnotationDrag = (pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
+    if (status !== 'ready') return;
     if (!shapeToolsActive) return;
     const point = pointFromEvent(event);
     setDragDraft(createDragDraft(pageNumber, point));
   };
 
   const updateAnnotationDrag = (pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
-    if (inkDraftRef.current && inkDraftRef.current.page === pageNumber) {
-      const point = pointFromEvent(event);
-      const currentDraft = inkDraftRef.current;
-      const previous = currentDraft.points[currentDraft.points.length - 1];
-      if (previous && Math.abs(previous.x - point.x) + Math.abs(previous.y - point.y) < 0.16) return;
-      const nextDraft = { ...currentDraft, points: [...currentDraft.points, point] };
-      inkDraftRef.current = nextDraft;
-      setInkDraft(nextDraft);
-      return;
-    }
     if (!dragDraft || dragDraft.page !== pageNumber) return;
     const point = pointFromEvent(event);
     setDragDraft((current) => (current ? updateDragDraftPoint(current, point) : current));
@@ -437,10 +469,12 @@ export default function PdfReader({
 
   const beginStickyDrag = (annotationId: string, pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
     const annotation = currentFileAnnotations.find((item) => item.id === annotationId);
-    if (!annotation || annotation.type !== 'comment') return;
+    if (!annotation || (annotation.type !== 'comment' && annotation.type !== 'text' && annotation.type !== 'rect')) return;
     event.preventDefault();
     event.stopPropagation();
-    const point = pointFromEvent(event);
+    const pageLayer = event.currentTarget.closest<HTMLElement>('.pdf-render-layer');
+    if (!pageLayer) return;
+    const point = pointFromEvent(event, pageLayer);
     setFocusedAnnotationId(annotationId);
     setStickyDrag({
       annotationId,
@@ -529,12 +563,22 @@ export default function PdfReader({
     };
     const draftId = pushDraftPreview(draft);
     try {
-      const id = await onCreateAnnotation(draft);
+      await onCreateAnnotation(draft);
       removeDraftPreview(draftId);
-      if (id) selectAnnotation(id);
     } catch (error) {
       console.error('Ink annotation create failed', error);
       removeDraftPreview(draftId);
+    }
+  };
+
+  const finishInkPointer = (event: PointerEvent<HTMLDivElement>) => {
+    if (inkPointerIdRef.current !== event.pointerId) return;
+    const pointerTarget = inkPointerTargetRef.current;
+    inkPointerIdRef.current = null;
+    inkPointerTargetRef.current = null;
+    void finishInkAnnotation();
+    if (pointerTarget?.hasPointerCapture(event.pointerId)) {
+      pointerTarget.releasePointerCapture(event.pointerId);
     }
   };
 
@@ -557,7 +601,14 @@ export default function PdfReader({
           }
         : normalizeBox(dragDraft)) as PositionJson;
     setDragDraft(null);
-    if (numberValue(position.width, 0) < 1.4 || numberValue(position.height, 0) < 0.8) return;
+    const arrowLength = annotationType === 'arrow'
+      ? Math.hypot(
+          numberValue(position.endX, 0) - numberValue(position.startX, 0),
+          numberValue(position.endY, 0) - numberValue(position.startY, 0),
+        )
+      : 0;
+    if (annotationType === 'arrow' ? arrowLength < 1.4 : numberValue(position.width, 0) < 1.4 || numberValue(position.height, 0) < 0.8) return;
+    if (annotationType === 'arrow' || annotationType === 'rect') onCompleteOneShotTool?.();
     const page = pages.find((candidate) => candidate.pageNumber === dragDraft.page);
     const textSelection = page && (annotationType === 'highlight' || annotationType === 'underline') ? textSelectionFromDrag(page.textItems, position as RectBox) : null;
     const draft = {
@@ -634,6 +685,7 @@ export default function PdfReader({
       borderColor: annotationType === 'text' ? toolSettings.textBorderColor : '#ffffff',
       backgroundColor: annotationType === 'text' ? toolSettings.textBackgroundColor : '#fff4b8',
     });
+    if (annotationType === 'text') onCompleteOneShotTool?.();
   };
 
   const editStickyAnnotation = (annotation: AnnotationMarkModel, event: MouseEvent<HTMLElement>) => {
@@ -731,7 +783,23 @@ export default function PdfReader({
   };
 
   const pageHandlers = (pageNumber: number) => ({
+    onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
+      if (activeTool === 'ink') beginInkStroke(pageNumber, event);
+    },
+    onPointerMove: (event: PointerEvent<HTMLDivElement>) => {
+      if (activeTool === 'ink') updateInkStroke(pageNumber, event);
+    },
+    onPointerUp: (event: PointerEvent<HTMLDivElement>) => {
+      if (activeTool === 'ink') finishInkPointer(event);
+    },
+    onPointerCancel: (event: PointerEvent<HTMLDivElement>) => {
+      if (activeTool === 'ink') finishInkPointer(event);
+    },
+    onLostPointerCapture: (event: PointerEvent<HTMLDivElement>) => {
+      if (activeTool === 'ink') finishInkPointer(event);
+    },
     onMouseDown: (event: MouseEvent<HTMLDivElement>) => {
+      if (activeTool === 'ink') return;
       if (stickyDrag) return;
       if (activeTool === 'eraser') {
         updateEraserCursor(pageNumber, event);
@@ -742,6 +810,7 @@ export default function PdfReader({
       beginAnnotationDrag(pageNumber, event);
     },
     onMouseMove: (event: MouseEvent<HTMLDivElement>) => {
+      if (activeTool === 'ink') return;
       if (activeTool === 'eraser') {
         updateEraserCursor(pageNumber, event);
         if (event.buttons === 1) {
@@ -753,17 +822,20 @@ export default function PdfReader({
       updateAnnotationDrag(pageNumber, event);
     },
     onMouseUp: () => {
+      if (activeTool === 'ink') return;
       finishStickyDrag();
       void finishInkAnnotation();
       void finishShapeAnnotation();
     },
     onMouseLeave: () => {
+      if (activeTool === 'ink') return;
       setEraserCursor(null);
       finishStickyDrag();
       void finishInkAnnotation();
       void finishShapeAnnotation();
     },
     onClick: (event: MouseEvent<HTMLDivElement>) => {
+      if (activeTool === 'ink') return;
       if (textSelectionToolsActive) return;
       if (activeTool === 'comment' || activeTool === 'text') {
         createTextAnnotationAtPointer(pageNumber, event);
@@ -795,13 +867,18 @@ export default function PdfReader({
     );
   }
 
+  const toolCursorStyle = activeTool === 'ink' || activeTool === 'text' || activeTool === 'rect'
+    ? ({ '--reader-tool-cursor': readerToolCursor(activeTool, activeAnnotationColor, toolSettings.shapeKind) } as CSSProperties)
+    : undefined;
+
   return (
     <div className="pdf-reader-surface">
       <div className="reader-toolbar-progress" aria-hidden="true">
         <div style={{ transform: `scaleX(${Math.max(0.04, scrollProgress)})` }} />
       </div>
       <div
-        className={`pdf-document ${activeTool === 'cursor' ? 'cursor-mode' : 'annotation-mode'} ${activeTool === 'eraser' ? 'eraser-mode' : ''} ${isPanning ? 'panning' : ''}`}
+        className={`pdf-document ${activeTool}-mode ${activeTool === 'cursor' ? '' : 'annotation-mode'} ${isPanning ? 'panning' : ''}`.trim()}
+        style={toolCursorStyle}
         ref={containerRef}
         onWheel={handleWheel}
         onScroll={updateScrollProgress}
@@ -875,6 +952,25 @@ function inkPositionFromPoints(points: InkDraft['points']): PositionJson {
   const width = Math.max(Math.max(...xs) - x, 0.1);
   const height = Math.max(Math.max(...ys) - y, 0.1);
   return { x, y, width, height, points };
+}
+
+function readerToolCursor(tool: 'ink' | 'text' | 'rect', color: AnnotationColor, shapeKind: ReaderToolSettings['shapeKind'] = 'rect') {
+  const swatch = cursorColor(color);
+  const svg = tool === 'ink'
+    ? `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M4 22l2-6L18 4l4 4-12 12z" fill="white" stroke="#355c4a" stroke-width="1.5" stroke-linejoin="round"/><path d="M16.5 5.5l4 4" fill="none" stroke="#355c4a" stroke-width="1.5"/><circle cx="22" cy="22" r="4" fill="${swatch}" stroke="white" stroke-width="1.5"/></svg>`
+    : tool === 'text'
+      ? `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M7 5h14M14 5v18M9 23h10" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/><path d="M7 5h14M14 5v18M9 23h10" fill="none" stroke="#355c4a" stroke-width="1.7" stroke-linecap="round"/><circle cx="23" cy="22" r="3.5" fill="${swatch}" stroke="white" stroke-width="1.4"/></svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M2 5h6M5 2v6" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M2 5h6M5 2v6" fill="none" stroke="#355c4a" stroke-width="1.4" stroke-linecap="round"/><${shapeKind === 'ellipse' ? 'ellipse cx="17" cy="17" rx="8" ry="6"' : 'rect x="9" y="10" width="16" height="14" rx="1"'} fill="white" fill-opacity=".75" stroke="${swatch}" stroke-width="2"/></svg>`;
+  const hotspot = tool === 'ink' ? '4 22' : tool === 'text' ? '14 14' : '5 5';
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspot}, crosshair`;
+}
+
+function cursorColor(color: AnnotationColor) {
+  if (/^#[0-9a-fA-F]{6}$/.test(color)) return color;
+  if (color === 'green') return '#56cc9d';
+  if (color === 'blue') return '#5c8edb';
+  if (color === 'purple') return '#9770db';
+  return '#f2c94c';
 }
 
 function eraseInkPosition(

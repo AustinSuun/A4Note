@@ -260,16 +260,18 @@ export function ReaderToolbar({
       </div>
 
       <div className="reader-toolbar-end">
-        <button
-          className={`reader-workspace-toggle ${sidePanelOpen ? 'active' : ''}`.trim()}
-          type="button"
-          onClick={() => onSidePanelOpenChange(!sidePanelOpen)}
-          title={zh.reader.openPanel}
-          aria-label={zh.reader.openPanel}
-          aria-pressed={sidePanelOpen}
-        >
-          <SidebarIcon />
-        </button>
+        {!sidePanelOpen && (
+          <button
+            className="reader-workspace-toggle"
+            type="button"
+            onClick={() => onSidePanelOpenChange(true)}
+            title={zh.reader.openPanel}
+            aria-label={zh.reader.openPanel}
+            aria-pressed="false"
+          >
+            <SidebarIcon />
+          </button>
+        )}
       </div>
       {toolSettingsOpenFor && (
         <ToolOptionsBar
@@ -309,6 +311,16 @@ function ToolOptionsBar({
 
   return (
     <div className={`reader-tool-options-bar tool-options-${tool}`} onMouseDown={(event) => event.stopPropagation()}>
+      {(tool === 'highlight' || tool === 'underline') && (
+        <ToolColorPalette
+          label={tool === 'highlight' ? '高亮颜色' : '下划线颜色'}
+          value={activeColor}
+          customColor={customAnnotationColor}
+          onChange={(color) => onSelectAnnotationColor(color as AnnotationColor)}
+          onCustomColorChange={onCustomAnnotationColorChange}
+        />
+      )}
+
       {tool === 'ink' && (
         <>
           <ThicknessOption
@@ -618,8 +630,18 @@ function ToolColorPalette({
 }) {
   const inputValue = colorToInputValue(value === 'transparent' ? customColor : value);
   return (
-    <div className="tool-option-color-group" aria-label={label}>
+    <div className={`tool-option-color-group ${allowTransparent ? 'with-transparent-toggle' : ''}`.trim()} aria-label={label}>
       <span className="tool-option-label">{label}</span>
+      {allowTransparent && (
+        <label className="tool-option-transparent-toggle" title="无背景">
+          <input
+            type="checkbox"
+            checked={value === 'transparent'}
+            onChange={(event) => onChange(event.target.checked ? 'transparent' : inputValue)}
+          />
+          <span>无背景</span>
+        </label>
+      )}
       <label className="tool-option-color-custom" title={`${label}：自定义颜色`}>
         <input
           type="color"
@@ -632,15 +654,6 @@ function ToolColorPalette({
         <span style={{ background: inputValue }} />
       </label>
       <div className="tool-option-color-presets">
-        {allowTransparent && (
-          <button
-            type="button"
-            className={`tool-option-color-transparent ${value === 'transparent' ? 'active' : ''}`.trim()}
-            title="透明"
-            aria-label="透明"
-            onClick={() => onChange('transparent')}
-          />
-        )}
         {TOOL_COLOR_PRESETS.map((color) => (
           <button
             key={color}
@@ -658,7 +671,7 @@ function ToolColorPalette({
 }
 
 function toolHasSettings(tool: ReaderTool) {
-  return tool === 'ink' || tool === 'eraser' || tool === 'arrow' || tool === 'text' || tool === 'rect';
+  return tool === 'highlight' || tool === 'underline' || tool === 'ink' || tool === 'eraser' || tool === 'arrow' || tool === 'text' || tool === 'rect';
 }
 
 function LineStylePreview({ kind }: { kind: 'solid' | 'dashed' | 'double' | 'arrow' | 'line' }) {

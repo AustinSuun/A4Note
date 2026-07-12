@@ -246,8 +246,11 @@ assert.match(readerToolbarSource, /className="reader-toolbar-group reader-toolba
 assert.match(readerToolbarSource, /className="reader-toolbar-primary"/);
 assert.match(readerToolbarSource, /className="reader-toolbar-center"/);
 assert.match(readerToolbarSource, /className="reader-toolbar-end"/);
-assert.match(readerToolbarSource, /className=\{`reader-workspace-toggle/);
+assert.match(readerToolbarSource, /\{!sidePanelOpen && \(/);
+assert.match(readerToolbarSource, /className="reader-workspace-toggle"[\s\S]*onClick=\{\(\) => onSidePanelOpenChange\(true\)\}/);
 assert.match(readerToolbarSource, /aria-label=\{zh\.reader\.openPanel\}/);
+assert.match(readerSideDrawerSource, /className="reader-workspace-tabs"[\s\S]*className="reader-workspace-add-shell"[\s\S]*className="reader-workspace-add"/);
+assert.match(readerSideDrawerSource, /className="reader-workspace-actions"[\s\S]*className="reader-workspace-toggle active"[\s\S]*onClick=\{\(\) => onSidePanelOpenChange\(false\)\}/);
 assert.doesNotMatch(readerToolbarSource, /<span>侧栏<\/span>/);
 assert.match(readerToolbarSource, /tool\.id !== 'cursor' && tool\.id !== 'eraser'/);
 assert.match(readerToolbarSource, /AnnotationToolIcon id=\{tool\.id\}/);
@@ -261,6 +264,11 @@ assert.doesNotMatch(readerToolbarSource, /setToolSettingsOpenFor\(toolHasSetting
 assert.doesNotMatch(readerToolbarSource, /setToolSettingsOpenFor\(toolHasSettings\(tool\) \? tool : null\)/);
 assert.match(readerToolbarSource, /function ToolOptionsBar/);
 assert.match(readerToolbarSource, /reader-tool-options-bar tool-options-\$\{tool\}/);
+assert.match(readerToolbarSource, /tool === 'highlight' \|\| tool === 'underline'/);
+assert.match(readerToolbarSource, /label=\{tool === 'highlight' \? '高亮颜色' : '下划线颜色'\}/);
+assert.match(readerToolbarSource, /className="tool-option-transparent-toggle"/);
+assert.match(readerToolbarSource, /checked=\{value === 'transparent'\}/);
+assert.doesNotMatch(readerToolbarSource, /className=\{`tool-option-color-transparent/);
 assert.match(readerToolbarSource, /className="tool-option-color-custom"/);
 assert.match(readerToolbarSource, /className="tool-option-color-presets"/);
 assert.match(readerToolbarSource, /TOOL_COLOR_PRESETS\.map/);
@@ -328,6 +336,7 @@ assert.match(readerStylesSource, /\.annotation-color-choice \{[\s\S]*?width: 28p
 assert.match(readerStylesSource, /\.reader-tool-options-bar/);
 assert.match(readerStylesSource, /\.tool-option-color-custom/);
 assert.match(readerStylesSource, /\.tool-option-color-presets/);
+assert.match(readerStylesSource, /\.tool-option-transparent-toggle/);
 assert.match(readerStylesSource, /\.tool-option-chip/);
 assert.doesNotMatch(readerConstantsSource, /id: 'comment'/);
 assert.match(readerStylesSource, /\.tool-option-color-group \{[\s\S]*?grid-template-columns: auto auto max-content;[\s\S]*?min-width: 0;/);

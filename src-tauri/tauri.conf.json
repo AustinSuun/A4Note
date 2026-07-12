@@ -27,7 +27,7 @@
   "bundle": {
     "active": true,
     "targets": ["app"],
-    "icon": ["icons/icon.ico"],
+    "icon": ["icons/icon.ico", "icons/icon.icns", "icons/icon.png"],
     "publisher": "Aster",
     "category": "Education",
     "shortDescription": "Local-first research assistant for papers, notes, annotations, and AI context.",

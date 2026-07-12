@@ -39,6 +39,7 @@ export function ReaderDocumentPane({
   onCreateNote,
   onActiveParallelFileKindChange,
   onNavigateAnnotation,
+  onCompleteOneShotTool,
 }: {
   paper: PaperDocument;
   contentMode: ReaderContentMode;
@@ -64,6 +65,7 @@ export function ReaderDocumentPane({
   onCreateNote: () => void | Promise<void>;
   onActiveParallelFileKindChange: (kind: PaperFileKind) => void;
   onNavigateAnnotation: (annotationId: string) => void;
+  onCompleteOneShotTool: () => void;
 }) {
   const canShowMarkdown = Boolean(paper.notes.length);
   const [parallelScrollRatio, setParallelScrollRatio] = useState(0);
@@ -123,6 +125,7 @@ export function ReaderDocumentPane({
       zoom={zoom}
       activeAnnotationColor={activeAnnotationColor}
       toolSettings={toolSettings}
+      onCompleteOneShotTool={onCompleteOneShotTool}
       onZoomChange={onZoomChange}
       requestedPage={requestedPage}
       onCreateAnnotation={(annotation) => onCreateAnnotation(annotation, fileKind)}

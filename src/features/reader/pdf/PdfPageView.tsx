@@ -1,4 +1,4 @@
-import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type MouseEvent, type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { zh } from '../../../ui/zh';
 import { outputScaleForViewport } from './pdfGeometry';
@@ -14,6 +14,11 @@ export type PdfPageViewProps = {
   commentPopover: CommentPopover | null;
   eraserPreview: { x: number; y: number; size: number; shape: ReaderToolSettings['eraserShape'] } | null;
   pageHandlers: {
+    onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+    onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
+    onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
+    onPointerCancel: (event: PointerEvent<HTMLDivElement>) => void;
+    onLostPointerCapture: (event: PointerEvent<HTMLDivElement>) => void;
     onMouseDown: (event: MouseEvent<HTMLDivElement>) => void;
     onMouseMove: (event: MouseEvent<HTMLDivElement>) => void;
     onMouseUp: () => void;

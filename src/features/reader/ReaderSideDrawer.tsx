@@ -3,6 +3,7 @@ import type { ObjectNavigationTarget } from '../../core/relations';
 import type { AnnotationColor, AiThreadContext, PaperDocument, PositionJson, ReaderSidePanelTab } from '../../core/types';
 import type { PaperFileKind } from '../../platform/nativeApi';
 import { zh } from '../../ui/zh';
+import { SidebarIcon } from './ReaderIcons';
 import { ReaderSidePanelContent } from './ReaderSidePanelContent';
 import type { NoteDraftPatch, ReaderSidePanelDefinition } from './types';
 
@@ -154,24 +155,35 @@ export function ReaderSideDrawer({
               </div>
             );
           })}
+          <div className="reader-workspace-add-shell">
+            <button className="reader-workspace-add" type="button" onClick={() => setAddMenuOpen((current) => !current)} title="打开面板">
+              +
+            </button>
+            {addMenuOpen && (
+              <div className="reader-workspace-add-menu">
+                {addablePanels.map((panel) => (
+                  <button key={panel.id} type="button" onClick={() => openWorkspaceTab(panel.id)}>
+                    {panel.icon()}
+                    <span>{panel.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="reader-workspace-actions">
-          <button className="reader-workspace-add" type="button" onClick={() => setAddMenuOpen((current) => !current)} title="打开面板">
-            +
+          <button
+            className="reader-workspace-toggle active"
+            type="button"
+            onClick={() => onSidePanelOpenChange(false)}
+            title={zh.reader.closePanel}
+            aria-label={zh.reader.closePanel}
+            aria-pressed="true"
+          >
+            <SidebarIcon />
           </button>
         </div>
       </header>
-
-      {addMenuOpen && (
-        <div className="reader-workspace-add-menu">
-          {addablePanels.map((panel) => (
-            <button key={panel.id} type="button" onClick={() => openWorkspaceTab(panel.id)}>
-              {panel.icon()}
-              <span>{panel.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       <div className="workspace-panel-content">
         <ReaderSidePanelContent

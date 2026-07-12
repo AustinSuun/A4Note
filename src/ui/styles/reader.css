@@ -323,7 +323,6 @@
   stroke: rgba(32,40,34,.35);
   stroke-width: 1.5;
 }
-.annotation-color-pill circle:first-child { fill: currentColor; }
 .pdf-toast {
   position: sticky;
   top: 18px;
@@ -349,6 +348,18 @@
 }
 .pdf-document.cursor-mode .pdf-page { cursor: default; }
 .pdf-document.panning .pdf-page { cursor: grabbing; }
+.pdf-document.ink-mode .pdf-page,
+.pdf-document.ink-mode .pdf-page *,
+.pdf-document.text-mode .pdf-page,
+.pdf-document.text-mode .pdf-page *,
+.pdf-document.rect-mode .pdf-page,
+.pdf-document.rect-mode .pdf-page * {
+  cursor: var(--reader-tool-cursor) !important;
+}
+.pdf-document.ink-mode .pdf-page { touch-action: none; }
+.pdf-document.ink-mode .annotation-mark {
+  pointer-events: none !important;
+}
 .pdf-render-layer { position: relative; min-height: 0; line-height: 0; }
 .pdf-canvas-page { display: block; width: 100%; height: auto; user-select: none; image-rendering: auto; backface-visibility: hidden; transition: opacity .08s ease; }
 .pdf-canvas-page.ready { display: block; }
@@ -384,7 +395,7 @@
   opacity: .96;
   box-shadow: 0 0 0 2px rgba(77,131,107,.28);
 }
-.annotation-mark.draft { opacity: .72; }
+.annotation-mark.draft { opacity: .72; pointer-events: none; }
 .annotation-mark.drag-preview { outline-style: dashed; }
 .annotation-mark.highlight, .annotation-mark.yellow { background: rgba(255, 229, 121, .78); }
 .annotation-mark.green { background: rgba(100, 180, 130, .3); outline: 1px solid rgba(55, 128, 86, .28); }
@@ -1150,6 +1161,25 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .tool-option-color-group .tool-option-label {
   grid-column: 1 / -1;
 }
+.tool-option-transparent-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 7px;
+  border-radius: 4px;
+  background: rgba(238,243,239,.72);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tool-option-transparent-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
 .tool-option-color-custom {
   position: relative;
   display: block;
@@ -1199,14 +1229,6 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 }
 .tool-option-color-presets button.active {
   box-shadow: 0 0 0 2px rgba(77,131,107,.34);
-}
-.tool-option-color-transparent {
-  background:
-    linear-gradient(45deg, rgba(36,45,39,.22) 25%, transparent 25% 75%, rgba(36,45,39,.22) 75%),
-    linear-gradient(45deg, rgba(36,45,39,.22) 25%, transparent 25% 75%, rgba(36,45,39,.22) 75%),
-    #fff !important;
-  background-position: 0 0, 4px 4px, 0 0 !important;
-  background-size: 8px 8px !important;
 }
 .text-style-picker button {
   min-width: 30px;
@@ -1513,6 +1535,13 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
   align-items: center;
   gap: 4px;
 }
+.reader-workspace-add-shell {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  margin-left: 3px;
+}
 .reader-workspace-add {
   display: grid;
   place-items: center;
@@ -1533,8 +1562,8 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 }
 .reader-workspace-add-menu {
   position: absolute;
-  top: 38px;
-  right: 42px;
+  top: calc(100% + 6px);
+  left: 0;
   z-index: 12;
   display: grid;
   gap: 3px;
@@ -1699,8 +1728,8 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
   border-radius: 4px;
 }
 .reader-workspace-shell .reader-workspace-add-menu {
-  top: 34px;
-  right: 40px;
+  top: calc(100% + 4px);
+  left: 0;
   border-radius: 6px;
 }
 
@@ -1793,6 +1822,16 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .annotation-mark.rect {
   background: rgba(151,112,219,.08);
   outline: 2px solid rgba(123,87,186,.48);
+  cursor: grab;
+}
+
+.annotation-mark.rect:active,
+.pdf-document.rect-mode .annotation-mark.rect:not(.draft):active {
+  cursor: grabbing !important;
+}
+
+.pdf-document.rect-mode .annotation-mark.rect:not(.draft) {
+  cursor: grab !important;
 }
 
 .annotation-mark.rect.ellipse {
@@ -1880,12 +1919,17 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .annotation-arrow-vector line {
   stroke: currentColor;
   stroke-width: var(--annotation-stroke-width, 3.4);
-  stroke-linecap: round;
+  stroke-linecap: butt;
   stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
 
-.annotation-arrow-vector marker path {
-  fill: currentColor;
+.annotation-arrow-vector .annotation-arrow-head {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .annotation-color-palette {

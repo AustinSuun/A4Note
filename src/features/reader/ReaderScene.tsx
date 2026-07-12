@@ -178,6 +178,7 @@ export function ReaderScene({
                 zoom={zoom}
                 activeAnnotationColor={activeAnnotationColor}
                 toolSettings={toolSettings}
+                onCompleteOneShotTool={() => onSelectAnnotationTool('cursor')}
                 requestedPage={requestedPage}
                 focusedAnnotationId={focusedAnnotationId}
                 onZoomChange={onZoomChange}
