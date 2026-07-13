@@ -1,9 +1,10 @@
 import type { PaperDocument, SceneContribution } from '../core/types';
 
 export const baseScenes: SceneContribution[] = [
-  { id: 'library', label: '文献库', icon: 'L', key: '1' },
-  { id: 'reader', label: '阅读', icon: 'R', key: '2' },
-  { id: 'aiChat', label: 'AI 对话', icon: 'A', key: '3' },
+  { id: 'overview', label: '总览', icon: 'O', key: '1' },
+  { id: 'library', label: '文献库', icon: 'L', key: '2' },
+  { id: 'reader', label: '阅读', icon: 'R', key: '3' },
+  { id: 'aiChat', label: 'AI 对话', icon: 'A', key: '4' },
 ];
 
 export const seedDocuments: PaperDocument[] = [

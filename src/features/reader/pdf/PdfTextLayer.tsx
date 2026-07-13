@@ -14,6 +14,7 @@ export function PdfTextLayer({
       {textItems.map((item, index) => (
         <span
           key={`${index}-${item.x}-${item.y}`}
+          data-text-index={index}
           style={{
             left: `${item.x}%`,
             top: `${item.y}%`,

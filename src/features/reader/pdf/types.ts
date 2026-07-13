@@ -34,6 +34,11 @@ export type EraserShape = 'round' | 'square';
 
 export type ShapeKind = 'rect' | 'ellipse';
 
+export type PdfScrollAnchor = {
+  page: number;
+  pageProgress: number;
+};
+
 export type ReaderToolSettings = {
   inkStrokeWidth: number;
   eraserSize: number;
@@ -43,6 +48,8 @@ export type ReaderToolSettings = {
   arrowStrokeWidth: number;
   textBold: boolean;
   textItalic: boolean;
+  textFontSize: number;
+  textColor: string;
   textBorderColor: string;
   textBackgroundColor: string;
   shapeKind: ShapeKind;
@@ -59,6 +66,8 @@ export const defaultReaderToolSettings: ReaderToolSettings = {
   arrowStrokeWidth: 3.4,
   textBold: false,
   textItalic: false,
+  textFontSize: 13,
+  textColor: '#202822',
   textBorderColor: '#ffffff',
   textBackgroundColor: 'transparent',
   shapeKind: 'rect',
@@ -120,6 +129,17 @@ export type StickyDragPreview = {
   annotationId: string;
   page: number;
   positionJson: PositionJson;
+};
+
+export type AnnotationResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+
+export type AnnotationResize = {
+  annotationId: string;
+  page: number;
+  handle: AnnotationResizeHandle;
+  origin: RectBox;
+  minWidth: number;
+  minHeight: number;
 };
 
 export type ReaderFlash = {

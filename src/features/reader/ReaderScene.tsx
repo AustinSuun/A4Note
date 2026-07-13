@@ -1,4 +1,5 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import type { AnnotationColor, PaperDocument, PositionJson } from '../../core/types';
 import type { ObjectNavigationTarget } from '../../core/relations';
 import { ReaderDocumentPane } from './ReaderDocumentPane';
 import { ReaderProvider } from './ReaderContext';
@@ -57,9 +58,27 @@ export function ReaderScene({
   const activeFileKind = fileMode === 'parallel' ? activeParallelFileKind : fileMode;
   const [sidePanelWidth, setSidePanelWidth] = useState(360);
   const [toolSettings, setToolSettings] = useState<ReaderToolSettings>(defaultReaderToolSettings);
+  const focusedAnnotation = paper.annotations.find((annotation) => annotation.id === focusedAnnotationId) ?? null;
+  const focusedEditableAnnotation = focusedAnnotation && isEditableToolbarAnnotation(focusedAnnotation)
+    ? focusedAnnotation
+    : null;
+  const contextAnnotation = activeAnnotationTool === 'cursor' ? focusedEditableAnnotation : null;
+  const contextToolSettings = contextAnnotation ? settingsFromAnnotation(contextAnnotation, toolSettings) : null;
   const readerLayoutStyle = sidePanelOpen
     ? ({ '--reader-side-width': `${sidePanelWidth}px` } as CSSProperties)
     : undefined;
+
+  useEffect(() => {
+    if (focusedEditableAnnotation && activeAnnotationTool !== 'cursor') {
+      onSelectAnnotationTool('cursor');
+    }
+  }, [activeAnnotationTool, focusedEditableAnnotation?.id, onSelectAnnotationTool]);
+
+  const updateContextAnnotationSettings = (annotationId: string, settings: ReaderToolSettings) => {
+    const annotation = paper.annotations.find((item) => item.id === annotationId);
+    if (!annotation || !isEditableToolbarAnnotation(annotation)) return;
+    void onUpdateAnnotationPosition(annotation.id, positionFromSettings(annotation, settings));
+  };
 
   const navigateAnnotationId = (annotationId: string) => {
     const annotation = paper.annotations.find((item) => item.id === annotationId);
@@ -151,6 +170,10 @@ export function ReaderScene({
               activeAnnotationColor={activeAnnotationColor}
               customAnnotationColor={customAnnotationColor}
               toolSettings={toolSettings}
+              contextAnnotationId={contextAnnotation?.id ?? null}
+              contextAnnotationTool={contextAnnotation?.type ?? null}
+              contextAnnotationColor={(contextAnnotation?.color as AnnotationColor | undefined) ?? null}
+              contextToolSettings={contextToolSettings}
               zoom={zoom}
               readerPageState={readerPageState}
               sidePanelOpen={sidePanelOpen}
@@ -161,6 +184,9 @@ export function ReaderScene({
               onSelectAnnotationColor={onSelectAnnotationColor}
               onCustomAnnotationColorChange={onCustomAnnotationColorChange}
               onToolSettingsChange={setToolSettings}
+              onUpdateContextAnnotationColor={(annotationId, color) => void onUpdateAnnotationColor(annotationId, color)}
+              onUpdateContextAnnotationSettings={updateContextAnnotationSettings}
+              onClearContextAnnotation={() => onFocusAnnotation(null)}
               onZoomChange={onZoomChange}
               onFitWidth={onFitWidth}
               onJumpToPage={onJumpToPage}
@@ -212,6 +238,7 @@ export function ReaderScene({
             onSidePanelTabChange={onSidePanelTabChange}
             onNoteDraftPatchConsumed={onNoteDraftPatchConsumed}
             onNoteSave={onNoteSave}
+            onCreateNote={onCreateNote}
             onFocusAnnotation={onFocusAnnotation}
             onUpdateAnnotationComment={onUpdateAnnotationComment}
             onUpdateAnnotationPosition={onUpdateAnnotationPosition}
@@ -225,4 +252,76 @@ export function ReaderScene({
       </section>
     </ReaderProvider>
   );
+}
+
+type EditableToolbarAnnotation = PaperDocument['annotations'][number] & { type: 'text' | 'rect' | 'arrow' };
+
+function isEditableToolbarAnnotation(annotation: PaperDocument['annotations'][number]): annotation is EditableToolbarAnnotation {
+  return annotation.type === 'text' || annotation.type === 'rect' || annotation.type === 'arrow';
+}
+
+function settingsFromAnnotation(annotation: EditableToolbarAnnotation, fallback: ReaderToolSettings): ReaderToolSettings {
+  const position = annotation.positionJson;
+  if (annotation.type === 'text') {
+    return {
+      ...fallback,
+      textBold: Boolean(position.bold),
+      textItalic: Boolean(position.italic),
+      textFontSize: positionNumber(position, 'fontSize', fallback.textFontSize),
+      textColor: positionString(position, 'textColor', fallback.textColor),
+      textBorderColor: positionString(position, 'borderColor', fallback.textBorderColor),
+      textBackgroundColor: positionString(position, 'backgroundColor', fallback.textBackgroundColor),
+    };
+  }
+  if (annotation.type === 'rect') {
+    return {
+      ...fallback,
+      shapeKind: position.shapeKind === 'ellipse' ? 'ellipse' : 'rect',
+      shapeFillEnabled: Boolean(position.fillEnabled),
+      shapeStrokeWidth: positionNumber(position, 'strokeWidth', fallback.shapeStrokeWidth),
+    };
+  }
+  return {
+    ...fallback,
+    arrowStyle: position.arrowStyle === 'dashed' || position.arrowStyle === 'double' ? position.arrowStyle : 'solid',
+    arrowEnding: position.arrowEnding === 'line' ? 'line' : 'arrow',
+    arrowStrokeWidth: positionNumber(position, 'strokeWidth', fallback.arrowStrokeWidth),
+  };
+}
+
+function positionFromSettings(annotation: EditableToolbarAnnotation, settings: ReaderToolSettings): PositionJson {
+  if (annotation.type === 'text') {
+    return {
+      ...annotation.positionJson,
+      bold: settings.textBold,
+      italic: settings.textItalic,
+      fontSize: settings.textFontSize,
+      textColor: settings.textColor,
+      borderColor: settings.textBorderColor,
+      backgroundColor: settings.textBackgroundColor,
+    };
+  }
+  if (annotation.type === 'rect') {
+    return {
+      ...annotation.positionJson,
+      shapeKind: settings.shapeKind,
+      fillEnabled: settings.shapeFillEnabled,
+      strokeWidth: settings.shapeStrokeWidth,
+    };
+  }
+  return {
+    ...annotation.positionJson,
+    arrowStyle: settings.arrowStyle,
+    arrowEnding: settings.arrowEnding,
+    strokeWidth: settings.arrowStrokeWidth,
+  };
+}
+
+function positionNumber(position: PositionJson, key: string, fallback: number) {
+  const value = position[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function positionString(position: PositionJson, key: string, fallback: string) {
+  return typeof position[key] === 'string' ? position[key] : fallback;
 }

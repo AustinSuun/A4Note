@@ -26,7 +26,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
+    "targets": ["nsis"],
     "icon": ["icons/icon.ico", "icons/icon.icns", "icons/icon.png"],
     "publisher": "A4Note",
     "category": "Education",

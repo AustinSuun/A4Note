@@ -17,6 +17,11 @@ import { builtinWorkbenchPanels } from './workbench';
 
 const FALLBACK_TAG = '未分类';
 
+function createNoteId() {
+  const uniquePart = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `note-${uniquePart}`;
+}
+
 class AsterEventBus {
   private listeners = new Map<string, Set<EventHandler>>();
 
@@ -100,7 +105,7 @@ class AsterDocumentStore {
     if (!document) return null;
     if (!document.notes.length) {
       document.notes.push({
-        id: `note-${Date.now()}`,
+        id: createNoteId(),
         paperId,
         title: '阅读笔记',
         content,
@@ -113,6 +118,26 @@ class AsterDocumentStore {
     this.persist();
     this.events.emit('document.note.updated', { paperId, note: document.notes[0] });
     return document;
+  }
+
+  upsertNote(paperId: string, input: { noteId?: string; title: string; content: string }) {
+    const document = this.get(paperId);
+    if (!document) return null;
+    const now = new Date().toISOString();
+    const noteIndex = input.noteId ? document.notes.findIndex((note) => note.id === input.noteId) : -1;
+    const note = {
+      id: noteIndex >= 0 ? document.notes[noteIndex].id : createNoteId(),
+      paperId,
+      title: input.title.trim() || '阅读笔记',
+      content: input.content,
+      format: 'markdown' as const,
+      updatedAt: now,
+    };
+    if (noteIndex >= 0) document.notes[noteIndex] = note;
+    else document.notes.unshift(note);
+    this.persist();
+    this.events.emit('document.note.updated', { paperId, note });
+    return note;
   }
 
   addAnnotation(paperId: string, annotation: Partial<Annotation>) {
@@ -266,6 +291,13 @@ export function createAsterCore(documents: PaperDocument[], scenes: SceneContrib
     title: 'Update primary markdown note',
     source: 'core',
     run: ({ paperId, content }) => documentStore.updatePrimaryNote(paperId, content),
+  });
+
+  commands.register<{ paperId: string; noteId?: string; title: string; content: string }, PaperDocument['notes'][number] | null>({
+    id: 'document.upsertNote',
+    title: 'Create or update markdown note',
+    source: 'core',
+    run: ({ paperId, ...input }) => documentStore.upsertNote(paperId, input),
   });
 
   commands.register<{ paperId: string; annotation: Partial<Annotation> }, Annotation | null>({

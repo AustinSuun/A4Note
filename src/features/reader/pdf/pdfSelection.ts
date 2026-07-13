@@ -1,5 +1,50 @@
 import type { RectBox, TextItemBox } from './types';
 
+export type TextItemSelection = {
+  itemIndex: number;
+  startOffset: number;
+  endOffset: number;
+};
+
+export function textItemSelectionsFromRange(range: Range, container: HTMLElement): TextItemSelection[] {
+  return Array.from(container.querySelectorAll<HTMLElement>('.pdf-text-layer span[data-text-index]')).flatMap((span) => {
+    if (!rangeIntersectsNode(range, span)) return [];
+    const itemIndex = Number(span.dataset.textIndex);
+    const textLength = span.textContent?.length ?? 0;
+    if (!Number.isInteger(itemIndex) || textLength <= 0) return [];
+    const startOffset = span.contains(range.startContainer)
+      ? boundaryTextOffset(span, range.startContainer, range.startOffset, textLength)
+      : 0;
+    const endOffset = span.contains(range.endContainer)
+      ? boundaryTextOffset(span, range.endContainer, range.endOffset, textLength)
+      : textLength;
+    return endOffset > startOffset ? [{ itemIndex, startOffset, endOffset }] : [];
+  });
+}
+
+export function textSelectionRectsFromOffsets(textItems: TextItemBox[], selections: TextItemSelection[]): RectBox[] {
+  return selections.flatMap((selection) => {
+    const item = textItems[selection.itemIndex];
+    if (!item?.text.length) return [];
+    const start = clampOffset(selection.startOffset, item.text.length);
+    const end = clampOffset(selection.endOffset, item.text.length);
+    const selectedText = item.text.slice(start, end);
+    const leadingWhitespace = selectedText.length - selectedText.trimStart().length;
+    const trailingWhitespace = selectedText.length - selectedText.trimEnd().length;
+    const visibleStart = Math.min(start + leadingWhitespace, end);
+    const visibleEnd = Math.max(visibleStart, end - trailingWhitespace);
+    if (visibleEnd <= visibleStart) return [];
+    const startRatio = visibleStart / item.text.length;
+    const endRatio = visibleEnd / item.text.length;
+    return [{
+      x: item.x + item.width * startRatio,
+      y: item.y,
+      width: item.width * (endRatio - startRatio),
+      height: item.height,
+    }];
+  });
+}
+
 export function mergeRectsIntoLineSegments(rects: RectBox[]) {
   const sorted = [...rects].sort((a, b) => a.y - b.y || a.x - b.x);
   const merged: RectBox[] = [];
@@ -68,4 +113,22 @@ export function boundingBox(items: Array<RectBox>) {
   const right = Math.max(...items.map((item) => item.x + item.width));
   const bottom = Math.max(...items.map((item) => item.y + item.height));
   return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+function boundaryTextOffset(span: HTMLElement, node: Node, offset: number, textLength: number) {
+  if (node.nodeType === Node.TEXT_NODE) return clampOffset(offset, textLength);
+  if (node === span) return offset <= 0 ? 0 : textLength;
+  return offset <= 0 ? 0 : textLength;
+}
+
+function rangeIntersectsNode(range: Range, node: Node) {
+  try {
+    return range.intersectsNode(node);
+  } catch {
+    return false;
+  }
+}
+
+function clampOffset(value: number, textLength: number) {
+  return Math.max(0, Math.min(Math.trunc(value), textLength));
 }

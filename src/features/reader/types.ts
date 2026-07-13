@@ -14,13 +14,19 @@ import type { PaperFileKind } from '../../platform/nativeApi';
 import type { WorkspacePanelDefinition } from '../../workbench';
 import { defaultReaderToolSettings } from './pdf/types';
 
-export type { ArrowEnding, ArrowStyle, EraserShape, ReaderToolSettings, ShapeKind } from './pdf/types';
+export type { ArrowEnding, ArrowStyle, EraserShape, PdfScrollAnchor, ReaderToolSettings, ShapeKind } from './pdf/types';
 export { defaultReaderToolSettings };
 
 export type ReaderContentMode = 'pdf' | 'markdown';
 export type ReaderFileMode = PaperFileKind | 'parallel';
 
 export type NoteDraftPatch = { append?: string };
+
+export type NoteSaveInput = {
+  noteId?: string;
+  title: string;
+  content: string;
+};
 
 export type ReaderSaveState = 'saved' | 'dirty' | 'saving' | 'error';
 
@@ -71,8 +77,8 @@ export type ReaderSceneProps = {
   onReaderStateChange: (state: { currentPage: number; totalPages: number }) => void;
   onFocusAnnotation: (annotationId: string | null) => void;
   onJumpToPage: (page: number) => void;
-  onNoteSave: (content: string) => void | Promise<void>;
-  onCreateNote: () => void | Promise<void>;
+  onNoteSave: (note: NoteSaveInput) => void | Promise<string | void>;
+  onCreateNote: () => void | Promise<string | void>;
   noteDraftPatch: NoteDraftPatch | null;
   onNoteDraftPatchConsumed: () => void;
   onAppendAnnotationToNote: (annotationId: string) => void;

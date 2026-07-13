@@ -21,11 +21,15 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@mdxeditor/editor": "^4.0.4",
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-dialog": "^2.7.1",
+    "lucide-react": "^1.24.0",
     "pdfjs-dist": "^6.0.227",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",

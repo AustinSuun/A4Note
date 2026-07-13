@@ -9,6 +9,7 @@ build/
 # Rust/Tauri build output
 target/
 **/target/
+src-tauri/target-*/
 
 # Native build artifacts
 *.exe

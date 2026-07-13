@@ -15,17 +15,20 @@ import {
   normalizeClientRect,
   numberValue,
 } from './pdfGeometry';
-import { arrowPositionFromDrag, createDragDraft, currentVisiblePage, pointFromEvent, scrollPageIntoViewIfNeeded, stickyPositionFromDrag, updateDragDraftPoint } from './pdfInteraction';
+import { arrowPositionFromDrag, createDragDraft, currentVisiblePage, pointFromEvent, resizePositionFromDrag, scrollAnchorFromContainer, scrollPageIntoViewIfNeeded, scrollTopFromAnchor, stickyPositionFromDrag, updateDragDraftPoint } from './pdfInteraction';
 import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
-import { boundingBox, mergeRectsIntoLineSegments, textSelectionFromDrag } from './pdfSelection';
+import { boundingBox, mergeRectsIntoLineSegments, textItemSelectionsFromRange, textSelectionFromDrag, textSelectionRectsFromOffsets } from './pdfSelection';
 import type {
   AnnotationMarkModel,
+  AnnotationResize,
+  AnnotationResizeHandle,
   CommentPopover,
   DraftAnnotationPreview,
   DragDraft,
   InkDraft,
   PageMeta,
+  PdfScrollAnchor,
   PdfStatus,
   ReaderFlash,
   ReaderToolSettings,
@@ -57,7 +60,7 @@ export default function PdfReader({
   onFocusAnnotation,
   focusedAnnotationId: requestedFocusAnnotationId,
   syncScrollEnabled,
-  syncScrollRatio,
+  syncScrollAnchor,
   onScrollSync,
 }: {
   paper: PaperDocument;
@@ -80,8 +83,8 @@ export default function PdfReader({
   onFocusAnnotation?: (annotationId: string | null) => void;
   focusedAnnotationId?: string | null;
   syncScrollEnabled?: boolean;
-  syncScrollRatio?: number | null;
-  onScrollSync?: (ratio: number) => void;
+  syncScrollAnchor?: PdfScrollAnchor | null;
+  onScrollSync?: (anchor: PdfScrollAnchor) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [pdfDocument, setPdfDocument] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
@@ -94,6 +97,7 @@ export default function PdfReader({
   const inkPointerTargetRef = useRef<HTMLDivElement | null>(null);
   const [commentPopover, setCommentPopover] = useState<CommentPopover | null>(null);
   const [stickyDrag, setStickyDrag] = useState<StickyDrag | null>(null);
+  const [annotationResize, setAnnotationResize] = useState<AnnotationResize | null>(null);
   const [stickyDragPreview, setStickyDragPreview] = useState<StickyDragPreview | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -108,7 +112,6 @@ export default function PdfReader({
   const localFocusRequestRef = useRef<string | null>(null);
   const lastExternalFocusRef = useRef<string | null>(null);
   const applyingSyncScrollRef = useRef(false);
-  const lastEmittedSyncRatioRef = useRef(-1);
   const [status, setStatus] = useState<PdfStatus>('placeholder');
   const [message, setMessage] = useState(zh.reader.pdfPlaceholder);
   const [flash, setFlash] = useState<ReaderFlash | null>(null);
@@ -144,15 +147,15 @@ export default function PdfReader({
         return;
       }
       try {
-        setStatus((current) => (pages.length ? current : 'loading'));
+        setPdfDocument(null);
+        setPages([]);
+        setStatus('loading');
         setMessage(zh.reader.pdfLoading);
         const bytes = await loadPaperFileBytes({ paperId: paper.paperId, kind: fileKind, fileId: activeFileId });
         if (cancelled) return;
         const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
         if (cancelled) return;
         setPdfDocument(pdf);
-        setStatus('ready');
-        setMessage('');
       } catch (error) {
         console.error('Failed to load PDF', error);
         if (cancelled) return;
@@ -180,22 +183,33 @@ export default function PdfReader({
     let cancelled = false;
     async function collectPageMeta() {
       if (!pdfDocument) return;
-      const metas: PageMeta[] = [];
-      for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
-        const page = await pdfDocument.getPage(pageNumber);
-        if (cancelled) return;
-        const viewport = page.getViewport({ scale: 1 });
-        metas.push({
-          pageNumber,
-          baseWidth: viewport.width,
-          baseHeight: viewport.height,
-          pdfPage: page,
-          textItems: await extractTextItemBoxes(page, viewport),
-        });
-      }
-      if (!cancelled) {
-        setPages(metas);
-        requestAnimationFrame(updateScrollProgress);
+      try {
+        const metas: PageMeta[] = [];
+        for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+          const page = await pdfDocument.getPage(pageNumber);
+          if (cancelled) return;
+          const viewport = page.getViewport({ scale: 1 });
+          metas.push({
+            pageNumber,
+            baseWidth: viewport.width,
+            baseHeight: viewport.height,
+            pdfPage: page,
+            textItems: await extractTextItemBoxes(page, viewport),
+          });
+        }
+        if (!cancelled) {
+          setPages(metas);
+          setStatus('ready');
+          setMessage('');
+          requestAnimationFrame(updateScrollProgress);
+        }
+      } catch (error) {
+        console.error('Failed to prepare PDF pages', error);
+        if (!cancelled) {
+          setPages([]);
+          setStatus('error');
+          setMessage(zh.reader.pdfError);
+        }
       }
     }
     void collectPageMeta();
@@ -218,6 +232,7 @@ export default function PdfReader({
     setInkDraft(null);
     setCommentPopover(null);
     setStickyDrag(null);
+    setAnnotationResize(null);
     setStickyDragPreview(null);
   }, [paper.paperId, fileKind]);
 
@@ -308,12 +323,10 @@ export default function PdfReader({
   }, [requestedPage, pages.length]);
 
   useEffect(() => {
-    if (!syncScrollEnabled || syncScrollRatio === null || syncScrollRatio === undefined) return;
+    if (!syncScrollEnabled || !syncScrollAnchor) return;
     const container = containerRef.current;
     if (!container) return;
-    const available = container.scrollHeight - container.clientHeight;
-    if (available <= 0) return;
-    const nextTop = clamp(syncScrollRatio, 0, 1) * available;
+    const nextTop = scrollTopFromAnchor(container, syncScrollAnchor);
     if (Math.abs(container.scrollTop - nextTop) < 1) return;
     applyingSyncScrollRef.current = true;
     container.scrollTop = nextTop;
@@ -321,7 +334,7 @@ export default function PdfReader({
       updateScrollProgress();
       applyingSyncScrollRef.current = false;
     });
-  }, [syncScrollEnabled, syncScrollRatio, pages.length]);
+  }, [syncScrollAnchor?.page, syncScrollAnchor?.pageProgress, syncScrollEnabled, pages.length]);
 
   useEffect(() => {
     onReaderStateChange?.({
@@ -366,9 +379,8 @@ export default function PdfReader({
     const available = container.scrollHeight - container.clientHeight;
     const nextProgress = available > 0 ? clamp(container.scrollTop / available, 0, 1) : 0;
     setScrollProgress(nextProgress);
-    if (syncScrollEnabled && !applyingSyncScrollRef.current && Math.abs(lastEmittedSyncRatioRef.current - nextProgress) > 0.002) {
-      lastEmittedSyncRatioRef.current = nextProgress;
-      onScrollSync?.(nextProgress);
+    if (syncScrollEnabled && !applyingSyncScrollRef.current) {
+      onScrollSync?.(scrollAnchorFromContainer(container));
     }
     const currentPage = currentVisiblePage(container);
     setVisiblePage(currentPage);
@@ -476,6 +488,7 @@ export default function PdfReader({
     if (!pageLayer) return;
     const point = pointFromEvent(event, pageLayer);
     setFocusedAnnotationId(annotationId);
+    setAnnotationResize(null);
     setStickyDrag({
       annotationId,
       page: pageNumber,
@@ -489,7 +502,50 @@ export default function PdfReader({
     });
   };
 
+  const beginAnnotationResize = (
+    annotationId: string,
+    pageNumber: number,
+    handle: AnnotationResizeHandle,
+    event: MouseEvent<HTMLElement>,
+  ) => {
+    const annotation = currentFileAnnotations.find((item) => item.id === annotationId);
+    if (!annotation || (annotation.type !== 'rect' && annotation.type !== 'text')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setFocusedAnnotationId(annotationId);
+    setStickyDrag(null);
+    setAnnotationResize({
+      annotationId,
+      page: pageNumber,
+      handle,
+      origin: {
+        x: numberValue(annotation.positionJson.x, 0),
+        y: numberValue(annotation.positionJson.y, 0),
+        width: numberValue(annotation.positionJson.width, annotation.type === 'text' ? 22 : 8),
+        height: numberValue(annotation.positionJson.height, annotation.type === 'text' ? 7 : 5),
+      },
+      minWidth: annotation.type === 'text' ? 8 : 2,
+      minHeight: annotation.type === 'text' ? 3.5 : 2,
+    });
+    setStickyDragPreview({
+      annotationId,
+      page: pageNumber,
+      positionJson: annotation.positionJson,
+    });
+  };
+
   const updateStickyDrag = (pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
+    if (annotationResize?.page === pageNumber) {
+      const annotation = currentFileAnnotations.find((item) => item.id === annotationResize.annotationId);
+      if (!annotation) return;
+      const point = pointFromEvent(event);
+      setStickyDragPreview({
+        annotationId: annotationResize.annotationId,
+        page: pageNumber,
+        positionJson: resizePositionFromDrag(annotation.positionJson, annotationResize, point),
+      });
+      return;
+    }
     if (!stickyDrag || stickyDrag.page !== pageNumber) return;
     const annotation = currentFileAnnotations.find((item) => item.id === stickyDrag.annotationId);
     if (!annotation) return;
@@ -505,6 +561,7 @@ export default function PdfReader({
   const finishStickyDrag = () => {
     const preview = stickyDragPreview;
     setStickyDrag(null);
+    setAnnotationResize(null);
     setStickyDragPreview(null);
     if (preview) {
       void onUpdateAnnotationPosition(preview.annotationId, preview.positionJson);
@@ -521,9 +578,14 @@ export default function PdfReader({
     if (!container.contains(range.commonAncestorContainer)) return;
     const selectionText = selection.toString().replace(/\s+/g, ' ').trim();
     if (!selectionText) return;
-    const rects = Array.from(range.getClientRects())
-      .map((rect) => normalizeClientRect(rect, container))
-      .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
+    const page = pages.find((candidate) => candidate.pageNumber === pageNumber);
+    const textItemSelections = textItemSelectionsFromRange(range, container);
+    const preciseRects = page ? textSelectionRectsFromOffsets(page.textItems, textItemSelections) : [];
+    const rects = preciseRects.length
+      ? preciseRects
+      : Array.from(range.getClientRects())
+          .map((rect) => normalizeClientRect(rect, container))
+          .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
     if (!rects.length) return;
     const segments = mergeRectsIntoLineSegments(rects);
     const bounds = boundingBox(segments);
@@ -678,10 +740,10 @@ export default function PdfReader({
       leftPx: event.clientX - rect.left,
       topPx: event.clientY - rect.top,
       text: annotationType === 'text' ? zh.reader.textLabel : '',
-      fontSize: 13,
+      fontSize: annotationType === 'text' ? toolSettings.textFontSize : 13,
       bold: annotationType === 'text' ? toolSettings.textBold : false,
       italic: annotationType === 'text' ? toolSettings.textItalic : false,
-      textColor: '#202822',
+      textColor: annotationType === 'text' ? toolSettings.textColor : '#202822',
       borderColor: annotationType === 'text' ? toolSettings.textBorderColor : '#ffffff',
       backgroundColor: annotationType === 'text' ? toolSettings.textBackgroundColor : '#fff4b8',
     });
@@ -849,19 +911,11 @@ export default function PdfReader({
 
   if (status !== 'ready') {
     return (
-      <div className={`pdf-page ${activeTool === 'cursor' ? 'cursor-mode' : ''}`}>
-        <div className="pdf-placeholder">
-          <div className="pdf-meta">
-            <span>{paper.venue || '未知来源'}</span>
-            <span>{paper.year || '-'}</span>
-          </div>
-          <h2>{paper.title}</h2>
-          <p>{paper.authors || '未知作者'}</p>
-          <div className="pdf-line wide" />
-          <div className="pdf-line" />
-          <div className="pdf-line short" />
-          <div className="pdf-figure">{message}</div>
-          {fileKind === 'source' && <mark>{zh.reader.annotationHint}</mark>}
+      <div className={`pdf-reader-status ${status}`} role={status === 'loading' ? 'status' : 'alert'} aria-live="polite">
+        {status === 'loading' && <span className="pdf-loading-indicator" aria-hidden="true" />}
+        <div className="pdf-reader-status-copy">
+          <strong>{message}</strong>
+          {status === 'loading' && paper.title && <span>{paper.title}</span>}
         </div>
       </div>
     );
@@ -914,6 +968,7 @@ export default function PdfReader({
                 toolSettings={toolSettings}
                 onSelectAnnotation={selectAnnotation}
                 onBeginStickyDrag={beginStickyDrag}
+                onBeginAnnotationResize={beginAnnotationResize}
                 onEditStickyAnnotation={editStickyAnnotation}
                 onUpdateAnnotationColor={onUpdateAnnotationColor}
                 onDeleteAnnotation={onDeleteAnnotation}
@@ -928,7 +983,6 @@ export default function PdfReader({
             visible={selectionPopup.visible}
             x={selectionPopup.x - (containerRef.current?.getBoundingClientRect().left ?? 0)}
             y={selectionPopup.y - (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.scrollTop ?? 0)}
-            activeAnnotationColor={activeAnnotationColor}
             onHighlight={() => {
               if (selectionPopup.pageElement) void finishTextSelection(selectionPopup.pageNumber, selectionPopup.pageElement, 'highlight');
               setSelectionPopup((s) => ({ ...s, visible: false }));

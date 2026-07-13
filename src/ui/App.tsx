@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutDashboard } from 'lucide-react';
 import { createAsterCore } from '../core/asterCore';
 import { AIChatScene, useChatThreads, type AiReasoningLevel, type AiRunMode, type AiToolProviderId } from '../features/ai';
 import { ImportDialog, LibraryScene, TagInput, useImportFlow, type LibrarySortDirection, type LibrarySortKey } from '../features/library';
+import { OverviewScene } from '../features/overview';
 import {
   ReaderScene,
   createReaderSidePanelDefinitions,
@@ -11,6 +13,7 @@ import {
   readerPanelCommandTitle,
   useAnnotationHistory,
   type NoteDraftPatch,
+  type NoteSaveInput,
   type ReaderContentMode,
   type ReaderFileMode,
   type ReaderSidePanelDefinition,
@@ -83,6 +86,7 @@ type WorkbenchPanelCommandDefinition = {
 const aster = createAsterCore(isTauriRuntime() ? [] : seedDocuments, baseScenes);
 
 const sceneLabels: Record<SceneId, string> = {
+  overview: zh.scenes.overview,
   library: zh.scenes.library,
   reader: zh.scenes.reader,
   aiChat: zh.scenes.ai,
@@ -135,6 +139,7 @@ export default function App() {
   const persistedUiState = usePersistedUiState(settings, knownWorkbenchPanelIds);
   const [activeScene, setActiveScene] = useState<SceneId>(persistedUiState.activeScene);
   const [selectedPaperId, setSelectedPaperId] = useState(persistedUiState.selectedPaperId || initialDocuments[0]?.paperId || '');
+  const [recentPaperIds, setRecentPaperIds] = useState<string[]>(persistedUiState.recentPaperIds);
   const [readerLayout, setReaderLayout] = useState<ReaderLayout>(persistedUiState.readerLayout || settings.defaultReaderLayout);
   const [readerContentMode, setReaderContentMode] = useState<ReaderContentMode>(persistedUiState.readerContentMode || preferredReaderMode(initialDocuments[0] ?? null));
   const initialReaderFileMode = persistedUiState.readerFileMode || preferredReaderFile(initialDocuments[0] ?? null);
@@ -198,6 +203,7 @@ export default function App() {
     saveUiState({
       activeScene,
       selectedPaperId,
+      recentPaperIds,
       query,
       activeTag,
       librarySort,
@@ -225,6 +231,7 @@ export default function App() {
     readerSidePanelTab,
     readerTranslatedFileId,
     readerZoom,
+    recentPaperIds,
     selectedPaperId,
   ]);
 
@@ -235,7 +242,7 @@ export default function App() {
     }
   };
 
-  const refreshNativeDocuments = async (preferredPaperId?: string) => {
+  const refreshNativeDocuments = async (preferredPaperId?: string, preserveReaderMode = false) => {
     if (!isTauriRuntime()) return;
     const nativeDocuments = await loadNativeDocuments();
     aster.documents.replaceAll(nativeDocuments);
@@ -253,7 +260,7 @@ export default function App() {
           : nativeDocuments[0].paperId;
     setSelectedPaperId(nextSelected);
     const nextPaper = nativeDocuments.find((paper) => paper.paperId === nextSelected) ?? nativeDocuments[0];
-    setReaderContentMode(preferredReaderMode(nextPaper));
+    if (!preserveReaderMode) setReaderContentMode(preferredReaderMode(nextPaper));
     const nextReaderFileMode = preferredReaderFile(nextPaper);
     setReaderFileMode(nextReaderFileMode);
     if (nextReaderFileMode !== 'parallel') setReaderActiveFileKind(nextReaderFileMode);
@@ -441,6 +448,7 @@ export default function App() {
     setBulkTagsEditOpen(false);
     setLibraryDetailOpen(false);
     setBulkSelectedPaperIds((current) => current.filter((paperId) => !deletedSet.has(paperId)));
+    setRecentPaperIds((current) => current.filter((paperId) => !deletedSet.has(paperId)));
     setReaderRequestedPage(null);
     setReaderFocusedAnnotationId(null);
     setNoteDraftPatch(null);
@@ -477,6 +485,7 @@ export default function App() {
 
   const openReaderForPaper = (paperId: string) => {
     setSelectedPaperId(paperId);
+    setRecentPaperIds((current) => [paperId, ...current.filter((id) => id !== paperId)].slice(0, 8));
     setReaderRequestedPage(null);
     setReaderFocusedAnnotationId(null);
     const paper = aster.documents.get(paperId) ?? documents.find((candidate) => candidate.paperId === paperId) ?? null;
@@ -672,15 +681,20 @@ export default function App() {
 
       if (event.key === '1') {
         event.preventDefault();
-        setScene('library');
+        setScene('overview');
         return;
       }
       if (event.key === '2') {
         event.preventDefault();
-        setScene('reader');
+        setScene('library');
         return;
       }
       if (event.key === '3') {
+        event.preventDefault();
+        setScene('reader');
+        return;
+      }
+      if (event.key === '4') {
         event.preventDefault();
         setScene('aiChat');
         return;
@@ -709,26 +723,32 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [activeScene, annotationRedoStack, annotationUndoStack, bulkTagsEditOpen, commandPaletteOpen, importOpen, metadataEditOpen, readerContentMode, readerFocusedAnnotationId, readerZoom, selectedPaper?.paperId, tagsEditOpen, deleteAnnotation, fitReaderToWidth, redoAnnotationAction, undoAnnotationAction]);
 
-  const saveNote = async (content: string) => {
+  const saveNote = async ({ noteId, title, content }: NoteSaveInput) => {
     if (!selectedPaper) return;
     if (isTauriRuntime()) {
-      await upsertNativeNote({
+      const result = await upsertNativeNote({
         paperId: selectedPaper.paperId,
-        noteId: selectedPaper.notes[0]?.id,
-        title: selectedPaper.notes[0]?.title ?? '闃呰绗旇',
+        noteId,
+        title,
         content,
       });
-      await refreshNativeDocuments(selectedPaper.paperId);
-      return;
+      await refreshNativeDocuments(selectedPaper.paperId, true);
+      return result.id;
     }
-    aster.commands.execute('document.updatePrimaryNote', { paperId: selectedPaper.paperId, content });
+    const note = aster.commands.execute<NoteSaveInput & { paperId: string }, PaperDocument['notes'][number] | null>(
+      'document.upsertNote',
+      { paperId: selectedPaper.paperId, noteId, title, content },
+    );
     setRevision((current) => current + 1);
+    return note?.id;
   };
 
   const createNoteAndSwitch = async () => {
     if (!selectedPaper) return;
-    await saveNote(zh.reader.notePlaceholder);
-    setReaderContentMode('markdown');
+    const noteNumber = selectedPaper.notes.length + 1;
+    const title = noteNumber === 1 ? zh.reader.noteDefaultTitle : zh.reader.noteNumberedTitle(noteNumber);
+    const noteId = await saveNote({ title, content: `# ${title}\n\n` });
+    return noteId;
   };
 
   const savePaperMetadata = async (paper: PaperDocument) => {
@@ -994,17 +1014,24 @@ export default function App() {
         },
       },
       {
+        id: 'scene.overview',
+        title: zh.command.openOverview,
+        group: zh.command.groupScenes,
+        shortcut: 'Ctrl+1',
+        run: () => setScene('overview'),
+      },
+      {
         id: 'scene.library',
         title: zh.command.openLibrary,
         group: zh.command.groupScenes,
-        shortcut: 'Ctrl+1',
+        shortcut: 'Ctrl+2',
         run: () => setScene('library'),
       },
       {
         id: 'scene.reader',
         title: zh.command.openReader,
         group: zh.command.groupScenes,
-        shortcut: 'Ctrl+2',
+        shortcut: 'Ctrl+3',
         disabled: !selectedPaper,
         run: () => selectedPaper && openReaderForPaper(selectedPaper.paperId),
       },
@@ -1012,7 +1039,7 @@ export default function App() {
         id: 'scene.ai',
         title: zh.command.openAi,
         group: zh.command.groupScenes,
-        shortcut: 'Ctrl+3',
+        shortcut: 'Ctrl+4',
         run: () => setScene('aiChat'),
       },
       {
@@ -1078,6 +1105,16 @@ export default function App() {
 
       <main className="workspace">
         <div className={settingsOpen ? 'scene-host hidden' : 'scene-host'}>
+          <div className={activeScene === 'overview' ? 'scene-frame active' : 'scene-frame hidden'} aria-hidden={activeScene !== 'overview'}>
+            <OverviewScene
+              isActive={activeScene === 'overview'}
+              papers={documents}
+              recentPaperIds={recentPaperIds}
+              onOpenPaper={openReaderForPaper}
+              onOpenLibrary={() => setScene('library')}
+              onOpenImport={openImportDialog}
+            />
+          </div>
           <div className={activeScene === 'library' ? 'scene-frame active' : 'scene-frame hidden'} aria-hidden={activeScene !== 'library'}>
             <LibraryScene
               papers={filteredPapers}
@@ -1639,6 +1676,7 @@ function EmptyScene({ title, description, action, onAction }: { title: string; d
 }
 
 function SceneIcon({ id }: { id: SceneId }) {
+  if (id === 'overview') return <LayoutDashboard />;
   if (id === 'reader') return <Icon path="M5 6.5c2.2-1.2 4.4-1.2 6.5 0v11c-2.1-1.2-4.3-1.2-6.5 0v-11Zm6.5 0c2.1-1.2 4.3-1.2 6.5 0v11c-2.2-1.2-4.4-1.2-6.5 0v-11Z" />;
   if (id === 'aiChat') return <Icon path="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v6A2.5 2.5 0 0 1 17.5 15H11l-4.5 4v-4A2.5 2.5 0 0 1 4 12.5v-6Z" />;
   return <Icon path="M6 4h10a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1Zm1 12.5A1.5 1.5 0 0 0 8.5 18H18M8 7h7M8 10h6" />;

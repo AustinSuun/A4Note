@@ -72,7 +72,7 @@ try {
 
   assert.deepEqual(
     aster.scenes.list().map((scene) => scene.id),
-    ['library', 'reader', 'aiChat'],
+    ['overview', 'library', 'reader', 'aiChat'],
   );
   assert.ok(aster.commands.list().some((command) => command.id === 'document.importFromDraft'));
   assert.ok(aster.metadataSources.has('crossref'));
@@ -203,6 +203,24 @@ try {
   assert.equal(noteDocument.notes[0].paperId, imported.paperId);
   assert.equal(noteDocument.notes[0].format, 'markdown');
 
+  const firstNoteId = noteDocument.notes[0].id;
+  const secondNote = aster.commands.execute('document.upsertNote', {
+    paperId: imported.paperId,
+    title: 'Second reading note',
+    content: '# Second note',
+  });
+  assert.ok(secondNote.id !== firstNoteId);
+  assert.equal(aster.documents.get(imported.paperId).notes.length, 2);
+  const updatedFirstNote = aster.commands.execute('document.upsertNote', {
+    paperId: imported.paperId,
+    noteId: firstNoteId,
+    title: 'Updated primary note',
+    content: '# Updated first note',
+  });
+  assert.equal(updatedFirstNote.id, firstNoteId);
+  assert.equal(aster.documents.get(imported.paperId).notes.find((note) => note.id === secondNote.id).content, '# Second note');
+  assert.equal(aster.documents.get(imported.paperId).notes.find((note) => note.id === firstNoteId).content, '# Updated first note');
+
   const annotation = aster.commands.execute('document.addAnnotation', {
     paperId: imported.paperId,
     annotation: {
@@ -255,7 +273,11 @@ try {
     types: ['has_note'],
     objectTypes: ['note'],
   });
-  assert.equal(relatedNotes.length, 1);
+  assert.equal(relatedNotes.length, graphPaper.notes.length);
+  assert.deepEqual(
+    new Set(relatedNotes.map((item) => item.object.metadata.originalId)),
+    new Set(graphPaper.notes.map((note) => note.id)),
+  );
   const relatedAnnotations = relations.getRelatedObjects(graphIndex, `pdf_file:${annotation.fileId}`, {
     direction: 'target',
     types: ['annotates'],
@@ -271,7 +293,7 @@ try {
   assert.equal(trace.noteLinks.length, 1);
   const relationView = relations.buildPaperRelationView(graphPaper, { currentFileId: annotation.fileId });
   assert.equal(relationView.files.length, 1);
-  assert.equal(relationView.notes.length, 1);
+  assert.equal(relationView.notes.length, graphPaper.notes.length);
   assert.equal(relationView.currentFileAnnotations[0].annotation.metadata.originalId, annotation.id);
   assert.ok(relationView.previewRelations.some((item) => item.relation.type === 'annotates' && item.annotationTrace?.page === annotation.page));
   assert.deepEqual(relations.getObjectNavigationTarget(relationView.files[0].object), {

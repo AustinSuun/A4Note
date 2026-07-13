@@ -1,4 +1,4 @@
-export type SceneId = 'library' | 'reader' | 'aiChat';
+export type SceneId = 'overview' | 'library' | 'reader' | 'aiChat';
 export type ReaderLayout = 'focus' | 'note' | 'ai';
 export type ReaderSidePanelTab = 'notes' | 'chat' | 'cite' | 'annotations' | 'relations';
 export type AnnotationType = 'highlight' | 'comment' | 'underline' | 'area' | 'text' | 'ink' | 'rect' | 'arrow';

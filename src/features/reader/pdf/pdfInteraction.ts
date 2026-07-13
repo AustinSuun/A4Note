@@ -1,12 +1,12 @@
 import type { MouseEvent, PointerEvent } from 'react';
 import type { PositionJson } from '../../../core/types';
-import type { DragDraft, StickyDrag } from './types';
+import type { AnnotationResize, DragDraft, PdfScrollAnchor, StickyDrag } from './types';
 
 const PAGE_VISIBLE_MARGIN = 0.3;
 const PAGE_VISIBLE_THRESHOLD = 0.08;
 
 export function pointFromEvent(
-  event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>,
+  event: MouseEvent<HTMLElement> | PointerEvent<HTMLElement>,
   coordinateTarget: Pick<HTMLElement, 'getBoundingClientRect'> = event.currentTarget,
 ) {
   event.preventDefault();
@@ -61,6 +61,32 @@ export function stickyPositionFromDrag(positionJson: PositionJson, stickyDrag: S
   };
 }
 
+export function resizePositionFromDrag(
+  positionJson: PositionJson,
+  resize: AnnotationResize,
+  point: { x: number; y: number },
+): PositionJson {
+  const horizontal = resize.handle;
+  const vertical = resize.handle;
+  let left = resize.origin.x;
+  let right = resize.origin.x + resize.origin.width;
+  let top = resize.origin.y;
+  let bottom = resize.origin.y + resize.origin.height;
+
+  if (horizontal.includes('w')) left = clamp(point.x, 0, right - resize.minWidth);
+  if (horizontal.includes('e')) right = clamp(point.x, left + resize.minWidth, 100);
+  if (vertical.includes('n')) top = clamp(point.y, 0, bottom - resize.minHeight);
+  if (vertical.includes('s')) bottom = clamp(point.y, top + resize.minHeight, 100);
+
+  return {
+    ...positionJson,
+    x: left,
+    y: top,
+    width: Math.max(right - left, resize.minWidth),
+    height: Math.max(bottom - top, resize.minHeight),
+  };
+}
+
 export function currentVisiblePage(container: HTMLElement) {
   const pages = Array.from(container.querySelectorAll<HTMLElement>('.pdf-page[data-page]'));
   const rect = container.getBoundingClientRect();
@@ -69,6 +95,38 @@ export function currentVisiblePage(container: HTMLElement) {
     return pageRect.bottom > rect.top + rect.height * PAGE_VISIBLE_MARGIN && pageRect.top < rect.top + rect.height * (1 - PAGE_VISIBLE_THRESHOLD);
   });
   return found ? Number(found.dataset.page) : 1;
+}
+
+export function scrollAnchorFromContainer(container: HTMLElement): PdfScrollAnchor {
+  const pages = Array.from(container.querySelectorAll<HTMLElement>('.pdf-page[data-page]'));
+  if (!pages.length) return { page: 1, pageProgress: 0 };
+
+  const scrollTop = container.scrollTop;
+  let pageIndex = 0;
+  for (let index = 1; index < pages.length; index += 1) {
+    if (pages[index].offsetTop > scrollTop) break;
+    pageIndex = index;
+  }
+
+  const page = pages[pageIndex];
+  const nextPage = pages[pageIndex + 1];
+  const pageSpan = Math.max(nextPage ? nextPage.offsetTop - page.offsetTop : page.offsetHeight, 1);
+  return {
+    page: Number(page.dataset.page) || pageIndex + 1,
+    pageProgress: clamp((scrollTop - page.offsetTop) / pageSpan, 0, 1),
+  };
+}
+
+export function scrollTopFromAnchor(container: HTMLElement, anchor: PdfScrollAnchor) {
+  const pages = Array.from(container.querySelectorAll<HTMLElement>('.pdf-page[data-page]'));
+  if (!pages.length) return 0;
+
+  const pageIndex = clamp(Math.round(anchor.page) - 1, 0, pages.length - 1);
+  const page = pages[pageIndex];
+  const nextPage = pages[pageIndex + 1];
+  const pageSpan = Math.max(nextPage ? nextPage.offsetTop - page.offsetTop : page.offsetHeight, 1);
+  const available = Math.max(container.scrollHeight - container.clientHeight, 0);
+  return clamp(page.offsetTop + clamp(anchor.pageProgress, 0, 1) * pageSpan, 0, available);
 }
 
 export function scrollPageIntoViewIfNeeded(pageElement: HTMLElement) {

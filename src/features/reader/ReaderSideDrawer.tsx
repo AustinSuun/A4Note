@@ -5,7 +5,7 @@ import type { PaperFileKind } from '../../platform/nativeApi';
 import { zh } from '../../ui/zh';
 import { SidebarIcon } from './ReaderIcons';
 import { ReaderSidePanelContent } from './ReaderSidePanelContent';
-import type { NoteDraftPatch, ReaderSidePanelDefinition } from './types';
+import type { NoteDraftPatch, NoteSaveInput, ReaderSidePanelDefinition } from './types';
 
 const workspacePanelTabs: ReaderSidePanelTab[] = ['notes', 'chat', 'cite'];
 const minDrawerWidth = 300;
@@ -27,6 +27,7 @@ export function ReaderSideDrawer({
   onSidePanelTabChange,
   onNoteDraftPatchConsumed,
   onNoteSave,
+  onCreateNote,
   onFocusAnnotation,
   onUpdateAnnotationComment,
   onUpdateAnnotationPosition,
@@ -50,7 +51,8 @@ export function ReaderSideDrawer({
   onSidePanelOpenChange: (open: boolean) => void;
   onSidePanelTabChange: (tab: ReaderSidePanelTab) => void;
   onNoteDraftPatchConsumed: () => void;
-  onNoteSave: (content: string) => void | Promise<void>;
+  onNoteSave: (note: NoteSaveInput) => void | Promise<string | void>;
+  onCreateNote: () => void | Promise<string | void>;
   onFocusAnnotation: (annotationId: string | null) => void;
   onUpdateAnnotationComment: (annotationId: string, comment: string) => void | Promise<void>;
   onUpdateAnnotationPosition: (annotationId: string, positionJson: PositionJson) => void | Promise<void>;
@@ -196,6 +198,7 @@ export function ReaderSideDrawer({
           noteDraftPatch={noteDraftPatch}
           onNoteDraftPatchConsumed={onNoteDraftPatchConsumed}
           onNoteSave={onNoteSave}
+          onCreateNote={onCreateNote}
           onFocusAnnotation={onFocusAnnotation}
           onUpdateAnnotationComment={onUpdateAnnotationComment}
           onUpdateAnnotationPosition={onUpdateAnnotationPosition}

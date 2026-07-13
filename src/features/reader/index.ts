@@ -10,4 +10,4 @@ export {
   readerPanelCommandTitle,
 } from './readerHelpers';
 export { useAnnotationHistory } from './useAnnotationHistory';
-export type { NoteDraftPatch, ReaderContentMode, ReaderFileMode, ReaderSidePanelDefinition } from './types';
+export type { NoteDraftPatch, NoteSaveInput, ReaderContentMode, ReaderFileMode, ReaderSidePanelDefinition } from './types';

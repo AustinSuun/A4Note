@@ -10,6 +10,7 @@ export type WorkspaceLayoutsByScene = Record<SceneId, WorkspaceLayoutState>;
 export type PersistedUiState = {
   activeScene: SceneId;
   selectedPaperId: string;
+  recentPaperIds: string[];
   query: string;
   activeTag: string;
   librarySort: { key: LibrarySortKey; direction: LibrarySortDirection };
@@ -30,6 +31,7 @@ export function usePersistedUiState(settings: AppSettings, knownWorkbenchPanelId
 
 export function defaultWorkspaceLayouts(): WorkspaceLayoutsByScene {
   return {
+    overview: createWorkspaceLayout('overview', undefined, []),
     library: createWorkspaceLayout('library', undefined, []),
     reader: createWorkspaceLayout('reader', 'reader.notes', []),
     aiChat: createWorkspaceLayout('aiChat', undefined, []),
@@ -43,6 +45,7 @@ export function syncWorkspaceLayouts(
   const readerPanelId = readerPanelIdFromTab(state.readerSidePanelTab);
   return {
     ...layouts,
+    overview: layouts.overview ?? createWorkspaceLayout('overview', undefined, []),
     library: createWorkspaceLayout('library', 'library.details', state.libraryDetailOpen ? ['library.details'] : []),
     reader: createWorkspaceLayout('reader', readerPanelId, state.readerSidePanelOpen ? [readerPanelId] : []),
   };
@@ -69,6 +72,7 @@ function normalizeWorkspaceLayouts(value: unknown, fallback: WorkspaceLayoutsByS
   if (!value || typeof value !== 'object') return fallback;
   const candidate = value as Partial<Record<SceneId, Partial<WorkspaceLayoutState>>>;
   return {
+    overview: normalizeWorkspaceLayout('overview', candidate.overview, fallback.overview, knownWorkbenchPanelIds),
     library: normalizeWorkspaceLayout('library', candidate.library, fallback.library, knownWorkbenchPanelIds),
     reader: normalizeWorkspaceLayout('reader', candidate.reader, fallback.reader, knownWorkbenchPanelIds),
     aiChat: normalizeWorkspaceLayout('aiChat', candidate.aiChat, fallback.aiChat, knownWorkbenchPanelIds),
@@ -100,8 +104,9 @@ function isWorkbenchArea(value: unknown): value is WorkspaceLayoutState['collaps
 function defaultUiState(settings = defaultSettings): PersistedUiState {
   const workspaceLayouts = defaultWorkspaceLayouts();
   return {
-    activeScene: 'library',
+    activeScene: 'overview',
     selectedPaperId: '',
+    recentPaperIds: [],
     query: '',
     activeTag: 'all',
     librarySort: { key: 'year', direction: 'desc' },
@@ -136,6 +141,7 @@ function loadUiState(settings: AppSettings, knownWorkbenchPanelIds: readonly Wor
     return {
       activeScene: isSceneId(parsed.activeScene) ? parsed.activeScene : fallback.activeScene,
       selectedPaperId: typeof parsed.selectedPaperId === 'string' ? parsed.selectedPaperId : fallback.selectedPaperId,
+      recentPaperIds: Array.isArray(parsed.recentPaperIds) ? parsed.recentPaperIds.filter((paperId): paperId is string => typeof paperId === 'string').slice(0, 8) : fallback.recentPaperIds,
       query: typeof parsed.query === 'string' ? parsed.query : fallback.query,
       activeTag: typeof parsed.activeTag === 'string' ? parsed.activeTag : fallback.activeTag,
       librarySort: isLibrarySort(parsed.librarySort) ? parsed.librarySort : fallback.librarySort,
@@ -162,7 +168,7 @@ function loadUiState(settings: AppSettings, knownWorkbenchPanelIds: readonly Wor
 }
 
 function isSceneId(value: unknown): value is SceneId {
-  return value === 'library' || value === 'reader' || value === 'aiChat';
+  return value === 'overview' || value === 'library' || value === 'reader' || value === 'aiChat';
 }
 
 function isReaderLayout(value: unknown): value is ReaderLayout {
