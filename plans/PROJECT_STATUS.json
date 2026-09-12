@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-12T21:39:22+08:00",
+  "updatedAt": "2026-09-12T21:48:53+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
@@ -26,6 +26,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "完整源码已通过PR #4合并origin/main，merge fbc91a71b5239a21a00addfc72ec35caeb74b732；未绕过保护。用户允许的CI Verify run34697061818成功（6m22s），完整suite与Windows隔离注册/真实Native进程检查保留。",
       "签名更新源码完成：设置→关于可检查GitHub更新、显示纯文本说明、下载并验证签名，用户确认后flushPendingSaves并安装；不后台下载/强制更新。桌面版本递增0.1.3，加入updater插件/精简权限、公钥及固定HTTPS端点。私钥位于用户仓库外.tauri目录（实际路径见APP_UPDATES.md），密码DPAPI保护，两个GitHub Actions Secrets已配置，未输出/提交私钥。标准打包增加签名/latest.json/sourceCommit；发布脚本验证产物一致性并草稿完整上传后公开，禁止覆盖已发布版本。",
       "0.5.0配套包已发布：标准package:windows及扩展打包cmd_1789218049589_32 exit0（308.023s）；Windows latest builtAt2026-09-12T13:05:56.636Z（21:05:56+08），桌面0.1.2、captureExtensionVersion0.5.0、Native host0.5.0，包含自动识别/分类选择/下载入库。旧latest已归档archive/0.1.2-20260912-210050-17112，标准脚本清理本轮隔离构建目录。",
       "采集0.5.0源码已完成：打开弹窗自动识别可信论文信息；已授权后展示真实分类完整路径（含子目录），显式选择后下载并入库。新增list_folders/targetFolderId、提交及入库事务分类校验、已有文献原分类保护、实际分类/PDF状态显示、最多2分钟进度刷新、冻结任务幂等重试与原任务辅助上传。发送前再次校验folderSelection能力，防止旧桌面静默忽略分类。",
@@ -267,6 +268,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "首次合并后签名打包在读取DPAPI密码时停止，未覆盖旧latest或发布版本：Get-Content -Raw包含换行。已修复Trim并用EncodedCommand传递PowerShell，cmd_1789220915863_55确认SIGNING_ENV_READY=True且无密钥/密码输出；按保护规则提交小修复PR后再正式打包。",
       "提交405文件及两笔未推历史对象经过密钥/令牌/产物/体积检查通过；本地源码提交完成。直接推main被GH006保护拒绝（必须PR和Verify），未绕过规则。用户随后明确允许本次必要CI检查；改走release/signed-updater-0.1.3 PR，完整Verify在Windows runner执行以覆盖Native Messaging，而非跳过测试。签名打包尚未开始，因原串行命令在push拒绝处停止。",
       "构建cmd_1789220036918_42 exit0（37.984s）：npm锁文件同步、tsc/Vite、两个发布脚本node --check、cargo check通过；设置诊断0。原未提交源码及发布候选475文件扫描未见高置信令牌/私钥/MCP控制地址或超过20MiB文件。初次apply因新updater父目录不存在整体拒绝，cmd40随后的缺文件检查失败；创建目录后 guarded补丁与cmd42完成。未运行任何测试/verify。",
       "产物校验cmd_1789218369606_33 exit0：EXE35286528字节，SHA256 F49ED6C3418E56A9FE34A8DC8EA0E62C38787C6CD87D1F6280CFEC203B15D9F8；安装器22176010字节，SHA256 C4D22528397F6BE3FE7D5B0245393C0B4AFC3317C5DA8A19AF565BBFFAB4B933，均与build-info一致。扩展ZIP50354字节/12文件，远程及Arena副本SHA256 26fbfd5edcd188a65c4f8dd64f8dddd397b66d5680c4b1c0e72c031ba3c400ba，manifest0.5.0。仅生产构建、哈希与包清单检查；未运行任何测试或安装启动应用。",

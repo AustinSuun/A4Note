@@ -11,8 +11,9 @@ export async function signingEnvironment() {
   const key = path.join(directory, 'signing.key');
   const password = path.join(directory, 'password.dpapi');
   await access(key); await access(password);
-  const command = "$s=ConvertTo-SecureString (Get-Content -Raw -LiteralPath $env:A4NOTE_SIGNING_PASSWORD_FILE); $p=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($s); try { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($p) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($p) }";
-  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], { env: { ...env, A4NOTE_SIGNING_PASSWORD_FILE: password }, encoding: 'utf8', windowsHide: true });
+  const command = "$ErrorActionPreference='Stop'; $s=ConvertTo-SecureString ((Get-Content -Raw -LiteralPath $env:A4NOTE_SIGNING_PASSWORD_FILE).Trim()); $p=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($s); try { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($p) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($p) }";
+  const encodedCommand = Buffer.from(command, 'utf16le').toString('base64');
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encodedCommand], { env: { ...env, A4NOTE_SIGNING_PASSWORD_FILE: password }, encoding: 'utf8', windowsHide: true });
   if (result.error || result.status !== 0 || !result.stdout.trim()) throw new Error('Cannot decrypt local signing password. Use the original Windows account or configure signing environment variables.');
   env.TAURI_SIGNING_PRIVATE_KEY = key;
   env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = result.stdout.trim();
