@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-12T22:22:21+08:00",
+  "updatedAt": "2026-09-12T22:26:46+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
@@ -26,6 +26,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "PR7首轮Verify34699130227在既有传输检查中发现：授权拒绝后不应断开仍存活的host，否则复用连接契约失效。已将权限不可用通知与真实断连分开，保留原断连/重连断言并增加通知/监听器清理检查；不删测试、不降低保护。重新提交同一PR等待必要CI。",
       "采集0.6.0/桌面0.1.4源码完成：复用桌面图标并重设精简主流程；host独立能力+桌面双校验，未知操作明确报错且不终止host，任何断连/授权失效取消绿色就绪；任务完成区分PDF与信息。桌面展示作者/机构/标识/出版物/日期/摘要和来源快照，异步附件响应按文献隔离。Release增加已发布版本只读跳过及全局串行发布，仍禁止覆盖正式资产。",
       "此前更新链路已交付v0.1.3：PR4/5/6及必要CI均成功，main9c8aefa；发布签名安装包22489127字节，SHA256 AB6C42DCEF7908124B59ED74F5BE0F636853D1DF5A4CD68FDB578F767D330888。GitHub资产空格归一化已修正latest.json及发布脚本；二次自动Release run34697864947仅因版本已发布而失败，编译成功。",
       "完整源码已通过PR #4合并origin/main，merge fbc91a71b5239a21a00addfc72ec35caeb74b732；未绕过保护。用户允许的CI Verify run34697061818成功（6m22s），完整suite与Windows隔离注册/真实Native进程检查保留。",

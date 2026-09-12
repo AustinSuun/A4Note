@@ -18,7 +18,7 @@ export function setupBridge(getEnvelope,status){
   const placeholder=text=>{const option=document.createElement('option');option.value='';option.textContent=text;select.replaceChildren(option);select.value='';};
   const connected=(message,ok)=>{
     ready=ok;get('connection-status').textContent=message;get('connection-status').dataset.connected=String(ok);
-    get('connect').hidden=ok;get('connection-help').open=!ok&&!message.includes('正在');sync();
+    get('connect').hidden=ok;get('reconnect').hidden=ok;get('connection-help').open=!ok&&!message.includes('正在');sync();
   };
   const showFolders=rows=>{
     if(!Array.isArray(rows)||rows.length>2000)throw new Error('分类列表无效，请更新桌面软件');

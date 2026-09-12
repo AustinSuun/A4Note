@@ -14,7 +14,7 @@ export class NativeMessenger {
       if(typeof value.ok!=='boolean'){this.close('原生通信响应格式不正确，请更新桌面软件');return;}
       this.pending.delete(value.id);clearTimeout(request.timer);
       if(value.ok)request.resolve(value.result);
-      else{const error=new Error(typeof value.error?.message==='string'?value.error.message:'桌面端未完成请求');error.code=value.error?.code||'native_request_failed';request.reject(error);if(['desktop_unavailable','native_protocol_mismatch','access_required','access_denied'].includes(error.code))this.close(error.message,error.code);}
+      else{const error=new Error(typeof value.error?.message==='string'?value.error.message:'桌面端未完成请求');error.code=value.error?.code||'native_request_failed';request.reject(error);if(['desktop_unavailable','native_protocol_mismatch'].includes(error.code))this.close(error.message,error.code);else if(['access_required','access_denied'].includes(error.code))this.notifyUnavailable(error.message,error.code);}
     };
     const disconnected=()=>{
       const detail=this.lastError()||''; // Read inside callback to consume Chromium lastError.
@@ -41,11 +41,12 @@ export class NativeMessenger {
     });
   }
   subscribeDisconnect(listener){this.disconnectListeners.add(listener);return ()=>this.disconnectListeners.delete(listener);}
+  notifyUnavailable(message,code){for(const listener of this.disconnectListeners){try{listener({code,message});}catch{}}}
   close(reason='原生连接已关闭',code='native_disconnected'){
     const port=this.port;this.port=null;
     this.detach?.();this.detach=null;
     for(const request of this.pending.values()){clearTimeout(request.timer);const error=new Error(reason);error.code=code;request.reject(error);}
     this.pending.clear();try{port?.disconnect();}catch{}
-    if(port)for(const listener of this.disconnectListeners){try{listener({code,message:reason});}catch{}}
+    if(port)this.notifyUnavailable(reason,code);
   }
 }
