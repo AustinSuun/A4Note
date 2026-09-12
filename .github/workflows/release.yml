@@ -8,12 +8,11 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: signed-release-${{ github.ref }}
+  group: signed-release
   cancel-in-progress: false
 
 jobs:
   release:
-    # Native Messaging currently ships Windows x64 only. Do not publish incomplete macOS bundles.
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,32 +20,42 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Check whether this version is already published
+        id: plan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/release-plan.mjs
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.plan.outputs.publish == 'true'
       - name: Install dependencies
+        if: steps.plan.outputs.publish == 'true'
         run: npm ci
-      - name: Check tag and required secrets
+      - name: Require signing key
+        if: steps.plan.outputs.publish == 'true'
         shell: pwsh
         env:
           SIGNING_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           if (-not $env:SIGNING_KEY) { throw 'Missing TAURI_SIGNING_PRIVATE_KEY' }
-          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag must match package version' }
-      - name: Build signed paired packages (no tests)
+      - name: Build signed paired packages
+        if: steps.plan.outputs.publish == 'true'
         shell: pwsh
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          A4NOTE_RELEASE_NOTES: '插件界面重新设计并采用软件图标；桌面与通信组件双重版本校验；PDF和完整论文元数据显示；分类读取错误反馈修复。请安装完整桌面版并更新0.6.0插件。'
         run: |
           npm run package:windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/package-capture-extension.mjs
           exit $LASTEXITCODE
       - name: Publish complete signed release
+        if: steps.plan.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/publish-release.mjs
       - uses: actions/upload-artifact@v4
+        if: steps.plan.outputs.publish == 'true'
         with:
           name: A4Note-Windows-signed
           path: |

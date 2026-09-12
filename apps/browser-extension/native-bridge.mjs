@@ -3,7 +3,7 @@ export const NATIVE_HOST = 'app.aster.research.capture';
 const operations=new Set(['hello','request_access','submit','list_tasks','list_folders','pdf_begin','pdf_chunk','pdf_finish','pdf_abort']);
 export class NativeMessenger {
   constructor(connect=()=>chrome.runtime.connectNative(NATIVE_HOST),lastError=()=>globalThis.chrome?.runtime?.lastError?.message){
-    this.connect=connect;this.lastError=lastError;this.port=null;this.pending=new Map();this.sequence=0;this.detach=null;
+    this.connect=connect;this.lastError=lastError;this.port=null;this.pending=new Map();this.sequence=0;this.detach=null;this.disconnectListeners=new Set();
   }
   ensurePort(){
     if(this.port)return this.port;
@@ -14,12 +14,13 @@ export class NativeMessenger {
       if(typeof value.ok!=='boolean'){this.close('原生通信响应格式不正确，请更新桌面软件');return;}
       this.pending.delete(value.id);clearTimeout(request.timer);
       if(value.ok)request.resolve(value.result);
-      else{const error=new Error(typeof value.error?.message==='string'?value.error.message:'桌面端未完成请求');error.code=value.error?.code||'native_request_failed';request.reject(error);}
+      else{const error=new Error(typeof value.error?.message==='string'?value.error.message:'桌面端未完成请求');error.code=value.error?.code||'native_request_failed';request.reject(error);if(['desktop_unavailable','native_protocol_mismatch'].includes(error.code))this.close(error.message,error.code);else if(['access_required','access_denied'].includes(error.code))this.notifyUnavailable(error.message,error.code);}
     };
     const disconnected=()=>{
       const detail=this.lastError()||''; // Read inside callback to consume Chromium lastError.
       if(this.port!==port)return;
-      this.close(/not found|not registered|specified native messaging host/i.test(detail)?'未安装浏览器通信组件，请安装或修复新版 A4 Note':'原生连接已断开，请确认 A4 Note 已启动');
+      const missing=/not found|not registered|specified native messaging host/i.test(detail);
+      this.close(missing?'未安装浏览器通信组件，请安装完整新版 A4 Note':'连接已断开，请启动桌面或更新配套通信组件',missing?'native_host_missing':'native_disconnected');
     };
     port.onMessage.addListener(message);port.onDisconnect.addListener(disconnected);
     this.detach=()=>{port.onMessage.removeListener(message);port.onDisconnect.removeListener(disconnected);};
@@ -39,10 +40,13 @@ export class NativeMessenger {
       try{port.postMessage(message);}catch{this.close('无法发送原生消息，请重新连接 A4 Note');}
     });
   }
-  close(reason='原生连接已关闭'){
+  subscribeDisconnect(listener){this.disconnectListeners.add(listener);return ()=>this.disconnectListeners.delete(listener);}
+  notifyUnavailable(message,code){for(const listener of this.disconnectListeners){try{listener({code,message});}catch{}}}
+  close(reason='原生连接已关闭',code='native_disconnected'){
     const port=this.port;this.port=null;
     this.detach?.();this.detach=null;
-    for(const request of this.pending.values()){clearTimeout(request.timer);request.reject(new Error(reason));}
+    for(const request of this.pending.values()){clearTimeout(request.timer);const error=new Error(reason);error.code=code;request.reject(error);}
     this.pending.clear();try{port?.disconnect();}catch{}
+    if(port)this.notifyUnavailable(reason,code);
   }
 }

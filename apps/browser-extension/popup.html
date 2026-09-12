@@ -1,29 +1,22 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><link rel="stylesheet" href="popup.css"><title>A4 Note 论文采集</title></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="popup.css"><title>A4 Note · 保存论文</title></head>
 <body>
-<header><strong>A4 Note</strong><span>论文采集 · 0.5.0</span></header>
-<p class="help">打开即识别当前论文，选择文献库分类后下载并导入。</p>
-<p id="connection-status" role="status" aria-live="polite">正在检查桌面连接…</p>
-<div class="actions"><button id="connect" class="primary" hidden>连接并在桌面授权</button><button id="reconnect">重试连接</button></div>
-<p id="status" role="status" aria-live="polite">正在识别当前论文…</p>
+<header class="brand"><img src="icons/48.png" width="32" height="32" alt=""><div><strong>A4 Note</strong><span>保存论文到文献库</span></div><button id="scan" class="icon-button" disabled title="重新识别当前页" aria-label="重新识别当前页">↻</button></header>
+<div class="connection"><p id="connection-status" role="status" aria-live="polite">正在连接桌面…</p><button id="connect" hidden>连接桌面</button><button id="reconnect">重试</button></div>
+<main>
+<p id="status" class="status" role="status" aria-live="polite">正在识别当前论文…</p>
 <section id="result" hidden>
-  <h1 id="title"></h1><p id="authors"></p><p id="ids"></p>
-  <div class="destination">
-    <label for="folder-select">导入到文献库文件夹</label>
-    <p id="folder-status" class="help" role="status">等待桌面连接…</p>
-    <select id="folder-select" size="6" disabled aria-describedby="folder-status"><option value="">正在读取分类…</option></select>
-    <button id="folders-refresh" type="button">刷新文件夹</button>
-    <button id="send" class="primary" disabled>下载并导入文献库</button>
-    <p class="help">选择的是 A4 Note 文献库分类，不是电脑下载目录。已存在的论文保留原分类。</p>
-  </div>
-  <details class="advanced"><summary>识别详情与手动补救</summary>
-    <ul id="warnings"></ul><h2>文件候选</h2><div id="files"></div>
-    <button id="export">导出采集记录 JSON</button><p class="help">JSON 仅含元数据和链接，不含 PDF。</p>
-  </details>
+  <article class="paper"><span class="eyebrow">当前论文</span><h1 id="title"></h1><p id="authors" class="authors"></p><p id="ids" class="identifiers"></p><div class="included"><span>✓ 论文信息</span><span id="pdf-evidence">正文链接待确认</span></div></article>
+  <section class="destination"><div class="section-heading"><label for="folder-select">保存到</label><button id="folders-refresh" class="text-button">刷新文件夹</button></div>
+    <select id="folder-select" disabled aria-describedby="folder-status"><option value="">正在读取文献库文件夹…</option></select>
+    <p id="folder-status" class="field-message" role="status">等待桌面连接…</p>
+  </section>
+  <details class="disclosure" id="metadata-panel"><summary>论文信息 <span id="metadata-summary"></span></summary><div id="metadata-details"></div><p class="muted">按网页实际提供的信息保存；缺失字段不会编造。原始来源记录会一并入库。</p></details>
+  <details class="disclosure"><summary>下载遇到问题？</summary><p class="muted">先提交到桌面；自动下载失败后，可使用浏览器辅助获取 PDF。</p><div id="files"></div><details><summary>识别提示</summary><ul id="warnings"></ul></details><button id="export" class="text-button">导出论文信息 JSON</button></details>
 </section>
-<button id="scan" disabled>重新识别当前论文</button>
-<details id="tasks-panel" class="advanced"><summary>下载与入库进度</summary>
-  <button id="tasks">刷新进度</button><div id="task-list" aria-live="polite"></div>
-</details>
+<details id="connection-help" class="disclosure"><summary>连接帮助</summary><p class="muted">请启动已安装的 A4 Note。首次使用需在桌面允许连接；提示组件过旧时，请安装配套新版安装器，再重开插件。仅替换 EXE 不会更新通信组件。</p><a href="https://github.com/AustinSuun/A4Note/releases/latest" target="_blank" rel="noreferrer">下载配套桌面版 ↗</a></details>
+<details id="tasks-panel" class="disclosure"><summary>采集进度</summary><button id="tasks" class="text-button">刷新进度</button><div id="task-list" aria-live="polite"></div></details>
+</main>
+<footer><button id="send" class="primary" disabled>下载并导入</button><p>PDF 与论文信息一起保存 · 已有论文保留原分类</p></footer>
 <script type="module" src="popup.js"></script>
 </body></html>

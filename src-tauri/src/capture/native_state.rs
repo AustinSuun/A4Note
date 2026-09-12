@@ -26,7 +26,7 @@ impl NativeState {
     }
     pub fn dispatch(&self,request:Request,session:&mut Session)->Value{
         let result=(||->Result<Value,String>{
-            if request.operation==Operation::Hello{return Ok(json!({"protocolVersion":1,"authorized":self.allowed(),"transport":"native_messaging","version":"0.5.0","capabilities":{"folderSelection":true}}));}
+            if request.operation==Operation::Hello{return Ok(json!({"protocolVersion":1,"authorized":self.allowed(),"transport":"native_messaging","version":"0.6.0","capabilities":{"folderSelection":true}}));}
             if request.operation==Operation::RequestAccess{return self.request_access();}
             if request.operation==Operation::PdfFinish{
                 if !self.allowed(){session.upload=None;return Err("access_required".into());}

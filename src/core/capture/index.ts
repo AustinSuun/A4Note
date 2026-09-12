@@ -19,7 +19,7 @@ export interface CaptureMetadata {
   authors: CaptureAuthor[];
   abstract?: string;
   keywords: string[];
-  identifiers: { doi?: string; arxiv?: string; pmcid?: string; pmid?: string };
+  identifiers: { doi?: string; arxiv?: string; pmcid?: string; pmid?: string; arxivVersion?: string };
   publication: {
     venue?: string; publisher?: string; volume?: string; issue?: string;
     firstPage?: string; lastPage?: string; issn?: string;

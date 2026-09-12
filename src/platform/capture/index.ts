@@ -1,3 +1,4 @@
+import type { CaptureEnvelope } from '../../core/capture';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke, isTauri } from '@tauri-apps/api/core';
@@ -26,7 +27,7 @@ export const revealCaptureInbox = () => control('reveal');
 export const updateCaptureTask = (captureId: string, action: 'retry' | 'cancel') => control(action, { captureId });
 
 export interface PaperCaptureDetailsData {
-  snapshots: Array<{ captureId: string; envelope: { origin?: string; sourceUrl?: string; metadata?: { abstract?: string; dates?: { online?: string } } } }>;
+  snapshots: Array<{ captureId: string; envelope: Partial<CaptureEnvelope> }>;
   files: Array<{ id: string; kind: string; name: string }>;
 }
 export const getPaperCaptureDetails = (paperId: string) => control<PaperCaptureDetailsData>('paper_details', { paperId });

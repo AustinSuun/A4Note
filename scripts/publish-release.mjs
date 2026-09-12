@@ -32,7 +32,10 @@ if (git.status !== 0) throw new Error('Cannot resolve release commit');
 const commit = git.stdout.trim();
 if (info.sourceCommit !== commit) throw new Error('Build commit differs from HEAD. Rebuild rather than mislabel the release.');
 const existing = run(['release', 'view', tag, '--repo', repo, '--json', 'isDraft,targetCommitish'], false);
-if (existing.status === 0 && !JSON.parse(existing.stdout).isDraft) throw new Error('This version is already published. Bump version; never overwrite a released updater.');
+if (existing.status === 0 && !JSON.parse(existing.stdout).isDraft) {
+  if (process.env.CI === 'true') { console.log('Release already published; duplicate CI run skipped without replacing assets.'); process.exit(0); }
+  throw new Error('This version is already published. Bump version; never overwrite a released updater.');
+}
 if (existing.status === 0 && JSON.parse(existing.stdout).targetCommitish !== commit) throw new Error('Existing draft targets a different commit. Resolve it explicitly before retrying.');
 if (existing.status !== 0) run(['release', 'create', tag, '--repo', repo, '--target', commit, '--draft', '--title', `A4 Note ${tag}`, '--notes', `${latest.notes}\n\nWindows x64。首次请手动安装一次；后续在设置→关于→软件更新操作。浏览器插件另行更新。\n\n本版仅构建和签名/哈希检查，未运行功能测试。更新签名不是Windows Authenticode签名。`]);
 run(['release', 'upload', tag, '--repo', repo, '--clobber', installer, `${installer}.sig`, 'artifacts/windows/latest/latest.json', 'artifacts/windows/latest/build-info.json', extensionPath]);

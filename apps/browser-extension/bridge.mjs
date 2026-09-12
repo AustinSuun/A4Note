@@ -1,12 +1,14 @@
 import {NativeMessenger} from './native-bridge.mjs';
 const native=new NativeMessenger();
+export const onBridgeDisconnect=listener=>native.subscribeDisconnect(listener);
+export const supportsFolders=hello=>hello.capabilities?.folderSelection===true && hello.nativeHost?.capabilities?.folderSelection===true;
 export const nativeHello=async()=>{try{return await native.request('hello');}catch(e){if(e.code!=='desktop_unavailable')throw e;return native.request('hello');}};
 const connectedRequest=async(operation,payload={})=>{await nativeHello();return native.request(operation,payload);};
 export const authorizeNative=()=>native.request('request_access');
 const folderRequest=async(operation,payload={})=>{
   const hello=await nativeHello();
-  if(hello.capabilities?.folderSelection!==true){
-    const error=new Error('请更新配套桌面安装器，旧版本不支持分类导入');
+  if(!supportsFolders(hello)){
+    const error=new Error('通信组件或桌面版本较旧，请安装完整新版 A4 Note 后重开插件');
     error.code='folder_selection_unsupported';throw error;
   }
   return native.request(operation,payload);

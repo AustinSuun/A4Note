@@ -22,13 +22,15 @@ async function scan() {
     if (!detected.metadata.title?.trim() || !paperSignal) throw new Error('未识别到可信论文信息，请打开论文详情页后重试');
     envelope = detected;
     get('title').textContent = envelope.metadata.title || '未识别到论文标题';
+    get('title').title = envelope.metadata.title;
+    renderMetadata(envelope);
     get('authors').textContent = envelope.metadata.authors.map(a => a.name).join(' · ');
     get('ids').textContent = Object.entries(envelope.metadata.identifiers).map(([k, v]) => `${k}: ${v}`).join(' / ');
     get('warnings').replaceChildren(...envelope.warnings.map(text => { const li = document.createElement('li'); li.textContent = text; return li; }));
     get('files').replaceChildren(...envelope.artifacts.map((artifact, index) => {
       const row = document.createElement('div'); row.className = 'file';
       const label = document.createElement('p'); label.textContent = `${artifact.label} · ${new URL(artifact.url).hostname}`;
-      const button = document.createElement('button'); button.textContent = '仅保存到下载目录（不入库）';
+      const button = document.createElement('button'); button.textContent = '仅保存文件到电脑';
       button.addEventListener('click', async () => {
         button.disabled = true;
         try {
@@ -40,14 +42,14 @@ async function scan() {
       });
       row.append(label, button);
       if (['fulltext','supplement'].includes(artifact.role)) {
-        const assist=document.createElement('button');assist.textContent='自动下载失败？浏览器辅助入库';assist.dataset.assist='true';assist.disabled=true;
+        const assist=document.createElement('button');assist.textContent='浏览器辅助获取 PDF';assist.dataset.assist='true';assist.disabled=true;
         assist.addEventListener('click',async()=>{assist.disabled=true;try{await bridge.assist(index,browserAssist);}catch(e){status(`辅助入库：${e.message}`);}});
         row.append(assist);
       }
       return row;
     }));
     get('result').hidden = false;
-    status(`已识别论文，请选择分类后点击“下载并导入”。${envelope.artifacts.some(a=>a.role==='fulltext')?'':'当前未找到正文PDF，提交后可能仅保存论文信息。'}`);
+    status(envelope.artifacts.some(a=>a.role==='fulltext')?'已识别，选择文件夹即可保存。':'未找到正文链接，提交后可能只保存论文信息。');
   } catch (error) { status(`识别失败：${error.message}\n请在普通论文详情页重试，浏览器系统页不允许访问。`); }
   finally { await bridge.scanned(); }
 }
@@ -63,3 +65,12 @@ get('export').addEventListener('click', async () => {
   } catch (error) { status(`导出失败：${error.message}`); }
   finally { get('export').disabled = false; setTimeout(() => URL.revokeObjectURL(url), 60000); }
 });
+
+function renderMetadata(capture) {
+  const m=capture.metadata, ids=m.identifiers;
+  const entries=[['标题',m.title],['作者',m.authors.map(a=>a.name).join('；')],['期刊',m.publication.venue],['日期',Object.entries(m.dates).map(([key,value])=>`${({published:'发表',online:'在线',print:'印刷',submitted:'提交',revised:'修订',modified:'更新'})[key]||key} ${value}`).join(' · ')],['标识',Object.entries(ids).map(([k,v])=>`${k}: ${v}`).join(' · ')],['关键词',m.keywords.join('、')],['摘要',m.abstract]];
+  const dl=document.createElement('dl');let count=0;
+  for(const [label,value] of entries){if(!value)continue;count++;const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;if(label==='摘要')dd.className='abstract';dl.append(dt,dd);}
+  get('metadata-details').replaceChildren(dl);get('metadata-summary').textContent=`${count} 项已识别`;
+  get('pdf-evidence').textContent=capture.artifacts.some(a=>a.role==='fulltext')?'＋ 正文 PDF 链接':'正文 PDF 待补充';
+}

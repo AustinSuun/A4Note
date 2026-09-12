@@ -1,13 +1,13 @@
-import {nativeHello,authorizeNative,sendCapture,captureTasks,captureFolders,disconnectBridge,bridgeError} from './bridge.mjs';
+import {nativeHello,authorizeNative,sendCapture,captureTasks,captureFolders,disconnectBridge,bridgeError,onBridgeDisconnect,supportsFolders} from './bridge.mjs';
 
 export function setupBridge(getEnvelope,status){
   const get=id=>document.getElementById(id);
   let ready=false,compatible=false,sending=false,authorizing=false,loadingFolders=false,accepted=false;
-  let connectionEpoch=0,folderEpoch=0,pollEpoch=0,frozen=null,scanning=true,tasksBusy=false;
+  let connectionEpoch=0,folderEpoch=0,pollEpoch=0,frozen=null,scanning=true,tasksBusy=false,completionLabel=null;
   const select=get('folder-select');
   const sync=()=>{
     get('send').disabled=!ready||!compatible||scanning||loadingFolders||sending||accepted||!getEnvelope()||(!frozen&&!select.value);
-    get('send').textContent=sending?'正在处理…':accepted?'已提交，查看下方进度':frozen?'重试同一导入任务':'下载并导入文献库';
+    get('send').textContent=sending?'正在处理…':accepted?(completionLabel||'已提交，正在处理'):frozen?'重试同一导入任务':'下载并导入';
     select.disabled=!ready||!compatible||loadingFolders||sending||Boolean(frozen);
     get('folders-refresh').disabled=!ready||!compatible||loadingFolders||sending||Boolean(frozen);
     get('scan').disabled=scanning||sending||authorizing;
@@ -18,7 +18,7 @@ export function setupBridge(getEnvelope,status){
   const placeholder=text=>{const option=document.createElement('option');option.value='';option.textContent=text;select.replaceChildren(option);select.value='';};
   const connected=(message,ok)=>{
     ready=ok;get('connection-status').textContent=message;get('connection-status').dataset.connected=String(ok);
-    get('connect').hidden=ok;sync();
+    get('connect').hidden=ok;get('reconnect').hidden=ok;get('connection-help').open=!ok&&!message.includes('正在');sync();
   };
   const showFolders=rows=>{
     if(!Array.isArray(rows)||rows.length>2000)throw new Error('分类列表无效，请更新桌面软件');
@@ -28,7 +28,7 @@ export function setupBridge(getEnvelope,status){
       byId.set(row.id,row);
     }
     const previous=select.value;
-    placeholder('请选择导入分类');
+    placeholder('选择文献库文件夹…');
     const entries=rows.map(row=>{
       let cursor=row;const parts=[],seen=new Set();let valid=true;
       while(cursor){
@@ -43,7 +43,7 @@ export function setupBridge(getEnvelope,status){
       const option=document.createElement('option');option.value=row.id;option.textContent=valid?label:`[层级异常] ${label}`;option.disabled=!valid;select.append(option);
     }
     select.value=entries.some(e=>e.valid&&e.row.id===previous)?previous:'';
-    get('folder-status').textContent=rows.length?'请选择目标分类；在桌面新建分类后可点击刷新。':'文献库暂无分类，请先在桌面创建。';
+    get('folder-status').textContent=rows.length?'支持子文件夹；新建文件夹后可刷新。':'文献库暂无分类，请先在桌面创建。';
   };
   const loadFolders=async()=>{
     if(!getEnvelope()||!ready||!compatible||frozen)return;
@@ -51,10 +51,11 @@ export function setupBridge(getEnvelope,status){
     try{
       const result=await captureFolders();
       if(epoch!==folderEpoch||source!==getEnvelope())return;
-      showFolders(result.folders);
+      showFolders(result.folders);connected('桌面已就绪',true);
     }catch(error){
       if(epoch!==folderEpoch)return;
-      placeholder('分类读取失败');get('folder-status').textContent=bridgeError(error);
+      placeholder('文件夹暂不可用');get('folder-status').textContent=bridgeError(error);
+      connected(['native_disconnected','native_host_missing','desktop_unavailable'].includes(error.code)?'桌面连接已中断':'文件夹读取失败，请重试',false);
     }finally{if(epoch===folderEpoch){loadingFolders=false;sync();}}
   };
   const restore=async()=>{
@@ -62,10 +63,10 @@ export function setupBridge(getEnvelope,status){
     compatible=false;connected('正在连接 A4 Note…',false);get('connect').hidden=true;
     try{
       const result=await nativeHello();if(epoch!==connectionEpoch)return;
-      compatible=result.capabilities?.folderSelection===true;
-      connected(!compatible?'桌面或通信组件版本较旧，请安装配套0.5.0版本':result.authorized?'已连接 A4 Note':'首次使用，请点击连接并在桌面授权',Boolean(result.authorized));
+      compatible=supportsFolders(result);
+      connected(!compatible?'需要更新桌面通信组件':result.authorized?'桌面已就绪':'等待桌面授权',Boolean(result.authorized)&&compatible);
       if(!compatible)get('connect').hidden=true;
-      get('folder-status').textContent=!compatible?'需更新配套桌面安装器后才能选择分类。':result.authorized?'等待论文识别…':'授权后将自动显示文献库文件夹。';
+      get('folder-status').textContent=!compatible?'请安装完整新版 A4 Note，再重开插件；仅替换 EXE 不够。':result.authorized?'等待论文识别…':'授权后将自动显示文献库文件夹。';
       if(ready&&compatible)await loadFolders();
     }catch(error){if(epoch===connectionEpoch){connected(bridgeError(error),false);get('connect').hidden=true;get('folder-status').textContent='请启动配套桌面软件并重试连接。';}}
   };
@@ -97,7 +98,11 @@ export function setupBridge(getEnvelope,status){
       if(epoch!==pollEpoch)return;
       const tasks=await refreshTasks();if(epoch!==pollEpoch)return;
       const task=tasks?.find(t=>t.captureId===id);
-      if(task&&['complete','needs_user','partial','cancelled','failed'].includes(task.state))return;
+      if(task&&['complete','needs_user','partial','cancelled','failed'].includes(task.state) && (task.result?.libraryImported || task.result?.libraryError || ['cancelled','failed'].includes(task.state))){
+        const r=task.result||{};
+        completionLabel=r.libraryImported?(r.library?.hasSourcePdf?'已保存论文与 PDF':'已保存论文信息'):'需要处理，请查看进度';
+        status(r.libraryImported?(r.library?.hasSourcePdf?'论文与正文 PDF 已在文献库保存。':'论文信息已保存，正文 PDF 待补充；可展开下载帮助。'):'导入尚未完成，请展开进度查看原因。');sync();return;
+      }
       if(Date.now()<deadline)setTimeout(()=>void step(),1500);
     };
     void step();
@@ -126,11 +131,13 @@ export function setupBridge(getEnvelope,status){
     }finally{sending=false;sync();}
   });
   globalThis.addEventListener('pagehide',()=>{++pollEpoch;++folderEpoch;++connectionEpoch;disconnectBridge();},{once:true});
+  const unsubscribe=onBridgeDisconnect(error=>{++folderEpoch;loadingFolders=false;connected(['access_required','access_denied'].includes(error.code)?'需要桌面授权':'桌面连接已中断',false);if(!frozen)placeholder('连接恢复后选择文件夹…');get('folder-status').textContent=error.message;});
+  globalThis.addEventListener('pagehide',unsubscribe,{once:true});
   void restore();
   return {
     beginScan(){
       if(sending||authorizing||scanning&&getEnvelope())return false;
-      ++folderEpoch;++pollEpoch;loadingFolders=false;frozen=null;accepted=false;scanning=true;placeholder('等待识别结果…');sync();return true;
+      ++folderEpoch;++pollEpoch;loadingFolders=false;frozen=null;accepted=false;completionLabel=null;scanning=true;placeholder('等待识别结果…');sync();return true;
     },
     async scanned(){scanning=false;sync();if(getEnvelope())await loadFolders();},
     async assist(index,work){
