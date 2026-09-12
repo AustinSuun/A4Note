@@ -1,7 +1,7 @@
 {
   "name": "a4note",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -41,7 +41,8 @@
     "test:capture-native": "node scripts/verify-capture-native.mjs",
     "test:capture-native-process": "node scripts/verify-native-process.mjs",
     "package:native-host": "node scripts/prepare-native-host.mjs",
-    "test:capture-native-registration": "node scripts/verify-native-registration.mjs"
+    "test:capture-native-registration": "node scripts/verify-native-registration.mjs",
+    "test:extension-updates": "node scripts/verify-extension-updates.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",

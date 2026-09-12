@@ -1,7 +1,7 @@
 // Dependency-free, deterministic STORE ZIP; only explicitly allowed shipping files.
 import {readFile,writeFile,mkdir,cp} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
-const files=['manifest.json','popup.html','popup.css','popup.js','collector.js','normalize.mjs','enrich-page.mjs','bridge.mjs','native-bridge.mjs','bridge-ui.js','browser-assist.mjs','README.md','icons/16.png','icons/32.png','icons/48.png','icons/128.png'];
+const files=['manifest.json','popup.html','popup.css','popup.js','collector.js','normalize.mjs','enrich-page.mjs','bridge.mjs','native-bridge.mjs','bridge-ui.js','browser-assist.mjs','README.md','extension-updates.mjs','update-ui.js','icons/16.png','icons/32.png','icons/48.png','icons/128.png'];
 const source=new URL('../apps/browser-extension/',import.meta.url);
 const root=new URL('../artifacts/browser-extension/',import.meta.url);
 const manifest=JSON.parse(await readFile(new URL('manifest.json',source),'utf8'));

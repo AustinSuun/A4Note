@@ -1,3 +1,9 @@
+## 0.1.5 更新入口
+
+桌面：设置 → 软件更新（关于页也有快捷入口）。检查、下载并验证签名、用户确认保存后安装分为独立步骤，不会静默升级或强制退出。
+
+浏览器插件0.6.1：插件弹窗底部“插件设置与更新”。点击时可授予固定GitHub API源的访问权限；检查最新稳定发布，按数字比较版本，再显式下载ZIP。解压加载版无法自动替换自身文件，需要覆盖原目录并在扩展管理页重新加载。浏览器商店自动更新尚未发布，不冒充支持。
+
 # 软件内签名更新与 GitHub 发布
 
 仓库：`https://github.com/AustinSuun/A4Note`。Windows x64 使用 Tauri 2 updater + GitHub Releases，客户端端点固定为 `https://github.com/AustinSuun/A4Note/releases/latest/download/latest.json`。

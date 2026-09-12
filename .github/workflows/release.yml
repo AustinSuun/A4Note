@@ -43,7 +43,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          A4NOTE_RELEASE_NOTES: '插件界面重新设计并采用软件图标；桌面与通信组件双重版本校验；PDF和完整论文元数据显示；分类读取错误反馈修复。请安装完整桌面版并更新0.6.0插件。'
+          A4NOTE_RELEASE_NOTES: '新增设置中的独立软件更新入口；插件0.6.1可检查官方更新、下载新版并显示重新加载指引。包含此前分类兼容、精简界面和论文元数据改进。请使用完整桌面安装包及配套插件。'
         run: |
           npm run package:windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

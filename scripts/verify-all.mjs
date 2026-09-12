@@ -19,6 +19,7 @@ const steps = [
   ['npm', ['run', 'build']],
   ['npm', ['run', 'test:core']],
   ['npm', ['run', 'test:capture']],
+  ['npm', ['run', 'test:extension-updates']],
   ['npm', ['run', 'test:capture-native']],
   ['npm', ['run', 'test:capture-native-registration']],
   ...(isWindows ? [['npm', ['run', 'test:capture-native-process']]] : []),
