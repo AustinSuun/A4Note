@@ -9,10 +9,13 @@ export type WorkspaceLayoutsByScene = Record<SceneId, WorkspaceLayoutState>;
 
 export type PersistedUiState = {
   activeScene: SceneId;
+  visibleSceneIds: string[];
+  uiZoom: number;
   selectedPaperId: string;
   recentPaperIds: string[];
   query: string;
   activeTag: string;
+  activeFolderId: string;
   librarySort: { key: LibrarySortKey; direction: LibrarySortDirection };
   readerLayout: ReaderLayout;
   readerContentMode: ReaderContentMode;
@@ -35,6 +38,7 @@ export function defaultWorkspaceLayouts(): WorkspaceLayoutsByScene {
     library: createWorkspaceLayout('library', undefined, []),
     reader: createWorkspaceLayout('reader', 'reader.notes', []),
     aiChat: createWorkspaceLayout('aiChat', undefined, []),
+    markdown: createWorkspaceLayout('markdown', undefined, []),
   };
 }
 
@@ -48,6 +52,7 @@ export function syncWorkspaceLayouts(
     overview: layouts.overview ?? createWorkspaceLayout('overview', undefined, []),
     library: createWorkspaceLayout('library', 'library.details', state.libraryDetailOpen ? ['library.details'] : []),
     reader: createWorkspaceLayout('reader', readerPanelId, state.readerSidePanelOpen ? [readerPanelId] : []),
+    markdown: layouts.markdown ?? createWorkspaceLayout('markdown', undefined, []),
   };
 }
 
@@ -76,6 +81,7 @@ function normalizeWorkspaceLayouts(value: unknown, fallback: WorkspaceLayoutsByS
     library: normalizeWorkspaceLayout('library', candidate.library, fallback.library, knownWorkbenchPanelIds),
     reader: normalizeWorkspaceLayout('reader', candidate.reader, fallback.reader, knownWorkbenchPanelIds),
     aiChat: normalizeWorkspaceLayout('aiChat', candidate.aiChat, fallback.aiChat, knownWorkbenchPanelIds),
+    markdown: normalizeWorkspaceLayout('markdown', candidate.markdown, fallback.markdown, knownWorkbenchPanelIds),
   };
 }
 
@@ -105,10 +111,13 @@ function defaultUiState(settings = defaultSettings): PersistedUiState {
   const workspaceLayouts = defaultWorkspaceLayouts();
   return {
     activeScene: 'overview',
+    visibleSceneIds: ['overview', 'library', 'reader', 'aiChat', 'markdown'],
+    uiZoom: 1,
     selectedPaperId: '',
     recentPaperIds: [],
     query: '',
     activeTag: 'all',
+    activeFolderId: 'all',
     librarySort: { key: 'year', direction: 'desc' },
     readerLayout: settings.defaultReaderLayout,
     readerContentMode: 'pdf',
@@ -140,10 +149,13 @@ function loadUiState(settings: AppSettings, knownWorkbenchPanelIds: readonly Wor
         : fallback.readerSidePanelOpen;
     return {
       activeScene: isSceneId(parsed.activeScene) ? parsed.activeScene : fallback.activeScene,
+      visibleSceneIds: normalizeVisibleScenes(parsed.visibleSceneIds, fallback.visibleSceneIds),
+      uiZoom: typeof parsed.uiZoom === 'number' && Number.isFinite(parsed.uiZoom) ? clampNumber(parsed.uiZoom, 0.8, 1.4) : fallback.uiZoom,
       selectedPaperId: typeof parsed.selectedPaperId === 'string' ? parsed.selectedPaperId : fallback.selectedPaperId,
       recentPaperIds: Array.isArray(parsed.recentPaperIds) ? parsed.recentPaperIds.filter((paperId): paperId is string => typeof paperId === 'string').slice(0, 8) : fallback.recentPaperIds,
       query: typeof parsed.query === 'string' ? parsed.query : fallback.query,
       activeTag: typeof parsed.activeTag === 'string' ? parsed.activeTag : fallback.activeTag,
+      activeFolderId: typeof parsed.activeFolderId === 'string' ? parsed.activeFolderId : fallback.activeFolderId,
       librarySort: isLibrarySort(parsed.librarySort) ? parsed.librarySort : fallback.librarySort,
       readerLayout: isReaderLayout(parsed.readerLayout) ? parsed.readerLayout : fallback.readerLayout,
       readerContentMode: parsed.readerContentMode === 'markdown' || parsed.readerContentMode === 'pdf' ? parsed.readerContentMode : fallback.readerContentMode,
@@ -167,8 +179,14 @@ function loadUiState(settings: AppSettings, knownWorkbenchPanelIds: readonly Wor
   }
 }
 
+function normalizeVisibleScenes(value: unknown, fallback: string[]) {
+  if (!Array.isArray(value)) return fallback;
+  const scenes = value.filter((value): value is string => typeof value === 'string' && value.length > 0);
+  return scenes.length > 0 ? Array.from(new Set(scenes)) : fallback;
+}
+
 function isSceneId(value: unknown): value is SceneId {
-  return value === 'overview' || value === 'library' || value === 'reader' || value === 'aiChat';
+  return value === 'overview' || value === 'library' || value === 'reader' || value === 'aiChat' || value === 'markdown';
 }
 
 function isReaderLayout(value: unknown): value is ReaderLayout {
@@ -182,7 +200,7 @@ function isReaderSidePanelTab(value: unknown): value is ReaderSidePanelTab {
 function isLibrarySort(value: unknown): value is PersistedUiState['librarySort'] {
   if (!value || typeof value !== 'object') return false;
   const sort = value as { key?: unknown; direction?: unknown };
-  return (sort.key === 'title' || sort.key === 'authors' || sort.key === 'year' || sort.key === 'venue') && (sort.direction === 'asc' || sort.direction === 'desc');
+  return (sort.key === 'title' || sort.key === 'authors' || sort.key === 'year' || sort.key === 'venue' || sort.key === 'createdAt' || sort.key === 'lastViewedAt') && (sort.direction === 'asc' || sort.direction === 'desc');
 }
 
 export function clampNumber(value: number, min: number, max: number) {

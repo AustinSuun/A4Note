@@ -11,10 +11,10 @@ import type {
   WorkbenchPanelContribution,
 } from '../../core/types';
 import type { PaperFileKind } from '../../platform/nativeApi';
-import type { WorkspacePanelDefinition } from '../../workbench';
-import { defaultReaderToolSettings } from './pdf/types';
+import type { WorkbenchPanelViewContribution, WorkspacePanelDefinition } from '../../workbench';
+import { defaultReaderToolSettings, type PdfZoomAnchor } from './pdf/types';
 
-export type { ArrowEnding, ArrowStyle, EraserShape, PdfScrollAnchor, ReaderToolSettings, ShapeKind } from './pdf/types';
+export type { ArrowEnding, ArrowStyle, EraserShape, PdfScrollAnchor, PdfZoomAnchor, ReaderToolSettings, ShapeKind } from './pdf/types';
 export { defaultReaderToolSettings };
 
 export type ReaderContentMode = 'pdf' | 'markdown';
@@ -23,6 +23,7 @@ export type ReaderFileMode = PaperFileKind | 'parallel';
 export type NoteDraftPatch = { append?: string };
 
 export type NoteSaveInput = {
+  expected?: { title: string; content: string };
   noteId?: string;
   title: string;
   content: string;
@@ -52,6 +53,8 @@ export type ReaderSceneProps = {
   sidePanelTab: ReaderSidePanelTab;
   aiThreadContexts: AiThreadContext[];
   sidePanels: ReaderSidePanelDefinition[];
+  /** Panel renderers contributed by reader.core and resolved by the host. */
+  panelViews?: WorkbenchPanelViewContribution[];
   onLayoutChange: (layout: ReaderLayout) => void;
   onContentModeChange: (mode: ReaderContentMode) => void;
   onFileModeChange: (mode: ReaderFileMode) => void;
@@ -62,7 +65,7 @@ export type ReaderSceneProps = {
   onSelectAnnotationColor: (color: AnnotationColor) => void;
   customAnnotationColor: string;
   onCustomAnnotationColorChange: (color: string) => void;
-  onZoomChange: (zoom: number, anchor?: { x: number; y: number }) => void;
+  onZoomChange: (zoom: number, anchor?: PdfZoomAnchor) => void;
   onFitWidth: () => void;
   onSidePanelOpenChange: (open: boolean) => void;
   onSidePanelTabChange: (tab: ReaderSidePanelTab) => void;

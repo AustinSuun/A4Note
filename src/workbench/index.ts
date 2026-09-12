@@ -1,2 +1,15 @@
 export { CommandPalette, type CommandPaletteItem } from './CommandPalette';
 export { WorkspacePanelHost, type WorkspacePanelDefinition } from './WorkspacePanelHost';
+export { WorkbenchShell, type WorkbenchShellProps } from './WorkbenchShell';
+export { WORKBENCH_SIDEBAR_MAX_WIDTH, WORKBENCH_SIDEBAR_MIN_WIDTH } from './WorkbenchShell';
+export { ProjectSidebar, type ProjectSidebarProps, type SidebarSceneItem, type SidebarOpenItem } from './ProjectSidebar';
+export { WorkbenchTopBar, type TopBarProviderOption, type WorkbenchTopBarProps } from './WorkbenchTopBar';
+export { WindowTitleBar, type WindowTitleBarProps } from './WindowTitleBar';
+export { TabStrip, type TabStripItem } from './TabStrip';
+export { TabHost, type TabHostItem } from './TabHost';
+export { configureWorkbenchStorage, useWorkbench, workbenchStore, type WorkbenchView } from './useWorkbench';
+export { createWorkbenchStore, createEmptyWorkbenchStore, WORKBENCH_STORAGE_KEY, type WorkbenchStore, type WorkbenchStorage } from './workspaceStore';
+export { createSceneSidebarViewRegistry, createSceneViewRegistry, type SceneSidebarViewContribution, type SceneSidebarViewContext, type SceneSidebarViewRegistry, type SceneViewContribution, type SceneViewContext, type SceneViewRegistry } from './sceneViews';
+export { createWorkbenchPanelViewRegistry, type WorkbenchPanelViewContribution, type WorkbenchPanelViewContext, type WorkbenchPanelViewRegistry } from './panelViews';
+export { createResourceViewRegistry, resolveResourceViewContributions, type ResourceViewContribution, type ResourceViewContext, type ResourceViewRegistry, type ResourceViewResolution } from './resourceViews';
+export type { WorkbenchLabels } from './workbenchLabels';

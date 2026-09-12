@@ -1,0 +1,680 @@
+/* ---------- Markdown content ----------
+   Single source of truth for rendered Markdown. Every reading surface opts in
+   with `.md-body`, so the notes tab, the reader and the reader preview share one
+   visual language instead of maintaining three near-identical copies that drift
+   apart. Surface chrome (padding, width, scrolling, layout) stays with the
+   surface in reader.css / workbench.css; only document content lives here.
+
+   Imported last, so `.md-body` is the final word on content styling and a
+   surface only needs a rule of its own when it genuinely differs.
+*/
+.md-body,
+.markdown-live-codemirror {
+  --md-heading: #263d32;
+  --md-heading-muted: #52675b;
+  --md-code-bg: #202a24;
+  --md-code-ink: #edf3ef;
+  --md-code-muted: #aebdb3;
+  --md-link: #2f6f55;
+  --md-highlight: rgba(206,177,66,.3);
+  --md-quote: #5f7869;
+}
+.md-body { color: var(--ink); overflow-wrap: anywhere; }
+
+/* ---- headings ---- */
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  color: var(--md-heading);
+  letter-spacing: 0;
+  text-decoration: none !important;
+  text-decoration-line: none !important;
+  border-bottom: 0 !important;
+}
+.md-body h1::before, .md-body h1::after,
+.md-body h2::before, .md-body h2::after,
+.md-body h3::before, .md-body h3::after,
+.md-body h4::before, .md-body h4::after,
+.md-body h5::before, .md-body h5::after,
+.md-body h6::before, .md-body h6::after { border-bottom: 0 !important; text-decoration: none !important; }
+.md-body h1 { margin: 0 0 24px; font-size: calc(var(--document-font-size) * 2); font-weight: 780; line-height: 1.2; }
+.md-body h2 { margin: 26px 0 10px; color: color-mix(in srgb, var(--md-heading) 92%, var(--accent-strong)); font-size: calc(var(--document-font-size) * 1.45); font-weight: 740; line-height: 1.3; }
+.md-body h3 { margin: 20px 0 8px; color: color-mix(in srgb, var(--md-heading) 84%, var(--accent-strong)); font-size: calc(var(--document-font-size) * 1.2); font-weight: 720; line-height: 1.35; }
+.md-body h4 { margin: 16px 0 7px; color: var(--md-heading-muted); font-size: calc(var(--document-font-size) * 1.05); font-weight: 700; }
+.md-body h5,
+.md-body h6 { margin: 14px 0 6px; color: var(--md-heading-muted); font-size: var(--document-font-size); font-weight: 680; }
+/* ---- inline text ---- */
+.md-body p { margin: 0 0 .82em; }
+/* Chinese typography: paragraph indent (controlled by markdown.paragraphIndent setting) */
+[data-markdown-paragraph-indent="true"] .md-body p,
+[data-markdown-paragraph-indent="true"] .markdown-live-codemirror .cm-line.cm-md-paragraph-line {
+  text-indent: 2em;
+}
+[data-markdown-paragraph-indent="true"] .md-body h1 + p,
+[data-markdown-paragraph-indent="true"] .md-body h2 + p,
+[data-markdown-paragraph-indent="true"] .md-body h3 + p,
+[data-markdown-paragraph-indent="true"] .md-body h4 + p,
+[data-markdown-paragraph-indent="true"] .md-body h5 + p,
+[data-markdown-paragraph-indent="true"] .md-body h6 + p,
+[data-markdown-paragraph-indent="true"] .md-body ul p,
+[data-markdown-paragraph-indent="true"] .md-body ol p,
+[data-markdown-paragraph-indent="true"] .md-body blockquote p,
+[data-markdown-paragraph-indent="true"] .md-body .markdown-callout p {
+  text-indent: 0;
+}
+.md-body strong { color: var(--ink); font-weight: 760; }
+.md-body em { color: color-mix(in srgb, var(--ink) 88%, var(--accent-strong)); }
+.md-body del { color: var(--muted); text-decoration-color: color-mix(in srgb, var(--muted) 72%, transparent); text-decoration-thickness: 1px; }
+/* Chinese typography: spacing and text wrapping. Applied to the live editor too,
+   so switching modes does not reflow the paragraph. */
+:where(.md-body, .markdown-live-codemirror) {
+  text-wrap: pretty;
+  hanging-punctuation: first last;
+}
+@supports (text-spacing: trim-start) {
+  :where(.md-body, .markdown-live-codemirror) {
+    text-spacing: trim-start allow-end ideograph-alpha ideograph-numeric;
+  }
+}
+@supports (text-autospace: ideograph-alpha) {
+  :where(.md-body, .markdown-live-codemirror) {
+    text-autospace: ideograph-alpha ideograph-numeric;
+  }
+}
+.md-body mark,
+.markdown-inline-highlight {
+  display: inline;
+  margin: 0;
+  padding: .08em .26em;
+  border-radius: 4px;
+  background: var(--md-highlight);
+  color: var(--ink);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* ---- links ---- */
+.md-body a {
+  color: var(--md-link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--md-link) 48%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 120ms ease, text-decoration-color 120ms ease;
+}
+.md-body a:hover { color: var(--accent-strong); text-decoration-color: currentColor; }
+.md-body a[data-external="true"]::after { color: var(--muted); content: ' ↗'; font-size: .8em; text-decoration: none; }
+
+/* ---- images ---- */
+.md-body p:has(> img:only-child),
+.md-body p:has(> .markdown-image-zoom:only-child),
+.md-body p:has(> .markdown-figure:only-child) { margin: 0; line-height: 0; }
+.md-body img { display: block; max-width: 100%; height: auto; margin: 0; border-radius: 6px; }
+.md-body .markdown-image-zoom {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  cursor: zoom-in;
+}
+.md-body .markdown-image-zoom-hint {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(20,28,23,.52);
+  color: #f1f6f2;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.md-body .markdown-image-zoom:hover .markdown-image-zoom-hint,
+.md-body .markdown-image-zoom:focus-visible .markdown-image-zoom-hint { opacity: 1; }
+.md-body .markdown-figure { display: block; width: fit-content; max-width: 100%; margin: 1.1em auto; line-height: var(--document-line-height, 1.72); }
+.md-body .markdown-figcaption { display: block; margin-top: .5em; color: var(--muted); font-size: .82em; line-height: 1.5; text-align: center; }
+
+/* ---- blockquote ---- */
+.md-body blockquote:not(.markdown-callout) {
+  margin: .35em 0 1em;
+  padding: .65em .9em;
+  border-left: 3px solid var(--md-quote);
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--accent-soft) 68%, transparent);
+  color: color-mix(in srgb, var(--ink) 84%, var(--muted));
+}
+.md-body blockquote > :last-child { margin-bottom: 0; }
+.md-body blockquote:not(.markdown-callout):has(+ blockquote:not(.markdown-callout)) { margin-bottom: 0; border-bottom-right-radius: 0; }
+.md-body blockquote:not(.markdown-callout) + blockquote:not(.markdown-callout) { margin-top: 0; border-top-right-radius: 0; }
+/* ---- callout (`> [!NOTE]` and friends) ---- */
+.md-body blockquote.markdown-callout {
+  --callout-color: #2b7774;
+  --callout-bg: rgba(43,119,116,.075);
+  --callout-header-bg: rgba(43,119,116,.105);
+  position: relative;
+  overflow: hidden;
+  margin: 20px 0 24px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--callout-color) 28%, var(--line));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface) 91%, var(--callout-bg));
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(29,45,38,.07);
+}
+.md-body blockquote.markdown-callout::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--callout-color);
+  content: '';
+}
+.md-body .markdown-callout-heading {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 7px 14px 7px 17px;
+  border-bottom: 1px solid color-mix(in srgb, var(--callout-color) 22%, transparent);
+  background: var(--callout-header-bg);
+  color: var(--callout-color);
+}
+.md-body .markdown-callout-icon {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--callout-color);
+}
+/* One header row: icon, type label and title side by side. The live editor keeps
+   the title as editable source on a single line and cannot stack the label above
+   it, so the reading view follows the editor's shape instead of the reverse. */
+.md-body .markdown-callout-heading-main { display: contents; }
+.md-body .markdown-callout-label {
+  color: color-mix(in srgb, var(--callout-color) 76%, var(--muted));
+  font-size: .68em;
+  font-weight: 780;
+  letter-spacing: .08em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+.md-body .markdown-callout-heading strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: .98em;
+  font-weight: 760;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.md-body .markdown-callout-kind {
+  align-self: start;
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--callout-color) 28%, transparent);
+  border-radius: 5px;
+  color: color-mix(in srgb, var(--callout-color) 82%, var(--muted));
+  font: 760 .63em/1 var(--font-code);
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.md-body .markdown-callout-content {
+  padding: 11px 17px 5px 21px;
+  background: color-mix(in srgb, var(--surface) 92%, var(--callout-bg));
+}
+.md-body .markdown-callout-content > :first-child { margin-top: 0; }
+.md-body .markdown-callout-content > :last-child { margin-bottom: 8px; }
+.md-body blockquote.markdown-callout.markdown-callout-note,
+.md-body blockquote.markdown-callout.markdown-callout-info { --callout-color: #2b7774; --callout-bg: rgba(43,119,116,.075); --callout-header-bg: rgba(43,119,116,.105); }
+.md-body blockquote.markdown-callout.markdown-callout-tip,
+.md-body blockquote.markdown-callout.markdown-callout-hint { --callout-color: #687f38; --callout-bg: rgba(104,127,56,.085); --callout-header-bg: rgba(104,127,56,.12); }
+.md-body blockquote.markdown-callout.markdown-callout-important { --callout-color: #2e718d; --callout-bg: rgba(46,113,141,.08); --callout-header-bg: rgba(46,113,141,.11); }
+.md-body blockquote.markdown-callout.markdown-callout-warning,
+.md-body blockquote.markdown-callout.markdown-callout-caution { --callout-color: #a16f25; --callout-bg: rgba(161,111,37,.09); --callout-header-bg: rgba(161,111,37,.125); }
+.md-body blockquote.markdown-callout.markdown-callout-danger,
+.md-body blockquote.markdown-callout.markdown-callout-error { --callout-color: #ad514e; --callout-bg: rgba(173,81,78,.085); --callout-header-bg: rgba(173,81,78,.115); }
+.md-body blockquote.markdown-callout.markdown-callout-success,
+.md-body blockquote.markdown-callout.markdown-callout-check { --callout-color: #367b57; --callout-bg: rgba(54,123,87,.08); --callout-header-bg: rgba(54,123,87,.11); }
+.md-body blockquote.markdown-callout.markdown-callout-question,
+.md-body blockquote.markdown-callout.markdown-callout-help { --callout-color: #71609a; --callout-bg: rgba(113,96,154,.08); --callout-header-bg: rgba(113,96,154,.11); }
+.md-body blockquote.markdown-callout.markdown-callout-quote { --callout-color: #6d6b70; --callout-bg: rgba(109,107,112,.07); --callout-header-bg: rgba(109,107,112,.1); }
+.md-body blockquote.markdown-callout.markdown-callout-example { --callout-color: #76559a; --callout-bg: rgba(118,85,154,.08); --callout-header-bg: rgba(118,85,154,.11); }
+.md-body blockquote.markdown-callout.markdown-callout-abstract { --callout-color: #337a78; --callout-bg: rgba(51,122,120,.075); --callout-header-bg: rgba(51,122,120,.105); }
+.md-body blockquote.markdown-callout.markdown-callout-todo { --callout-color: #9a5b32; --callout-bg: rgba(154,91,50,.08); --callout-header-bg: rgba(154,91,50,.11); }
+/* ---- lists ---- */
+.md-body ul,
+.md-body ol { margin: 0 0 .9em; padding-left: 1.65em; }
+.md-body li { margin: .22em 0; padding-left: .12em; }
+.md-body li::marker { color: var(--accent-strong); font-weight: 700; }
+.md-body ul ul { list-style-type: circle; }
+.md-body ul ul ul { list-style-type: square; }
+.md-body ol ol { list-style-type: lower-alpha; }
+.md-body ol ol ol { list-style-type: lower-roman; }
+.md-body li > ul,
+.md-body li > ol { margin-top: .28em; margin-bottom: .28em; padding-left: 1.45em; }
+
+/* ---- task lists ---- */
+.md-body ul.contains-task-list { padding-left: 1.35em; list-style: none; }
+.md-body li.task-list-item { padding-left: 0; }
+.md-body input[type="checkbox"] {
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0 .48em 0 0;
+  vertical-align: -.12em;
+  accent-color: var(--accent-strong);
+}
+.markdown-task-checkbox,
+.cm-md-task-checkbox {
+  display: inline-grid;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 1.05em;
+  height: 1.05em;
+  place-items: center;
+  margin-right: .48em;
+  padding: 0;
+  border: 1.5px solid color-mix(in srgb, var(--accent-strong) 48%, var(--line));
+  border-radius: 4px;
+  background: transparent;
+  color: var(--on-accent, #fff);
+  vertical-align: -.2em;
+  cursor: pointer;
+}
+.markdown-task-checkbox.is-checked,
+.cm-md-task-checkbox.is-checked { border-color: var(--accent-strong); background: var(--accent-strong); }
+.markdown-task-checkbox.is-checked::after,
+.cm-md-task-checkbox.is-checked::after { width: .5em; height: .28em; border-bottom: 2px solid currentColor; border-left: 2px solid currentColor; content: ''; transform: rotate(-45deg) translateY(-.05em); }
+.md-body li.task-list-item:has(input:checked),
+.md-body li.task-list-item:has(.markdown-task-checkbox.is-checked) { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 55%, transparent); }
+
+/* ---- rule ---- */
+.md-body hr {
+  height: 1px;
+  margin: 1.5em 0;
+  border: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, var(--line)), transparent);
+}
+/* ---- tables ----
+   The table carries its own frame so it looks finished without a wrapper.
+   `.markdown-table-wrap` is the opt-in horizontal-scroll container; when a
+   renderer emits it, the wrapper owns the frame and the table goes flush.
+   Scoped to both surfaces: the live editor renders tables with the same markup
+   through TableWidget, so there is one table design, not two.
+*/
+:where(.md-body, .markdown-live-codemirror) table {
+  width: 100%;
+  overflow: hidden;
+  margin: 0 0 1em;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+:where(.md-body, .markdown-live-codemirror) .markdown-table-wrap { max-width: 100%; overflow-x: auto; margin: 0 0 1em; border: 1px solid var(--line); border-radius: 8px; }
+:where(.md-body, .markdown-live-codemirror) .markdown-table-wrap table { min-width: 420px; margin: 0; border: 0; border-radius: 0; }
+:where(.md-body, .markdown-live-codemirror) th,
+:where(.md-body, .markdown-live-codemirror) td { padding: .55em .75em; border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; }
+:where(.md-body, .markdown-live-codemirror) th:last-child,
+:where(.md-body, .markdown-live-codemirror) td:last-child { border-right: 0; }
+:where(.md-body, .markdown-live-codemirror) tr:last-child td { border-bottom: 0; }
+:where(.md-body, .markdown-live-codemirror) th { background: color-mix(in srgb, var(--accent-soft) 78%, var(--surface)); color: var(--md-heading); font-weight: 720; }
+:where(.md-body, .markdown-live-codemirror) tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-soft) 58%, transparent); }
+/* GFM column alignment arrives as the `align` attribute, which is only a
+   presentational hint and therefore loses to the rule above. */
+:where(.md-body, .markdown-live-codemirror) th[align="left"],
+:where(.md-body, .markdown-live-codemirror) td[align="left"] { text-align: left; }
+:where(.md-body, .markdown-live-codemirror) th[align="center"],
+:where(.md-body, .markdown-live-codemirror) td[align="center"] { text-align: center; }
+:where(.md-body, .markdown-live-codemirror) th[align="right"],
+:where(.md-body, .markdown-live-codemirror) td[align="right"] { text-align: right; }
+:root[data-document-line-height="compact"] :where(.md-body, .markdown-live-codemirror) th,
+:root[data-document-line-height="compact"] :where(.md-body, .markdown-live-codemirror) td { padding: .4em .62em; }
+/* The widget is a block replacement inside the editor. Vertical margins on it
+   are invisible to CodeMirror's height measurement — that offset is what pushed
+   the caret out of place for everything below the table — so spacing is padding,
+   and the cells stay compact to keep the rendered height close to the source
+   rows it replaces. */
+.markdown-live-codemirror .cm-md-table-widget {
+  margin: 0;
+  padding: 3px 0 6px;
+  border: 0;
+  border-radius: 0;
+  cursor: default;
+}
+.markdown-live-codemirror .cm-md-table-widget table {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: .94em;
+}
+.markdown-live-codemirror .cm-md-table-widget th,
+.markdown-live-codemirror .cm-md-table-widget td {
+  padding: .18em .6em;
+  line-height: 1.5;
+  cursor: text;
+}
+
+/* ---- code ---- */
+.md-body :not(pre) > code {
+  padding: .12em .4em;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface));
+  color: color-mix(in srgb, var(--accent-strong) 88%, var(--ink));
+  font-family: var(--font-code);
+  font-size: .9em;
+}
+.md-body .markdown-code-block,
+.md-body pre {
+  position: relative;
+  margin: 1em 0;
+  border: 1px solid rgba(237,243,239,.1);
+  border-radius: 9px;
+  background: var(--md-code-bg);
+  box-shadow: 0 7px 18px rgba(30,45,38,.1);
+}
+.md-body pre,
+.md-body .markdown-code-block pre {
+  overflow: auto;
+  padding: 16px 52px 16px 16px;
+  color: var(--md-code-ink);
+  font: .9em/1.65 var(--font-code);
+}
+.md-body .markdown-code-block pre {
+  margin: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: none;
+}
+.md-body pre > code { color: inherit; font: inherit; }
+.md-body .markdown-code-copy {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(237,243,239,.18);
+  border-radius: 6px;
+  background: rgba(237,243,239,.08);
+  color: #edf3ef;
+  opacity: .72;
+  cursor: pointer;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.md-body .markdown-code-block:hover .markdown-code-copy,
+.md-body .markdown-code-block:focus-within .markdown-code-copy { opacity: 1; }
+.md-body .markdown-code-copy:disabled { cursor: progress; }
+.md-body .markdown-code-copy:focus-visible,
+.md-body .markdown-code-block pre:focus-visible { outline: 2px solid var(--md-code-ink); outline-offset: -2px; }
+.md-body .markdown-table-wrap:focus-visible,
+.md-body .markdown-image-zoom:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+.md-body .markdown-code-feedback { display: block; color: var(--md-code-ink); font-size: .8em; line-height: 1.5; }
+.md-body .markdown-code-feedback:not(:empty) { padding: 6px 12px; border-top: 1px solid color-mix(in srgb, var(--md-code-ink) 18%, transparent); }
+.md-body .markdown-code-copy:hover { background: rgba(237,243,239,.18); }
+.md-body .markdown-code-block.has-language pre { padding-top: 38px; }
+.md-body .markdown-code-language {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  color: var(--md-code-muted);
+  font: 700 .72em/1 var(--font-code);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* ---- footnotes ---- */
+/* ---- footnotes ---- */
+.md-body .footnotes { margin-top: 2em; padding-top: .8em; border-top: 1px solid var(--line); color: var(--muted); font-size: .88em; }
+.md-body .footnotes ol { padding-left: 1.4em; }
+.md-body .markdown-footnotes-heading {
+  margin: 0 0 .6em;
+  color: var(--ink);
+  font-size: 1.05em;
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+.md-body .footnote-ref a,
+.md-body .markdown-footnote-backref { color: var(--accent-strong); font-family: var(--font-code); font-size: .86em; text-decoration: none; }
+.md-body .markdown-footnote-backref {
+  display: inline-flex;
+  align-items: center;
+  margin-left: .3em;
+  opacity: .7;
+  transition: opacity .15s ease;
+}
+.md-body .markdown-footnote-backref:hover { opacity: 1; }
+.md-body .markdown-footnote-preview {
+  position: fixed;
+  z-index: 999;
+  max-width: 420px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-size: .92em;
+  line-height: 1.52;
+  box-shadow: 0 3px 14px rgba(26, 41, 33, .12), 0 1px 4px rgba(26, 41, 33, .08);
+  pointer-events: none;
+  animation: markdown-footnote-preview-in .16s ease;
+}
+@keyframes markdown-footnote-preview-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion) {
+  .md-body .markdown-footnote-preview { animation: none; }
+}
+
+/* ---- math ---- */
+.md-body .katex { font-size: 1.05em; }
+/* Block formulas use the same card as quotes, callouts and fenced code: left
+   accent bar, tinted panel, one soft shadow. The live editor renders block math
+   this way too, so switching modes does not change the shape. */
+.md-body .katex-display {
+  display: flex;
+  max-width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 1em 0;
+  padding: 13px 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 72%, var(--line));
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface));
+  box-shadow: 0 5px 16px rgba(30,45,38,.07);
+}
+/* Auto margins center short formulas, but collapse for overflow so the left
+   edge of a long formula remains reachable by horizontal scrolling. */
+.md-body .katex-display > .katex { min-width: max-content; flex: 0 0 auto; margin-inline: auto; }
+
+/* ---- inline elements from the allow-list (see remarkAsterInline) ---- */
+.md-body kbd {
+  padding: .1em .42em;
+  border: 1px solid color-mix(in srgb, var(--ink) 22%, var(--line));
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--surface) 82%, var(--surface-soft));
+  color: var(--ink);
+  font-family: var(--font-code);
+  font-size: .84em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.md-body sub,
+.md-body sup { font-size: .74em; line-height: 0; }
+.md-body abbr[title] { text-decoration: underline dotted; text-underline-offset: 2px; cursor: help; }
+.md-body small { color: var(--muted); font-size: .84em; }
+.md-body u { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+/* ---- internal note links ([[target]]) ---- */
+.md-body .markdown-wiki-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--md-link);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--md-link) 42%, transparent);
+  text-decoration-style: dashed;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.md-body .markdown-wiki-link:hover { color: var(--accent-strong); text-decoration-color: currentColor; }
+.md-body .markdown-wiki-link.is-unresolved { color: var(--muted); cursor: not-allowed; }
+.md-body .markdown-wiki-link.is-unresolved:hover { color: var(--muted); }
+
+/* ---- image lightbox (portalled to <body>, outside .md-body) ---- */
+.markdown-lightbox {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 4vw, 48px);
+  background: rgba(18,24,20,.82);
+  cursor: zoom-out;
+}
+.markdown-lightbox-figure { display: grid; max-width: 100%; max-height: 100%; margin: 0; gap: 10px; justify-items: center; cursor: default; }
+.markdown-lightbox-figure img { max-width: 100%; max-height: calc(100vh - 120px); border-radius: 8px; object-fit: contain; box-shadow: 0 24px 60px rgba(0,0,0,.45); }
+.markdown-lightbox-figure figcaption { max-width: 72ch; color: rgba(240,246,241,.86); font-size: .86em; line-height: 1.5; text-align: center; }
+.markdown-lightbox-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(240,246,241,.22);
+  border-radius: 9px;
+  background: rgba(240,246,241,.1);
+  color: #f1f6f2;
+  cursor: pointer;
+}
+.markdown-lightbox-close:hover { background: rgba(240,246,241,.2); }
+.markdown-lightbox-close:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .md-body .markdown-image-zoom-hint { transition: none; }
+}
+
+/* ---- fence syntax highlighting ----
+   `tok-*` classes come from @lezer/highlight's classHighlighter (reading view)
+   and from fenceTokenHighlight in MarkdownLivePreviewEditor (live editor), so
+   the palette stays here in CSS rather than being baked into inline colours.
+   One palette is enough: the code card is dark in every theme.
+*/
+:where(.md-body, .markdown-live-codemirror) {
+  --md-tok-comment: #7f9689;
+  --md-tok-keyword: #dfa2ab;
+  --md-tok-string: #cfd28c;
+  --md-tok-number: #e0b189;
+  --md-tok-function: #9ec8e8;
+  --md-tok-type: #8fd1bd;
+  --md-tok-constant: #c8b6e6;
+  --md-tok-operator: #b6c8bd;
+  --md-tok-punctuation: #9fb3a7;
+  --md-tok-meta: #93a89b;
+  --md-tok-invalid: #f0908a;
+}
+.tok-comment,
+.tok-lineComment,
+.tok-blockComment,
+.tok-docComment { color: var(--md-tok-comment); font-style: italic; }
+.tok-keyword,
+.tok-controlKeyword,
+.tok-definitionKeyword,
+.tok-moduleKeyword,
+.tok-operatorKeyword,
+.tok-modifier,
+.tok-self { color: var(--md-tok-keyword); }
+.tok-string,
+.tok-string2,
+.tok-docString,
+.tok-character,
+.tok-attributeValue,
+.tok-regexp { color: var(--md-tok-string); }
+.tok-number,
+.tok-integer,
+.tok-float,
+.tok-unit { color: var(--md-tok-number); }
+.tok-bool,
+.tok-null,
+.tok-atom,
+.tok-constant,
+.tok-escape,
+.tok-color { color: var(--md-tok-constant); }
+.tok-function,
+.tok-macroName,
+.tok-labelName { color: var(--md-tok-function); }
+.tok-typeName,
+.tok-className,
+.tok-namespace,
+.tok-tagName { color: var(--md-tok-type); }
+.tok-propertyName,
+.tok-attributeName,
+.tok-variableName2 { color: color-mix(in srgb, var(--md-tok-function) 78%, var(--md-code-ink)); }
+.tok-operator,
+.tok-derefOperator,
+.tok-arithmeticOperator,
+.tok-logicOperator,
+.tok-bitwiseOperator,
+.tok-compareOperator,
+.tok-updateOperator,
+.tok-definitionOperator,
+.tok-typeOperator,
+.tok-controlOperator { color: var(--md-tok-operator); }
+.tok-punctuation,
+.tok-separator,
+.tok-bracket,
+.tok-angleBracket,
+.tok-squareBracket,
+.tok-paren,
+.tok-brace { color: var(--md-tok-punctuation); }
+.tok-meta,
+.tok-documentMeta,
+.tok-annotation,
+.tok-processingInstruction { color: var(--md-tok-meta); }
+.tok-invalid { color: var(--md-tok-invalid); text-decoration: underline wavy; }
+.tok-link,
+.tok-url { color: var(--md-tok-function); text-decoration: underline; }
+.tok-inserted { color: #9ed5a8; }
+.tok-deleted { color: var(--md-tok-invalid); }
+:where(.md-body pre, .markdown-live-codemirror) .tok-heading,
+:where(.md-body pre, .markdown-live-codemirror) .tok-strong { font-weight: 700; }
+:where(.md-body pre, .markdown-live-codemirror) .tok-emphasis { font-style: italic; }
+:where(.md-body pre, .markdown-live-codemirror) .tok-strikethrough { text-decoration: line-through; }
+
+/* ---- dark theme ---- */
+:root[data-theme="midnight"] .md-body,
+:root[data-theme="midnight"] .markdown-live-codemirror {
+  --md-heading: #e6f0e8;
+  --md-heading-muted: #b6c6ba;
+  --md-code-bg: #151d18;
+  --md-link: #8fc4a8;
+  --md-highlight: rgba(206,177,66,.26);
+  --md-quote: #8fa898;
+}
+

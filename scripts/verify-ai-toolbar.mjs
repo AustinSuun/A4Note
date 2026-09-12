@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const scene = readFileSync('src/features/ai/AIChatScene.tsx', 'utf8');
 const app = readFileSync('src/ui/App.tsx', 'utf8');
+const contributions = readFileSync('src/features/ai/contributions.tsx', 'utf8');
 const styles = readFileSync('src/ui/styles/components.css', 'utf8');
 
 for (const text of [
@@ -36,6 +37,9 @@ for (const text of [
   assert.ok(scene.includes(text), `AIChatScene toolbar missing: ${text}`);
 }
 
+assert.ok(contributions.includes("id: 'ai.core.view'"), 'AI view must be a plugin contribution');
+assert.ok(contributions.includes("id: 'ai.sessions'"), 'AI sidebar must be a plugin contribution');
+
 for (const text of ['ai-composer-card', 'ai-composer-input', 'ai-composer-footer', 'reasoningMenuOpen', 'permissionMenuOpen']) {
   assert.equal(scene.includes(text), false, `AIChatScene should not include: ${text}`);
 }
@@ -46,11 +50,11 @@ for (const text of [
   "useState<AiReasoningLevel>('extraHigh')",
   "useState('autoReview')",
   "useState<AiRunMode>('fast')",
-  'onAiProviderChange={setAiProviderId}',
-  'onAiModelChange={setAiModelId}',
-  'onAiReasoningChange={setAiReasoningLevel}',
-  'onAiPermissionChange={setAiPermissionMode}',
-  'onAiRunModeChange={setAiRunMode}',
+  'onAiProviderChange: setAiProviderId',
+  'onAiModelChange: setAiModelId',
+  'onAiReasoningChange: setAiReasoningLevel',
+  'onAiPermissionChange: setAiPermissionMode',
+  'onAiRunModeChange: setAiRunMode',
 ]) {
   assert.ok(app.includes(text), `App AI toolbar state missing: ${text}`);
 }

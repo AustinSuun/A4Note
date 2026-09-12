@@ -3,7 +3,7 @@ import type { AnnotationColor, PaperDocument, ReaderTool } from '../../core/type
 import { zh } from '../../ui/zh';
 import { AnnotationToolIcon, FitWidthIcon, SidebarIcon, ZoomInIcon, ZoomOutIcon } from './ReaderIcons';
 import { annotationColorInputValue, annotationTools, defaultToolColors, toolColorPresets } from './readerConstants';
-import type { ReaderFileMode, ReaderToolSettings } from './types';
+import type { PdfZoomAnchor, ReaderContentMode, ReaderFileMode, ReaderToolSettings } from './types';
 
 const ERASER_THICKNESS_MIN = 8;
 const ERASER_THICKNESS_MAX = 48;
@@ -15,6 +15,7 @@ const SHAPE_STROKE_MIN = 1;
 const SHAPE_STROKE_MAX = 8;
 export function ReaderToolbar({
   paper,
+  contentMode,
   fileMode,
   currentTranslatedFileId,
   parallelSyncLocked,
@@ -30,6 +31,7 @@ export function ReaderToolbar({
   readerPageState,
   sidePanelOpen,
   onFileModeChange,
+  onContentModeChange,
   onTranslatedFileIdChange,
   onParallelSyncLockedChange,
   onSelectAnnotationTool,
@@ -45,6 +47,7 @@ export function ReaderToolbar({
   onSidePanelOpenChange,
 }: {
   paper: PaperDocument;
+  contentMode: ReaderContentMode;
   fileMode: ReaderFileMode;
   currentTranslatedFileId: string;
   parallelSyncLocked: boolean;
@@ -60,6 +63,7 @@ export function ReaderToolbar({
   readerPageState: { currentPage: number; totalPages: number };
   sidePanelOpen: boolean;
   onFileModeChange: (mode: ReaderFileMode) => void;
+  onContentModeChange: (mode: ReaderContentMode) => void;
   onTranslatedFileIdChange: (fileId: string) => void;
   onParallelSyncLockedChange: (locked: boolean) => void;
   onSelectAnnotationTool: (type: ReaderTool) => void;
@@ -69,7 +73,7 @@ export function ReaderToolbar({
   onUpdateContextAnnotationColor?: (annotationId: string, color: AnnotationColor) => void;
   onUpdateContextAnnotationSettings?: (annotationId: string, settings: ReaderToolSettings) => void;
   onClearContextAnnotation?: () => void;
-  onZoomChange: (zoom: number, anchor?: { x: number; y: number }) => void;
+  onZoomChange: (zoom: number, anchor?: PdfZoomAnchor) => void;
   onFitWidth: () => void;
   onJumpToPage: (page: number) => void;
   onSidePanelOpenChange: (open: boolean) => void;
@@ -139,10 +143,14 @@ export function ReaderToolbar({
   };
 
   return (
-    <header className="reader-toolbar" aria-label="Reader toolbar">
+    <header
+      className="reader-toolbar"
+      data-reader-layer="toolbar"
+      aria-label="Reader toolbar"
+    >
       <div className="reader-toolbar-primary">
         <div className="reader-toolbar-group reader-toolbar-file">
-          <div className="segmented compact reader-file-switch" aria-label="PDF file mode">
+          {contentMode === 'pdf' && <div className="segmented compact reader-file-switch" aria-label="PDF file mode">
             <button
               className={fileMode === 'source' ? 'active' : ''}
               type="button"
@@ -167,9 +175,9 @@ export function ReaderToolbar({
             >
               {zh.reader.parallelPdf}
             </button>
-          </div>
+          </div>}
 
-          {(fileMode === 'translated' || fileMode === 'parallel') && paper.translatedFileIds.length > 1 && (
+          {contentMode === 'pdf' && (fileMode === 'translated' || fileMode === 'parallel') && paper.translatedFileIds.length > 1 && (
             <select
               className="translated-file-select"
               value={currentTranslatedFileId}
@@ -189,7 +197,7 @@ export function ReaderToolbar({
             </select>
           )}
 
-          {fileMode === 'parallel' && (
+          {contentMode === 'pdf' && fileMode === 'parallel' && (
             <label className="parallel-sync-toggle">
               <input
                 type="checkbox"
@@ -203,7 +211,7 @@ export function ReaderToolbar({
       </div>
 
       <div className="reader-toolbar-center">
-        <div className="reader-toolbar-group reader-toolbar-annotations">
+        {contentMode === 'pdf' && <div className="reader-toolbar-group reader-toolbar-annotations">
           <div className="annotation-toolbar" aria-label="Annotation tools">
             {annotationTools.map((tool) => {
               const isContextual = contextAnnotationTool === tool.id;
@@ -224,13 +232,24 @@ export function ReaderToolbar({
                       <span className="annotation-tool-color-dot" style={{ background: toolColorToCss(toolColor) }} />
                     )}
                   </button>
+                  {optionsTool === tool.id && (
+                    <ToolOptionsBar
+                      tool={optionsTool}
+                      toolSettings={currentToolSettings}
+                      activeColor={currentColor}
+                      customAnnotationColor={customAnnotationColor}
+                      onSelectAnnotationColor={handleSelectColor}
+                      onCustomAnnotationColorChange={handleCustomColor}
+                      onToolSettingsChange={handleToolSettingsChange}
+                    />
+                  )}
                 </div>
               );
             })}
           </div>
-        </div>
+        </div>}
 
-        <div className="reader-toolbar-group reader-toolbar-nav">
+        {contentMode === 'pdf' && <div className="reader-toolbar-group reader-toolbar-nav">
           <div className="zoom-controls" aria-label="Zoom controls">
             <button
               type="button"
@@ -266,7 +285,7 @@ export function ReaderToolbar({
             />
             <span>/ {readerPageState.totalPages}</span>
           </div>
-        </div>
+        </div>}
       </div>
 
       <div className="reader-toolbar-end">
@@ -283,17 +302,6 @@ export function ReaderToolbar({
           </button>
         )}
       </div>
-      {optionsTool && (
-        <ToolOptionsBar
-          tool={optionsTool}
-          toolSettings={currentToolSettings}
-          activeColor={currentColor}
-          customAnnotationColor={customAnnotationColor}
-          onSelectAnnotationColor={handleSelectColor}
-          onCustomAnnotationColorChange={handleCustomColor}
-          onToolSettingsChange={handleToolSettingsChange}
-        />
-      )}
     </header>
   );
 }

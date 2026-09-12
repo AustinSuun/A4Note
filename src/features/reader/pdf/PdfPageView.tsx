@@ -52,6 +52,8 @@ export function PdfPageView({
   const [shouldRender, setShouldRender] = useState(false);
   const [hasBitmap, setHasBitmap] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [renderError, setRenderError] = useState('');
+  const [retryRevision, setRetryRevision] = useState(0);
 
   useEffect(() => {
     priorityDistanceRef.current = priorityDistance;
@@ -75,9 +77,40 @@ export function PdfPageView({
   }, []);
 
   useEffect(() => {
+    const root = rootRef.current?.closest('.pdf-document');
+    const target = rootRef.current;
+    if (!root || !target || typeof ResizeObserver === 'undefined') return undefined;
+    const refreshVisibility = () => {
+      // Workbench sidebar resizing changes the scroll container's geometry on
+      // every frame. The bitmap itself does not need to be reclassified while
+      // dragging; defer one measurement until the divider is released.
+      if (document.body.classList.contains('is-horizontal-resizing')) return;
+      const rootRect = root.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const visible = root.clientWidth > 0
+        && root.clientHeight > 0
+        && targetRect.bottom > rootRect.top
+        && targetRect.top < rootRect.bottom;
+      setShouldRender(visible);
+    };
+    const observer = new ResizeObserver(refreshVisibility);
+    observer.observe(root);
+    observer.observe(target);
+    refreshVisibility();
+    const refreshAfterWorkbenchResize = () => refreshVisibility();
+    window.addEventListener('workbench-resize-end', refreshAfterWorkbenchResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('workbench-resize-end', refreshAfterWorkbenchResize);
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     let renderTask: pdfjsLib.RenderTask | null = null;
     let delayTimer: number | null = null;
+    let releaseDelay: (() => void) | null = null;
+    if (!shouldRender) setIsUpdating(false);
     const renderSequence = renderSequenceRef.current + 1;
     renderSequenceRef.current = renderSequence;
     async function renderPage() {
@@ -86,6 +119,7 @@ export function PdfPageView({
       const renderDelay = renderPriorityDistance <= 1 ? 16 : renderPriorityDistance === 2 ? 48 : 96;
       if (renderDelay) {
         await new Promise<void>((resolve) => {
+          releaseDelay = resolve;
           delayTimer = window.setTimeout(resolve, renderDelay);
         });
         if (cancelled) return;
@@ -93,6 +127,7 @@ export function PdfPageView({
       if (cancelled || !canvasRef.current) return;
       const viewport = pageMeta.pdfPage.getViewport({ scale: zoom });
       setIsUpdating(true);
+      setRenderError('');
       const outputScale = outputScaleForViewport(viewport.width, viewport.height);
       const pixelWidth = Math.floor(viewport.width * outputScale);
       const pixelHeight = Math.floor(viewport.height * outputScale);
@@ -100,7 +135,7 @@ export function PdfPageView({
       renderCanvas.width = pixelWidth;
       renderCanvas.height = pixelHeight;
       const renderContext = renderCanvas.getContext('2d', { alpha: false });
-      if (!renderContext) return;
+      if (!renderContext) throw new Error('无法创建PDF绘图上下文');
       renderContext.imageSmoothingEnabled = true;
       renderContext.imageSmoothingQuality = 'high';
       renderTask = pageMeta.pdfPage.render({
@@ -109,11 +144,11 @@ export function PdfPageView({
         viewport,
         transform: outputScale === 1 ? undefined : [outputScale, 0, 0, outputScale, 0, 0],
       });
-      await renderTask.promise.catch((error) => {
-        if (error?.name !== 'RenderingCancelledException') {
-          throw error;
-        }
-      });
+      try { await renderTask.promise; }
+      catch (error) {
+        if ((error as { name?: string })?.name === 'RenderingCancelledException') return;
+        throw error;
+      }
       if (!cancelled && canvasRef.current && renderSequenceRef.current === renderSequence) {
         const visibleCanvas = canvasRef.current;
         if (visibleCanvas.width !== pixelWidth) visibleCanvas.width = pixelWidth;
@@ -129,13 +164,18 @@ export function PdfPageView({
         setIsUpdating(false);
       }
     }
-    void renderPage();
+    void renderPage().catch((error) => {
+      if (cancelled || renderSequenceRef.current !== renderSequence) return;
+      setIsUpdating(false);
+      setRenderError(`本页渲染失败：${String(error)}`);
+    });
     return () => {
       cancelled = true;
       if (delayTimer !== null) window.clearTimeout(delayTimer);
+      releaseDelay?.();
       renderTask?.cancel();
     };
-  }, [pageMeta, zoom, shouldRender]);
+  }, [pageMeta, zoom, shouldRender, retryRevision]);
 
   useEffect(() => {
     const farFromViewport = priorityDistance > 7;
@@ -152,7 +192,10 @@ export function PdfPageView({
   }, [shouldRender, hasBitmap, priorityDistance, flashKind, commentPopover]);
 
   return (
-    <div className={`pdf-page ${isUpdating ? 'updating' : ''} ${!hasBitmap ? 'released' : ''} ${flashKind ? `flash-${flashKind}` : ''}`} data-page={pageMeta.pageNumber} ref={rootRef} {...pageHandlers}>
+    <div className={`pdf-page ${isUpdating ? 'updating' : ''} ${!hasBitmap ? 'released' : ''} ${flashKind ? `flash-${flashKind}` : ''}`} data-reader-layer="pdf-page" data-page={pageMeta.pageNumber} ref={rootRef} {...pageHandlers}>
+      {renderError && <div className="pdf-render-error" role="alert" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+        <span>{renderError}</span><button type="button" onClick={() => setRetryRevision((current) => current + 1)}>重新渲染本页</button>
+      </div>}
       <div className="pdf-render-layer" style={{ width: pageMeta.baseWidth * displayZoom, height: pageMeta.baseHeight * displayZoom }}>
         <canvas ref={canvasRef} className="pdf-canvas-page ready" />
         <PdfTextLayer textItems={pageMeta.textItems} zoom={displayZoom} selectable={selectableText} />

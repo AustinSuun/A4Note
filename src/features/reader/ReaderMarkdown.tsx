@@ -1,10 +1,11 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { acquireLibraryNoteSession } from '../../platform/library/noteDocuments';
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { BookOpen, Check, FileClock, LoaderCircle, Pencil, Plus } from 'lucide-react';
 import type { Note, PaperDocument } from '../../core/types';
 import { zh } from '../../ui/zh';
 import { noteSaveStateText } from './readerHelpers';
 import type { MarkdownLiveEditorHandle } from './MarkdownLiveEditor';
-import type { NoteDraftPatch, NoteSaveInput, ReaderSaveState } from './types';
+import type { NoteDraftPatch, NoteSaveInput } from './types';
 
 const MarkdownLiveEditor = lazy(() =>
   import('./MarkdownLiveEditor').then((module) => ({ default: module.MarkdownLiveEditor })),
@@ -20,7 +21,7 @@ export function MarkdownReadView({ paper, onNavigateAnnotation }: { paper: Paper
       <div className="markdown-reader-header">
         <div className="panel-title">{zh.reader.noteTitle}</div>
       </div>
-      <div className="markdown-reader-content">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</div>
+      <div className="md-body markdown-reader-content">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</div>
     </div>
   );
 }
@@ -52,39 +53,16 @@ export function MarkdownNotePanel({
   onCreateNote: () => void | Promise<string | void>;
   onNavigateAnnotation: (annotationId: string) => void;
 }) {
-  const firstNote = paper.notes[0] ?? null;
-  const [selectedNoteId, setSelectedNoteId] = useState(firstNote?.id ?? '');
-  const selectedNote = paper.notes.find((note) => note.id === selectedNoteId) ?? null;
-  const [title, setTitle] = useState(firstNote?.title ?? zh.reader.noteDefaultTitle);
-  const [content, setContent] = useState(firstNote?.content ?? '');
+  const [session, setSession] = useState(() => acquireLibraryNoteSession(paper.paperId, paper.notes[0], onSave, zh.reader.noteDefaultTitle));
+  const { noteId: selectedNoteId, title, content, status: saveState, error: saveError } = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const [mode, setMode] = useState<'edit' | 'read'>('edit');
-  const [saveState, setSaveState] = useState<ReaderSaveState>('saved');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [actionError, setActionError] = useState('');
   const editorRef = useRef<MarkdownLiveEditorHandle | null>(null);
   const historyRef = useRef<HTMLDivElement | null>(null);
-  const selectedNoteIdRef = useRef(selectedNoteId);
-  const titleRef = useRef(title);
-  const contentRef = useRef(content);
-  const persistedRef = useRef({ noteId: firstNote?.id ?? '', title: firstNote?.title ?? zh.reader.noteDefaultTitle, content: firstNote?.content ?? '' });
-
-  useEffect(() => {
-    const stillExists = paper.notes.some((note) => note.id === selectedNoteIdRef.current);
-    if (stillExists || !paper.notes.length) return;
-    setSelectedNoteId(paper.notes[0].id);
-  }, [paper.paperId, paper.notes]);
-
-  useEffect(() => {
-    if (!selectedNote) return;
-    selectedNoteIdRef.current = selectedNote.id;
-    titleRef.current = selectedNote.title;
-    contentRef.current = selectedNote.content;
-    persistedRef.current = { noteId: selectedNote.id, title: selectedNote.title, content: selectedNote.content };
-    setTitle(selectedNote.title);
-    setContent(selectedNote.content);
-    setSaveState('saved');
-    editorRef.current?.setMarkdown(selectedNote.content);
-  }, [paper.paperId, selectedNote?.id]);
+  const switchingRef = useRef(false);
+  session.setWriter(onSave);
 
   useEffect(() => {
     const handlePointerDown = (event: globalThis.MouseEvent) => {
@@ -93,92 +71,56 @@ export function MarkdownNotePanel({
     window.addEventListener('mousedown', handlePointerDown);
     return () => window.removeEventListener('mousedown', handlePointerDown);
   }, []);
-
   useEffect(() => {
     if (!draftPatch?.append) return;
-    setContent((current) => {
-      const nextContent = `${current.trimEnd()}${draftPatch.append}`;
-      contentRef.current = nextContent;
-      editorRef.current?.setMarkdown(nextContent);
-      return nextContent;
-    });
-    setSaveState('dirty');
-    setMode('edit');
-    onDraftPatchConsumed();
-  }, [draftPatch, onDraftPatchConsumed]);
-
+    const snapshot = session.getSnapshot();
+    session.update(snapshot.title, `${snapshot.content.trimEnd()}${draftPatch.append}`);
+    setMode('edit'); onDraftPatchConsumed();
+  }, [draftPatch, onDraftPatchConsumed, session]);
   useEffect(() => {
-    const persisted = persistedRef.current;
-    if (content === persisted.content && title === persisted.title) {
-      setSaveState('saved');
-      return;
-    }
-    setSaveState('dirty');
-    const timer = window.setTimeout(() => {
-      void saveCurrent(title, content);
-    }, 900);
+    if (saveState !== 'dirty') return;
+    const timer = window.setTimeout(() => { void session.flush().catch(() => {}); }, 900);
     return () => window.clearTimeout(timer);
-  }, [content, title]);
-
-  const saveCurrent = async (nextTitle = title, nextContent = content) => {
-    const persisted = persistedRef.current;
-    if (nextContent === persisted.content && nextTitle === persisted.title) {
-      setSaveState('saved');
-      return persisted.noteId;
-    }
-    setSaveState('saving');
-    const noteIdAtSave = selectedNoteIdRef.current || undefined;
-    try {
-      const savedNoteId = await onSave({ noteId: noteIdAtSave, title: nextTitle, content: nextContent });
-      const resolvedNoteId = savedNoteId || noteIdAtSave || '';
-      if (resolvedNoteId && !selectedNoteIdRef.current) {
-        selectedNoteIdRef.current = resolvedNoteId;
-        setSelectedNoteId(resolvedNoteId);
-      }
-      persistedRef.current = { noteId: resolvedNoteId, title: nextTitle, content: nextContent };
-      const unchangedSinceSave = titleRef.current === nextTitle && contentRef.current === nextContent;
-      setSaveState(unchangedSinceSave ? 'saved' : 'dirty');
-      return resolvedNoteId;
-    } catch (error) {
-      console.error('Note save failed', error);
-      setSaveState('error');
-      return undefined;
-    }
-  };
-
+  }, [session, title, content, saveState]);
+  useEffect(() => () => {
+    // Panel/tab switches must not discard the 900ms debounce window. On failure
+    // the registered session and synchronous recovery draft remain available.
+    if (session.getSnapshot().status !== 'error') void session.flush().catch(() => {});
+  }, [session]);
+  const saveCurrent = () => session.flush().catch(() => {});
   const selectNote = async (note: Note) => {
-    await saveCurrent();
-    selectedNoteIdRef.current = note.id;
-    setSelectedNoteId(note.id);
-    setHistoryOpen(false);
-    setMode('read');
-  };
-
-  const createNote = async () => {
-    await saveCurrent();
-    setCreating(true);
+    if (switchingRef.current || note.id === selectedNoteId) return;
+    switchingRef.current = true; setCreating(true); setActionError('');
     try {
+      await session.flush();
+      setSession(acquireLibraryNoteSession(paper.paperId, note, onSave, zh.reader.noteDefaultTitle));
+      setHistoryOpen(false); setMode('read');
+    } catch { /* Keep the current draft and show its error; never switch on failure. */ }
+    finally { switchingRef.current = false; setCreating(false); }
+  };
+  const createNote = async () => {
+    if (switchingRef.current) return;
+    switchingRef.current = true; setCreating(true); setActionError('');
+    try {
+      await session.flush();
       const noteId = await onCreateNote();
-      if (noteId) {
-        selectedNoteIdRef.current = noteId;
-        setSelectedNoteId(noteId);
-      }
-      setHistoryOpen(false);
-      setMode('edit');
+      if (!noteId) throw new Error('新建笔记未返回ID');
+      const number = paper.notes.length + 1;
+      const nextTitle = number === 1 ? zh.reader.noteDefaultTitle : zh.reader.noteNumberedTitle(number);
+      const next = paper.notes.find((note) => note.id === noteId) ?? { id: noteId, title: nextTitle, content: `# ${nextTitle}\n\n` };
+      setSession(acquireLibraryNoteSession(paper.paperId, next, onSave, zh.reader.noteDefaultTitle));
+      setHistoryOpen(false); setMode('edit');
       requestAnimationFrame(() => editorRef.current?.focus());
-    } finally {
-      setCreating(false);
-    }
+    } catch (error) { setActionError(String(error)); }
+    finally { switchingRef.current = false; setCreating(false); }
   };
-
-  const updateTitle = (nextTitle: string) => {
-    titleRef.current = nextTitle;
-    setTitle(nextTitle);
-  };
-
-  const updateContent = (nextContent: string) => {
-    contentRef.current = nextContent;
-    setContent(nextContent);
+  const updateTitle = (next: string) => session.update(next, session.getSnapshot().content);
+  const updateContent = (next: string) => session.update(session.getSnapshot().title, next);
+  const exportDraft = () => {
+    const snapshot = session.getSnapshot();
+    const url = URL.createObjectURL(new Blob([snapshot.content], { type: 'text/markdown;charset=utf-8' }));
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = '阅读笔记-未保存草稿.md'; anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
@@ -221,7 +163,7 @@ export function MarkdownNotePanel({
                 </div>
                 <div className="note-history-list">
                   {paper.notes.length ? paper.notes.map((note) => (
-                    <button key={note.id} type="button" className={note.id === selectedNoteId ? 'active' : ''} onClick={() => void selectNote(note)}>
+                    <button key={note.id} type="button" className={note.id === selectedNoteId ? 'active' : ''} onClick={() => void selectNote(note)} disabled={creating}>
                       <span className="note-history-title">{note.title || zh.reader.noteDefaultTitle}</span>
                       <span className="note-history-excerpt">{noteExcerpt(note.content)}</span>
                       <time>{formatNoteUpdatedAt(note.updatedAt)}</time>
@@ -251,12 +193,20 @@ export function MarkdownNotePanel({
           {noteSaveStateText(saveState)}
         </span>
       </div>
+      {(saveError || actionError) && <div className="note-save-error" role="alert">
+        <span>{saveError || actionError}</span>
+        <button type="button" onClick={() => void saveCurrent()}>重试保存</button>
+        <button type="button" onClick={exportDraft}>导出草稿</button>
+        <button type="button" onClick={() => {
+          if (window.confirm('放弃未保存修改并回到上次保存的内容？建议先导出草稿。')) void session.discard().then(() => setActionError('')).catch((error) => setActionError(String(error)));
+        }}>放弃草稿</button>
+      </div>}
       {mode === 'edit' ? (
         <Suspense fallback={<div className="note-editor-loading"><LoaderCircle className="spin" aria-hidden="true" /></div>}>
-          <MarkdownLiveEditor ref={editorRef} markdown={content} onChange={updateContent} onBlur={() => void saveCurrent()} placeholder={zh.reader.notePlaceholder} />
+          <MarkdownLiveEditor key={selectedNoteId} ref={editorRef} markdown={content} onChange={updateContent} onBlur={() => void saveCurrent()} placeholder={zh.reader.notePlaceholder} />
         </Suspense>
       ) : (
-        <article className="markdown-preview note-preview-only">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</article>
+        <article className="md-body markdown-preview note-preview-only">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</article>
       )}
     </div>
   );

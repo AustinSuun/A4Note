@@ -1,0 +1,30 @@
+services:
+  api:
+    build: .
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://aster:aster_dev_password@db:5432/aster
+      TOKEN_TTL_SECONDS: 2592000
+      CORS_ORIGIN: '*'
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: aster
+      POSTGRES_USER: aster
+      POSTGRES_PASSWORD: aster_dev_password
+    volumes:
+      - aster-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aster -d aster"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  aster-db:

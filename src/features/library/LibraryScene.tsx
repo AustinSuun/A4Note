@@ -1,8 +1,8 @@
-import { type KeyboardEvent, useEffect, useMemo, useState } from 'react';
-import type { PaperDocument } from '../../core/types';
+import { type DragEvent as ReactDragEvent, type KeyboardEvent, useEffect, useMemo, useState } from 'react';
+import type { LibraryFolder, PaperDocument } from '../../core/types';
 import { WorkspacePanelHost } from '../../workbench';
 import { zh } from '../../ui/zh';
-import { LibraryDetailPanel } from './LibraryDetailPanel';
+import { LibraryOverview } from './LibraryOverview';
 import type { LibrarySceneProps, LibrarySortDirection, LibrarySortKey } from './types';
 
 type LibraryIconName = 'library' | 'folder' | 'translate' | 'search' | 'close' | 'import' | 'book' | 'details' | 'relations' | 'more' | 'export' | 'columns' | 'tag' | 'edit' | 'trash';
@@ -14,23 +14,26 @@ const libraryColumnLabels: Record<LibraryColumnId, string> = { authors: '作者'
 
 export function LibraryScene({
   papers,
+  folders,
   selectedPaper,
   tags,
   activeTag,
+  activeFolderId,
   query,
   sort,
-  status,
-  lastImportedPaperTitle,
   detailOpen,
   aiThreadContexts,
   bulkSelectedPaperIds,
   searchInputRef,
   sidePanels,
+  panelViews = [],
   onQueryChange,
   onSelectPaper,
   onBulkSelectionChange,
+  onMovePapersToFolder,
   onOpenPaper,
   onSelectTag,
+  onSelectFolder,
   onSortChange,
   onDetailOpenChange,
   onOpenImport,
@@ -51,29 +54,38 @@ export function LibraryScene({
   onCopyBibtex,
   onCopyBulkBibtex,
 }: LibrarySceneProps) {
-  const [selectedFolder, setSelectedFolder] = useState('all');
+  const [view, setView] = useState<'list' | 'overview'>('list');
   const [visibleColumns, setVisibleColumns] = useState<Record<LibraryColumnId, boolean>>(loadLibraryColumns);
-  const folders = useMemo(() => {
-    const counts = new Map<string, number>();
-    papers.forEach((paper) => {
-      const folderId = paper.folderId || 'library';
-      counts.set(folderId, (counts.get(folderId) ?? 0) + 1);
-    });
-    return Array.from(counts.entries())
-      .map(([id, count]) => ({ id, count, label: id === 'library' ? '默认资料库' : id }))
-      .sort((left, right) => left.label.localeCompare(right.label, 'zh-CN'));
-  }, [papers]);
-  const visiblePapers = useMemo(
-    () => (selectedFolder === 'all' ? papers : papers.filter((paper) => (paper.folderId || 'library') === selectedFolder)),
-    [papers, selectedFolder],
-  );
+
+  // The host supplies the single filtered/sorted list used by the view and exports.
+  const visiblePapers = papers;
   const selectedInView = selectedPaper && visiblePapers.some((paper) => paper.paperId === selectedPaper.paperId) ? selectedPaper : null;
   const selectedIndex = selectedInView ? visiblePapers.findIndex((paper) => paper.paperId === selectedInView.paperId) : -1;
   const selectedSet = useMemo(() => new Set(bulkSelectedPaperIds), [bulkSelectedPaperIds]);
   const allVisibleSelected = visiblePapers.length > 0 && visiblePapers.every((paper) => selectedSet.has(paper.paperId));
-  const filtersActive = Boolean(query || activeTag !== 'all' || selectedFolder !== 'all');
-  const detailVisible = Boolean(detailOpen && selectedInView);
-  const activeFolderLabel = selectedFolder === 'all' ? '全部文献' : folders.find((folder) => folder.id === selectedFolder)?.label ?? selectedFolder;
+  const filtersActive = Boolean(query || activeTag !== 'all' || activeFolderId !== 'all');
+  // Details are a plugin-owned workbench panel. Do not let stale UI state open
+  // a host-only shell when the plugin has been disabled or its view is absent.
+  const detailPanel = sidePanels.find((panel) => panel.id === 'library.details')?.panel;
+  const detailView = panelViews.find((view) => view.id === 'library.details' && view.sceneId === 'library');
+  const detailVisible = Boolean(detailOpen && selectedInView && detailPanel && detailView);
+
+  const activeFolderLabel = useMemo(() => {
+    switch (activeFolderId) {
+      case 'all':
+        return '全部文献';
+      case 'recently-viewed':
+        return '最近查看';
+      case 'recently-imported':
+        return '最近导入';
+      case 'unread':
+        return '未读文献';
+      case 'favorites':
+        return '收藏文献';
+      default:
+        return folders.find((folder) => folder.folderId === activeFolderId)?.name ?? activeFolderId;
+    }
+  }, [activeFolderId, folders]);
 
   useEffect(() => {
     localStorage.setItem(LIBRARY_COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumns));
@@ -120,74 +132,17 @@ export function LibraryScene({
   };
 
   const clearFilters = () => {
-    setSelectedFolder('all');
+    onSelectFolder('all');
     onSelectTag('all');
     onQueryChange('');
   };
 
   return (
-    <section className="scene active library-scene">
-      <header className="library-topbar">
-        <div className="library-heading">
-          <h1>{zh.library.title}</h1>
-          <span>{papers.length} 篇</span>
-        </div>
-        <div className="library-activity" aria-live="polite" title={status}>
-          <span className="library-status-dot" aria-hidden="true" />
-          {lastImportedPaperTitle ? <span>{zh.library.recentImport(lastImportedPaperTitle)}</span> : <span className="library-visually-hidden">{status}</span>}
-        </div>
-      </header>
-
+    <section className={`scene active library-scene ${view === 'overview' ? 'overview-mode' : ''}`}>
       <div className={`library-layout ${detailVisible ? 'detail-open' : ''}`.trim()}>
-        <aside className="library-index-pane" aria-label="文献索引">
-          <section className="library-index-section">
-            <div className="library-index-title">
-              <span>文件夹</span>
-            </div>
-            <nav className="library-index-nav">
-              <button type="button" className={selectedFolder === 'all' ? 'active' : ''} onClick={() => setSelectedFolder('all')}>
-                <LibraryIcon name="library" />
-                <span>全部文献</span>
-                <output>{papers.length}</output>
-              </button>
-              {folders.map((folder) => (
-                <button
-                  key={folder.id}
-                  type="button"
-                  className={selectedFolder === folder.id ? 'active' : ''}
-                  onClick={() => setSelectedFolder(folder.id)}
-                  title={folder.label}
-                >
-                  <LibraryIcon name="folder" />
-                  <span>{folder.label}</span>
-                  <output>{folder.count}</output>
-                </button>
-              ))}
-            </nav>
-          </section>
-
-          <section className="library-index-section library-tag-index">
-            <div className="library-index-title">
-              <span>{zh.library.tags}</span>
-              <output>{tags.length}</output>
-            </div>
-            <nav className="library-index-nav">
-              <button type="button" className={activeTag === 'all' ? 'active' : ''} onClick={() => onSelectTag('all')}>
-                <LibraryIcon name="tag" />
-                <span>全部标签</span>
-              </button>
-              {tags.map((tag) => (
-                <button key={tag} type="button" className={activeTag === tag ? 'active' : ''} onClick={() => onSelectTag(tag)} title={tag}>
-                  <span className="library-tag-mark">#</span>
-                  <span>{tag}</span>
-                </button>
-              ))}
-            </nav>
-          </section>
-        </aside>
-
         <section className="library-main">
           <div className="library-commandbar">
+            <div className="library-view-switch" role="group" aria-label="文献显示方式"><button type="button" className={view === 'list' ? 'active' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')}>列表</button><button type="button" className={view === 'overview' ? 'active' : ''} aria-pressed={view === 'overview'} onClick={() => setView('overview')}>综览</button></div>
             <label className="library-search-field">
               <LibraryIcon name="search" />
               <input ref={searchInputRef} value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={zh.library.search} />
@@ -208,7 +163,7 @@ export function LibraryScene({
             >
               <LibraryIcon name="details" />
             </button>
-            <details className="library-menu library-columns-menu">
+            <details className="library-menu library-columns-menu" hidden={view === 'overview'}>
               <summary title="设置显示列" aria-label="设置显示列">
                 <LibraryIcon name="columns" />
               </summary>
@@ -255,6 +210,7 @@ export function LibraryScene({
             <div className="bulk-actions library-bulkbar">
               <span>{zh.library.bulkSelected(bulkSelectedPaperIds.length)}</span>
               <div>
+                <FolderMoveMenu folders={folders} onMove={(folderId) => onMovePapersToFolder(bulkSelectedPaperIds, folderId)} />
                 <button type="button" onClick={onOpenBulkTagsEdit}><LibraryIcon name="tag" />{zh.library.bulkEditTags}</button>
                 <button type="button" onClick={onCopyBulkBibtex}><LibraryIcon name="export" />{zh.library.copyBibtex}</button>
                 <button type="button" className="danger" onClick={onBulkDelete}><LibraryIcon name="trash" />{zh.library.bulkDelete}</button>
@@ -270,6 +226,7 @@ export function LibraryScene({
                 <details className="library-menu">
                   <summary title="更多操作" aria-label="更多操作"><LibraryIcon name="more" /></summary>
                   <div className="library-menu-popover align-right">
+                    <FolderMoveMenu folders={folders} onMove={(folderId) => onMovePapersToFolder([selectedInView.paperId], folderId)} />
                     <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenMetadataEdit)}><LibraryIcon name="edit" />{zh.library.edit}</button>
                     <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenTagsEdit)}><LibraryIcon name="tag" />{zh.library.tagsEdit}</button>
                     <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenTranslationImport)}><LibraryIcon name="translate" />{zh.library.importTranslationPdf}</button>
@@ -283,7 +240,9 @@ export function LibraryScene({
             <div className="library-selection-bar empty"><span>未选择文献</span></div>
           )}
 
-          {visiblePapers.length ? (
+          {view === 'overview' ? (
+            <LibraryOverview papers={visiblePapers} selectedIds={bulkSelectedPaperIds} selectedId={selectedInView?.paperId} onSelect={onSelectPaper} onSelection={onBulkSelectionChange} onOpen={onOpenPaper} />
+          ) : visiblePapers.length ? (
             <div className="paper-table-wrap" tabIndex={0} onKeyDown={handleTableKeyDown}>
               <table className="paper-table library-paper-index">
                 <thead>
@@ -302,6 +261,8 @@ export function LibraryScene({
                     <tr
                       key={paper.paperId}
                       className={`${paper.paperId === selectedInView?.paperId ? 'selected' : ''} ${selectedSet.has(paper.paperId) ? 'bulk-selected' : ''}`.trim()}
+                      draggable
+                      onDragStart={(event) => writePaperDragData(event, selectedSet.has(paper.paperId) ? bulkSelectedPaperIds : [paper.paperId])}
                       onClick={() => onSelectPaper(paper.paperId)}
                       onDoubleClick={() => onOpenPaper(paper.paperId)}
                     >
@@ -326,7 +287,8 @@ export function LibraryScene({
                           <summary title={`操作：${paper.title}`} aria-label={`操作：${paper.title}`}>
                             <LibraryIcon name="more" />
                           </summary>
-                          <div className="library-menu-popover align-right">
+                            <div className="library-menu-popover align-right">
+                            <FolderMoveMenu folders={folders} onMove={(folderId) => onMovePapersToFolder([paper.paperId], folderId)} />
                             <button type="button" onClick={(event) => runMenuAction(event.currentTarget, () => onOpenPaper(paper.paperId))}><LibraryIcon name="book" />{zh.library.openReader}</button>
                             <button type="button" onClick={(event) => runMenuAction(event.currentTarget, () => onDetailOpenChange(true))}><LibraryIcon name="details" />{zh.library.details}</button>
                             <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenRelations)}><LibraryIcon name="relations" />{zh.library.viewRelations}</button>
@@ -356,22 +318,17 @@ export function LibraryScene({
             closeTitle={zh.reader.closePanel}
             onActivePanelChange={() => undefined}
             onClose={() => onDetailOpenChange(false)}
-            renderPanel={() => (
-              <LibraryDetailPanel
-                paper={selectedInView}
-                aiThreadContexts={aiThreadContexts}
-                onOpenReader={onOpenReader}
-                onOpenRelations={onOpenRelations}
-                onOpenTranslationImport={onOpenTranslationImport}
-                onRevealSourcePdf={onRevealSourcePdf}
-                onRevealTranslatedPdf={onRevealTranslatedPdf}
-                onOpenSourcePdfExternal={onOpenSourcePdfExternal}
-                onOpenTranslatedPdfExternal={onOpenTranslatedPdfExternal}
-                onOpenMetadataEdit={onOpenMetadataEdit}
-                onOpenTagsEdit={onOpenTagsEdit}
-                onCopyBibtex={onCopyBibtex}
-              />
-            )}
+            renderPanel={() => {
+              // detailVisible guarantees both contributions exist. Keep the
+              // guard robust to a registry update between renders without
+              // manufacturing fallback metadata.
+              if (!detailPanel || !detailView) return null;
+              return detailView.render({
+                panel: detailPanel,
+                sceneId: 'library',
+                selectedPaper: selectedInView,
+              });
+            }}
           />
         )}
       </div>
@@ -399,6 +356,20 @@ function SortableHeader({
         <SortIndicator active={sort.key === sortKey} direction={sort.direction} />
       </button>
     </th>
+  );
+}
+
+function FolderMoveMenu({ folders, onMove }: { folders: LibraryFolder[]; onMove: (folderId: string | null) => void }) {
+  return (
+    <details className="library-menu library-folder-move-menu">
+      <summary title="移动到文件夹" aria-label="移动到文件夹"><LibraryIcon name="folder" /></summary>
+      <div className="library-menu-popover align-right">
+        <button type="button" onClick={(event) => runMenuAction(event.currentTarget, () => onMove('library'))}><LibraryIcon name="folder" />默认资料库</button>
+        {folders.filter((folder) => folder.folderId !== 'library').map((folder) => (
+          <button key={folder.folderId} type="button" onClick={(event) => runMenuAction(event.currentTarget, () => onMove(folder.folderId))}><LibraryIcon name="folder" />{folder.name}</button>
+        ))}
+      </div>
+    </details>
   );
 }
 
@@ -442,6 +413,14 @@ function paperMetadataIncomplete(paper: PaperDocument) {
 function runMenuAction(button: HTMLElement, action: () => void) {
   button.closest('details')?.removeAttribute('open');
   action();
+}
+
+function writePaperDragData(event: ReactDragEvent<HTMLElement>, paperIds: string[]) {
+  const ids = Array.from(new Set(paperIds));
+  if (!ids.length) return;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('application/x-a4note-paper-ids', JSON.stringify(ids));
+  event.dataTransfer.setData('text/plain', ids.join(','));
 }
 
 function loadLibraryColumns(): Record<LibraryColumnId, boolean> {

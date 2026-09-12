@@ -1,8 +1,9 @@
 import type { RefObject } from 'react';
-import type { AiThreadContext, ImportDraft, PaperDocument, WorkbenchPanelId } from '../../core/types';
+import type { AiThreadContext, ImportDraft, LibraryFolder, PaperDocument, WorkbenchPanelId } from '../../core/types';
 import type { WorkspacePanelDefinition } from '../../workbench';
+import type { WorkbenchPanelViewContribution } from '../../workbench';
 
-export type LibrarySortKey = 'title' | 'authors' | 'year' | 'venue';
+export type LibrarySortKey = 'title' | 'authors' | 'year' | 'venue' | 'createdAt' | 'lastViewedAt';
 export type LibrarySortDirection = 'asc' | 'desc';
 export type LibrarySort = { key: LibrarySortKey; direction: LibrarySortDirection };
 export type ImportState = 'idle' | 'selecting' | 'extracting' | 'ready' | 'importing' | 'error';
@@ -14,23 +15,26 @@ export type ImportDialogSettings = {
 
 export type LibrarySceneProps = {
   papers: PaperDocument[];
+  folders: LibraryFolder[];
   selectedPaper: PaperDocument | null;
   tags: string[];
   activeTag: string;
+  activeFolderId: string;
   query: string;
   sort: LibrarySort;
-  status: string;
-  lastImportedPaperTitle: string;
   detailOpen: boolean;
   aiThreadContexts: AiThreadContext[];
   bulkSelectedPaperIds: string[];
   searchInputRef: RefObject<HTMLInputElement | null>;
   sidePanels: WorkspacePanelDefinition<WorkbenchPanelId>[];
+  panelViews?: WorkbenchPanelViewContribution[];
   onQueryChange: (query: string) => void;
   onSelectPaper: (paperId: string) => void;
   onBulkSelectionChange: (paperIds: string[]) => void;
+  onMovePapersToFolder: (paperIds: string[], folderId: string | null) => void | Promise<void>;
   onOpenPaper: (paperId: string) => void;
   onSelectTag: (tag: string) => void;
+  onSelectFolder: (folderId: string) => void;
   onSortChange: (sort: LibrarySort) => void;
   onDetailOpenChange: (open: boolean) => void;
   onOpenImport: () => void;
@@ -65,6 +69,26 @@ export type LibraryDetailPanelProps = {
   onOpenMetadataEdit: () => void;
   onOpenTagsEdit: () => void;
   onCopyBibtex: () => void;
+  stateBusy?: boolean;
+  onToggleRead?: () => void;
+  onToggleFavorite?: () => void;
+};
+
+export type LibraryFolderActionProps = {
+  folders: LibraryFolder[];
+  papers: PaperDocument[];
+  activeFolderId: string;
+  activeTag: string;
+  tags: string[];
+  selectedPaperId?: string;
+  onSelectFolder: (folderId: string) => void;
+  onSelectTag: (tag: string) => void;
+  onSelectPaper: (paperId: string) => void;
+  onOpenPaper?: (paperId: string) => void;
+  onMovePapersToFolder: (paperIds: string[], folderId: string | null) => void | Promise<void>;
+  onCreateFolder: (name: string, parentId: string | null) => void | Promise<void>;
+  onRenameFolder: (folderId: string, name: string) => void | Promise<void>;
+  onDeleteFolder: (folderId: string) => void | Promise<void>;
 };
 
 export type ImportDialogProps = {

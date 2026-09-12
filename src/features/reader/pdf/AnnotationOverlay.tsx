@@ -92,7 +92,7 @@ export function AnnotationOverlay({
       }
     : null;
   return (
-    <div className="annotation-overlay" aria-label="PDF annotation layer">
+    <div className="annotation-overlay" data-reader-layer="annotations" aria-label="PDF annotation layer">
       {annotations.map((annotation) => (
         <AnnotationMark
           key={annotation.id}

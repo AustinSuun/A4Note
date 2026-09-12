@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "A4 Note 论文采集（开发版）",
+  "version": "0.5.0",
+  "description": "采集论文信息及PDF到A4 Note文献库，保留元数据来源并支持本地PDF补充。",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads",
+    "nativeMessaging"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "采集论文到 A4 Note"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  },
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7LBKnxFEz4rRsOmdL4B8o2eV7t069L2XgO5mNgb1OSC9ECO8m2H1n7CbHGVlGn0nFAHIYFHDk2uTA68SLNygC8mAbr6JbLcOqkkOb1CaW8It+LIZ4U6da9m03lR3vxaVWyE60sBtFb8bxEcrNjmGs7a13pYR2zZMIn3suzZBNh7Yv4AWNYirTlrGKghOAPwmlN9ybwCQGWtuSKLzosl9tVURBG7mp/G+V2T+Itd+IKbs9v90l6EepXuqoe1lz7IG6yNmKxYXtI6MPaLSOaq3ZaBt/wt/TOBXN8yyTkFnZQATK694hiX4nch6aX0S2ah/aZrXW73M1hZorIU4Fe+m1QIDAQAB"
+}

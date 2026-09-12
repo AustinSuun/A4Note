@@ -303,55 +303,6 @@
   background: #f8faf7;
 }
 
-.library-topbar {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 14px;
-  min-height: 56px;
-  padding: 8px 14px 8px 16px;
-  background: rgba(252,253,251,.98);
-}
-
-.library-heading {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-}
-.library-heading h1 {
-  margin: 0;
-  font-size: 19px;
-  line-height: 1.2;
-  letter-spacing: 0;
-}
-.library-heading > span {
-  color: var(--muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-.library-activity {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 7px;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 12px;
-}
-.library-activity > span:last-child:not(.library-visually-hidden) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.library-status-dot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
-  background: #5fba84;
-  box-shadow: 0 0 0 3px rgba(95,186,132,.12);
-}
 .library-import-button {
   display: inline-flex;
   align-items: center;
@@ -365,7 +316,7 @@
 .library-layout,
 .library-layout.detail-open {
   display: grid;
-  grid-template-columns: 206px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -373,7 +324,7 @@
   background: #f8faf7;
 }
 .library-layout.detail-open {
-  grid-template-columns: 206px minmax(0, 1fr) minmax(310px, 350px);
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 350px);
 }
 
 .library-index-pane {
@@ -897,8 +848,7 @@
 
 @media (max-width: 1180px) {
   .library-layout,
-  .library-layout.detail-open { grid-template-columns: 184px minmax(0, 1fr); }
-  .library-layout.detail-open .library-index-pane { display: none; }
+  .library-layout.detail-open { grid-template-columns: minmax(0, 1fr); }
   .library-layout.detail-open { grid-template-columns: minmax(0, 1fr) 310px; }
   .library-paper-index .title-col { width: 44%; }
 }
@@ -909,9 +859,122 @@
   .library-index-pane,
   .library-layout.detail-open .library-index-pane,
   .library-detail-panel { display: none; }
-  .library-activity { display: none; }
-  .library-topbar { grid-template-columns: minmax(0, 1fr); }
   .library-commandbar { grid-template-columns: minmax(180px, 1fr) 32px 32px 32px auto; }
   .library-result-count { display: none; }
   .library-paper-index .title-col { width: 52%; }
 }
+
+
+/* Detail panel status buttons */
+.detail-status-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.status-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--muted);
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.status-button:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.status-button.active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.status-button.favorite.active {
+  color: #d4a928;
+  border-color: #d4a928;
+  background: rgba(212, 169, 40, 0.08);
+}
+
+.status-button.favorite.active:hover {
+  background: rgba(212, 169, 40, 0.15);
+}
+
+/* Right-click context menu for folder items */
+.library-sidebar-context-menu {
+  display: grid;
+  min-width: 165px;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(27, 42, 34, 0.14);
+}
+
+.library-sidebar-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 29px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  font: inherit;
+  font-size: var(--ui-caption-font-size);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.library-sidebar-context-menu button:hover {
+  background: var(--surface-soft);
+  color: var(--accent-strong);
+}
+
+.library-sidebar-context-menu button.danger {
+  color: #9a4b42;
+}
+
+.library-sidebar-context-menu button.danger:hover {
+  background: #fff0ef;
+  color: #8f4137;
+}
+
+.library-sidebar-context-menu svg {
+  flex-shrink: 0;
+  stroke-width: 2;
+}
+
+/* Library controls use UI sizing, not the document/root font or file-tree font. */
+.library-scene .library-commandbar { display: flex; flex-wrap: wrap; gap: 7px; }
+.library-scene .library-search-field { flex: 1 1 200px; }
+.library-scene .library-import-button {
+  flex: 0 0 auto; width: auto; min-height: 32px; height: 32px;
+  font-size: var(--ui-control-font-size,13px); line-height: 20px; font-weight: 600;
+  white-space: nowrap;
+}
+.library-scene-sidebar .library-sidebar-folder-tree .file-tree-row,
+.library-scene-sidebar .library-sidebar-folder-tree .file-tree-name {
+  font-size: var(--ui-body-small-font-size,12px); line-height: 20px; font-weight: 500;
+}
+.library-scene-sidebar .library-sidebar-folder-tree .file-tree-row.active { font-weight: 650; }
+.library-scene-sidebar .library-sidebar-folder-tree .file-tree-row { min-height: 30px; }
+
+/* Same measured rainbow overlay and caret rhythm as the Markdown file tree. */
+.library-sidebar-folder-tree > .file-tree-tree-content { min-width: 0; }
+.library-folder-tree-actions { display: flex; align-items: center; gap: 2px; }
+.library-scene-sidebar .library-folder-draft-spacer { flex-basis: 22px; }
+.library-sidebar-folder-tree .file-tree-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }

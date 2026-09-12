@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A4 Note external agent task board connector" />
+    <title>Agent Board | A4 Note</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">A4 NOTE / TASK BOARD</p>
+          <h1>Agent Board</h1>
+          <p class="lede">连接已授权的 T3 environment，查看线程并生成待确认的任务投递预览。</p>
+        </div>
+        <div class="protocol-chip" aria-label="当前协议">T3 orchestration · read-only</div>
+      </header>
+
+      <section class="workspace-grid" aria-label="连接和任务工作区">
+        <section class="panel connection-panel" aria-labelledby="connection-title">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">01 / CONNECTION</p>
+              <h2 id="connection-title">Environment 连接</h2>
+            </div>
+            <span id="connection-dot" class="status-dot idle" aria-hidden="true"></span>
+          </div>
+          <form id="connection-form" novalidate>
+            <label for="endpoint">HTTP endpoint</label>
+            <input id="endpoint" name="endpoint" type="text" placeholder="https://environment.example" autocomplete="url" />
+            <p class="field-note">只接受用户明确提供的 environment 地址；凭据仅驻留当前页面内存。</p>
+
+            <label for="auth-mode">认证方式</label>
+            <select id="auth-mode" name="auth-mode">
+              <option value="none">无认证</option>
+              <option value="bearer">Bearer</option>
+              <option value="dpop">DPoP</option>
+              <option value="custom">Custom headers</option>
+              <option value="pairing">T3 配对链接</option>
+            </select>
+
+            <div id="bearer-fields" class="auth-fields" hidden>
+              <label for="bearer-token">Bearer token</label>
+              <input id="bearer-token" type="password" autocomplete="off" spellcheck="false" />
+            </div>
+            <div id="dpop-fields" class="auth-fields" hidden>
+              <label for="access-token">Access token</label>
+              <input id="access-token" type="password" autocomplete="off" spellcheck="false" />
+              <label for="dpop-proof">DPoP proof</label>
+              <input id="dpop-proof" type="password" autocomplete="off" spellcheck="false" />
+            </div>
+            <div id="custom-fields" class="auth-fields" hidden>
+              <label for="custom-headers">Headers JSON</label>
+              <textarea id="custom-headers" rows="3" placeholder='{"X-Environment-Key":"..."}' spellcheck="false"></textarea>
+              <p class="field-note">Header 只用于本次请求，不会写入文件或浏览器存储。</p>
+            </div>
+            <div id="pairing-fields" class="auth-fields" hidden>
+              <label for="pairing-url">T3 配对链接或配对码</label>
+              <input id="pairing-url" type="text" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1:3773/pair#token=...、/pair#token=... 或直接配对码" />
+            <p class="field-note">可粘贴完整配对 URL、/pair#token=... 路径，或 T3 “Show code” 显示的直接配对码。直接配对码会使用上面的 HTTP endpoint。控制台会通过本机代理避开跨源限制，令牌只在本次页面内存中交换，不会保存或显示。</p>
+            </div>
+
+            <div class="button-row">
+              <button class="primary-button" type="submit">测试连接</button>
+              <button id="clear-credentials" class="quiet-button" type="button">清除凭据</button>
+            </div>
+          </form>
+          <div id="connection-status" class="status-box" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="panel snapshot-panel" aria-labelledby="snapshot-title">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">02 / SNAPSHOT</p>
+              <h2 id="snapshot-title">线程快照</h2>
+            </div>
+            <button id="refresh-snapshot" class="icon-button" type="button" disabled title="刷新 snapshot" aria-label="刷新 snapshot">↻</button>
+          </div>
+          <div id="snapshot-empty" class="empty-state">
+            <span class="empty-mark">—</span>
+            <strong>等待已认证连接</strong>
+            <span>连接成功后，这里只显示项目/线程的稳定 ID、摘要和状态。</span>
+          </div>
+          <div id="snapshot-content" hidden>
+            <div class="snapshot-meta">
+              <span>sequence <code id="snapshot-sequence">—</code></span>
+              <span id="snapshot-updated">—</span>
+            </div>
+            <label for="project-select">项目</label>
+            <select id="project-select"></select>
+            <label for="thread-select">线程</label>
+            <select id="thread-select"></select>
+            <div id="thread-detail" class="thread-detail"></div>
+          </div>
+        </section>
+
+        <section class="panel preview-panel" aria-labelledby="preview-title">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">03 / DRY-RUN</p>
+              <h2 id="preview-title">投递预览</h2>
+            </div>
+            <span class="confirmation-chip">需要用户确认</span>
+          </div>
+          <div class="preview-form">
+            <label for="task-id">任务 ID</label>
+            <input id="task-id" value="TASK-BOARD-1" />
+            <label for="task-text">完整任务文本</label>
+            <textarea id="task-text" rows="7" placeholder="填写要交给目标线程的完整任务文本"></textarea>
+            <button id="create-preview" class="primary-button" type="button" disabled>生成 dry-run 预览</button>
+          </div>
+          <div id="preview-output" class="preview-output empty-output">
+            <span>选择项目和线程后，预览会显示在这里。</span>
+          </div>
+        </section>
+
+        <section class="panel fallback-panel" aria-labelledby="fallback-title">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">04 / FALLBACK</p>
+              <h2 id="fallback-title">任务包 fallback</h2>
+            </div>
+          </div>
+          <p class="fallback-copy">没有 endpoint 时仍可生成脱敏任务包，复制到目标 T3 会话前请人工核对项目、线程、权限和文本。</p>
+          <div class="button-row">
+            <button id="copy-fallback" class="secondary-button" type="button">复制任务包</button>
+            <button id="show-fallback" class="quiet-button" type="button">查看文本</button>
+          </div>
+          <pre id="fallback-output" class="fallback-output" hidden></pre>
+        </section>
+      </section>
+
+      <footer class="footer-note">
+        <span>本版本只读 snapshot，dry-run 不会调用 <code>thread.turn.start</code>。</span>
+        <span>WebSocket subscribe 与真实 dispatch 留待后续任务。</span>
+      </footer>
+    </main>
+    <script type="module" src="./src/app.mjs"></script>
+  </body>
+</html>

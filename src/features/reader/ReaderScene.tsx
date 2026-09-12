@@ -24,6 +24,7 @@ export function ReaderScene({
   sidePanelTab,
   aiThreadContexts,
   sidePanels,
+  panelViews = [],
   onLayoutChange,
   onContentModeChange,
   onFileModeChange,
@@ -68,6 +69,34 @@ export function ReaderScene({
     ? ({ '--reader-side-width': `${sidePanelWidth}px` } as CSSProperties)
     : undefined;
 
+  const clampSidePanelWidth = (requestedWidth: number, availableWidth = document.querySelector<HTMLElement>('.workbench-surface')?.clientWidth ?? window.innerWidth) => {
+    // Keep enough room for the document pane and its toolbar when the drawer
+    // is resized, especially after the workbench sidebar is collapsed.
+    const minimumMainWidth = 520;
+    const maximumForLayout = availableWidth - minimumMainWidth - 12;
+    const maximumWidth = Math.min(640, Math.max(300, maximumForLayout));
+    return Math.max(300, Math.min(maximumWidth, requestedWidth));
+  };
+
+  const handleSidePanelWidthChange = (requestedWidth: number) => {
+    setSidePanelWidth(clampSidePanelWidth(requestedWidth));
+  };
+
+  useEffect(() => {
+    const element = document.querySelector<HTMLElement>('.workbench-surface');
+    if (!element) return undefined;
+    const clampToContainer = () => {
+      setSidePanelWidth((current) => {
+        const next = clampSidePanelWidth(current, element.clientWidth);
+        return next === current ? current : next;
+      });
+    };
+    clampToContainer();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(clampToContainer);
+    observer?.observe(element);
+    return () => observer?.disconnect();
+  }, []);
+
   useEffect(() => {
     if (focusedEditableAnnotation && activeAnnotationTool !== 'cursor') {
       onSelectAnnotationTool('cursor');
@@ -106,7 +135,7 @@ export function ReaderScene({
       if (fileMode !== 'parallel') onFileModeChange(target.fileKind);
       return;
     }
-    if (target.kind === 'note') { onContentModeChange('markdown'); onSidePanelTabChange('notes'); return; }
+    if (target.kind === 'note') { onContentModeChange('pdf'); onSidePanelTabChange('notes'); return; }
     if (target.kind === 'annotation') { navigateAnnotationTarget(target.fileId, target.page ?? undefined, target.annotationId); return; }
     if (target.kind === 'ai_thread') onSidePanelTabChange('chat');
   };
@@ -158,11 +187,12 @@ export function ReaderScene({
       onUpdateAnnotationPosition={onUpdateAnnotationPosition}
       onDeleteAnnotation={onDeleteAnnotation}
     >
-      <section className="scene active reader-scene-shell">
+      <section className="scene active reader-scene-shell" data-reader-layer="root">
         <div className={sidePanelOpen ? 'reader-workspace-shell workspace-open' : 'reader-workspace-shell'} style={readerLayoutStyle}>
           <div className="reader-main-workspace">
             <ReaderToolbar
               paper={paper}
+              contentMode={contentMode}
               fileMode={fileMode}
               currentTranslatedFileId={currentTranslatedFileId}
               parallelSyncLocked={parallelSyncLocked}
@@ -178,6 +208,7 @@ export function ReaderScene({
               readerPageState={readerPageState}
               sidePanelOpen={sidePanelOpen}
               onFileModeChange={onFileModeChange}
+              onContentModeChange={onContentModeChange}
               onTranslatedFileIdChange={onTranslatedFileIdChange}
               onParallelSyncLockedChange={onParallelSyncLockedChange}
               onSelectAnnotationTool={onSelectAnnotationTool}
@@ -217,6 +248,9 @@ export function ReaderScene({
                 onReaderStateChange={onReaderStateChange}
                 onFocusAnnotation={onFocusAnnotation}
                 onCreateNote={onCreateNote}
+                noteDraftPatch={noteDraftPatch}
+                onNoteDraftPatchConsumed={onNoteDraftPatchConsumed}
+                onNoteSave={onNoteSave}
                 onActiveParallelFileKindChange={onActiveParallelFileKindChange}
                 onNavigateAnnotation={navigateAnnotationId}
               />
@@ -225,8 +259,9 @@ export function ReaderScene({
           <ReaderSideDrawer
             open={sidePanelOpen}
             width={sidePanelWidth}
-            onWidthChange={setSidePanelWidth}
+            onWidthChange={handleSidePanelWidthChange}
             sidePanels={sidePanels}
+            panelViews={panelViews}
             sidePanelTab={sidePanelTab}
             paper={paper}
             fileMode={activeFileKind}

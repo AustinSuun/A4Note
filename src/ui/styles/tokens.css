@@ -1,22 +1,107 @@
 ﻿:root {
   color-scheme: light;
-  --bg: #f6f7f4;
+  --bg: #f7f7f6;
   --surface: #ffffff;
-  --surface-soft: #eef3ef;
-  --ink: #202822;
-  --muted: #66736c;
-  --line: rgba(36, 45, 39, .08);
-  --accent: #4d836b;
-  --accent-strong: #2f654f;
-  --accent-soft: #e1eee6;
+  --surface-soft: #f1f2f1;
+  --ink: #252525;
+  --muted: #777b78;
+  --line: rgba(24, 28, 26, .075);
+  --accent: #527b68;
+  --accent-strong: #35614d;
+  --accent-soft: #e8eee9;
   --blue-soft: #eaf0f8;
   --yellow-soft: #fff4cc;
-  --shadow: 0 16px 34px rgba(26, 41, 33, .07);
-  --radius: 8px;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
-  font-size: 14px;
+  --shadow: 0 14px 34px rgba(24, 28, 26, .08);
+  --shadow-soft: 0 1px 2px rgba(24, 28, 26, .035);
+  --radius: 7px;
+  --font-sans: "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  --font-document: "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  --font-code: "FiraCode Nerd Font Mono", "Fira Code", ui-monospace, SFMono-Regular, Consolas, monospace;
+  /* UI chrome can be tuned independently from Markdown. */
+  --ui-font-size: 18px;
+  /* Fixed-size UI labels keep their existing hierarchy while following the interface font setting. */
+  --ui-scene-font-size: calc(var(--ui-font-size) * .694444);
+  --ui-nav-font-size: calc(var(--ui-font-size) * .833333);
+  --ui-heading-font-size: calc(var(--ui-font-size) * 1.055556);
+  --ui-topbar-font-size: calc(var(--ui-font-size) * 1.111111);
+  --ui-panel-title-size: calc(var(--ui-font-size) * .666667);
+  --ui-control-font-size: calc(var(--ui-font-size) * .722222);
+  --ui-body-small-font-size: calc(var(--ui-font-size) * .666667);
+  --ui-caption-font-size: calc(var(--ui-font-size) * .611111);
+  --ui-micro-font-size: calc(var(--ui-font-size) * .583333);
+  --ui-titlebar-name-size: calc(var(--ui-font-size) * 1.055556);
+  --ui-titlebar-accent-size: calc(var(--ui-font-size) * 1.111111);
+  /* Reading and Markdown body text. 20px is the standard document size. */
+  --document-font-size: 20px;
+  /* Property controls follow the document scale while staying denser than body copy. */
+  --property-font-size: calc(var(--document-font-size) * .8);
+  --property-heading-size: calc(var(--document-font-size) * .9);
+  --property-caption-size: calc(var(--document-font-size) * .62);
+  /* Collapse controls track Markdown text instead of using a fixed pixel size. */
+  --markdown-collapse-control-size: clamp(24px, calc(var(--document-font-size) * 1.4), 34px);
+  --document-line-height: 1.72;
+  font-family: var(--font-sans);
+  font-size: var(--ui-font-size);
 }
 
-:root[data-density="comfortable"] { font-size: 15px; }
+@font-face {
+  font-family: "Source Han Sans SC";
+  src: url("../assets/fonts/SourceHanSansSC-VF.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root[data-font="system"] {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+:root[data-document-font="system"] {
+  --font-document: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+:root[data-document-font="serif"] {
+  --font-document: "Songti SC", "Noto Serif CJK SC", "STSong", Georgia, serif;
+}
+
+:root[data-code-font="systemMono"] {
+  --font-code: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+:root[data-theme="paper"] {
+  --bg: #f4f1e9;
+  --surface: #fffdf8;
+  --surface-soft: #f0ede4;
+  --ink: #282b27;
+  --muted: #74766e;
+  --line: rgba(48, 47, 39, .12);
+  --accent: #697f5d;
+  --accent-strong: #4b6244;
+  --accent-soft: #e5ecdf;
+  --shadow: 0 14px 34px rgba(70, 61, 42, .1);
+}
+
+:root[data-theme="midnight"] {
+  color-scheme: dark;
+  --bg: #202824;
+  --surface: #29332d;
+  --surface-soft: #334039;
+  --ink: #eef3ed;
+  --muted: #a8b5aa;
+  --line: rgba(227, 239, 229, .13);
+  --accent: #91b69a;
+  --accent-strong: #b4d7b9;
+  --accent-soft: #3b5041;
+  --blue-soft: #304354;
+  --yellow-soft: #5b5130;
+  --shadow: 0 14px 34px rgba(0, 0, 0, .28);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, .22);
+}
+
+:root[data-document-line-height="compact"] { --document-line-height: 1.58; }
+
+:root[data-density="comfortable"] { font-size: var(--ui-font-size); }
 :root[data-density="comfortable"] .scene { padding: 22px 24px; }
 :root[data-density="comfortable"] .paper-table td { height: 54px; }
+
+:root { font-size: var(--ui-font-size); }

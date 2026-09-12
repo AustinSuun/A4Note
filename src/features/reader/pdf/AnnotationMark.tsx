@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type MouseEvent } from 'react';
+import { memo, useState, type ComponentProps, type CSSProperties, type MouseEvent } from 'react';
 import type { AnnotationColor, PositionJson } from '../../../core/types';
 import { zh } from '../../../ui/zh';
 import { annotationColorInputValue, toolColorPresets } from '../readerConstants';
@@ -14,7 +14,7 @@ import type { AnnotationMarkModel, AnnotationResizeHandle } from './types';
 
 const resizeHandles: AnnotationResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
-export function AnnotationMark({
+function AnnotationMarkView({
   annotation,
   draft,
   onSelectAnnotation,
@@ -305,6 +305,15 @@ export function AnnotationMark({
       ))}
     </>
   );
+}
+
+const MemoAnnotationMark = memo(AnnotationMarkView, (previous, next) => previous.annotation === next.annotation
+  && previous.draft === next.draft
+  && previous.focused === next.focused
+  && previous.eraserActive === next.eraserActive);
+
+export function AnnotationMark(props: ComponentProps<typeof AnnotationMarkView>) {
+  return <MemoAnnotationMark {...props} />;
 }
 
 type InkPoint = { x: number; y: number };

@@ -39,6 +39,16 @@ export type PdfScrollAnchor = {
   pageProgress: number;
 };
 
+/** Zoom gesture anchor used to restore the same PDF point after layout. */
+export type PdfZoomAnchor = {
+  x: number;
+  y: number;
+  contentX: number;
+  contentY: number;
+  contentOriginX: number;
+  contentOriginY: number;
+};
+
 export type ReaderToolSettings = {
   inkStrokeWidth: number;
   eraserSize: number;

@@ -10,6 +10,11 @@ build/
 target/
 **/target/
 src-tauri/target-*/
+.build/
+
+# Windows release packages
+artifacts/windows/
+.cleanup-build-artifacts-*/
 
 # Native build artifacts
 *.exe
@@ -47,3 +52,19 @@ Thumbs.db
 
 # External/local nested repositories
 CodexCont/
+
+# Generated Native Messaging host bundle (rebuilt by prepare-native-host).
+/src-tauri/resources/native-host/
+/apps/native-host/target/
+
+# Generated distributions and private signing/user data (never publish with source).
+/artifacts/
+*.key
+*.pfx
+*.p12
+*.dpapi
+*.db
+*.sqlite
+*.sqlite3
+AsterData/
+A4CaptureData/

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><link rel="stylesheet" href="popup.css"><title>A4 Note 论文采集</title></head>
+<body>
+<header><strong>A4 Note</strong><span>论文采集 · 0.5.0</span></header>
+<p class="help">打开即识别当前论文，选择文献库分类后下载并导入。</p>
+<p id="connection-status" role="status" aria-live="polite">正在检查桌面连接…</p>
+<div class="actions"><button id="connect" class="primary" hidden>连接并在桌面授权</button><button id="reconnect">重试连接</button></div>
+<p id="status" role="status" aria-live="polite">正在识别当前论文…</p>
+<section id="result" hidden>
+  <h1 id="title"></h1><p id="authors"></p><p id="ids"></p>
+  <div class="destination">
+    <label for="folder-select">导入到文献库文件夹</label>
+    <p id="folder-status" class="help" role="status">等待桌面连接…</p>
+    <select id="folder-select" size="6" disabled aria-describedby="folder-status"><option value="">正在读取分类…</option></select>
+    <button id="folders-refresh" type="button">刷新文件夹</button>
+    <button id="send" class="primary" disabled>下载并导入文献库</button>
+    <p class="help">选择的是 A4 Note 文献库分类，不是电脑下载目录。已存在的论文保留原分类。</p>
+  </div>
+  <details class="advanced"><summary>识别详情与手动补救</summary>
+    <ul id="warnings"></ul><h2>文件候选</h2><div id="files"></div>
+    <button id="export">导出采集记录 JSON</button><p class="help">JSON 仅含元数据和链接，不含 PDF。</p>
+  </details>
+</section>
+<button id="scan" disabled>重新识别当前论文</button>
+<details id="tasks-panel" class="advanced"><summary>下载与入库进度</summary>
+  <button id="tasks">刷新进度</button><div id="task-list" aria-live="polite"></div>
+</details>
+<script type="module" src="popup.js"></script>
+</body></html>

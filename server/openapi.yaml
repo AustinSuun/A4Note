@@ -1,0 +1,241 @@
+openapi: 3.1.0
+info:
+  title: Aster Sync API
+  version: 1.0.0
+  description: First-phase account and note synchronization contract.
+servers:
+  - url: https://sync.example.invalid
+    description: Replace in deployment configuration.
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/register:
+    post:
+      security: []
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/AuthResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /api/v1/auth/login:
+    post:
+      security: []
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/AuthResponse' }
+        '401': { $ref: '#/components/responses/ErrorResponse' }
+  /api/v1/auth/refresh:
+    post:
+      security: []
+      operationId: refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/AuthResponse' }
+        '401': { $ref: '#/components/responses/ErrorResponse' }
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      responses:
+        '204': { description: Session revoked. }
+  /api/v1/sync/push:
+    post:
+      operationId: pushSync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PushRequest' }
+      responses:
+        '200':
+          description: Per-operation result. Conflicts do not imply other operations failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PushResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /api/v1/sync/pull:
+    get:
+      operationId: pullSync
+      parameters:
+        - { name: cursor, in: query, required: false, description: Decimal sync_changes sequence as a string., schema: { type: string, pattern: '^[0-9]+$', default: '0' } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 200, default: 100 } }
+      responses:
+        '200':
+          description: Ordered changes after the supplied user-scoped cursor.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PullResponse' }
+  /api/v1/sync/status:
+    get:
+      operationId: syncStatus
+      responses:
+        '200':
+          description: Current server sync status.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SyncStatus' }
+  /api/v1/notes:
+    get:
+      operationId: listNotes
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 } }
+        - { name: updated_after, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: User-owned notes, excluding soft-deleted rows by default.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Note' } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  responses:
+    AuthResponse:
+      description: Authenticated session.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AuthResponse' }
+    ErrorResponse:
+      description: Stable, diagnosable API error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 64 }
+        password: { type: string, minLength: 8, maxLength: 256 }
+        nickname: { type: string, maxLength: 64 }
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
+    AuthResponse:
+      type: object
+      required: [accessToken, expiresIn, user, device]
+      properties:
+        accessToken: { type: string }
+        expiresIn: { type: integer, minimum: 1 }
+        refreshToken: { type: string }
+        user:
+          type: object
+          required: [id, username, nickname]
+          properties:
+            id: { type: string, format: uuid }
+            username: { type: string }
+            nickname: { type: string }
+        device:
+          type: object
+          required: [id, platform]
+          properties:
+            id: { type: string, format: uuid }
+            platform: { type: string, enum: [desktop, android, ios, web] }
+    NotePayload:
+      type: object
+      required: [title, content, format]
+      properties:
+        title: { type: string, maxLength: 500 }
+        content: { type: string, maxLength: 2000000 }
+        format: { type: string, enum: [markdown] }
+        paperId: { type: [string, 'null'] }
+    Note:
+      allOf:
+        - $ref: '#/components/schemas/NotePayload'
+        - type: object
+          required: [id, version, createdAt, updatedAt]
+          properties:
+            id: { type: string, maxLength: 200 }
+            version: { type: integer, minimum: 1 }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            deletedAt: { type: [string, 'null'], format: date-time }
+    PushOperation:
+      type: object
+      required: [operationId, entity, entityId, operation, baseVersion, payload]
+      properties:
+        operationId: { type: string, maxLength: 200 }
+        entity: { type: string, enum: [note] }
+        entityId: { type: string, maxLength: 200 }
+        operation: { type: string, enum: [upsert, delete] }
+        baseVersion: { type: integer, minimum: 0 }
+        payload:
+          description: Note fields for upsert; an empty object for delete.
+          oneOf:
+            - $ref: '#/components/schemas/NotePayload'
+            - type: object
+              maxProperties: 0
+              additionalProperties: false
+    PushRequest:
+      type: object
+      required: [deviceId, operations]
+      properties:
+        deviceId: { type: string, format: uuid }
+        operations: { type: array, maxItems: 50, items: { $ref: '#/components/schemas/PushOperation' } }
+    PushResult:
+      type: object
+      required: [operationId, entityId, status]
+      properties:
+        operationId: { type: string }
+        entityId: { type: string }
+        status: { type: string, enum: [accepted, conflict] }
+        version: { type: integer, minimum: 1 }
+        data: { $ref: '#/components/schemas/Note' }
+        error: { type: string }
+    PushResponse:
+      type: object
+      required: [results]
+      properties:
+        results: { type: array, items: { $ref: '#/components/schemas/PushResult' } }
+    PullChange:
+      type: object
+      required: [entity, entityId, operation, version]
+      properties:
+        entity: { type: string, enum: [note] }
+        entityId: { type: string }
+        operation: { type: string, enum: [upsert, delete] }
+        version: { type: integer, minimum: 1 }
+        data: { $ref: '#/components/schemas/Note' }
+    PullResponse:
+      type: object
+      required: [cursor, hasMore, changes]
+      properties:
+        cursor: { type: string, pattern: '^[0-9]+$' }
+        hasMore: { type: boolean }
+        changes: { type: array, items: { $ref: '#/components/schemas/PullChange' } }
+    SyncStatus:
+      type: object
+      required: [cursor, pendingOperations]
+      properties:
+        cursor: { type: string, pattern: '^[0-9]+$' }
+        pendingOperations: { type: integer, minimum: 0 }
+        lastChangeAt: { type: string, format: date-time }
+    Error:
+      type: object
+      required: [message, requestId]
+      properties:
+        message: { type: string }
+        code: { type: string }
+        requestId: { type: string }
+        details: { type: object }

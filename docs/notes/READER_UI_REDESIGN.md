@@ -1,6 +1,9 @@
 # Aster 阅读器 Phase 3 UI 重设计方案
 
 > 状态：已暂停。用户在后续评审中明确要求撤销标签页式设计方向，当前实现方向改为保留现有阅读器结构，并优化顶部工具栏、常用功能入口和标注工具可见性。本文档仅作为历史方案归档，新的实施依据以 `READER_UI_DIRECTION.md` 和当前代码中的 `ReaderToolbar` 为准。
+>
+> 外壳部分已失效（Superseded）：本文第 3 节和第 8 节里的 `scene-rail` / `.app-shell` 布局在「项目工作台外壳」（`WORKSPACE_BASELINE.md`）中已被删除，不得复活。当前外壳是 `ProjectSidebar + WorkbenchTopBar + TabStrip + TabHost`，阅读器是托管在 `kind: 'tool'` 标签里的一个场景，没有独立的 52px 场景轨。阅读器内部的三区布局（左侧目录面板 / PDF 主区 / 右侧抽屉）仍可作为参考，但它的容器是标签内容区，不是 `.app-shell` 网格。
+
 
 本文档定义阅读器 Phase 3 的 UI 重设计方向和任务分解。
 
@@ -262,6 +265,8 @@ CSS class:
 ---
 
 ## 8. App Shell 视觉细化
+
+> Superseded：本节整体作废。`.app-shell`、`.scene-rail`、`.scene-button*` 已从代码里删除，`scripts/verify-ui-state.mjs` 会断言它们不再出现。侧边栏现在是带文字的信息栏（`ProjectSidebar`，244px / 窄屏 208px），不是 icon-only 竖排轨道。视觉基线见 `UI_REDESIGN_BASELINE.md`，结构基线见 `WORKSPACE_BASELINE.md`。以下内容仅作归档。
 
 ### 8.1 Scene Rail 改动
 

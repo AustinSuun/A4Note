@@ -1,0 +1,13 @@
+{
+  "name": "aster-sync-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.mjs",
+    "check": "node --check src/index.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}

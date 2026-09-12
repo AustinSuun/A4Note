@@ -45,7 +45,6 @@ export function useImportFlow({
   const [importOpen, setImportOpen] = useState(false);
   const [importState, setImportState] = useState<ImportState>('idle');
   const [draft, setDraft] = useState<ImportDraft>(() => createImportDraft(''));
-  const [lastImportedPaperTitle, setLastImportedPaperTitle] = useState('');
 
   const openImportDialog = () => {
     setDraft(createImportDraft(''));
@@ -111,7 +110,6 @@ export function useImportFlow({
         await refreshNativeDocuments(targetPaperId);
         setActiveTag('all');
         setImportOpen(false);
-        setLastImportedPaperTitle(imported.duplicate ? '' : normalizedDraft.title || imported.paper_id);
         setLibraryStatus(imported.duplicate ? zh.app.importDuplicate : zh.app.importSuccess);
         openReaderForPaper(targetPaperId);
         return;
@@ -127,7 +125,6 @@ export function useImportFlow({
       }
     }
     const imported = aster.commands.execute<ImportDraft, PaperDocument>('document.importFromDraft', normalizedDraft);
-    setLastImportedPaperTitle(imported.title);
     setSelectedPaperId(imported.paperId);
     setReaderContentMode(preferredReaderMode(imported));
     setReaderFileMode(preferredReaderFile(imported));
@@ -158,7 +155,6 @@ export function useImportFlow({
     importOpen,
     importState,
     draft,
-    lastImportedPaperTitle,
     setDraft,
     setImportOpen,
     openImportDialog,

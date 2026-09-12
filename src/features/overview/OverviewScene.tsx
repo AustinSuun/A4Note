@@ -24,7 +24,7 @@ import {
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import type { PaperDocument } from '../../core/types';
 
-type OverviewSceneProps = {
+export type OverviewSceneProps = {
   isActive: boolean;
   papers: PaperDocument[];
   recentPaperIds: string[];
