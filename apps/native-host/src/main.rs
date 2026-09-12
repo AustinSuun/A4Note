@@ -25,7 +25,14 @@ async fn run()->Result<(),String>{
     let name=std::env::var("A4NOTE_TEST_PIPE").unwrap_or(name);
     let mut pipe=None;
     while let Some(value)=receiver.recv().await {
-        let request=protocol::decode_request(value.clone())?;
+        let request=match protocol::decode_request(value.clone()){
+            Ok(request)=>request,
+            Err(_)=>{
+                let id=value["id"].as_u64().filter(|id|*id>0&&*id<=u32::MAX as u64).ok_or("invalid_request_id")?;
+                protocol::write_frame(&mut output,&json!({"id":id,"ok":false,"error":{"code":"native_protocol_mismatch","message":"通信协议不兼容，请更新配套桌面与插件"}}))?;
+                continue;
+            }
+        };
         let result=async {
             if pipe.is_none(){
                 let candidate=ClientOptions::new().open(&name).map_err(|_|"请启动已安装的新版 A4 Note，再点击连接")?;
@@ -48,7 +55,13 @@ async fn run()->Result<(),String>{
             _=async {while !closed.load(Ordering::Acquire){tokio::time::sleep(Duration::from_millis(100)).await;}}=>return Ok(()),
         };
         match response {
-            Ok(v)=>{if v["id"]!=request.id{return Err("desktop_response_mismatch".into());}protocol::write_frame(&mut output,&v)?;},
+            Ok(mut v)=>{
+                if v["id"]!=request.id{return Err("desktop_response_mismatch".into());}
+                if request.operation==protocol::Operation::Hello && v["ok"]==true && v["result"].is_object(){
+                    v["result"]["nativeHost"]=json!({"version":env!("CARGO_PKG_VERSION"),"capabilities":{"folderSelection":true}});
+                }
+                protocol::write_frame(&mut output,&v)?;
+            },
             Err(e)=>{pipe=None;protocol::write_frame(&mut output,&json!({"id":request.id,"ok":false,"error":{"code":"desktop_unavailable","message":e}}))?;},
         }
     }

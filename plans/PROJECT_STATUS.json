@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-12T21:48:53+08:00",
+  "updatedAt": "2026-09-12T22:22:21+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
-    "branch": "working-tree",
+    "branch": "fix/capture-experience-0.1.4",
     "scope": [
-      "Signed in-app updater, GitHub release automation and safe source synchronization to AustinSuun/A4Note main",
-      "Settings/platform updater; Tauri wiring/capability/config; signing outside repository; release workflow/scripts",
-      "User explicitly permits required CI Verify for this PR only; signing secrets authorized; no installation or real library access"
+      "Capture UX 0.6.0 and desktop 0.1.4: host/desktop compatibility, folder loading, clear metadata and app icons",
+      "Browser extension; native host handshake; paper metadata details; idempotent release workflow",
+      "Continue user-approved required CI and packaging; no application installation or user-library mutation"
     ]
   },
   "tracks": {
@@ -26,6 +26,8 @@
   },
   "lastHandoff": {
     "completed": [
+      "采集0.6.0/桌面0.1.4源码完成：复用桌面图标并重设精简主流程；host独立能力+桌面双校验，未知操作明确报错且不终止host，任何断连/授权失效取消绿色就绪；任务完成区分PDF与信息。桌面展示作者/机构/标识/出版物/日期/摘要和来源快照，异步附件响应按文献隔离。Release增加已发布版本只读跳过及全局串行发布，仍禁止覆盖正式资产。",
+      "此前更新链路已交付v0.1.3：PR4/5/6及必要CI均成功，main9c8aefa；发布签名安装包22489127字节，SHA256 AB6C42DCEF7908124B59ED74F5BE0F636853D1DF5A4CD68FDB578F767D330888。GitHub资产空格归一化已修正latest.json及发布脚本；二次自动Release run34697864947仅因版本已发布而失败，编译成功。",
       "完整源码已通过PR #4合并origin/main，merge fbc91a71b5239a21a00addfc72ec35caeb74b732；未绕过保护。用户允许的CI Verify run34697061818成功（6m22s），完整suite与Windows隔离注册/真实Native进程检查保留。",
       "签名更新源码完成：设置→关于可检查GitHub更新、显示纯文本说明、下载并验证签名，用户确认后flushPendingSaves并安装；不后台下载/强制更新。桌面版本递增0.1.3，加入updater插件/精简权限、公钥及固定HTTPS端点。私钥位于用户仓库外.tauri目录（实际路径见APP_UPDATES.md），密码DPAPI保护，两个GitHub Actions Secrets已配置，未输出/提交私钥。标准打包增加签名/latest.json/sourceCommit；发布脚本验证产物一致性并草稿完整上传后公开，禁止覆盖已发布版本。",
       "0.5.0配套包已发布：标准package:windows及扩展打包cmd_1789218049589_32 exit0（308.023s）；Windows latest builtAt2026-09-12T13:05:56.636Z（21:05:56+08），桌面0.1.2、captureExtensionVersion0.5.0、Native host0.5.0，包含自动识别/分类选择/下载入库。旧latest已归档archive/0.1.2-20260912-210050-17112，标准脚本清理本轮隔离构建目录。",
@@ -268,6 +270,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "cmd_1789222838605_76 exit0：tsc/Vite生产构建、JS语法检查及0.6.0扩展打包成功；SHA256 a9be65ce7a6503bfe059caa252bff16bf6b80058098876462924aa3d2874c39d。未运行本地测试/启动应用/安装/访问真实文献。必要GitHub Verify和签名Release待执行，不把源码与构建当成端到端验收。",
       "首次合并后签名打包在读取DPAPI密码时停止，未覆盖旧latest或发布版本：Get-Content -Raw包含换行。已修复Trim并用EncodedCommand传递PowerShell，cmd_1789220915863_55确认SIGNING_ENV_READY=True且无密钥/密码输出；按保护规则提交小修复PR后再正式打包。",
       "提交405文件及两笔未推历史对象经过密钥/令牌/产物/体积检查通过；本地源码提交完成。直接推main被GH006保护拒绝（必须PR和Verify），未绕过规则。用户随后明确允许本次必要CI检查；改走release/signed-updater-0.1.3 PR，完整Verify在Windows runner执行以覆盖Native Messaging，而非跳过测试。签名打包尚未开始，因原串行命令在push拒绝处停止。",
       "构建cmd_1789220036918_42 exit0（37.984s）：npm锁文件同步、tsc/Vite、两个发布脚本node --check、cargo check通过；设置诊断0。原未提交源码及发布候选475文件扫描未见高置信令牌/私钥/MCP控制地址或超过20MiB文件。初次apply因新updater父目录不存在整体拒绝，cmd40随后的缺文件检查失败；创建目录后 guarded补丁与cmd42完成。未运行任何测试/verify。",
@@ -629,7 +632,7 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
-      "本轮待将现有完整源码安全提交并推送origin/main（[skip ci]遵守不测试），随后构建并发布第一个签名v0.1.3；旧0.1.2需要手动升级一次，0.5.0浏览器插件仍单独更新。尚未宣称远端发布成功。",
+      "当前：受保护PR执行用户允许的必要Verify后正常合并，只有一个Actions工作流发布v0.1.4/扩展0.6.0；不重复本地发布、不改写v0.1.3、不绕过分支保护。下方旧轮次指引为历史。",
       "使用21:05:56新配套安装器和A4-Note-Capture-0.5.0.zip；两端一起更新，不能只替换插件。先备份资料并由用户退出旧桌面，安装后加载/重新加载扩展，打开论文详情页→插件自动识别→选择文件夹→下载并导入。下方未打包及0.4.0安装指引为历史，无需再重复打包。",
       "用户需要交付包时，重新执行标准package:windows与package-capture-extension，生成配套native-host/桌面/0.5.0扩展（不要只更新插件）；build-info须为captureExtensionVersion 0.5.0。之后由用户在资料副本中验收打开即识别、父子分类、选后下载、重复论文保持分类、分类删除与PDF失败提示；本轮不自动测试或安装。",
       "下一步使用本轮19:55:51新安装器及0.4.0扩展，按README完成人工Windows Chrome/Edge工具栏→首次桌面授权→真实论文/PDF入库→重启恢复→撤销验收。先备份资料，不要运行旧HTTP安装包；本轮自动化和Linux夹具不是此项验收的替代。",
@@ -654,6 +657,7 @@
       "依赖更新后保留MDX→js-yaml override直至上游解除旧精确锁；后续升级继续分别执行PDF/Markdown行为回归和audit。"
     ],
     "risks": [
+      "本轮只做静态构建与随后必要CI；未安装到真实Chrome/Edge、未启动桌面或操作真实库。需完整安装器更新已注册native-host并单独更新0.6.0插件；PDF候选链接不等于下载/验证成功，缺失元数据不编造；Windows GUI最终使用由用户确认。",
       "0.5.0包已生成但未在真实Windows浏览器/用户文献库验收。本轮无测试、无Git提交、无安装和真实资料操作；保留Vite大分块及Rust未使用符号告警，不把构建成功等同功能实测通过。Native注册必须使用安装器，裸EXE不足；保持既有未签名发布和PDF/网络访问限制。",
       "0.5.0仅源码完成，未重新打包、安装或启动；现有19:55:51的Windows latest及扩展0.4.0不含自动识别选分类流程，不要混用。旧客户端/历史任务未带targetFolderId仍默认library；新扩展要求明确分类与能力协商。选择分类上限2000；识别仅普通详情页，下载/登录态/DRM及PDF安全隔离边界保持；真实端到端未验收，历史测试不代表本轮通过。",
       "本轮Native试用包已发布但未安装到真实用户环境。桌面仍显示0.1.2，务必核对build-info的captureTransport和builtAt。裸EXE不能代替安装器注册；安装器未签名，需用户核对来源后决定安装。保留PDF进程未隔离、队列单独备份、arXiv网络10054和PMC实际浏览器未通过等既有边界。",
