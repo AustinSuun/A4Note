@@ -103,7 +103,8 @@ await writeFile(path.join(stagedLatestDir, 'latest.json'), JSON.stringify({
   version,
   notes: process.env.A4NOTE_RELEASE_NOTES || `A4 Note ${version}：软件内签名更新、论文自动识别、分类下载入库及工作区改进。更新前请备份重要资料；浏览器扩展需单独更新。`,
   pub_date: metadata.builtAt,
-  platforms: { 'windows-x86_64': { signature, url: `https://github.com/AustinSuun/A4Note/releases/download/v${version}/${encodeURIComponent(path.basename(installerTarget))}` } },
+  // GitHub normalizes spaces in uploaded asset names to periods.
+  platforms: { 'windows-x86_64': { signature, url: `https://github.com/AustinSuun/A4Note/releases/download/v${version}/${encodeURIComponent(path.basename(installerTarget).replaceAll(' ', '.'))}` } },
 }, null, 2) + '\n', 'utf8');
 
 await mkdir(archiveRoot, { recursive: true });

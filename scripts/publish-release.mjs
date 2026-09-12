@@ -24,7 +24,7 @@ if (createHash('sha256').update(bytes).digest('hex').toUpperCase() !== info.sha2
 const signature = (await readFile(path.join(root, `${installer}.sig`), 'utf8')).trim();
 const platform = latest.platforms['windows-x86_64'];
 const tag = `v${pkg.version}`;
-if (!signature || platform.signature !== signature || platform.url !== `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(info.files.installer)}`) throw new Error('Updater manifest does not reference this signed installer');
+if (!signature || platform.signature !== signature || platform.url !== `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(info.files.installer.replaceAll(' ', '.'))}`) throw new Error('Updater manifest does not reference this signed installer');
 const extensionPath = `artifacts/browser-extension/${extension.filename}`;
 if (createHash('sha256').update(await readFile(path.join(root, extensionPath))).digest('hex') !== extension.sha256) throw new Error('Extension digest mismatch');
 const git = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
@@ -36,5 +36,10 @@ if (existing.status === 0 && !JSON.parse(existing.stdout).isDraft) throw new Err
 if (existing.status === 0 && JSON.parse(existing.stdout).targetCommitish !== commit) throw new Error('Existing draft targets a different commit. Resolve it explicitly before retrying.');
 if (existing.status !== 0) run(['release', 'create', tag, '--repo', repo, '--target', commit, '--draft', '--title', `A4 Note ${tag}`, '--notes', `${latest.notes}\n\nWindows x64。首次请手动安装一次；后续在设置→关于→软件更新操作。浏览器插件另行更新。\n\n本版仅构建和签名/哈希检查，未运行功能测试。更新签名不是Windows Authenticode签名。`]);
 run(['release', 'upload', tag, '--repo', repo, '--clobber', installer, `${installer}.sig`, 'artifacts/windows/latest/latest.json', 'artifacts/windows/latest/build-info.json', extensionPath]);
+const uploaded = JSON.parse(run(['release', 'view', tag, '--repo', repo, '--json', 'assets']).stdout).assets;
+const requiredUrls = [platform.url, `${platform.url}.sig`, `https://github.com/${repo}/releases/download/${tag}/latest.json`, `https://github.com/${repo}/releases/download/${tag}/build-info.json`, `https://github.com/${repo}/releases/download/${tag}/${extension.filename}`];
+if (requiredUrls.some(url => !uploaded.some(asset => asset.url === url && asset.state === 'uploaded'))) throw new Error('Uploaded asset URLs differ from updater manifest; release left as draft.');
+const remoteInstaller = uploaded.find(asset => asset.url === platform.url);
+if (remoteInstaller.digest && remoteInstaller.digest !== `sha256:${info.sha256.installer.toLowerCase()}`) throw new Error('Uploaded installer digest mismatch; release left as draft.');
 run(['release', 'edit', tag, '--repo', repo, '--draft=false', '--latest']);
 console.log(`Published https://github.com/${repo}/releases/tag/${tag}`);
