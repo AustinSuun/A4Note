@@ -27,7 +27,7 @@ for(const view of [32,64])script+=`SetRegView ${view}\n`+assertRegistry(chrome,'
 script+=`!insertmacro NSIS_HOOK_POSTINSTALL\n!insertmacro NSIS_HOOK_PREUNINSTALL\n`+assertRegistry(chrome,'')+assertRegistry(edge,'')+`SetErrorLevel 0\nSectionEnd\n`;
 try{
   await writeFile(path.join(dir,'fixture.nsi'),script);
-  const compiler=path.join(process.env.LOCALAPPDATA,'tauri/NSIS/makensis.exe');
+  const compiler=process.env.A4NOTE_NSIS_COMPILER || path.join(process.env.LOCALAPPDATA,'tauri/NSIS/makensis.exe');
   const compile=spawnSync(compiler,['/V2','fixture.nsi'],{cwd:dir,encoding:'utf8',timeout:30000});assert.equal(compile.status,0,compile.error?.message||compile.stdout+compile.stderr);
   const execute=spawnSync(path.join(dir,'fixture.exe'),[],{cwd:dir,timeout:30000});assert.equal(execute.status,0,execute.error?.message||'NSIS scratch ownership regression failed');
   console.log('Native identity/bundle checks and real NSIS registration/repair/ownership-safe removal passed in unique scratch HKCU namespace. Real browser registry untouched.');
