@@ -1,0 +1,19 @@
+{
+  "name": "A4Note",
+  "short_name": "A4Note",
+  "description": "A4Note notes workspace",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f7f6",
+  "theme_color": "#f7f7f6",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -20,17 +20,6 @@ export const readerPanelTabById: Record<ReaderWorkbenchPanelId, ReaderSidePanelT
 
 export const builtinWorkbenchPanels: WorkbenchPanelContribution[] = [
   {
-    id: 'library.details',
-    sceneId: 'library',
-    area: 'right',
-    commandId: 'library.panel.details',
-    titleKey: 'library.details',
-    icon: 'details',
-    order: 10,
-    source: 'core',
-    context: 'paper',
-  },
-  {
     id: 'reader.notes',
     sceneId: 'reader',
     area: 'right',

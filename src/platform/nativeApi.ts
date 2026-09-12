@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import type { AnnotationType, ImportDraft, PaperDocument, PositionJson } from '../core/types';
+import type { AnnotationType, ImportDraft, LibraryFolder, PaperDocument, PositionJson } from '../core/types';
 
 const FALLBACK_TAG = '未分类';
 
@@ -17,6 +17,7 @@ export interface BackupResult {
 export interface RestoreBackupResult {
   restored_from: string;
   safety_backup_path: string;
+  restart_required: boolean;
 }
 
 export interface AppDiagnostics {
@@ -85,6 +86,7 @@ export interface NativePaperSummary {
   annotations: Array<{
     id: string;
     file_id: string;
+    resource_id?: string;
     page: number;
     annotation_type: AnnotationType;
     quote: string;
@@ -94,6 +96,23 @@ export interface NativePaperSummary {
     created_at: number;
   }>;
   ai_threads: string[];
+  folder_id?: string | null;
+  created_at?: number;
+  last_viewed_at?: number | null;
+  is_read?: boolean;
+  is_favorite?: boolean;
+}
+
+export interface NativeLibraryFolder {
+  folder_id: string;
+  name: string;
+  parent_id: string | null;
+  paper_count: number;
+}
+
+export interface LibraryFolderRequest {
+  name: string;
+  parentId?: string | null;
 }
 
 export interface NativeAiMessage {
@@ -241,6 +260,40 @@ export async function listNativePapers() {
   return invoke<NativePaperSummary[]>('list_papers');
 }
 
+export async function listNativeFolders() {
+  const folders = await invoke<NativeLibraryFolder[]>('list_folders');
+  return folders.map((folder) => ({
+    folderId: folder.folder_id,
+    name: folder.name,
+    parentId: folder.parent_id,
+    paperCount: folder.paper_count,
+  } satisfies LibraryFolder));
+}
+
+export async function createNativeFolder(request: LibraryFolderRequest) {
+  const folder = await invoke<NativeLibraryFolder>('create_folder', {
+    request: { name: request.name, parent_id: request.parentId ?? null },
+  });
+  return {
+    folderId: folder.folder_id,
+    name: folder.name,
+    parentId: folder.parent_id,
+    paperCount: folder.paper_count,
+  } satisfies LibraryFolder;
+}
+
+export async function renameNativeFolder(folderId: string, name: string) {
+  return invoke<void>('rename_folder', { request: { folder_id: folderId, name } });
+}
+
+export async function deleteNativeFolder(folderId: string) {
+  return invoke<void>('delete_folder', { folderId });
+}
+
+export async function moveNativePapersToFolder(paperIds: string[], folderId: string | null) {
+  return invoke<void>('move_papers_to_folder', { request: { paper_ids: paperIds, folder_id: folderId } });
+}
+
 export async function loadNativeDocuments(): Promise<PaperDocument[]> {
   const papers = await listNativePapers();
   return papers.map(nativePaperToDocument);
@@ -254,7 +307,7 @@ export function nativePaperToDocument(paper: NativePaperSummary): PaperDocument 
     year: paper.year ?? '',
     venue: paper.venue || '未知来源',
     doi: paper.doi,
-    folderId: 'library',
+    folderId: paper.folder_id ?? 'library',
     sourceFileId: paper.source_file_id ?? '',
     sourcePdf: paper.source_pdf ?? '',
     translatedFileIds: paper.translated_file_ids ?? [],
@@ -272,6 +325,7 @@ export function nativePaperToDocument(paper: NativePaperSummary): PaperDocument 
       id: annotation.id,
       paperId: paper.paper_id,
       fileId: annotation.file_id,
+      resourceId: annotation.resource_id,
       page: annotation.page,
       type: annotation.annotation_type,
       quote: annotation.quote,
@@ -282,6 +336,10 @@ export function nativePaperToDocument(paper: NativePaperSummary): PaperDocument 
     })),
     aiThreads: paper.ai_threads,
     metadataSource: 'sqlite',
+    createdAt: paper.created_at == null ? undefined : new Date(paper.created_at).toISOString(),
+    lastViewedAt: paper.last_viewed_at == null ? undefined : new Date(paper.last_viewed_at).toISOString(),
+    isRead: paper.is_read ?? false,
+    isFavorite: paper.is_favorite ?? false,
   };
 }
 
@@ -307,6 +365,56 @@ export async function createNativeAnnotation(request: {
       position_json: JSON.stringify(request.positionJson),
     },
   });
+}
+
+export async function listNativeResourceAnnotations(resourceId: string) {
+  return invoke<Array<{
+    id: string;
+    resource_id: string;
+    page: number;
+    annotation_type: AnnotationType;
+    quote: string;
+    comment: string;
+    color: string;
+    position_json: string;
+    created_at: number;
+  }>>('list_resource_annotations', { resourceId });
+}
+
+export async function createNativeResourceAnnotation(request: {
+  resourceId: string;
+  page: number;
+  type: AnnotationType;
+  quote: string;
+  comment: string;
+  color: string;
+  positionJson: PositionJson;
+}) {
+  return invoke<string>('create_resource_annotation', { request: {
+    resource_id: request.resourceId,
+    page: request.page,
+    annotation_type: request.type,
+    quote: request.quote,
+    comment: request.comment,
+    color: request.color,
+    position_json: JSON.stringify(request.positionJson),
+  } });
+}
+
+export async function updateNativeResourceAnnotationComment(request: { annotationId: string; comment: string }) {
+  return invoke<void>('update_resource_annotation_comment', { request: { annotation_id: request.annotationId, comment: request.comment } });
+}
+
+export async function updateNativeResourceAnnotationColor(request: { annotationId: string; color: string }) {
+  return invoke<void>('update_resource_annotation_color', { request: { annotation_id: request.annotationId, color: request.color } });
+}
+
+export async function updateNativeResourceAnnotationPosition(request: { annotationId: string; positionJson: PositionJson }) {
+  return invoke<void>('update_resource_annotation_position', { request: { annotation_id: request.annotationId, position_json: JSON.stringify(request.positionJson) } });
+}
+
+export async function deleteNativeResourceAnnotation(annotationId: string) {
+  return invoke<void>('delete_resource_annotation', { request: { annotation_id: annotationId } });
 }
 
 export async function restoreNativeAnnotation(annotation: PaperDocument['annotations'][number]) {
@@ -361,15 +469,20 @@ export async function deleteNativeAnnotation(annotationId: string) {
   });
 }
 
-export async function upsertNativeNote(request: { paperId: string; noteId?: string; title: string; content: string }) {
+export async function upsertNativeNote(request: { paperId: string; noteId?: string; title: string; content: string; expected?: { title: string; content: string } }) {
   return invoke<{ id: string }>('upsert_note', {
     request: {
       paper_id: request.paperId,
       note_id: request.noteId ?? null,
+      expected: request.expected ?? null,
       title: request.title,
       content: request.content,
     },
   });
+}
+
+export async function deleteNativeNote(noteId: string) {
+  return invoke<{ id: string }>('delete_note', { noteId });
 }
 
 export async function updateNativePaperMetadata(request: UpdatePaperMetadataRequest) {
@@ -425,6 +538,14 @@ export async function selectPdfFile() {
   return typeof selected === 'string' ? selected : null;
 }
 
+export async function selectPluginPackage() {
+  const selected = await open({
+    multiple: false,
+    filters: [{ name: 'Aster Plugin', extensions: ['aster-plugin', 'aster-plugin.json', 'json'] }],
+  });
+  return typeof selected === 'string' ? selected : null;
+}
+
 export function isTauriRuntime() {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
@@ -437,3 +558,5 @@ function parsePositionJson(raw: string): PositionJson {
     return {};
   }
 }
+
+export async function restartAfterLibraryRestore() { return invoke<void>('restart_after_library_restore'); }

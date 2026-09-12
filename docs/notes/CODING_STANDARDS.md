@@ -138,10 +138,11 @@ hook 不应直接渲染 UI。需要 UI 时返回状态和动作，由组件渲�
 src/ui/App.tsx
 src/features/reader/pdf/PdfReader.tsx
 src/ui/styles.css
-src-tauri/src/lib.rs
 ```
 
 新增代码不要继续扩大这些文件。需要改这些文件时，优先评估是否应先拆模块。
+
+`src-tauri/src/lib.rs` 已经不在这张表里：`P2-1` 把它拆成了 97 行的模块表 + `generate_handler!` + `run()`，并且行数上限由 `npm run test:architecture` 断言（小于 160，且里面不许出现 `#[tauri::command]` / `rusqlite`）。新增后端命令写进拥有那几张表的领域模块，这里只加一行 `模块::命令`。
 
 建议阈值：
 

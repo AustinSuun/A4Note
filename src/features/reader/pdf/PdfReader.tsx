@@ -1,11 +1,14 @@
 ﻿import { type MouseEvent, type WheelEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent } from 'react';
+import { useLayoutEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import type { AnnotationColor, AnnotationDraft, AnnotationType, PaperDocument, PositionJson, ReaderTool } from '../../../core/types';
-import { isTauriRuntime, loadPaperFileBytes, type PaperFileKind } from '../../../platform/nativeApi';
+import type { Annotation, AnnotationColor, AnnotationDraft, AnnotationType, PositionJson, ReaderTool } from '../../../core/types';
+import { isTauriRuntime, loadPaperFileBytes } from '../../../platform/nativeApi';
+import { readFileBytes } from '../../../platform/projects';
 import { zh } from '../../../ui/zh';
 import { annotationLabel, buildAnnotationDraft } from './pdfAnnotationHelpers';
+import type { PdfDocumentSource } from './pdfSource';
 import { AnnotationOverlay } from './AnnotationOverlay';
 import {
   clamp,
@@ -15,17 +18,21 @@ import {
   normalizeClientRect,
   numberValue,
 } from './pdfGeometry';
-import { arrowPositionFromDrag, createDragDraft, currentVisiblePage, pointFromEvent, scrollPageIntoViewIfNeeded, stickyPositionFromDrag, updateDragDraftPoint } from './pdfInteraction';
+import { arrowPositionFromDrag, createDragDraft, currentVisiblePage, pointFromEvent, resizePositionFromDrag, scrollAnchorFromContainer, scrollPageIntoViewIfNeeded, scrollTopFromAnchor, stickyPositionFromDrag, updateDragDraftPoint } from './pdfInteraction';
 import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
-import { boundingBox, mergeRectsIntoLineSegments, textSelectionFromDrag } from './pdfSelection';
+import { boundingBox, mergeRectsIntoLineSegments, textItemSelectionsFromRange, textSelectionFromDrag, textSelectionRectsFromOffsets } from './pdfSelection';
 import type {
   AnnotationMarkModel,
+  AnnotationResize,
+  AnnotationResizeHandle,
   CommentPopover,
   DraftAnnotationPreview,
   DragDraft,
   InkDraft,
   PageMeta,
+  PdfScrollAnchor,
+  PdfZoomAnchor,
   PdfStatus,
   ReaderFlash,
   ReaderToolSettings,
@@ -37,9 +44,9 @@ import type {
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 export default function PdfReader({
-  paper,
-  fileKind,
-  fileId,
+  source,
+  annotations,
+  annotationsEnabled = true,
   activeTool,
   activeAnnotationColor,
   toolSettings,
@@ -57,18 +64,23 @@ export default function PdfReader({
   onFocusAnnotation,
   focusedAnnotationId: requestedFocusAnnotationId,
   syncScrollEnabled,
-  syncScrollRatio,
+  syncScrollAnchor,
   onScrollSync,
 }: {
-  paper: PaperDocument;
-  fileKind: PaperFileKind;
-  fileId: string;
+  source: PdfDocumentSource;
+  annotations: Annotation[];
+  /**
+   * False makes the viewer read-only: the selection popup that creates
+   * highlights disappears. Resource PDF tabs enable this only when they have a
+   * stable resource annotation store.
+   */
+  annotationsEnabled?: boolean;
   activeTool: ReaderTool;
   activeAnnotationColor: AnnotationColor;
   toolSettings: ReaderToolSettings;
   onCompleteOneShotTool?: () => void;
   zoom: number;
-  onZoomChange: (zoom: number, anchor?: { x: number; y: number }) => void;
+  onZoomChange: (zoom: number, anchor?: PdfZoomAnchor) => void;
   requestedPage?: number | null;
   onCreateAnnotation: (annotation: AnnotationDraft & { page: number }) => void | Promise<string | undefined>;
   onUpdateAnnotationComment: (annotationId: string, comment: string) => void | Promise<void>;
@@ -80,10 +92,11 @@ export default function PdfReader({
   onFocusAnnotation?: (annotationId: string | null) => void;
   focusedAnnotationId?: string | null;
   syncScrollEnabled?: boolean;
-  syncScrollRatio?: number | null;
-  onScrollSync?: (ratio: number) => void;
+  syncScrollAnchor?: PdfScrollAnchor | null;
+  onScrollSync?: (anchor: PdfScrollAnchor) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const documentContentRef = useRef<HTMLDivElement | null>(null);
   const [pdfDocument, setPdfDocument] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [draftAnnotations, setDraftAnnotations] = useState<DraftAnnotationPreview[]>([]);
@@ -94,30 +107,37 @@ export default function PdfReader({
   const inkPointerTargetRef = useRef<HTMLDivElement | null>(null);
   const [commentPopover, setCommentPopover] = useState<CommentPopover | null>(null);
   const [stickyDrag, setStickyDrag] = useState<StickyDrag | null>(null);
+  const [annotationResize, setAnnotationResize] = useState<AnnotationResize | null>(null);
   const [stickyDragPreview, setStickyDragPreview] = useState<StickyDragPreview | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [visiblePage, setVisiblePage] = useState(1);
   const [focusedAnnotationId, setFocusedAnnotationId] = useState<string | null>(null);
-  const [displayZoom, setDisplayZoom] = useState(zoom);
+  // The page layout follows the committed zoom directly. During a wheel
+  // gesture the existing layout is painted through a temporary transform;
+  // this keeps PDF.js from starting a render for every wheel tick.
+  const displayZoom = zoom;
   const [eraserCursor, setEraserCursor] = useState<{ page: number; x: number; y: number } | null>(null);
   const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const zoomFrameRef = useRef<number | null>(null);
   const zoomTimerRef = useRef<number | null>(null);
+  const zoomGestureAnchorRef = useRef<PdfZoomAnchor | null>(null);
+  const scrollUpdateFrameRef = useRef<number | null>(null);
+  const scrollProgressRef = useRef(0);
+  const visiblePageRef = useRef(1);
   const pendingZoomRef = useRef(zoom);
   const localFocusRequestRef = useRef<string | null>(null);
   const lastExternalFocusRef = useRef<string | null>(null);
   const applyingSyncScrollRef = useRef(false);
-  const lastEmittedSyncRatioRef = useRef(-1);
   const [status, setStatus] = useState<PdfStatus>('placeholder');
   const [message, setMessage] = useState(zh.reader.pdfPlaceholder);
   const [flash, setFlash] = useState<ReaderFlash | null>(null);
   const [selectionPopup, setSelectionPopup] = useState<{ visible: boolean; x: number; y: number; pageNumber: number; pageElement: HTMLElement | null }>({ visible: false, x: 0, y: 0, pageNumber: 0, pageElement: null });
-  const activeFileKey = `${fileKind}:${fileId || (fileKind === 'source' ? paper.sourcePdf : paper.translatedPdfs.join('|'))}`;
-  const activeFileId = fileId || (fileKind === 'source' ? paper.sourceFileId : paper.translatedFileIds[0] ?? '');
+  const activeFileId = source.fileId;
+  const activeResourceId = source.resourceId;
   const currentFileAnnotations = useMemo(
-    () => paper.annotations.filter((annotation) => !activeFileId || annotation.fileId === activeFileId),
-    [activeFileId, paper.annotations],
+    () => annotations.filter((annotation) => activeResourceId ? annotation.resourceId === activeResourceId : !activeFileId || annotation.fileId === activeFileId),
+    [activeFileId, activeResourceId, annotations],
   );
   const displayedAnnotations = useMemo(
     () =>
@@ -134,9 +154,14 @@ export default function PdfReader({
 
   useEffect(() => {
     let cancelled = false;
+    let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | null = null;
+    const disposeLoadingTask = () => {
+      const task = loadingTask; loadingTask = null;
+      if (task) void task.destroy().catch(() => { /* cancellation already reported by load */ });
+    };
     async function loadPdf() {
-      const hasPdf = fileKind === 'source' ? Boolean(paper.sourcePdf) : Boolean(paper.translatedPdfs.length);
-      if (!hasPdf || !isTauriRuntime()) {
+      const request = source.request;
+      if (!request || !isTauriRuntime()) {
         setPdfDocument(null);
         setPages([]);
         setStatus('placeholder');
@@ -144,18 +169,22 @@ export default function PdfReader({
         return;
       }
       try {
-        setStatus((current) => (pages.length ? current : 'loading'));
+        setPdfDocument(null);
+        setPages([]);
+        setStatus('loading');
         setMessage(zh.reader.pdfLoading);
-        const bytes = await loadPaperFileBytes({ paperId: paper.paperId, kind: fileKind, fileId: activeFileId });
+        const bytes = request.source === 'paperFile'
+          ? await loadPaperFileBytes({ paperId: request.paperId, kind: request.kind, fileId: request.fileId })
+          : await readFileBytes(request.path);
         if (cancelled) return;
-        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
+        loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(bytes) });
+        const pdf = await loadingTask.promise;
         if (cancelled) return;
         setPdfDocument(pdf);
-        setStatus('ready');
-        setMessage('');
       } catch (error) {
-        console.error('Failed to load PDF', error);
         if (cancelled) return;
+        disposeLoadingTask();
+        console.error('Failed to load PDF', error);
         setPdfDocument(null);
         setPages([]);
         setStatus('error');
@@ -165,6 +194,7 @@ export default function PdfReader({
     void loadPdf();
     return () => {
       cancelled = true;
+      disposeLoadingTask();
       if (zoomFrameRef.current !== null) {
         window.cancelAnimationFrame(zoomFrameRef.current);
         zoomFrameRef.current = null;
@@ -174,28 +204,39 @@ export default function PdfReader({
         zoomTimerRef.current = null;
       }
     };
-  }, [paper.paperId, activeFileKey, fileKind, activeFileId]);
+  }, [source.key]);
 
   useEffect(() => {
     let cancelled = false;
     async function collectPageMeta() {
       if (!pdfDocument) return;
-      const metas: PageMeta[] = [];
-      for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
-        const page = await pdfDocument.getPage(pageNumber);
-        if (cancelled) return;
-        const viewport = page.getViewport({ scale: 1 });
-        metas.push({
-          pageNumber,
-          baseWidth: viewport.width,
-          baseHeight: viewport.height,
-          pdfPage: page,
-          textItems: await extractTextItemBoxes(page, viewport),
-        });
-      }
-      if (!cancelled) {
-        setPages(metas);
-        requestAnimationFrame(updateScrollProgress);
+      try {
+        const metas: PageMeta[] = [];
+        for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+          const page = await pdfDocument.getPage(pageNumber);
+          if (cancelled) return;
+          const viewport = page.getViewport({ scale: 1 });
+          metas.push({
+            pageNumber,
+            baseWidth: viewport.width,
+            baseHeight: viewport.height,
+            pdfPage: page,
+            textItems: await extractTextItemBoxes(page, viewport),
+          });
+        }
+        if (!cancelled) {
+          setPages(metas);
+          setStatus('ready');
+          setMessage('');
+          requestAnimationFrame(updateScrollProgress);
+        }
+      } catch (error) {
+        console.error('Failed to prepare PDF pages', error);
+        if (!cancelled) {
+          setPages([]);
+          setStatus('error');
+          setMessage(zh.reader.pdfError);
+        }
       }
     }
     void collectPageMeta();
@@ -218,12 +259,15 @@ export default function PdfReader({
     setInkDraft(null);
     setCommentPopover(null);
     setStickyDrag(null);
+    setAnnotationResize(null);
     setStickyDragPreview(null);
-  }, [paper.paperId, fileKind]);
+  }, [source.key]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     pendingZoomRef.current = zoom;
-    setDisplayZoom(zoom);
+    zoomGestureAnchorRef.current = null;
+    documentContentRef.current?.style.removeProperty('transform');
+    documentContentRef.current?.style.removeProperty('transform-origin');
   }, [zoom]);
 
   useEffect(() => {
@@ -257,11 +301,11 @@ export default function PdfReader({
     };
     window.addEventListener('mouseup', handleMouseUp);
     return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, [textSelectionToolsActive, paper.paperId, activeTool, pages.length]);
+  }, [textSelectionToolsActive, source.key, activeTool, pages.length]);
 
   // cursor 模式下文本选中后显示 SelectionPopup
   useEffect(() => {
-    if (activeTool !== 'cursor') { setSelectionPopup((s) => s.visible ? { ...s, visible: false } : s); return; }
+    if (activeTool !== 'cursor' || !annotationsEnabled) { setSelectionPopup((s) => s.visible ? { ...s, visible: false } : s); return; }
     const handleMouseUp = (event: globalThis.MouseEvent) => {
       const selection = window.getSelection();
       if (!selection || selection.isCollapsed || !selection.rangeCount) {
@@ -277,7 +321,7 @@ export default function PdfReader({
     };
     window.addEventListener('mouseup', handleMouseUp);
     return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, [activeTool, paper.paperId, pages.length]);
+  }, [activeTool, annotationsEnabled, source.key, pages.length]);
 
   useEffect(() => {
     if (!requestedFocusAnnotationId) {
@@ -308,12 +352,10 @@ export default function PdfReader({
   }, [requestedPage, pages.length]);
 
   useEffect(() => {
-    if (!syncScrollEnabled || syncScrollRatio === null || syncScrollRatio === undefined) return;
+    if (!syncScrollEnabled || !syncScrollAnchor) return;
     const container = containerRef.current;
     if (!container) return;
-    const available = container.scrollHeight - container.clientHeight;
-    if (available <= 0) return;
-    const nextTop = clamp(syncScrollRatio, 0, 1) * available;
+    const nextTop = scrollTopFromAnchor(container, syncScrollAnchor);
     if (Math.abs(container.scrollTop - nextTop) < 1) return;
     applyingSyncScrollRef.current = true;
     container.scrollTop = nextTop;
@@ -321,7 +363,7 @@ export default function PdfReader({
       updateScrollProgress();
       applyingSyncScrollRef.current = false;
     });
-  }, [syncScrollEnabled, syncScrollRatio, pages.length]);
+  }, [syncScrollAnchor?.page, syncScrollAnchor?.pageProgress, syncScrollEnabled, pages.length]);
 
   useEffect(() => {
     onReaderStateChange?.({
@@ -331,7 +373,7 @@ export default function PdfReader({
   }, [onReaderStateChange, pages.length, visiblePage]);
 
   const annotationsByPage = useMemo(() => {
-    return displayedAnnotations.reduce<Record<number, typeof paper.annotations>>((grouped, annotation) => {
+    return displayedAnnotations.reduce<Record<number, Annotation[]>>((grouped, annotation) => {
       if (!grouped[annotation.page]) grouped[annotation.page] = [];
       grouped[annotation.page].push(annotation);
       return grouped;
@@ -349,14 +391,56 @@ export default function PdfReader({
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
     if (!event.ctrlKey) return;
     event.preventDefault();
-    const anchor = { x: event.clientX, y: event.clientY };
+    const container = containerRef.current;
+    const rect = container?.getBoundingClientRect();
+    const content = documentContentRef.current;
+    if (!container || !rect || !content) return;
+    if (!zoomGestureAnchorRef.current) {
+      const contentRect = content.getBoundingClientRect();
+      // Keep the pointer over the same document point while the compositor
+      // preview scales. These coordinates remain valid even while `transform`
+      // changes the content's client rect.
+      zoomGestureAnchorRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+        contentX: clamp(event.clientX - contentRect.left, 0, Math.max(contentRect.width, 1)),
+        contentY: clamp(event.clientY - contentRect.top, 0, Math.max(contentRect.height, 1)),
+        contentOriginX: contentRect.left - rect.left + container.scrollLeft,
+        contentOriginY: contentRect.top - rect.top + container.scrollTop,
+      };
+    }
     const delta = event.deltaY > 0 ? -0.1 : 0.1;
     pendingZoomRef.current = clamp(Number((pendingZoomRef.current + delta).toFixed(2)), 0.7, 2.2);
-    setDisplayZoom(pendingZoomRef.current);
+    // Keep the wheel gesture on the compositor. PDF.js only renders once the
+    // user pauses, instead of starting a canvas render for every wheel event.
+    // The old path called setDisplayZoom(pendingZoomRef.current) here, which
+    // forced every PDF page to re-render on each wheel tick.
+    if (zoomFrameRef.current === null) {
+      zoomFrameRef.current = window.requestAnimationFrame(() => {
+        zoomFrameRef.current = null;
+        const currentContent = documentContentRef.current;
+        const anchorPoint = zoomGestureAnchorRef.current;
+        if (currentContent && anchorPoint) {
+          currentContent.style.transformOrigin = `${anchorPoint.contentX}px ${anchorPoint.contentY}px`;
+          currentContent.style.setProperty('transform', `scale(${pendingZoomRef.current / zoom})`);
+        }
+      });
+    }
     if (zoomTimerRef.current !== null) window.clearTimeout(zoomTimerRef.current);
     zoomTimerRef.current = window.setTimeout(() => {
       zoomTimerRef.current = null;
-      onZoomChange(pendingZoomRef.current, anchor);
+      const nextZoom = pendingZoomRef.current;
+      const anchorPoint = zoomGestureAnchorRef.current;
+      if (nextZoom === zoom || !anchorPoint) {
+        documentContentRef.current?.style.removeProperty('transform');
+        documentContentRef.current?.style.removeProperty('transform-origin');
+        zoomGestureAnchorRef.current = null;
+        return;
+      }
+      // Keep the preview in place until the committed zoom reaches React. The
+      // layout effect above then removes it before paint, so users never see
+      // an intermediate frame at the old scroll position.
+      onZoomChange(nextZoom, anchorPoint);
     }, 160);
   };
 
@@ -365,16 +449,25 @@ export default function PdfReader({
     if (!container) return;
     const available = container.scrollHeight - container.clientHeight;
     const nextProgress = available > 0 ? clamp(container.scrollTop / available, 0, 1) : 0;
-    setScrollProgress(nextProgress);
-    if (syncScrollEnabled && !applyingSyncScrollRef.current && Math.abs(lastEmittedSyncRatioRef.current - nextProgress) > 0.002) {
-      lastEmittedSyncRatioRef.current = nextProgress;
-      onScrollSync?.(nextProgress);
+    if (syncScrollEnabled && !applyingSyncScrollRef.current) {
+      onScrollSync?.(scrollAnchorFromContainer(container));
     }
-    const currentPage = currentVisiblePage(container);
-    setVisiblePage(currentPage);
-    onReaderStateChange?.({
-      currentPage,
-      totalPages: pages.length || 1,
+    if (scrollUpdateFrameRef.current !== null) return;
+    scrollUpdateFrameRef.current = window.requestAnimationFrame(() => {
+      scrollUpdateFrameRef.current = null;
+      const latestContainer = containerRef.current;
+      if (!latestContainer) return;
+      const latestAvailable = latestContainer.scrollHeight - latestContainer.clientHeight;
+      const latestProgress = latestAvailable > 0 ? clamp(latestContainer.scrollTop / latestAvailable, 0, 1) : 0;
+      if (Math.abs(latestProgress - scrollProgressRef.current) > 0.002) {
+        scrollProgressRef.current = latestProgress;
+        setScrollProgress(latestProgress);
+      }
+      const currentPage = currentVisiblePage(latestContainer);
+      if (currentPage === visiblePageRef.current) return;
+      visiblePageRef.current = currentPage;
+      setVisiblePage(currentPage);
+      onReaderStateChange?.({ currentPage, totalPages: pages.length || 1 });
     });
   };
 
@@ -476,6 +569,7 @@ export default function PdfReader({
     if (!pageLayer) return;
     const point = pointFromEvent(event, pageLayer);
     setFocusedAnnotationId(annotationId);
+    setAnnotationResize(null);
     setStickyDrag({
       annotationId,
       page: pageNumber,
@@ -489,7 +583,50 @@ export default function PdfReader({
     });
   };
 
+  const beginAnnotationResize = (
+    annotationId: string,
+    pageNumber: number,
+    handle: AnnotationResizeHandle,
+    event: MouseEvent<HTMLElement>,
+  ) => {
+    const annotation = currentFileAnnotations.find((item) => item.id === annotationId);
+    if (!annotation || (annotation.type !== 'rect' && annotation.type !== 'text')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setFocusedAnnotationId(annotationId);
+    setStickyDrag(null);
+    setAnnotationResize({
+      annotationId,
+      page: pageNumber,
+      handle,
+      origin: {
+        x: numberValue(annotation.positionJson.x, 0),
+        y: numberValue(annotation.positionJson.y, 0),
+        width: numberValue(annotation.positionJson.width, annotation.type === 'text' ? 22 : 8),
+        height: numberValue(annotation.positionJson.height, annotation.type === 'text' ? 7 : 5),
+      },
+      minWidth: annotation.type === 'text' ? 8 : 2,
+      minHeight: annotation.type === 'text' ? 3.5 : 2,
+    });
+    setStickyDragPreview({
+      annotationId,
+      page: pageNumber,
+      positionJson: annotation.positionJson,
+    });
+  };
+
   const updateStickyDrag = (pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
+    if (annotationResize?.page === pageNumber) {
+      const annotation = currentFileAnnotations.find((item) => item.id === annotationResize.annotationId);
+      if (!annotation) return;
+      const point = pointFromEvent(event);
+      setStickyDragPreview({
+        annotationId: annotationResize.annotationId,
+        page: pageNumber,
+        positionJson: resizePositionFromDrag(annotation.positionJson, annotationResize, point),
+      });
+      return;
+    }
     if (!stickyDrag || stickyDrag.page !== pageNumber) return;
     const annotation = currentFileAnnotations.find((item) => item.id === stickyDrag.annotationId);
     if (!annotation) return;
@@ -505,6 +642,7 @@ export default function PdfReader({
   const finishStickyDrag = () => {
     const preview = stickyDragPreview;
     setStickyDrag(null);
+    setAnnotationResize(null);
     setStickyDragPreview(null);
     if (preview) {
       void onUpdateAnnotationPosition(preview.annotationId, preview.positionJson);
@@ -521,9 +659,14 @@ export default function PdfReader({
     if (!container.contains(range.commonAncestorContainer)) return;
     const selectionText = selection.toString().replace(/\s+/g, ' ').trim();
     if (!selectionText) return;
-    const rects = Array.from(range.getClientRects())
-      .map((rect) => normalizeClientRect(rect, container))
-      .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
+    const page = pages.find((candidate) => candidate.pageNumber === pageNumber);
+    const textItemSelections = textItemSelectionsFromRange(range, container);
+    const preciseRects = page ? textSelectionRectsFromOffsets(page.textItems, textItemSelections) : [];
+    const rects = preciseRects.length
+      ? preciseRects
+      : Array.from(range.getClientRects())
+          .map((rect) => normalizeClientRect(rect, container))
+          .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
     if (!rects.length) return;
     const segments = mergeRectsIntoLineSegments(rects);
     const bounds = boundingBox(segments);
@@ -678,10 +821,10 @@ export default function PdfReader({
       leftPx: event.clientX - rect.left,
       topPx: event.clientY - rect.top,
       text: annotationType === 'text' ? zh.reader.textLabel : '',
-      fontSize: 13,
+      fontSize: annotationType === 'text' ? toolSettings.textFontSize : 13,
       bold: annotationType === 'text' ? toolSettings.textBold : false,
       italic: annotationType === 'text' ? toolSettings.textItalic : false,
-      textColor: '#202822',
+      textColor: annotationType === 'text' ? toolSettings.textColor : '#202822',
       borderColor: annotationType === 'text' ? toolSettings.textBorderColor : '#ffffff',
       backgroundColor: annotationType === 'text' ? toolSettings.textBackgroundColor : '#fff4b8',
     });
@@ -849,19 +992,11 @@ export default function PdfReader({
 
   if (status !== 'ready') {
     return (
-      <div className={`pdf-page ${activeTool === 'cursor' ? 'cursor-mode' : ''}`}>
-        <div className="pdf-placeholder">
-          <div className="pdf-meta">
-            <span>{paper.venue || '未知来源'}</span>
-            <span>{paper.year || '-'}</span>
-          </div>
-          <h2>{paper.title}</h2>
-          <p>{paper.authors || '未知作者'}</p>
-          <div className="pdf-line wide" />
-          <div className="pdf-line" />
-          <div className="pdf-line short" />
-          <div className="pdf-figure">{message}</div>
-          {fileKind === 'source' && <mark>{zh.reader.annotationHint}</mark>}
+      <div className={`pdf-reader-status ${status}`} role={status === 'loading' ? 'status' : 'alert'} aria-live="polite">
+        {status === 'loading' && <span className="pdf-loading-indicator" aria-hidden="true" />}
+        <div className="pdf-reader-status-copy">
+          <strong>{message}</strong>
+          {status === 'loading' && source.title && <span>{source.title}</span>}
         </div>
       </div>
     );
@@ -872,12 +1007,13 @@ export default function PdfReader({
     : undefined;
 
   return (
-    <div className="pdf-reader-surface">
-      <div className="reader-toolbar-progress" aria-hidden="true">
+    <div className="pdf-reader-surface" data-reader-layer="pdf-surface">
+      <div className="reader-toolbar-progress" data-reader-layer="progress" aria-hidden="true">
         <div style={{ transform: `scaleX(${Math.max(0.04, scrollProgress)})` }} />
       </div>
       <div
         className={`pdf-document ${activeTool}-mode ${activeTool === 'cursor' ? '' : 'annotation-mode'} ${isPanning ? 'panning' : ''}`.trim()}
+        data-reader-layer="pdf-document"
         style={toolCursorStyle}
         ref={containerRef}
         onWheel={handleWheel}
@@ -887,58 +1023,60 @@ export default function PdfReader({
         onMouseUp={endPan}
         onMouseLeave={endPan}
       >
-        {pages.map((page) => (
-          <PdfPageView
-            key={page.pageNumber}
-            pageMeta={page}
-            zoom={zoom}
-            displayZoom={displayZoom}
-            selectableText={selectableText}
-            commentPopover={commentPopover?.page === page.pageNumber ? commentPopover : null}
-            eraserPreview={activeTool === 'eraser' && eraserCursor?.page === page.pageNumber
-              ? { x: eraserCursor.x, y: eraserCursor.y, size: toolSettings.eraserSize, shape: toolSettings.eraserShape }
-              : null}
-            pageHandlers={pageHandlers(page.pageNumber)}
-            flashKind={flash?.page === page.pageNumber ? flash.kind : null}
-            priorityDistance={Math.abs(page.pageNumber - visiblePage)}
-            onCommentPopoverChange={setCommentPopover}
-            onSaveComment={saveComment}
-            annotationLayer={
-              <AnnotationOverlay
-                annotations={annotationsByPage[page.pageNumber] ?? []}
-                drafts={draftAnnotationsByPage[page.pageNumber] ?? []}
-                dragDraft={dragDraft?.page === page.pageNumber ? dragDraft : null}
-                inkDraft={inkDraft?.page === page.pageNumber ? inkDraft : null}
-                activeTool={activeTool}
-                activeAnnotationColor={activeAnnotationColor}
-                toolSettings={toolSettings}
-                onSelectAnnotation={selectAnnotation}
-                onBeginStickyDrag={beginStickyDrag}
-                onEditStickyAnnotation={editStickyAnnotation}
-                onUpdateAnnotationColor={onUpdateAnnotationColor}
-                onDeleteAnnotation={onDeleteAnnotation}
-                onAppendAnnotationToNote={onAppendAnnotationToNote}
-                focusedAnnotationId={focusedAnnotationId}
-              />
-            }
-          />
-        ))}
-        {selectionPopup.visible && (
-          <SelectionPopup
-            visible={selectionPopup.visible}
-            x={selectionPopup.x - (containerRef.current?.getBoundingClientRect().left ?? 0)}
-            y={selectionPopup.y - (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.scrollTop ?? 0)}
-            activeAnnotationColor={activeAnnotationColor}
-            onHighlight={() => {
-              if (selectionPopup.pageElement) void finishTextSelection(selectionPopup.pageNumber, selectionPopup.pageElement, 'highlight');
-              setSelectionPopup((s) => ({ ...s, visible: false }));
-            }}
-            onUnderline={() => {
-              if (selectionPopup.pageElement) void finishTextSelection(selectionPopup.pageNumber, selectionPopup.pageElement, 'underline');
-              setSelectionPopup((s) => ({ ...s, visible: false }));
-            }}
-          />
-        )}
+        <div className="pdf-document-content" data-reader-layer="pdf-content" ref={documentContentRef}>
+          {pages.map((page) => (
+            <PdfPageView
+              key={page.pageNumber}
+              pageMeta={page}
+              zoom={zoom}
+              displayZoom={displayZoom}
+              selectableText={selectableText}
+              commentPopover={commentPopover?.page === page.pageNumber ? commentPopover : null}
+              eraserPreview={activeTool === 'eraser' && eraserCursor?.page === page.pageNumber
+                ? { x: eraserCursor.x, y: eraserCursor.y, size: toolSettings.eraserSize, shape: toolSettings.eraserShape }
+                : null}
+              pageHandlers={pageHandlers(page.pageNumber)}
+              flashKind={flash?.page === page.pageNumber ? flash.kind : null}
+              priorityDistance={Math.abs(page.pageNumber - visiblePage)}
+              onCommentPopoverChange={setCommentPopover}
+              onSaveComment={saveComment}
+              annotationLayer={
+                <AnnotationOverlay
+                  annotations={annotationsByPage[page.pageNumber] ?? []}
+                  drafts={draftAnnotationsByPage[page.pageNumber] ?? []}
+                  dragDraft={dragDraft?.page === page.pageNumber ? dragDraft : null}
+                  inkDraft={inkDraft?.page === page.pageNumber ? inkDraft : null}
+                  activeTool={activeTool}
+                  activeAnnotationColor={activeAnnotationColor}
+                  toolSettings={toolSettings}
+                  onSelectAnnotation={selectAnnotation}
+                  onBeginStickyDrag={beginStickyDrag}
+                  onBeginAnnotationResize={beginAnnotationResize}
+                  onEditStickyAnnotation={editStickyAnnotation}
+                  onUpdateAnnotationColor={onUpdateAnnotationColor}
+                  onDeleteAnnotation={onDeleteAnnotation}
+                  onAppendAnnotationToNote={onAppendAnnotationToNote}
+                  focusedAnnotationId={focusedAnnotationId}
+                />
+              }
+            />
+          ))}
+          {annotationsEnabled && selectionPopup.visible && (
+            <SelectionPopup
+              visible={selectionPopup.visible}
+              x={selectionPopup.x - (containerRef.current?.getBoundingClientRect().left ?? 0)}
+              y={selectionPopup.y - (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.scrollTop ?? 0)}
+              onHighlight={() => {
+                if (selectionPopup.pageElement) void finishTextSelection(selectionPopup.pageNumber, selectionPopup.pageElement, 'highlight');
+                setSelectionPopup((s) => ({ ...s, visible: false }));
+              }}
+              onUnderline={() => {
+                if (selectionPopup.pageElement) void finishTextSelection(selectionPopup.pageNumber, selectionPopup.pageElement, 'underline');
+                setSelectionPopup((s) => ({ ...s, visible: false }));
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

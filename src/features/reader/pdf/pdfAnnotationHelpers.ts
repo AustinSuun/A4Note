@@ -21,12 +21,13 @@ export function highlightPositionStyle(position: PositionJson) {
   const y = numberValue(position.y, 28);
   const width = numberValue(position.width, 42);
   const height = Math.max(numberValue(position.height, 5), 0.85);
-  const inset = Math.min(Math.max(height * 0.22, 0.24), 0.76);
+  const inset = Math.min(Math.max(height * 0.1, 0.08), 0.28);
+  const bottomBleed = Math.min(Math.max(height * 0.08 + 0.1, 0.18), 0.32);
   return {
     left: `${x}%`,
     top: `${y + inset}%`,
     width: `${width}%`,
-    height: `${Math.max(height - inset * 0.62, 0.68)}%`,
+    height: `${Math.max(height - inset + bottomBleed, 0.68)}%`,
   };
 }
 
@@ -36,7 +37,8 @@ export function underlinePositionStyle(position: PositionJson) {
   const width = numberValue(position.width, 42);
   const height = Math.max(numberValue(position.height, 5), 0.7);
   const lineHeight = Math.min(Math.max(height * 0.14, 0.32), 0.72);
-  const baselineTop = y + height + lineHeight * 0.15;
+  const baselineGap = Math.min(Math.max(height * 0.1, 0.12), 0.24);
+  const baselineTop = y + height + baselineGap;
   return {
     left: `${x}%`,
     top: `${baselineTop}%`,

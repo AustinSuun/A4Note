@@ -1,6 +1,7 @@
+import { memo } from 'react';
 import type { TextItemBox } from './types';
 
-export function PdfTextLayer({
+function PdfTextLayerView({
   textItems,
   zoom,
   selectable,
@@ -10,10 +11,11 @@ export function PdfTextLayer({
   selectable: boolean;
 }) {
   return (
-    <div className={selectable ? 'pdf-text-layer selectable' : 'pdf-text-layer'} aria-hidden={!selectable}>
+    <div className={selectable ? 'pdf-text-layer selectable' : 'pdf-text-layer'} data-reader-layer="text" aria-hidden={!selectable}>
       {textItems.map((item, index) => (
         <span
           key={`${index}-${item.x}-${item.y}`}
+          data-text-index={index}
           style={{
             left: `${item.x}%`,
             top: `${item.y}%`,
@@ -27,4 +29,10 @@ export function PdfTextLayer({
       ))}
     </div>
   );
+}
+
+const MemoPdfTextLayer = memo(PdfTextLayerView, (previous, next) => previous.textItems === next.textItems && previous.zoom === next.zoom && previous.selectable === next.selectable);
+
+export function PdfTextLayer(props: { textItems: TextItemBox[]; zoom: number; selectable: boolean }) {
+  return <MemoPdfTextLayer {...props} />;
 }

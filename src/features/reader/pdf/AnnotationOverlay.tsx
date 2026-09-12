@@ -9,7 +9,7 @@ import {
 import { normalizeBox } from './pdfGeometry';
 import { arrowPositionFromDrag } from './pdfInteraction';
 import { AnnotationMark } from './AnnotationMark';
-import type { AnnotationMarkModel, DraftAnnotationPreview, DragDraft, InkDraft, ReaderToolSettings } from './types';
+import type { AnnotationMarkModel, AnnotationResizeHandle, DraftAnnotationPreview, DragDraft, InkDraft, ReaderToolSettings } from './types';
 
 export function AnnotationOverlay({
   annotations,
@@ -21,6 +21,7 @@ export function AnnotationOverlay({
   toolSettings,
   onSelectAnnotation,
   onBeginStickyDrag,
+  onBeginAnnotationResize,
   onEditStickyAnnotation,
   onUpdateAnnotationColor,
   onDeleteAnnotation,
@@ -36,6 +37,7 @@ export function AnnotationOverlay({
   toolSettings: ReaderToolSettings;
   onSelectAnnotation: (annotationId: string) => void;
   onBeginStickyDrag: (annotationId: string, pageNumber: number, event: MouseEvent<HTMLDivElement>) => void;
+  onBeginAnnotationResize: (annotationId: string, pageNumber: number, handle: AnnotationResizeHandle, event: MouseEvent<HTMLElement>) => void;
   onEditStickyAnnotation: (annotation: AnnotationMarkModel, event: MouseEvent<HTMLElement>) => void;
   onUpdateAnnotationColor: (annotationId: string, color: AnnotationColor) => void | Promise<void>;
   onDeleteAnnotation: (annotationId: string) => void | Promise<void>;
@@ -90,13 +92,14 @@ export function AnnotationOverlay({
       }
     : null;
   return (
-    <div className="annotation-overlay" aria-label="PDF annotation layer">
+    <div className="annotation-overlay" data-reader-layer="annotations" aria-label="PDF annotation layer">
       {annotations.map((annotation) => (
         <AnnotationMark
           key={annotation.id}
           annotation={annotation}
           onSelectAnnotation={onSelectAnnotation}
           onBeginStickyDrag={onBeginStickyDrag}
+          onBeginAnnotationResize={onBeginAnnotationResize}
           onEditStickyAnnotation={onEditStickyAnnotation}
           onUpdateAnnotationColor={onUpdateAnnotationColor}
           onDeleteAnnotation={onDeleteAnnotation}

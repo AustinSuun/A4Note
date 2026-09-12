@@ -2,8 +2,8 @@ import { useEffect, useState, type CSSProperties, type WheelEvent as ReactWheelE
 import type { AnnotationColor, PaperDocument, ReaderTool } from '../../core/types';
 import { zh } from '../../ui/zh';
 import { AnnotationToolIcon, FitWidthIcon, SidebarIcon, ZoomInIcon, ZoomOutIcon } from './ReaderIcons';
-import { annotationTools, defaultToolColors } from './readerConstants';
-import type { ReaderFileMode, ReaderToolSettings } from './types';
+import { annotationColorInputValue, annotationTools, defaultToolColors, toolColorPresets } from './readerConstants';
+import type { PdfZoomAnchor, ReaderContentMode, ReaderFileMode, ReaderToolSettings } from './types';
 
 const ERASER_THICKNESS_MIN = 8;
 const ERASER_THICKNESS_MAX = 48;
@@ -13,31 +13,9 @@ const ARROW_STROKE_MIN = 1.5;
 const ARROW_STROKE_MAX = 9;
 const SHAPE_STROKE_MIN = 1;
 const SHAPE_STROKE_MAX = 8;
-const TOOL_COLOR_PRESETS = [
-  '#202822',
-  '#6b746c',
-  '#9b1c1c',
-  '#d92d20',
-  '#f97316',
-  '#f2c94c',
-  '#56cc9d',
-  '#2eaadc',
-  '#5c8edb',
-  '#9770db',
-  '#ffffff',
-  '#e7ebe5',
-  '#d9c8b4',
-  '#f3a6a6',
-  '#f7c58b',
-  '#ffe579',
-  '#b9e7c5',
-  '#a7d8ef',
-  '#b9cef7',
-  '#cbb7ef',
-] as const;
-
 export function ReaderToolbar({
   paper,
+  contentMode,
   fileMode,
   currentTranslatedFileId,
   parallelSyncLocked,
@@ -45,22 +23,31 @@ export function ReaderToolbar({
   activeAnnotationColor,
   customAnnotationColor,
   toolSettings,
+  contextAnnotationId,
+  contextAnnotationTool,
+  contextAnnotationColor,
+  contextToolSettings,
   zoom,
   readerPageState,
   sidePanelOpen,
   onFileModeChange,
+  onContentModeChange,
   onTranslatedFileIdChange,
   onParallelSyncLockedChange,
   onSelectAnnotationTool,
   onSelectAnnotationColor,
   onCustomAnnotationColorChange,
   onToolSettingsChange,
+  onUpdateContextAnnotationColor,
+  onUpdateContextAnnotationSettings,
+  onClearContextAnnotation,
   onZoomChange,
   onFitWidth,
   onJumpToPage,
   onSidePanelOpenChange,
 }: {
   paper: PaperDocument;
+  contentMode: ReaderContentMode;
   fileMode: ReaderFileMode;
   currentTranslatedFileId: string;
   parallelSyncLocked: boolean;
@@ -68,17 +55,25 @@ export function ReaderToolbar({
   activeAnnotationColor: AnnotationColor;
   customAnnotationColor: string;
   toolSettings: ReaderToolSettings;
+  contextAnnotationId?: string | null;
+  contextAnnotationTool?: 'text' | 'rect' | 'arrow' | null;
+  contextAnnotationColor?: AnnotationColor | null;
+  contextToolSettings?: ReaderToolSettings | null;
   zoom: number;
   readerPageState: { currentPage: number; totalPages: number };
   sidePanelOpen: boolean;
   onFileModeChange: (mode: ReaderFileMode) => void;
+  onContentModeChange: (mode: ReaderContentMode) => void;
   onTranslatedFileIdChange: (fileId: string) => void;
   onParallelSyncLockedChange: (locked: boolean) => void;
   onSelectAnnotationTool: (type: ReaderTool) => void;
   onSelectAnnotationColor: (color: AnnotationColor) => void;
   onCustomAnnotationColorChange: (color: string) => void;
   onToolSettingsChange: (settings: ReaderToolSettings) => void;
-  onZoomChange: (zoom: number, anchor?: { x: number; y: number }) => void;
+  onUpdateContextAnnotationColor?: (annotationId: string, color: AnnotationColor) => void;
+  onUpdateContextAnnotationSettings?: (annotationId: string, settings: ReaderToolSettings) => void;
+  onClearContextAnnotation?: () => void;
+  onZoomChange: (zoom: number, anchor?: PdfZoomAnchor) => void;
   onFitWidth: () => void;
   onJumpToPage: (page: number) => void;
   onSidePanelOpenChange: (open: boolean) => void;
@@ -97,6 +92,7 @@ export function ReaderToolbar({
   }, [activeAnnotationTool]);
 
   const handleSelectTool = (tool: ReaderTool) => {
+    if (contextAnnotationId) onClearContextAnnotation?.();
     const isCurrentTool = activeAnnotationTool === tool;
     if (isCurrentTool && toolHasSettings(tool)) {
       setToolSettingsOpenFor((current) => (current === tool ? null : tool));
@@ -110,6 +106,10 @@ export function ReaderToolbar({
   };
 
   const handleSelectColor = (color: AnnotationColor) => {
+    if (contextAnnotationId) {
+      onUpdateContextAnnotationColor?.(contextAnnotationId, color);
+      return;
+    }
     setToolColors((prev) => ({ ...prev, [activeAnnotationTool]: color }));
     onSelectAnnotationColor(color);
   };
@@ -117,6 +117,10 @@ export function ReaderToolbar({
   const handleCustomColor = (value: string) => {
     const color = value as AnnotationColor;
     onCustomAnnotationColorChange(value);
+    if (contextAnnotationId) {
+      onUpdateContextAnnotationColor?.(contextAnnotationId, color);
+      return;
+    }
     setToolColors((prev) => ({ ...prev, [activeAnnotationTool]: color }));
     onSelectAnnotationColor(color);
   };
@@ -127,13 +131,26 @@ export function ReaderToolbar({
     onJumpToPage(nextPage);
   };
 
-  const currentColor = toolColors[activeAnnotationTool] ?? activeAnnotationColor;
+  const optionsTool = contextAnnotationTool ?? toolSettingsOpenFor;
+  const currentColor = contextAnnotationColor ?? toolColors[activeAnnotationTool] ?? activeAnnotationColor;
+  const currentToolSettings = contextToolSettings ?? toolSettings;
+  const handleToolSettingsChange = (settings: ReaderToolSettings) => {
+    if (contextAnnotationId) {
+      onUpdateContextAnnotationSettings?.(contextAnnotationId, settings);
+      return;
+    }
+    onToolSettingsChange(settings);
+  };
 
   return (
-    <header className="reader-toolbar" aria-label="Reader toolbar">
+    <header
+      className="reader-toolbar"
+      data-reader-layer="toolbar"
+      aria-label="Reader toolbar"
+    >
       <div className="reader-toolbar-primary">
         <div className="reader-toolbar-group reader-toolbar-file">
-          <div className="segmented compact reader-file-switch" aria-label="PDF file mode">
+          {contentMode === 'pdf' && <div className="segmented compact reader-file-switch" aria-label="PDF file mode">
             <button
               className={fileMode === 'source' ? 'active' : ''}
               type="button"
@@ -158,9 +175,9 @@ export function ReaderToolbar({
             >
               {zh.reader.parallelPdf}
             </button>
-          </div>
+          </div>}
 
-          {(fileMode === 'translated' || fileMode === 'parallel') && paper.translatedFileIds.length > 1 && (
+          {contentMode === 'pdf' && (fileMode === 'translated' || fileMode === 'parallel') && paper.translatedFileIds.length > 1 && (
             <select
               className="translated-file-select"
               value={currentTranslatedFileId}
@@ -180,7 +197,7 @@ export function ReaderToolbar({
             </select>
           )}
 
-          {fileMode === 'parallel' && (
+          {contentMode === 'pdf' && fileMode === 'parallel' && (
             <label className="parallel-sync-toggle">
               <input
                 type="checkbox"
@@ -194,33 +211,45 @@ export function ReaderToolbar({
       </div>
 
       <div className="reader-toolbar-center">
-        <div className="reader-toolbar-group reader-toolbar-annotations">
+        {contentMode === 'pdf' && <div className="reader-toolbar-group reader-toolbar-annotations">
           <div className="annotation-toolbar" aria-label="Annotation tools">
             {annotationTools.map((tool) => {
-              const toolColor = toolColors[tool.id];
+              const isContextual = contextAnnotationTool === tool.id;
+              const toolColor = isContextual ? contextAnnotationColor ?? toolColors[tool.id] : toolColors[tool.id];
               const isActive = activeAnnotationTool === tool.id;
               return (
                 <div key={tool.id} className="annotation-tool-slot">
                   <button
-                    className={`annotation-tool-btn ${isActive ? 'active' : ''}`.trim()}
+                    className={`annotation-tool-btn ${isActive ? 'active' : ''} ${isContextual ? 'contextual' : ''}`.trim()}
                     type="button"
                     onClick={() => handleSelectTool(tool.id)}
                     title={tool.label}
                     aria-pressed={isActive}
-                    aria-expanded={toolSettingsOpenFor === tool.id}
+                    aria-expanded={optionsTool === tool.id}
                   >
                     <AnnotationToolIcon id={tool.id} />
                     {tool.id !== 'cursor' && tool.id !== 'eraser' && (
                       <span className="annotation-tool-color-dot" style={{ background: toolColorToCss(toolColor) }} />
                     )}
                   </button>
+                  {optionsTool === tool.id && (
+                    <ToolOptionsBar
+                      tool={optionsTool}
+                      toolSettings={currentToolSettings}
+                      activeColor={currentColor}
+                      customAnnotationColor={customAnnotationColor}
+                      onSelectAnnotationColor={handleSelectColor}
+                      onCustomAnnotationColorChange={handleCustomColor}
+                      onToolSettingsChange={handleToolSettingsChange}
+                    />
+                  )}
                 </div>
               );
             })}
           </div>
-        </div>
+        </div>}
 
-        <div className="reader-toolbar-group reader-toolbar-nav">
+        {contentMode === 'pdf' && <div className="reader-toolbar-group reader-toolbar-nav">
           <div className="zoom-controls" aria-label="Zoom controls">
             <button
               type="button"
@@ -256,7 +285,7 @@ export function ReaderToolbar({
             />
             <span>/ {readerPageState.totalPages}</span>
           </div>
-        </div>
+        </div>}
       </div>
 
       <div className="reader-toolbar-end">
@@ -273,17 +302,6 @@ export function ReaderToolbar({
           </button>
         )}
       </div>
-      {toolSettingsOpenFor && (
-        <ToolOptionsBar
-          tool={toolSettingsOpenFor}
-          toolSettings={toolSettings}
-          activeColor={currentColor}
-          customAnnotationColor={customAnnotationColor}
-          onSelectAnnotationColor={handleSelectColor}
-          onCustomAnnotationColorChange={handleCustomColor}
-          onToolSettingsChange={onToolSettingsChange}
-        />
-      )}
     </header>
   );
 }
@@ -499,6 +517,25 @@ function ToolOptionsBar({
             </div>
             <span className="tool-option-hint">点击页面创建文本标记</span>
           </div>
+          <div className="tool-option-block compact text-size-option">
+            <span className="tool-option-label">字号</span>
+            <select
+              value={toolSettings.textFontSize}
+              onChange={(event) => onToolSettingsChange({ ...toolSettings, textFontSize: Number(event.target.value) })}
+              aria-label="文本字号"
+            >
+              {[12, 13, 14, 16, 18, 20, 24].map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </div>
+          <ToolColorPalette
+            label="文字颜色"
+            value={toolSettings.textColor}
+            customColor={toolSettings.textColor}
+            onChange={(textColor) => onToolSettingsChange({ ...toolSettings, textColor })}
+            onCustomColorChange={(textColor) => onToolSettingsChange({ ...toolSettings, textColor })}
+          />
           <ToolColorPalette
             label="外边框"
             value={toolSettings.textBorderColor}
@@ -628,7 +665,7 @@ function ToolColorPalette({
   onChange: (color: string) => void;
   onCustomColorChange: (color: string) => void;
 }) {
-  const inputValue = colorToInputValue(value === 'transparent' ? customColor : value);
+  const inputValue = annotationColorInputValue(value === 'transparent' ? customColor : value);
   return (
     <div className={`tool-option-color-group ${allowTransparent ? 'with-transparent-toggle' : ''}`.trim()} aria-label={label}>
       <span className="tool-option-label">{label}</span>
@@ -654,7 +691,7 @@ function ToolColorPalette({
         <span style={{ background: inputValue }} />
       </label>
       <div className="tool-option-color-presets">
-        {TOOL_COLOR_PRESETS.map((color) => (
+        {toolColorPresets.map((color) => (
           <button
             key={color}
             type="button"
@@ -714,15 +751,6 @@ function rangeProgress(value: number, min: number, max: number) {
 
 function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
-function colorToInputValue(color: string) {
-  if (color.startsWith('#') && /^#[0-9a-fA-F]{6}$/.test(color)) return color;
-  if (color === 'yellow') return '#ffe579';
-  if (color === 'green') return '#56cc9d';
-  if (color === 'blue') return '#5c8edb';
-  if (color === 'purple') return '#9770db';
-  return '#ffffff';
 }
 
 function toolColorToCss(color: AnnotationColor): string {

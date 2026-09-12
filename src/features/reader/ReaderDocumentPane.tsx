@@ -1,11 +1,24 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { AnnotationColor, AnnotationDraft, PaperDocument, PositionJson, ReaderTool } from '../../core/types';
 import type { PaperFileKind } from '../../platform/nativeApi';
 import { zh } from '../../ui/zh';
-import { MarkdownEmptyState, MarkdownReadView } from './ReaderMarkdown';
-import type { ReaderContentMode, ReaderFileMode, ReaderToolSettings } from './types';
+import { MarkdownEmptyState, MarkdownNotePanel } from './ReaderMarkdown';
+import { paperPdfSource } from './pdf/pdfSource';
+import { scrollTopFromAnchor } from './pdf/pdfInteraction';
+import type { NoteDraftPatch, NoteSaveInput, PdfScrollAnchor, PdfZoomAnchor, ReaderContentMode, ReaderFileMode, ReaderToolSettings } from './types';
 
 const PdfReader = lazy(() => import('./pdf/PdfReader'));
+
+function PdfLoadingState() {
+  return (
+    <div className="pdf-reader-status loading" role="status" aria-live="polite">
+      <span className="pdf-loading-indicator" aria-hidden="true" />
+      <div className="pdf-reader-status-copy">
+        <strong>{zh.reader.pdfLoading}</strong>
+      </div>
+    </div>
+  );
+}
 
 type MountedPdfReader = {
   key: string;
@@ -37,6 +50,9 @@ export function ReaderDocumentPane({
   onReaderStateChange,
   onFocusAnnotation,
   onCreateNote,
+  noteDraftPatch,
+  onNoteDraftPatchConsumed,
+  onNoteSave,
   onActiveParallelFileKindChange,
   onNavigateAnnotation,
   onCompleteOneShotTool,
@@ -53,7 +69,7 @@ export function ReaderDocumentPane({
   toolSettings: ReaderToolSettings;
   requestedPage: number | null;
   focusedAnnotationId: string | null;
-  onZoomChange: (zoom: number, anchor?: { x: number; y: number }) => void;
+  onZoomChange: (zoom: number, anchor?: PdfZoomAnchor) => void;
   onCreateAnnotation: (annotation: AnnotationDraft & { page: number }, fileKind?: PaperFileKind) => void | Promise<string | undefined>;
   onUpdateAnnotationComment: (annotationId: string, comment: string) => void | Promise<void>;
   onUpdateAnnotationPosition: (annotationId: string, positionJson: PositionJson) => void | Promise<void>;
@@ -62,15 +78,20 @@ export function ReaderDocumentPane({
   onAppendAnnotationToNote: (annotationId: string) => void;
   onReaderStateChange: (state: { currentPage: number; totalPages: number }) => void;
   onFocusAnnotation: (annotationId: string | null) => void;
-  onCreateNote: () => void | Promise<void>;
+  onCreateNote: () => void | Promise<string | void>;
+  noteDraftPatch: NoteDraftPatch | null;
+  onNoteDraftPatchConsumed: () => void;
+  onNoteSave: (note: NoteSaveInput) => void | Promise<string | void>;
   onActiveParallelFileKindChange: (kind: PaperFileKind) => void;
   onNavigateAnnotation: (annotationId: string) => void;
   onCompleteOneShotTool: () => void;
 }) {
   const canShowMarkdown = Boolean(paper.notes.length);
-  const [parallelScrollRatio, setParallelScrollRatio] = useState(0);
-  const [parallelScrollSource, setParallelScrollSource] = useState<PaperFileKind | null>(null);
   const [mountedPdfReaders, setMountedPdfReaders] = useState<MountedPdfReader[]>([]);
+  const canvasRootRef = useRef<HTMLElement | null>(null);
+  const parallelScrollFrameRef = useRef<number | null>(null);
+  const parallelScrollRequestRef = useRef<{ source: PaperFileKind; anchor: PdfScrollAnchor } | null>(null);
+  const applyingParallelScrollRef = useRef(false);
 
   const activePdfReaders = useMemo<MountedPdfReader[]>(() => {
     if (contentMode !== 'pdf') return [];
@@ -104,11 +125,31 @@ export function ReaderDocumentPane({
     });
   }, [activePdfReaders, paper.paperId]);
 
-  const updateParallelScroll = (kind: PaperFileKind, ratio: number) => {
-    if (!parallelSyncLocked) return;
-    setParallelScrollSource(kind);
-    setParallelScrollRatio(ratio);
+  const updateParallelScroll = (kind: PaperFileKind, anchor: PdfScrollAnchor) => {
+    if (!parallelSyncLocked || applyingParallelScrollRef.current) return;
+    parallelScrollRequestRef.current = { source: kind, anchor };
+    if (parallelScrollFrameRef.current !== null) return;
+    parallelScrollFrameRef.current = window.requestAnimationFrame(() => {
+      parallelScrollFrameRef.current = null;
+      const request = parallelScrollRequestRef.current;
+      if (!request || !canvasRootRef.current) return;
+      const targetKind = request.source === 'source' ? 'translated' : 'source';
+      const target = canvasRootRef.current.querySelector<HTMLElement>(`.pdf-keepalive-pane.${targetKind}.visible .pdf-document`);
+      if (!target) return;
+      const nextTop = scrollTopFromAnchor(target, request.anchor);
+      if (Math.abs(target.scrollTop - nextTop) > 1) {
+        applyingParallelScrollRef.current = true;
+        target.scrollTop = nextTop;
+        window.requestAnimationFrame(() => {
+          applyingParallelScrollRef.current = false;
+        });
+      }
+    });
   };
+
+  useEffect(() => () => {
+    if (parallelScrollFrameRef.current !== null) window.cancelAnimationFrame(parallelScrollFrameRef.current);
+  }, []);
 
   const isPdfReaderVisible = (reader: MountedPdfReader) => activePdfReaders.some((item) => item.key === reader.key);
   const isPdfReaderActive = (reader: MountedPdfReader) => {
@@ -118,9 +159,8 @@ export function ReaderDocumentPane({
 
   const renderPdfReader = (fileKind: PaperFileKind, fileId: string, active: boolean) => (
     <PdfReader
-      paper={paper}
-      fileKind={fileKind}
-      fileId={fileId}
+      source={paperPdfSource(paper, fileKind, fileId)}
+      annotations={paper.annotations}
       activeTool={activeAnnotationTool}
       zoom={zoom}
       activeAnnotationColor={activeAnnotationColor}
@@ -138,15 +178,15 @@ export function ReaderDocumentPane({
       onFocusAnnotation={onFocusAnnotation}
       focusedAnnotationId={focusedAnnotationId}
       syncScrollEnabled={parallelSyncLocked}
-      syncScrollRatio={parallelScrollSource && parallelScrollSource !== fileKind ? parallelScrollRatio : null}
-      onScrollSync={(ratio) => updateParallelScroll(fileKind, ratio)}
+      syncScrollAnchor={null}
+      onScrollSync={(anchor) => updateParallelScroll(fileKind, anchor)}
     />
   );
 
   return (
-    <article className="pdf-canvas">
+    <article className="pdf-canvas" data-reader-layer="document-pane" ref={canvasRootRef}>
       {contentMode === 'pdf' ? (
-        <Suspense fallback={<div className="reader-loading">{zh.reader.pdfLoading}</div>}>
+        <Suspense fallback={<PdfLoadingState />}>
           <div className={`pdf-keepalive-stage ${fileMode === 'parallel' ? 'parallel' : 'single'}`.trim()}>
             {mountedPdfReaders.map((reader) => {
               const visible = isPdfReaderVisible(reader);
@@ -166,11 +206,20 @@ export function ReaderDocumentPane({
                 </section>
               );
             })}
-            {!mountedPdfReaders.length && <div className="reader-loading">{zh.reader.pdfLoading}</div>}
+            {!mountedPdfReaders.length && <PdfLoadingState />}
           </div>
         </Suspense>
       ) : canShowMarkdown ? (
-        <MarkdownReadView paper={paper} onNavigateAnnotation={onNavigateAnnotation} />
+        <div className="markdown-document-pane">
+          <MarkdownNotePanel
+            paper={paper}
+            draftPatch={noteDraftPatch}
+            onDraftPatchConsumed={onNoteDraftPatchConsumed}
+            onSave={onNoteSave}
+            onCreateNote={onCreateNote}
+            onNavigateAnnotation={onNavigateAnnotation}
+          />
+        </div>
       ) : (
         <MarkdownEmptyState onCreateNote={onCreateNote} />
       )}

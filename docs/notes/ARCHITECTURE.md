@@ -36,21 +36,34 @@ src-tauri/
 其中：
 
 - `src/core/types.ts` 已包含文献、标注、关系、工作台和 Provider 相关类型。
+- `src/core/workspace.ts` 已包含 `Project / Workspace / WorkspaceTab / Resource / AgentSession` 纯模型与全部状态迁移，无 React、无 Tauri、无 storage。详见 `WORKSPACE_BASELINE.md`。
+- `src/core/resources.ts` 已包含资源身份（`RES-2`）：URI 规范化（幂等）、`resourceKey` 去重身份、`resourceTabKey`、kind/标题推断和本地路径往返。URI 语法只在这里有一份，Rust 侧不写第二份。
 - `src/core/relations.ts` 已有前端关系图映射和查询层。
 - `src/core/workbench.ts` 已有工作台面板注册表。
 - `src/core/aiProviders.ts` 已有 AI Provider runner 雏形。
 - `src/core/asterCore.ts` 已有命令、事件、插件、Provider、设置等前端核心能力。
+- `src/core/builtinScenePlugins.ts` 与 `overviewPlugin.ts`、`libraryPlugin.ts`、`readerPlugin.ts`、`aiPlugin.ts`、`markdownPlugin.ts` 已将内置场景统一纳入插件生命周期。
 - `src/platform/nativeApi.ts` 已作为前端访问 Tauri/native 能力的边界。
+- `src/platform/projects/` 已承载项目文件夹选择、文件树列举、文本预览和外部打开（VS Code / 资源管理器 / 默认应用）。
+- `src/platform/agentCli/` 已承载 Codex / Claude Code CLI 的安装检测，只检测不启动。
+- `src/platform/workbench/` 已承载工作台快照的 SQLite 适配器（`load_workbench_state` / `save_workbench_state`、去抖写入、旧 `localStorage` 快照迁移）。
 - `src/features/library/` 已拆出 `LibraryScene`、`LibraryDetailPanel`、`ImportDialog`、`TagInput` 和 `types`，是当前 feature 模块样板。
 - `src/features/reader/` 已拆出 `ReaderScene`、工具栏、侧边抽屉、Markdown 面板、标注列表、关系面板和 reader helper，阅读器外层已进入模块化阶段。
 - `src/features/ai/AIChatScene.tsx` 已承载 AI 对话展示组件。
+- `src/features/explorer/` 已承载 `FileTreePanel` 和 `FileTab`。
+- `src/features/agents/` 已承载 `AgentSessionPanel` 和 `useAgentProviders`。
 - `src/features/settings/index.tsx` 已承载设置、诊断、备份和插件设置展示组件，状态和副作用仍由 `App.tsx` 持有。
-- `src/workbench/WorkspacePanelHost.tsx` 已承载通用工作台面板 Host。
-- `src/workbench/CommandPalette.tsx` 已承载命令面板。
+- `src/workbench/` 已承载工作台外壳：`WorkbenchShell`、`ProjectSidebar`、`WorkbenchTopBar`、`TabStrip`、`TabHost`、`CommandPalette`、`WorkspacePanelHost`、`workspaceStore`、`useWorkbench`、`workbenchLabels`。
+- `src/workbench/sceneViews.tsx` 已提供场景 React 视图和场景专属侧栏视图注册表；`App.tsx` 只负责装配上下文，不再按内置场景写渲染分支。
 - `src/shared/` 已建立 UI、hooks、utils 的稳定导出入口，后续按需填充。
-- `src/ui/App.tsx` 已不再承载主要场景组件，但仍承担大量状态管理、快捷键、持久化和业务协调，后续需要继续抽 hooks。
+- `src/ui/App.tsx` 已不再承载主要场景组件和外壳布局，但仍承担大量状态管理、快捷键、持久化和业务协调，后续需要继续抽 hooks。
 - `src/features/reader/pdf/PdfReader.tsx` 是阅读器 PDF 核心，仍然较大，后续需要按渲染、标注、便签、文本层、快捷键拆分。
-- `src-tauri/src/lib.rs` 同时承担文件系统、SQLite、导入、标注、备份恢复等后端命令，后续需要按领域拆分。
+- `src-tauri/src/workspace_fs.rs` 已承载项目文件夹、文件树、文本预览、外部打开和 CLI 检测。
+- `src-tauri/src/workbench_store.rs` 已承载工作台快照的 SQLite repository（单事务全量重写 `workbench_state / projects / workspaces / workspace_tabs / resources / agent_sessions`）。`resources.uri` 原样存前端算好的值，索引故意不是 UNIQUE。同一个事务顺手扫掉已消失会话的消息历史（`agent_history::prune_orphans`）——`agent_messages` 故意不是外键子表，见 `schema.sql`。
+- `src-tauri/src/agent_cli/` 已承载 Agent CLI 协议层（`CLI-0`）、进程层（`CLI-1`）与第一个 Provider 适配器（`CLI-2`）。协议层：JSONL 分帧、事件 DTO 与错误类型、`AgentTransport` stdio 抽象与内存夹具、请求关联与超时、回合隔离，整层同步、不接触 `std::process::Child`。进程层：`launch.rs` 启动配置（父会话环境变量剥离、Windows `cmd` shim 与元字符拒绝、`PATH` 预解析）、`process.rs` 真实 `Child` 传输（读取线程 + tree-kill 阶梯）、`supervisor.rs` 一个会话一个线程（runId 铸造、排队、取消、退出清理）与 `ProviderSession` 适配器接缝。适配器层：`providers/codex.rs` 讲 `codex app-server` 的 v2 `thread/*` + `turn/*` JSON-RPC。整个 `agent_cli/` 里没有 `tauri::`，也不认识 `rusqlite`。前端对应的纯契约是 `src/core/agentProtocol.ts`。
+- `src-tauri/src/agent_bridge.rs` 是运行时与 Tauri 之间唯一的接缝（`CLI-2`）：五个命令（`start_agent_session` / `send_agent_message` / `stop_agent_session` / `close_agent_session` / `agent_session_running`）、单一事件频道 `agent://event`、`register` 建 sink、`shutdown` 挂在 `RunEvent::Exit`。它不解释任何 CLI 方言，也不碰 SQLite。
+- `src-tauri/src/agent_history.rs` 已承载 Agent 消息历史（`CLI-4`）：一行一次交换、主键 `(session_id, seq)`、写是只更新变了的行的 UPSERT（`created_at` 不动），`tool_payloads_json` / `error_json` 原样存不二次建模。它是仓库不是运行时，里面没有 `tauri::`；两个命令 `load_agent_messages` / `save_agent_messages` 挂在 `state_commands.rs`（`P2-1` 之前挂在 `lib.rs`），**不**挂在 `agent_bridge.rs` —— 那是 CLI 那一侧的墙，CLI 不该有办法碰到 Aster 的数据库。
+- `src-tauri/src/lib.rs` 已经按领域拆完（`P2-1`）：2799 行 → 97 行，只剩模块表、`generate_handler!` 注册段和 `run()`。命令体在拥有那几张表的模块里 —— `app_paths` / `database` / `guide` / `diagnostics` / `backup` / `pdf_metadata` / `library_import` / `library_papers` / `library_annotations` / `library_notes` / `library_ai` / `project_commands` / `state_commands`，跨领域的端到端测试在 `library_tests.rs`。`npm run test:architecture` 钉住这条：`lib.rs` 里不许出现 `#[tauri::command]` 或 `rusqlite`，行数上限 160，注册条目必须写成 `模块::命令`。
 
 当前不要立刻大规模移动文件。应先建立模块边界，再按稳定闭环逐步迁移。
 
@@ -62,6 +75,10 @@ src-tauri/
 src/
   core/
     types.ts
+    workspace.ts
+    resources.ts
+    agentProtocol.ts
+    agentHistory.ts
     commands.ts
     events.ts
     relations.ts
@@ -74,19 +91,30 @@ src/
 
   platform/
     nativeApi.ts
+    projects/
+    agentCli/
+    workbench/
     repositories/
     fileSystem.ts
     sqlite.ts
 
   workbench/
     WorkbenchShell.tsx
+    ProjectSidebar.tsx
+    WorkbenchTopBar.tsx
+    TabStrip.tsx
+    TabHost.tsx
     CommandPalette.tsx
     WorkspacePanelHost.tsx
-    layoutStore.ts
+    workspaceStore.ts
+    useWorkbench.ts
+    workbenchLabels.ts
 
   features/
     library/
     reader/
+    explorer/
+    agents/
     notes/
     ai/
     settings/
@@ -99,19 +127,47 @@ src/
 
 src-tauri/
   src/
-    commands/
-    database/
-    files/
-    import/
-    annotations/
-    backup/
+    workspace_fs.rs
+    workbench_store.rs
+    agent_cli/
+      mod.rs
+      protocol.rs       # JSONL 分帧、事件 DTO、错误类型、stderr 尾部
+      transport.rs      # AgentTransport trait + 内存 stdio 夹具
+      peer.rs           # 请求关联、超时、终止错误合成
+      turn.rs           # 回合隔离（RunGate）
+      launch.rs         # 启动配置：环境剥离、Windows shim、PATH 解析
+      process.rs        # 真实 Child 传输 + tree-kill 阶梯
+      supervisor.rs     # 会话线程、runId、取消、退出清理、ProviderSession
+      providers/
+        mod.rs            # ProviderHandle（两个适配器共用的会话 id 回传口）
+        codex.rs          # CLI-2：codex app-server 的 thread/* + turn/* JSON-RPC
+        claude.rs         # CLI-3：claude -p 的 stream-json，裸类型化对象、非 JSON-RPC
+    agent_bridge.rs     # CLI-2：五个 Tauri 命令 + agent://event，唯一同时认识 Tauri 的文件
+    agent_history.rs    # CLI-4：agent_messages 仓库（命令在 state_commands.rs，这里没有 tauri::）
+    lib.rs              # P2-1：只剩模块表 + generate_handler! + run()
+    app_paths.rs        # 资料库路径、初始化、跨平台 reveal / 默认程序打开
+    database.rs         # 连接与建表、标签规范化、时间戳等公共 SQLite 工具
+    guide.rs            # 内置指南种子
+    diagnostics.rs      # 诊断信息
+    backup.rs           # 备份与恢复
+    pdf_metadata.rs     # 从 PDF 首页文本猜标题/作者/DOI/年份
+    library_import.rs   # 导入原文与译文、按 file_id 取字节、在外部打开
+    library_papers.rs   # 文献列表、元数据、标签、删除
+    library_annotations.rs # 标注增删改与撤销恢复
+    library_notes.rs    # 笔记 upsert
+    library_ai.rs       # AI 会话与消息
+    library_tests.rs    # 跨领域端到端测试（临时 AsterData 根）
+    project_commands.rs # 项目文件夹命令（实现在 workspace_fs.rs）
+    state_commands.rs   # 工作台快照与 Agent 历史命令（SQLite 那一侧的墙）
 ```
+
+`P2-1` 落地时把原先设想的 `commands/ database/ import/ annotations/ backup/` 目录改成了平铺的领域文件：每个模块自己拿着命令、DTO 和 helper，DTO 字段的可见性就只在一个文件里，不用为了共享类型把 `pub(crate)` 铺开。真的有一个领域涨到几百行以上时再把它变成目录。
 
 迁移顺序：
 
 1. 先从 `App.tsx` 抽 UI 组件，不改业务行为。
 2. 再从 `PdfReader.tsx` 抽阅读器内部模块。
-3. 再把 `nativeApi.ts` 和后端命令按领域拆分。
+3. 再把 `nativeApi.ts` 和后端命令按领域拆分（后端那一半已由 `P2-1` 完成）。
 4. 最后再做数据库通用关系表迁移。
 
 ## 4. 模块职责
@@ -129,6 +185,9 @@ src-tauri/
 - 插件注册。
 - 工作台面板注册。
 - 关系图映射和查询。
+- Agent CLI 契约与纯归约（`agentProtocol.ts`：事件类型、`AgentError`、`delta` / `snapshot` 文本语义、回合门 `AgentRunGate`）。它是 UI 与 Rust supervisor 共用的唯一契约，因此必须零依赖。
+- Agent 历史行与 transcript 的互相映射（`agentHistory.ts`：`seq` 只数已开过 run 的回合、回填的 runId 带 `#restored{seq}` 标记且存回时剥掉、摘要决定哪几行需要写回）。它同样是纯函数：hook 只决定什么时候读写，不决定行长什么样。
+- 资源身份（`resources.ts`：URI 规范化与幂等、`resourceKey` 去重、`resourceTabKey`、kind 与标题推断、本地路径往返）。同理，它是 UI、工作台模型和原生层共用的唯一 URI 语法，Rust 侧不得再写一份。
 - Markdown 渲染等纯函数。
 
 不负责：
@@ -162,11 +221,13 @@ src-tauri/
 
 负责：
 
-- 场景切换。
+- 工作台网格与插槽（`WorkbenchShell`）。
+- 项目/工作区导航（`ProjectSidebar`）。
+- 顶栏动作（`WorkbenchTopBar`）。
+- 标签条与标签宿主（`TabStrip` / `TabHost`）。
 - 命令面板。
 - 工作台面板 Host。
-- 布局状态保存。
-- 面板注册与渲染。
+- 布局与标签状态的读写包装（`workspaceStore` / `useWorkbench`）。
 - 快捷键分发。
 
 不负责：
@@ -174,6 +235,14 @@ src-tauri/
 - 文献导入细节。
 - PDF 标注算法。
 - AI Provider 实现。
+- 调用 Tauri 或读取中文字符串表。
+
+硬约束：`src/workbench/**` 不 import `src/ui/*`、`src/platform/*`、`src/features/*`。因此：
+
+- 需要原生能力的面板（文件树、Agent 会话）放在 `features/`。
+- 文案通过 `WorkbenchLabels` 由 `App.tsx` 注入（`zh.workbench`），图标通过 props 注入。
+
+这条边界由 `scripts/verify-architecture-boundaries.mjs` 逐文件断言。
 
 ### 4.4 features/library
 
@@ -252,21 +321,57 @@ AI 模块。
 - 备份恢复。
 - Provider 配置。
 
+### 4.9 features/explorer
+
+项目文件浏览模块。
+
+负责：
+
+- 只读文件树（懒加载展开、刷新、跳过生成目录）。
+- 文件标签的文本预览，二进制文件给出明确提示而不是乱码。
+- 在资源管理器/默认应用中打开选中路径的入口。
+
+不负责：
+
+- 文件写入、重命名、删除。
+- PDF 渲染（PDF 由阅读器模块处理）。
+
+### 4.10 features/agents
+
+Agent 会话模块。
+
+负责：
+
+- Agent 会话面板：Provider 检测结果、状态、工作目录、权限模式、真实 transcript 与输入框。
+- Provider 检测 hook（`useAgentProviders`）。
+- 单个会话的运行时 hook（`useAgentSession`）：订阅 `agent://event`、乐观插入 prompt、重新挂载时采纳已在跑的进程、`send` 被拒后回滚并复查进程是否还活着、挂载时读一次历史并把变了的行写回去（`CLI-4`）。
+
+不负责：
+
+- 子进程生命周期（属于 Rust `agent_cli`）。
+- 解析 CLI 协议帧（必须由 Rust 转成统一事件后再交给前端）。Rust 侧优先使用结构化协议：Codex 走 `codex app-server` 的 stdio JSON-RPC，Claude Code 走 `claude -p` 的 `--output-format stream-json`（裸的类型化对象，不是 JSON-RPC）；抓取人类可读 stdout 只是降级路径，首批两个适配器都没有用到它。参考仓库、许可证边界和本机已验证参数见 `CLI_REUSE_STRATEGY.md`。
+- 定义事件与状态归约（属于 `src/core/agentProtocol.ts`）：事件类型、`delta` / `snapshot` 文本语义、回合隔离、transcript 归约都在 core，面板只渲染归约结果。首批两个适配器实测都是 `delta`。
+- 决定历史行长什么样（属于 `src/core/agentHistory.ts`）：`seq` 怎么数、回填的 runId 怎么标记、哪几行需要写回，都是纯函数；hook 只负责什么时候读、什么时候写。
+- 直接 `invoke()`（属于 `src/platform/agentCli`）。
+
+会话面板现在是真的能对话的（`CLI-2` / `CLI-3`），而且对话是真的被记住的（`CLI-4`）：协议层（`CLI-0`）、进程底座（`CLI-1`）、Codex 与 Claude Code 两个适配器、五个会话命令与两个历史命令都在，输入框只在 provider 未检测到时禁用。仍然不许假装的一件事：**读不到历史时必须说出来并停掉这一次挂载的写**，不能让新消息盖掉一行读不出来的旧记录。`provider_for` 没有分支的 provider id 依旧被 `NotInstalled` 明确拒绝，不许挑一个适配器凑上去。`npm run test:architecture` 断言输入框不再是 `<textarea disabled`、旧的"运行时未接入"文案已删除。
+
+
 ## 5. 依赖方向
 
 推荐依赖方向：
 
 ```text
-shared <- core <- platform
-shared <- workbench <- features
-core <- features
-platform <- features
+shared <- core
+core <- platform
+shared + core <- workbench
+shared + core + platform + workbench <- features
 ```
 
 更具体地说：
 
-- `features/*` 可以依赖 `core`、`platform`、`shared`。
-- `workbench` 可以依赖 `core` 和 `shared`，但不应该依赖具体 feature 内部实现。
+- `features/*` 可以依赖 `core`、`platform`、`shared`、`workbench`，也可以引用 `src/ui/zh` 取中文文案。
+- `workbench` 只能依赖 `core` 和 `shared`。它不依赖 `ui`、`platform`，也不依赖任何 feature 内部实现。
 - `core` 不依赖 `features`。
 - `core` 不依赖 React。
 - `platform` 不依赖 UI。
@@ -276,9 +381,10 @@ platform <- features
 
 - `core` import `src/ui/*`。
 - `core` 直接调用 Tauri。
+- `workbench/*` import `src/ui/*`、`src/platform/*` 或 `src/features/*`。
 - `features/library` 直接 import `features/reader` 内部组件。
 - 插件直接写 SQLite。
-- UI 组件直接拼 SQL 或直接操作文件系统。
+- UI 组件直接拼 SQL、直接操作文件系统或直接调用 `invoke()`。
 
 ## 6. 核心数据边界
 
@@ -334,23 +440,32 @@ getRelationPath(sourceId, targetId, options)
 
 ## 7. 工作台架构
 
-### 7.1 场景
+### 7.1 场景与标签
 
-场景是默认工作区布局，不是固定页面。
+工作台的容器是标签页，不是固定页面。内置场景现在作为 `kind: 'tool'` 标签托管在 `TabHost` 里：
 
-当前主要场景：
-
+- 概览
 - 资料库
 - 阅读
 - AI 对话
-- 设置
+- Markdown 笔记
+
+设置是覆盖层，不占标签位。`activeScene` 从当前激活的 tool 标签派生，不是独立状态。
+
+场景现在通过 `SceneContribution` 注册。内置场景和插件场景统一进入 `AsterSceneRegistry`，每个场景可声明 `research`、`workspace` 或 `custom` 域，以及 `enabledByDefault`、插件来源、`sidebarMode`、`defaultSidebarPanel` 和 `supportsOpenItems`。`sidebarMode` 的 `contextual` 值将专属侧栏追加到场景导航下方，`workspace` 值则在点击场景后用该侧栏替换导航列，并由宿主显示返回场景入口。插件必须在 manifest 中申请 `scenes` 权限，才能通过 `context.scenes.register()` 注册场景。前端将启用状态持久化到 `aster.enabledScenes`；停用场景只隐藏入口并在必要时切换到可用场景，不删除已有标签或数据。文献库、阅读、AI 对话和 Markdown 采用 `workspace` 侧栏；阅读侧栏显示当前打开的 PDF 标签，文献库和 AI 侧栏暂时保持空白，后续插件可复用同一契约。
+
+内置场景同样必须走插件激活：`createAsterCore` 初始化空场景注册表，再激活各场景插件。UI 视图通过 `SceneViewRegistry` 注册，场景专属文件树等内容通过 `SceneSidebarViewRegistry` 注册；外部插件只接受签名校验后的 `declarative-v1` JSON，由宿主渲染受控块，不能直接注入任意 React/HTML 或执行脚本。
+
+已实现的标签种类：`tool`、`file`、`agent`。已在类型里预留但未实现：`pdf`、`markdown`、`terminal`、`diff`、`plugin:*`。
 
 后续新增：
 
 - 笔记 / 知识库
 - 目录 / 关系图
 - 项目 / 课程
-- 插件贡献场景
+- 插件贡献标签
+
+新增标签种类的步骤见 `WORKSPACE_BASELINE.md` 第 4.1 节。
 
 ### 7.2 面板
 
@@ -388,7 +503,7 @@ getRelationPath(sourceId, targetId, options)
 
 ## 8. 插件架构边界
 
-第一阶段插件模型是本地可信插件，不做市场和沙箱。
+插件运行时已支持 manifest、权限、官方签名、完整性校验、市场索引、手动导入、启停/重载生命周期和 `declarative-v1` 受控视图协议；外部插件不执行任意脚本。
 
 插件可贡献：
 
@@ -460,10 +575,16 @@ AI 输出如果要保存为笔记、标注、关系，必须通过受控 API 写
 
 - 导入、标签、表格：`features/library`
 - PDF 渲染、标注：`features/reader`
+- 文件树、文件预览：`features/explorer`
+- Agent 会话面板、Provider 检测：`features/agents`
 - Markdown 和双链：`features/notes`
 - AI 对话和 Provider：`features/ai`
 - 设置、备份、诊断：`features/settings`
 - 关系面板、对象查询：`core/relations` 和后续 `features/relations`
+- 工作台外壳、导航、标签：`src/workbench`（不得引入 `ui/`、`platform/`、`features/`）
+- 项目/工作区/标签/会话的模型与迁移：`src/core/workspace.ts`
+- 资源身份与 URI 规范化：`src/core/resources.ts`（唯一一份 URI 语法，Rust 侧只存不算）
+- Tauri 命令包装：`src/platform/*`，React 组件不直接 `invoke()`
 - 通用按钮、弹窗、表格、chip：`shared/ui`
 
 当前代码还没完全拆分前，新增代码也应尽量按这些边界命名和组织，不继续把全部逻辑塞进 `App.tsx`。
@@ -487,11 +608,16 @@ AI 输出如果要保存为笔记、标注、关系，必须通过受控 API 写
 ```text
 features/library/index.tsx
 features/reader/index.ts
+features/explorer/index.ts
+features/agents/index.ts
 features/notes/index.ts
 features/ai/index.ts
 features/settings/index.tsx
 workbench/index.ts
 platform/index.ts
+platform/projects/index.ts
+platform/agentCli/index.ts
+platform/workbench/index.ts
 shared/ui/index.ts
 ```
 
@@ -567,6 +693,38 @@ cargo test --manifest-path src-tauri\Cargo.toml
 npm run test:ui-state
 ```
 
+涉及 `src/core/workspace.ts` 或 `src/workbench/workspaceStore.ts` 时至少跑：
+
+```powershell
+npm run test:workspace
+npm run test:resources
+npm run test:architecture
+```
+
+涉及 `src/core/resources.ts`、`schema.sql` 或 `src-tauri/src/workbench_store.rs` 时至少跑：
+
+```powershell
+npm run test:resources
+npm run test:architecture
+cargo test --manifest-path src-tauri\Cargo.toml workbench_store
+```
+
+涉及 `src/core/agentProtocol.ts`、`src/core/agentHistory.ts`、`src-tauri/src/agent_cli/` 或 `src-tauri/src/agent_history.rs` 时至少跑：
+
+```powershell
+npm run test:agent-protocol
+npm run test:architecture
+cargo test --manifest-path src-tauri\Cargo.toml
+```
+
+改了 Agent 事件名或字段名要**同时**改两侧（TS 与 Rust），`npm run test:architecture` 会逐个事件断言两边同名。它同时守着进程层的几条不变量：四个被剥离的父会话环境变量名、`SHELL_METACHARACTERS` / `CREATE_NO_WINDOW` / `resolve_program`、`ChildTransport` 实现 `AgentTransport` 且 tree-kill、进程层不碰 JSON、supervisor 不自己分帧也不认识 `rusqlite` / `tauri::`，以及两个适配器的方言细节与最小权限兜底（五个 agent 命令都已注册、输入框不再是 `<textarea disabled`）。历史那一侧守的是墙本身：两个命令在 `state_commands.rs` 且都是 `#[tauri::command(async)]`、`agent_bridge.rs` 里既没有 `rusqlite` 也没有 `agent_history`、`agent_history.rs` 里没有 `tauri::`、`agent_messages` 没有指向 `agent_sessions` 的外键而 `workbench_store` 在快照事务里调 `prune_orphans`、UPSERT 不改 `created_at`。
+
+`P2-1` 之后同一个脚本还守着后端的形状：`lib.rs` 里不许出现 `#[tauri::command]`、`rusqlite`、`params!` 或 `Connection`，行数必须小于 160，十三个领域模块都得在模块表里，且 `generate_handler!` 的每一个条目都必须写成 `模块::命令` —— 少了最后这条，一个命令体可以悄悄搬回 crate 根还照样被注册。
+
+资源身份反过来只能有**一份**：边界脚本断言 `src/core/resources.ts` 是纯 core、导出规范化与 `resourceKey` / `resourceTabKey`，`workspace.ts` 从 `./resources` 导入而不是自己再实现，`App.tsx` 用 `resourceTabKey` 开文件标签，而 `workbench_store.rs` 里**没有** `normalize_uri`、`schema.sql` 的 `resources_uri` 索引**不是** UNIQUE。
+
+`npm run verify` 必须从 PowerShell 运行：`scripts/verify-all.mjs` 在 win32 上用 `cmd.exe` 包装每一步。
+
 ## 12. 近期重构路线
 
 ### Step 1：稳定当前闭环
@@ -601,10 +759,11 @@ npm run test:ui-state
 
 ### Step 4：工作台自由度
 
-- 面板 Host 统一。
-- 布局状态统一。
-- 命令面板统一。
-- 后续中央 tab、分屏、拖拽停靠。
+- 面板 Host 统一。已完成。
+- 命令面板统一。已完成。
+- 项目/工作区/标签模型与外壳。已完成，见 `WORKSPACE_BASELINE.md`。
+- 布局与标签状态持久化到 SQLite（`PWS-1`）。已完成：`src-tauri/src/workbench_store.rs` + `src/platform/workbench/`，非桌面运行时回落到 `localStorage`。
+- 后续分屏与拖拽停靠。未开始，当前只有单行 tab strip。
 
 ### Step 5：插件和 AI
 

@@ -1,64 +1,55 @@
-name: Release A4Note
+name: Release A4Note (signed Windows)
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
   contents: write
+concurrency:
+  group: signed-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
-    name: Build ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Windows x64
-            os: windows-latest
-            bundles: nsis
-          - name: macOS Intel
-            os: macos-13
-            bundles: dmg
-          - name: macOS Apple Silicon
-            os: macos-14
-            bundles: dmg
-
+    # Native Messaging currently ships Windows x64 only. Do not publish incomplete macOS bundles.
+    runs-on: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
+      - uses: dtolnay/rust-toolchain@stable
       - name: Install dependencies
         run: npm ci
-
-      - name: Build and publish release bundle
-        uses: tauri-apps/tauri-action@v0
+      - name: Check tag and required secrets
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIGNING_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if (-not $env:SIGNING_KEY) { throw 'Missing TAURI_SIGNING_PRIVATE_KEY' }
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag must match package version' }
+      - name: Build signed paired packages (no tests)
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          npm run package:windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/package-capture-extension.mjs
+          exit $LASTEXITCODE
+      - name: Publish complete signed release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/publish-release.mjs
+      - uses: actions/upload-artifact@v4
         with:
-          tagName: v__VERSION__
-          releaseName: A4Note v__VERSION__
-          releaseBody: Automated Windows and macOS release for A4Note.
-          releaseDraft: false
-          prerelease: false
-          releaseAssetNamePattern: '[name]_[version]_[platform]_[arch][setup][ext]'
-          args: --bundles ${{ matrix.bundles }}
-
-      - name: Upload installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: A4Note-${{ matrix.name }}
-          path: src-tauri/target/release/bundle/${{ matrix.bundles }}/*
+          name: A4Note-Windows-signed
+          path: |
+            artifacts/windows/latest/*
+            artifacts/browser-extension/*.zip
           if-no-files-found: error

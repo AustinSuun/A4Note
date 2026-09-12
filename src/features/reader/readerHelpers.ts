@@ -14,9 +14,8 @@ export function createReaderSidePanelDefinitions(panels: WorkbenchPanelContribut
 }
 
 export function preferredReaderMode(paper: PaperDocument | null): ReaderContentMode {
-  if (!paper) return 'pdf';
-  if (paper.sourcePdf || paper.translatedPdfs.length) return 'pdf';
-  if (paper.notes.length) return 'markdown';
+  // Markdown notes are edited in the standalone Markdown plugin scene. The
+  // reader always opens its document surface in PDF mode.
   return 'pdf';
 }
 

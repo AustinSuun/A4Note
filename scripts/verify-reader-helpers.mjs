@@ -25,6 +25,30 @@ assert.equal(selected.quote, 'First line');
 assert.equal(selected.position.segments.length, 1);
 assert.equal(selection.textSelectionFromDrag([], { x: 0, y: 0, width: 5, height: 5 }), null);
 
+assert.deepEqual(
+  selection.textSelectionRectsFromOffsets(
+    [
+      { text: '测试文字', x: 10, y: 12, width: 20, height: 3, fontSize: 12 },
+      { text: '  data ', x: 40, y: 12, width: 14, height: 3, fontSize: 12 },
+    ],
+    [
+      { itemIndex: 0, startOffset: 1, endOffset: 3 },
+      { itemIndex: 1, startOffset: 0, endOffset: 7 },
+    ],
+  ),
+  [
+    { x: 15, y: 12, width: 10, height: 3 },
+    { x: 44, y: 12, width: 8, height: 3 },
+  ],
+);
+assert.deepEqual(
+  selection.textSelectionRectsFromOffsets(
+    [{ text: 'only', x: 20, y: 30, width: 12, height: 2.5, fontSize: 11 }],
+    [{ itemIndex: 0, startOffset: 0, endOffset: 4 }],
+  ),
+  [{ x: 20, y: 30, width: 12, height: 2.5 }],
+);
+
 let prevented = false;
 let stopped = false;
 const point = interaction.pointFromEvent({
@@ -84,6 +108,39 @@ assert.deepEqual(
     { x: 40, y: 50 },
   ),
   { x: 38, y: 49, width: 5, height: 3, shapeKind: 'ellipse' },
+);
+
+const textResize = {
+  annotationId: 'text-1',
+  page: 4,
+  handle: 'nw',
+  origin: { x: 20, y: 30, width: 30, height: 20 },
+  minWidth: 8,
+  minHeight: 3.5,
+};
+assert.deepEqual(
+  interaction.resizePositionFromDrag(
+    { x: 20, y: 30, width: 30, height: 20, borderColor: '#ffffff' },
+    textResize,
+    { x: 49, y: 49 },
+  ),
+  { x: 42, y: 46.5, width: 8, height: 3.5, borderColor: '#ffffff' },
+);
+assert.deepEqual(
+  interaction.resizePositionFromDrag(
+    { x: 20, y: 30, width: 30, height: 20, shapeKind: 'rect' },
+    { ...textResize, handle: 'se', minWidth: 2, minHeight: 2 },
+    { x: 120, y: 110 },
+  ),
+  { x: 20, y: 30, width: 80, height: 70, shapeKind: 'rect' },
+);
+assert.deepEqual(
+  interaction.resizePositionFromDrag(
+    { x: 20, y: 30, width: 30, height: 20 },
+    { ...textResize, handle: 'w', minWidth: 2, minHeight: 2 },
+    { x: -10, y: 40 },
+  ),
+  { x: 0, y: 30, width: 50, height: 20 },
 );
 
 const pages = [

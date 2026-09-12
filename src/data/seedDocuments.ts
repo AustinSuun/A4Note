@@ -1,9 +1,10 @@
 import type { PaperDocument, SceneContribution } from '../core/types';
 
 export const baseScenes: SceneContribution[] = [
-  { id: 'library', label: '文献库', icon: 'L', key: '1' },
-  { id: 'reader', label: '阅读', icon: 'R', key: '2' },
-  { id: 'aiChat', label: 'AI 对话', icon: 'A', key: '3' },
+  { id: 'overview', label: '总览', icon: 'O', key: '1', scope: 'workspace', source: 'builtin', sidebarMode: 'scene', enabledByDefault: true },
+  { id: 'library', label: '文献库', icon: 'L', key: '2', scope: 'research', source: 'builtin', sidebarMode: 'workspace', defaultSidebarPanel: 'library.documents', enabledByDefault: true },
+  { id: 'reader', label: '阅读', icon: 'R', key: '3', scope: 'research', source: 'builtin', sidebarMode: 'workspace', supportsOpenItems: true, defaultSidebarPanel: 'reader.documents', enabledByDefault: true },
+  { id: 'aiChat', label: 'AI 对话', icon: 'A', key: '4', scope: 'workspace', source: 'builtin', sidebarMode: 'workspace', supportsOpenItems: true, defaultSidebarPanel: 'ai.sessions', enabledByDefault: true },
 ];
 
 export const seedDocuments: PaperDocument[] = [

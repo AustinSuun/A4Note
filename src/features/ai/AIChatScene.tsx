@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Settings as SettingsGlyph } from 'lucide-react';
 import type { PaperDocument } from '../../core/types';
 import { zh } from '../../ui/zh';
 
@@ -48,6 +49,28 @@ const permissionOptions = [
   { id: 'fullAccess', label: 'Full access' },
 ];
 
+export type AIChatSceneProps = {
+  papers: PaperDocument[];
+  selectedPaper: PaperDocument;
+  messages: AIChatMessage[];
+  draft: string;
+  error: string;
+  providerId: AiToolProviderId;
+  modelId: string;
+  reasoningLevel: AiReasoningLevel;
+  permissionMode: string;
+  runMode: AiRunMode;
+  onSelectPaper: (paperId: string) => void;
+  onDraftChange: (draft: string) => void;
+  onAiProviderChange: (providerId: AiToolProviderId) => void;
+  onAiModelChange: (modelId: string) => void;
+  onAiReasoningChange: (reasoningLevel: AiReasoningLevel) => void;
+  onAiPermissionChange: (permissionMode: string) => void;
+  onAiRunModeChange: (runMode: AiRunMode) => void;
+  onSend: () => void;
+  onReset: () => void;
+};
+
 export function AIChatScene({
   papers,
   selectedPaper,
@@ -68,27 +91,7 @@ export function AIChatScene({
   onAiRunModeChange,
   onSend,
   onReset,
-}: {
-  papers: PaperDocument[];
-  selectedPaper: PaperDocument;
-  messages: AIChatMessage[];
-  draft: string;
-  error: string;
-  providerId: AiToolProviderId;
-  modelId: string;
-  reasoningLevel: AiReasoningLevel;
-  permissionMode: string;
-  runMode: AiRunMode;
-  onSelectPaper: (paperId: string) => void;
-  onDraftChange: (draft: string) => void;
-  onAiProviderChange: (providerId: AiToolProviderId) => void;
-  onAiModelChange: (modelId: string) => void;
-  onAiReasoningChange: (reasoningLevel: AiReasoningLevel) => void;
-  onAiPermissionChange: (permissionMode: string) => void;
-  onAiRunModeChange: (runMode: AiRunMode) => void;
-  onSend: () => void;
-  onReset: () => void;
-}) {
+}: AIChatSceneProps) {
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [providerPickerOpen, setProviderPickerOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState('');
@@ -214,7 +217,7 @@ export function AIChatScene({
                           <ToolProviderIcon id={activeProvider.id} />
                           <strong>{activeProvider.label}</strong>
                           <button type="button" className="ai-picker-settings" aria-label="模型设置" title="模型设置">
-                            <SettingsIcon />
+                            <SettingsGlyph size={16} strokeWidth={1.9} aria-hidden="true" />
                           </button>
                         </div>
                         <label className="ai-model-search">

@@ -1,4 +1,6 @@
+import { PaperCaptureDetails } from './PaperCaptureDetails';
 import { type ReactNode, useMemo } from 'react';
+import { BookOpen, BookCheck, Star } from 'lucide-react';
 import { buildPaperRelationView, type AnnotationTrace } from '../../core/relations';
 import type { AnnotationType, KnowledgeObject, Relation } from '../../core/types';
 import { zh } from '../../ui/zh';
@@ -17,6 +19,9 @@ export function LibraryDetailPanel({
   onOpenMetadataEdit,
   onOpenTagsEdit,
   onCopyBibtex,
+  onToggleRead,
+  stateBusy = false,
+  onToggleFavorite,
 }: LibraryDetailPanelProps) {
   const relationView = useMemo(() => buildPaperRelationView(paper, { aiThreadContexts }), [paper, aiThreadContexts]);
   return (
@@ -27,6 +32,35 @@ export function LibraryDetailPanel({
         <DetailItem label={zh.library.tableYear} value={paper.year || '-'} />
         <DetailItem label={zh.library.tableVenue} value={paper.venue || zh.library.unknownVenue} />
         <DetailItem label={zh.editDialog.doi} value={paper.doi || '-'} />
+      </div>
+      <div className="detail-section">
+        <div className="panel-title">状态</div>
+        <div className="detail-status-actions">
+          {onToggleRead && (
+            <button
+              type="button"
+              className={paper.isRead ? 'status-button active' : 'status-button'}
+              onClick={onToggleRead}
+              disabled={stateBusy}
+              title={paper.isRead ? '标记为未读' : '标记为已读'}
+            >
+              {paper.isRead ? <BookCheck size={16} /> : <BookOpen size={16} />}
+              <span>{paper.isRead ? '已读' : '未读'}</span>
+            </button>
+          )}
+          {onToggleFavorite && (
+            <button
+              type="button"
+              className={paper.isFavorite ? 'status-button favorite active' : 'status-button favorite'}
+              onClick={onToggleFavorite}
+              disabled={stateBusy}
+              title={paper.isFavorite ? '取消收藏' : '添加收藏'}
+            >
+              <Star size={16} fill={paper.isFavorite ? 'currentColor' : 'none'} />
+              <span>{paper.isFavorite ? '已收藏' : '收藏'}</span>
+            </button>
+          )}
+        </div>
       </div>
       <div className="detail-section">
         <div className="panel-title">{zh.library.files}</div>
@@ -92,6 +126,7 @@ export function LibraryDetailPanel({
           ))}
         </div>
       </div>
+      <PaperCaptureDetails key={paper.paperId} paperId={paper.paperId} />
       <div className="detail-actions">
         <button type="button" className="primary rounded-button" onClick={onOpenReader}>
           {zh.library.openReader}

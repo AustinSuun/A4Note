@@ -1,11 +1,9 @@
-import type { AnnotationColor } from '../../../core/types';
 import { AnnotationToolIcon } from '../ReaderIcons';
 
 type SelectionPopupProps = {
   visible: boolean;
   x: number;
   y: number;
-  activeAnnotationColor: AnnotationColor;
   onHighlight: () => void;
   onUnderline: () => void;
 };
@@ -18,7 +16,6 @@ export function SelectionPopup({
   visible,
   x,
   y,
-  activeAnnotationColor,
   onHighlight,
   onUnderline,
 }: SelectionPopupProps) {
@@ -46,22 +43,6 @@ export function SelectionPopup({
       >
         <AnnotationToolIcon id="underline" />
       </button>
-      <span
-        className="selection-popup-color"
-        style={{ background: annotationColorToCss(activeAnnotationColor) }}
-        title="当前颜色"
-      />
     </div>
   );
-}
-
-function annotationColorToCss(color: AnnotationColor): string {
-  if (color.startsWith('#')) return color;
-  const map: Record<string, string> = {
-    yellow: 'rgba(255,229,121,.95)',
-    green: 'rgba(100,180,130,.88)',
-    blue: 'rgba(92,142,219,.9)',
-    purple: 'rgba(151,112,219,.88)',
-  };
-  return map[color] ?? '#f2c94c';
 }

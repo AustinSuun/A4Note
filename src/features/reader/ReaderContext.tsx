@@ -10,7 +10,7 @@ import type {
   AiThreadContext,
 } from '../../core/types';
 import type { PaperFileKind } from '../../platform/nativeApi';
-import type { NoteDraftPatch, ReaderContentMode, ReaderFileMode, ReaderSidePanelDefinition } from './types';
+import type { NoteDraftPatch, NoteSaveInput, PdfZoomAnchor, ReaderContentMode, ReaderFileMode, ReaderSidePanelDefinition } from './types';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -58,7 +58,7 @@ export type ReaderContextValue = {
   setContentMode: (mode: ReaderContentMode) => void;
   setFileMode: (mode: ReaderFileMode) => void;
 
-  setZoom: (zoom: number, anchor?: { x: number; y: number }) => void;
+  setZoom: (zoom: number, anchor?: PdfZoomAnchor) => void;
   fitToWidth: () => void;
   jumpToPage: (page: number) => void;
   setPageState: (state: { currentPage: number; totalPages: number }) => void;
@@ -90,8 +90,8 @@ export type ReaderContextValue = {
   canRedo: boolean;
 
   appendAnnotationToNote: (annotationId: string) => void;
-  saveNote: (content: string) => void | Promise<void>;
-  createNote: () => void | Promise<void>;
+  saveNote: (note: NoteSaveInput) => void | Promise<string | void>;
+  createNote: () => void | Promise<string | void>;
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ export type ReaderProviderProps = {
   onSelectAnnotationTool: (type: ReaderTool) => void;
   onSelectAnnotationColor: (color: AnnotationColor) => void;
   onCustomAnnotationColorChange: (color: string) => void;
-  onZoomChange: (zoom: number, anchor?: { x: number; y: number }) => void;
+  onZoomChange: (zoom: number, anchor?: PdfZoomAnchor) => void;
   onFitWidth: () => void;
   onSidePanelOpenChange: (open: boolean) => void;
   onSidePanelTabChange: (tab: ReaderSidePanelTab) => void;
@@ -146,8 +146,8 @@ export type ReaderProviderProps = {
   onFocusAnnotation: (id: string | null) => void;
   onNoteDraftPatchConsumed: () => void;
   onAppendAnnotationToNote: (annotationId: string) => void;
-  onNoteSave: (content: string) => void | Promise<void>;
-  onCreateNote: () => void | Promise<void>;
+  onNoteSave: (note: NoteSaveInput) => void | Promise<string | void>;
+  onCreateNote: () => void | Promise<string | void>;
 
   // annotation handlers from useAnnotationHistory
   onCreateAnnotation: (annotation: AnnotationDraft & { page: number }, fileKind?: PaperFileKind) => void | Promise<string | undefined>;

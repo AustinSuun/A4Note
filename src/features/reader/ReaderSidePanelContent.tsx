@@ -6,7 +6,28 @@ import { CitationPanel } from './CitationPanel';
 import { MarkdownNotePanel } from './ReaderMarkdown';
 import { ReaderChatPanel } from './ReaderChatPanel';
 import { RelationPanel } from './RelationPanel';
-import type { NoteDraftPatch } from './types';
+import type { NoteDraftPatch, NoteSaveInput } from './types';
+
+export type ReaderSidePanelContentProps = {
+  tab: ReaderSidePanelTab;
+  paper: PaperDocument;
+  fileMode: PaperFileKind;
+  translatedFileId: string;
+  aiThreadContexts: AiThreadContext[];
+  focusedAnnotationId: string | null;
+  noteDraftPatch: NoteDraftPatch | null;
+  onNoteDraftPatchConsumed: () => void;
+  onNoteSave: (note: NoteSaveInput) => void | Promise<string | void>;
+  onCreateNote: () => void | Promise<string | void>;
+  onFocusAnnotation: (annotationId: string | null) => void;
+  onUpdateAnnotationComment: (annotationId: string, comment: string) => void | Promise<void>;
+  onUpdateAnnotationPosition: (annotationId: string, positionJson: PositionJson) => void | Promise<void>;
+  onUpdateAnnotationColor: (annotationId: string, color: AnnotationColor) => void | Promise<void>;
+  onDeleteAnnotation: (annotationId: string) => void | Promise<void>;
+  onAppendAnnotationToNote: (annotationId: string) => void;
+  onNavigateAnnotation: (annotationId: string) => void;
+  onNavigateRelationTarget: (target: ObjectNavigationTarget | null) => void;
+};
 
 export function ReaderSidePanelContent({
   tab,
@@ -18,6 +39,7 @@ export function ReaderSidePanelContent({
   noteDraftPatch,
   onNoteDraftPatchConsumed,
   onNoteSave,
+  onCreateNote,
   onFocusAnnotation,
   onUpdateAnnotationComment,
   onUpdateAnnotationPosition,
@@ -26,32 +48,16 @@ export function ReaderSidePanelContent({
   onAppendAnnotationToNote,
   onNavigateAnnotation,
   onNavigateRelationTarget,
-}: {
-  tab: ReaderSidePanelTab;
-  paper: PaperDocument;
-  fileMode: PaperFileKind;
-  translatedFileId: string;
-  aiThreadContexts: AiThreadContext[];
-  focusedAnnotationId: string | null;
-  noteDraftPatch: NoteDraftPatch | null;
-  onNoteDraftPatchConsumed: () => void;
-  onNoteSave: (content: string) => void | Promise<void>;
-  onFocusAnnotation: (annotationId: string | null) => void;
-  onUpdateAnnotationComment: (annotationId: string, comment: string) => void | Promise<void>;
-  onUpdateAnnotationPosition: (annotationId: string, positionJson: PositionJson) => void | Promise<void>;
-  onUpdateAnnotationColor: (annotationId: string, color: AnnotationColor) => void | Promise<void>;
-  onDeleteAnnotation: (annotationId: string) => void | Promise<void>;
-  onAppendAnnotationToNote: (annotationId: string) => void;
-  onNavigateAnnotation: (annotationId: string) => void;
-  onNavigateRelationTarget: (target: ObjectNavigationTarget | null) => void;
-}) {
+}: ReaderSidePanelContentProps) {
   if (tab === 'notes') {
     return (
       <MarkdownNotePanel
+        key={paper.paperId}
         paper={paper}
         draftPatch={noteDraftPatch}
         onDraftPatchConsumed={onNoteDraftPatchConsumed}
         onSave={onNoteSave}
+        onCreateNote={onCreateNote}
         onNavigateAnnotation={onNavigateAnnotation}
       />
     );

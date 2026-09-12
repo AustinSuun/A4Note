@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from
 import type { ObjectNavigationTarget } from '../../core/relations';
 import type { AnnotationColor, AiThreadContext, PaperDocument, PositionJson, ReaderSidePanelTab } from '../../core/types';
 import type { PaperFileKind } from '../../platform/nativeApi';
+import type { WorkbenchPanelViewContribution } from '../../workbench';
 import { zh } from '../../ui/zh';
 import { SidebarIcon } from './ReaderIcons';
-import { ReaderSidePanelContent } from './ReaderSidePanelContent';
-import type { NoteDraftPatch, ReaderSidePanelDefinition } from './types';
+import type { NoteDraftPatch, NoteSaveInput, ReaderSidePanelDefinition } from './types';
 
 const workspacePanelTabs: ReaderSidePanelTab[] = ['notes', 'chat', 'cite'];
 const minDrawerWidth = 300;
@@ -16,6 +16,7 @@ export function ReaderSideDrawer({
   width,
   onWidthChange,
   sidePanels,
+  panelViews,
   sidePanelTab,
   paper,
   fileMode,
@@ -27,6 +28,7 @@ export function ReaderSideDrawer({
   onSidePanelTabChange,
   onNoteDraftPatchConsumed,
   onNoteSave,
+  onCreateNote,
   onFocusAnnotation,
   onUpdateAnnotationComment,
   onUpdateAnnotationPosition,
@@ -40,6 +42,7 @@ export function ReaderSideDrawer({
   width: number;
   onWidthChange: (width: number) => void;
   sidePanels: ReaderSidePanelDefinition[];
+  panelViews: WorkbenchPanelViewContribution[];
   sidePanelTab: ReaderSidePanelTab;
   paper: PaperDocument;
   fileMode: PaperFileKind;
@@ -50,7 +53,8 @@ export function ReaderSideDrawer({
   onSidePanelOpenChange: (open: boolean) => void;
   onSidePanelTabChange: (tab: ReaderSidePanelTab) => void;
   onNoteDraftPatchConsumed: () => void;
-  onNoteSave: (content: string) => void | Promise<void>;
+  onNoteSave: (note: NoteSaveInput) => void | Promise<string | void>;
+  onCreateNote: () => void | Promise<string | void>;
   onFocusAnnotation: (annotationId: string | null) => void;
   onUpdateAnnotationComment: (annotationId: string, comment: string) => void | Promise<void>;
   onUpdateAnnotationPosition: (annotationId: string, positionJson: PositionJson) => void | Promise<void>;
@@ -70,6 +74,8 @@ export function ReaderSideDrawer({
   const addablePanels = workspacePanelTabs
     .map((tab) => panelById.get(tab))
     .filter((panel): panel is ReaderSidePanelDefinition => Boolean(panel));
+  const activePanel = panelById.get(sidePanelTab);
+  const activePanelView = activePanel ? panelViews.find((view) => view.id === activePanel.panel.id) : undefined;
 
   useEffect(() => {
     setOpenTabs((current) => (current.includes(sidePanelTab) ? current : [...current, sidePanelTab]));
@@ -103,9 +109,8 @@ export function ReaderSideDrawer({
     event.preventDefault();
     const startX = event.clientX;
     const startWidth = width;
-    const previousCursor = document.body.style.cursor;
     const previousUserSelect = document.body.style.userSelect;
-    document.body.style.cursor = 'col-resize';
+    document.body.classList.add('is-horizontal-resizing');
     document.body.style.userSelect = 'none';
 
     const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
@@ -114,7 +119,7 @@ export function ReaderSideDrawer({
     };
 
     const handleMouseUp = () => {
-      document.body.style.cursor = previousCursor;
+      document.body.classList.remove('is-horizontal-resizing');
       document.body.style.userSelect = previousUserSelect;
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
@@ -125,7 +130,15 @@ export function ReaderSideDrawer({
   };
 
   return (
-    <aside className="reader-workspace-drawer" style={{ width }}>
+    <aside
+      className="reader-workspace-drawer"
+      data-reader-layer="sidebar"
+      style={{ width }}
+      onPointerDown={(event) => event.stopPropagation()}
+      onPointerUp={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onMouseUp={(event) => event.stopPropagation()}
+    >
       <div className="reader-drawer-resize-handle" onMouseDown={handleResizeMouseDown} aria-hidden="true" />
       <header className="reader-workspace-header">
         <div className="reader-workspace-tabs" role="tablist" aria-label={zh.reader.openPanel}>
@@ -186,25 +199,9 @@ export function ReaderSideDrawer({
       </header>
 
       <div className="workspace-panel-content">
-        <ReaderSidePanelContent
-          tab={sidePanelTab}
-          paper={paper}
-          fileMode={fileMode}
-          translatedFileId={translatedFileId}
-          aiThreadContexts={aiThreadContexts}
-          focusedAnnotationId={focusedAnnotationId}
-          noteDraftPatch={noteDraftPatch}
-          onNoteDraftPatchConsumed={onNoteDraftPatchConsumed}
-          onNoteSave={onNoteSave}
-          onFocusAnnotation={onFocusAnnotation}
-          onUpdateAnnotationComment={onUpdateAnnotationComment}
-          onUpdateAnnotationPosition={onUpdateAnnotationPosition}
-          onUpdateAnnotationColor={onUpdateAnnotationColor}
-          onDeleteAnnotation={onDeleteAnnotation}
-          onAppendAnnotationToNote={onAppendAnnotationToNote}
-          onNavigateAnnotation={onNavigateAnnotation}
-          onNavigateRelationTarget={onNavigateRelationTarget}
-        />
+        {activePanel && activePanelView
+          ? activePanelView.render({ panel: activePanel.panel, sceneId: 'reader', selectedPaper: paper })
+          : null}
       </div>
     </aside>
   );

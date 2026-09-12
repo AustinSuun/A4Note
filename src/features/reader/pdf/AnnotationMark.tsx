@@ -1,7 +1,7 @@
-import { useState, type CSSProperties, type MouseEvent } from 'react';
+import { memo, useState, type ComponentProps, type CSSProperties, type MouseEvent } from 'react';
 import type { AnnotationColor, PositionJson } from '../../../core/types';
 import { zh } from '../../../ui/zh';
-import { annotationPresetColors } from '../readerConstants';
+import { annotationColorInputValue, toolColorPresets } from '../readerConstants';
 import {
   annotationCustomColorStyle,
   annotationSegments,
@@ -10,13 +10,16 @@ import {
   underlinePositionStyle,
 } from './pdfAnnotationHelpers';
 import { numberValue } from './pdfGeometry';
-import type { AnnotationMarkModel } from './types';
+import type { AnnotationMarkModel, AnnotationResizeHandle } from './types';
 
-export function AnnotationMark({
+const resizeHandles: AnnotationResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+
+function AnnotationMarkView({
   annotation,
   draft,
   onSelectAnnotation,
   onBeginStickyDrag,
+  onBeginAnnotationResize,
   onEditStickyAnnotation,
   onUpdateAnnotationColor,
   onDeleteAnnotation,
@@ -28,6 +31,7 @@ export function AnnotationMark({
   draft?: boolean;
   onSelectAnnotation?: (annotationId: string) => void;
   onBeginStickyDrag?: (annotationId: string, pageNumber: number, event: MouseEvent<HTMLDivElement>) => void;
+  onBeginAnnotationResize?: (annotationId: string, pageNumber: number, handle: AnnotationResizeHandle, event: MouseEvent<HTMLElement>) => void;
   onEditStickyAnnotation?: (annotation: AnnotationMarkModel, event: MouseEvent<HTMLElement>) => void;
   onUpdateAnnotationColor?: (annotationId: string, color: AnnotationColor) => void | Promise<void>;
   onDeleteAnnotation?: (annotationId: string) => void | Promise<void>;
@@ -40,6 +44,7 @@ export function AnnotationMark({
   const annotationId = annotation.id;
   const isTextBox = annotation.type === 'comment' || annotation.type === 'text';
   const isMovable = isTextBox || annotation.type === 'rect';
+  const isResizable = annotation.type === 'rect' || annotation.type === 'text';
   const customColorStyle = annotation.color.startsWith('#') ? annotationCustomColorStyle(annotation.type, annotation.color) : undefined;
 
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
@@ -133,23 +138,61 @@ export function AnnotationMark({
         </button>
         {colorPaletteOpen && (
           <div className="annotation-color-palette" onClick={(event) => event.stopPropagation()}>
-            {annotationPresetColors.map((color) => (
-              <button
-                key={color}
-                type="button"
-                className={`annotation-color-choice ${color} ${annotation.color === color ? 'active' : ''}`.trim()}
-                title={color}
-                aria-label={color}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  void onUpdateAnnotationColor?.(annotationId, color);
+            <span className="annotation-color-palette-label">标注颜色</span>
+            <label className="annotation-color-custom-choice" title="自定义颜色">
+              <input
+                type="color"
+                value={annotationColorInputValue(annotation.color)}
+                onChange={(event) => {
+                  void onUpdateAnnotationColor?.(annotationId, event.target.value as AnnotationColor);
                   setColorPaletteOpen(false);
                 }}
               />
-            ))}
+              <span style={{ background: annotationColorInputValue(annotation.color) }} />
+            </label>
+            <div className="annotation-color-presets">
+              {toolColorPresets.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={annotationColorInputValue(annotation.color) === color ? 'active' : ''}
+                  style={{ background: color }}
+                  title={color}
+                  aria-label={color}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void onUpdateAnnotationColor?.(annotationId, color);
+                    setColorPaletteOpen(false);
+                  }}
+                />
+              ))}
+            </div>
           </div>
         )}
+      </div>
+    ) : null;
+
+  const resizeControls =
+    focused && annotationId && !draft && !eraserActive && isResizable ? (
+      <div className="annotation-resize-controls" aria-label="调整标注大小">
+        {resizeHandles.map((handle) => (
+          <button
+            key={handle}
+            type="button"
+            className={`annotation-resize-handle ${handle}`}
+            aria-label={`从${handle}方向调整大小`}
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onBeginAnnotationResize?.(annotationId, annotation.page, handle, event);
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+          />
+        ))}
       </div>
     ) : null;
 
@@ -256,11 +299,21 @@ export function AnnotationMark({
               {annotation.comment || annotation.quote || (annotation.type === 'text' ? zh.reader.textLabel : zh.reader.commentAnnotation)}
             </div>
           )}
+          {index === 0 ? resizeControls : null}
           {index === 0 ? inlineActions : null}
         </div>
       ))}
     </>
   );
+}
+
+const MemoAnnotationMark = memo(AnnotationMarkView, (previous, next) => previous.annotation === next.annotation
+  && previous.draft === next.draft
+  && previous.focused === next.focused
+  && previous.eraserActive === next.eraserActive);
+
+export function AnnotationMark(props: ComponentProps<typeof AnnotationMarkView>) {
+  return <MemoAnnotationMark {...props} />;
 }
 
 type InkPoint = { x: number; y: number };
