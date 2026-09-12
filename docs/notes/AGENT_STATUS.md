@@ -2,9 +2,11 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-12T21:35:37+08:00
+更新时间：2026-09-12T21:39:22+08:00
 
-## 软件内签名更新与GitHub同步（源码完成，正在发布，2026-09-12T21:35:37+08:00）
+## 当前工作：软件内签名更新与GitHub同步（PR及必要CI，2026-09-12T21:39:22+08:00）
+
+- main有PR/Verify保护，直接push被拒绝，未强推或绕过。用户在本轮明确允许必要CI作为“不测试”要求的一次例外；完整Verify移到受支持的Windows runner，不删除/放松测试。后续通过PR合并后再签名发布；未开始安装或真实资料操作。
 
 - 已完成：签名更新源码完成：设置→关于可检查GitHub更新、显示纯文本说明、下载并验证签名，用户确认后flushPendingSaves并安装；不后台下载/强制更新。桌面版本递增0.1.3，加入updater插件/精简权限、公钥及固定HTTPS端点。私钥位于用户仓库外.tauri目录（实际路径见APP_UPDATES.md），密码DPAPI保护，两个GitHub Actions Secrets已配置，未输出/提交私钥。标准打包增加签名/latest.json/sourceCommit；发布脚本验证产物一致性并草稿完整上传后公开，禁止覆盖已发布版本。
 - 构建：构建cmd_1789220036918_42 exit0（37.984s）：npm锁文件同步、tsc/Vite、两个发布脚本node --check、cargo check通过；设置诊断0。原未提交源码及发布候选475文件扫描未见高置信令牌/私钥/MCP控制地址或超过20MiB文件。初次apply因新updater父目录不存在整体拒绝，cmd40随后的缺文件检查失败；创建目录后 guarded补丁与cmd42完成。未运行任何测试/verify。

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-12T21:35:37+08:00",
+  "updatedAt": "2026-09-12T21:39:22+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
@@ -9,7 +9,7 @@
     "scope": [
       "Signed in-app updater, GitHub release automation and safe source synchronization to AustinSuun/A4Note main",
       "Settings/platform updater; Tauri wiring/capability/config; signing outside repository; release workflow/scripts",
-      "User authorizes signing key and GitHub secret setup; no tests, installation or real library access"
+      "User explicitly permits required CI Verify for this PR only; signing secrets authorized; no installation or real library access"
     ]
   },
   "tracks": {
@@ -267,6 +267,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "提交405文件及两笔未推历史对象经过密钥/令牌/产物/体积检查通过；本地源码提交完成。直接推main被GH006保护拒绝（必须PR和Verify），未绕过规则。用户随后明确允许本次必要CI检查；改走release/signed-updater-0.1.3 PR，完整Verify在Windows runner执行以覆盖Native Messaging，而非跳过测试。签名打包尚未开始，因原串行命令在push拒绝处停止。",
       "构建cmd_1789220036918_42 exit0（37.984s）：npm锁文件同步、tsc/Vite、两个发布脚本node --check、cargo check通过；设置诊断0。原未提交源码及发布候选475文件扫描未见高置信令牌/私钥/MCP控制地址或超过20MiB文件。初次apply因新updater父目录不存在整体拒绝，cmd40随后的缺文件检查失败；创建目录后 guarded补丁与cmd42完成。未运行任何测试/verify。",
       "产物校验cmd_1789218369606_33 exit0：EXE35286528字节，SHA256 F49ED6C3418E56A9FE34A8DC8EA0E62C38787C6CD87D1F6280CFEC203B15D9F8；安装器22176010字节，SHA256 C4D22528397F6BE3FE7D5B0245393C0B4AFC3317C5DA8A19AF565BBFFAB4B933，均与build-info一致。扩展ZIP50354字节/12文件，远程及Arena副本SHA256 26fbfd5edcd188a65c4f8dd64f8dddd397b66d5680c4b1c0e72c031ba3c400ba，manifest0.5.0。仅生产构建、哈希与包清单检查；未运行任何测试或安装启动应用。",
       "0.5.0仅构建/静态检查：cmd_1789217725260_28 exit0（67.936s），5个JS/MJS node --check、npm.cmd run build（tsc+Vite）、桌面与native-host cargo check --offline通过；安全补丁后cmd_1789217814131_29 exit0（1.691s），bridge语法、桌面cargo check与改动范围git diff --check通过。扩展与capture编辑器诊断均0；Vite大分块及Rust未使用符号警告保留（包括兼容Store::submit入口）。严格遵守用户不测试：未运行test/verify、浏览器交互、安装或真实入库验证。",
