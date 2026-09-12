@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-12T22:26:46+08:00",
+  "updatedAt": "2026-09-12T22:53:20+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
-    "branch": "fix/capture-experience-0.1.4",
+    "branch": "feat/update-center-0.1.5",
     "scope": [
+      "Desktop0.1.5 settings update center and extension0.6.1 explicit update discovery/download; preserve installation consent and real-library safety",
       "Capture UX 0.6.0 and desktop 0.1.4: host/desktop compatibility, folder loading, clear metadata and app icons",
       "Browser extension; native host handshake; paper metadata details; idempotent release workflow",
       "Continue user-approved required CI and packaging; no application installation or user-library mutation"
@@ -26,6 +27,8 @@
   },
   "lastHandoff": {
     "completed": [
+      "更新中心源码完成：设置独立软件更新分类及关于页快捷入口；插件0.6.1按需授权固定GitHub API、比较版本、下载官方ZIP、明确手动重新加载。cmd88生产构建/扩展打包exit0。v0.1.4 Release34699938047构建签名成功但草稿URL为untagged临时路径，发布前正式URL校验失败；草稿仍保留未公开。已改为发布前文件名/大小/哈希、发布后正式URL校验，补必要CI夹具，准备0.1.5一次发布。",
+      "采集修复PR7已合并main8912fdc，必要Verify34699316735通过；v0.1.4签名Release34699938047继续构建，不覆盖该版本。用户新增插件更新和设置入口，采用0.1.5/扩展0.6.1单独交付；解压版只检查并下载，明确人工重新加载，不宣称自动替换。",
       "PR7首轮Verify34699130227在既有传输检查中发现：授权拒绝后不应断开仍存活的host，否则复用连接契约失效。已将权限不可用通知与真实断连分开，保留原断连/重连断言并增加通知/监听器清理检查；不删测试、不降低保护。重新提交同一PR等待必要CI。",
       "采集0.6.0/桌面0.1.4源码完成：复用桌面图标并重设精简主流程；host独立能力+桌面双校验，未知操作明确报错且不终止host，任何断连/授权失效取消绿色就绪；任务完成区分PDF与信息。桌面展示作者/机构/标识/出版物/日期/摘要和来源快照，异步附件响应按文献隔离。Release增加已发布版本只读跳过及全局串行发布，仍禁止覆盖正式资产。",
       "此前更新链路已交付v0.1.3：PR4/5/6及必要CI均成功，main9c8aefa；发布签名安装包22489127字节，SHA256 AB6C42DCEF7908124B59ED74F5BE0F636853D1DF5A4CD68FDB578F767D330888。GitHub资产空格归一化已修正latest.json及发布脚本；二次自动Release run34697864947仅因版本已发布而失败，编译成功。",
@@ -633,7 +636,7 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
-      "当前：受保护PR执行用户允许的必要Verify后正常合并，只有一个Actions工作流发布v0.1.4/扩展0.6.0；不重复本地发布、不改写v0.1.3、不绕过分支保护。下方旧轮次指引为历史。",
+      "当前：0.1.5/扩展0.6.1通过必要PR/Verify后单一Actions发布；0.1.4保留为失败发布的未公开草稿，不重复发布它。所有正式版本不可覆盖；不安装/启动真实库。下方为历史指引。",
       "使用21:05:56新配套安装器和A4-Note-Capture-0.5.0.zip；两端一起更新，不能只替换插件。先备份资料并由用户退出旧桌面，安装后加载/重新加载扩展，打开论文详情页→插件自动识别→选择文件夹→下载并导入。下方未打包及0.4.0安装指引为历史，无需再重复打包。",
       "用户需要交付包时，重新执行标准package:windows与package-capture-extension，生成配套native-host/桌面/0.5.0扩展（不要只更新插件）；build-info须为captureExtensionVersion 0.5.0。之后由用户在资料副本中验收打开即识别、父子分类、选后下载、重复论文保持分类、分类删除与PDF失败提示；本轮不自动测试或安装。",
       "下一步使用本轮19:55:51新安装器及0.4.0扩展，按README完成人工Windows Chrome/Edge工具栏→首次桌面授权→真实论文/PDF入库→重启恢复→撤销验收。先备份资料，不要运行旧HTTP安装包；本轮自动化和Linux夹具不是此项验收的替代。",

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "A4 Note · 保存论文",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "识别当前论文，选择文献库分类，一起保存 PDF、论文信息和来源。",
   "permissions": [
     "activeTab",

@@ -16,7 +16,13 @@
 </section>
 <details id="connection-help" class="disclosure"><summary>连接帮助</summary><p class="muted">请启动已安装的 A4 Note。首次使用需在桌面允许连接；提示组件过旧时，请安装配套新版安装器，再重开插件。仅替换 EXE 不会更新通信组件。</p><a href="https://github.com/AustinSuun/A4Note/releases/latest" target="_blank" rel="noreferrer">下载配套桌面版 ↗</a></details>
 <details id="tasks-panel" class="disclosure"><summary>采集进度</summary><button id="tasks" class="text-button">刷新进度</button><div id="task-list" aria-live="polite"></div></details>
+<details class="disclosure" id="extension-settings"><summary>插件设置与更新 <span id="extension-version"></span></summary>
+<div class="section-heading"><button id="check-extension-update">检查插件更新</button><a id="extension-release-page" href="https://github.com/AustinSuun/A4Note/releases/latest" target="_blank" rel="noreferrer">官方发布页 ↗</a></div>
+<p id="extension-update-status" class="muted" role="status">仅在点击后联网检查，不会自动下载或替换插件。</p>
+<button id="download-extension-update" hidden>下载新版插件包</button>
+<details id="extension-update-help"><summary>如何安装更新？</summary><ol class="muted"><li>等待当前采集或辅助传输完成。</li><li>下载 ZIP，退出插件弹窗，将解压文件覆盖到原来加载的插件目录（保留目录位置）。</li><li>在 Chrome/Edge 扩展管理页找到 A4 Note，点击“重新加载”。</li><li>重新打开插件，核对版本；必要时同步更新桌面完整安装包。</li></ol><p class="muted">浏览器限制解压加载的插件自行替换文件；这里不会自动安装，也不会在任务进行中主动重新加载。</p></details>
+</details>
 </main>
 <footer><button id="send" class="primary" disabled>下载并导入</button><p>PDF 与论文信息一起保存 · 已有论文保留原分类</p></footer>
-<script type="module" src="popup.js"></script>
+<script type="module" src="popup.js"></script><script type="module" src="update-ui.js"></script>
 </body></html>
