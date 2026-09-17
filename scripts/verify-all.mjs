@@ -25,6 +25,7 @@ const steps = [
   ...(isWindows ? [['npm', ['run', 'test:capture-native-process']]] : []),
   ['npm', ['run', 'test:sync']],
   ['npm', ['run', 'test:workspace']],
+  ['node', ['scripts/verify-folder-config-v2.mjs']],
   ['npm', ['run', 'test:resources']],
   ['npm', ['run', 'test:resource-openers']],
   ['npm', ['run', 'test:resource-views']],
@@ -50,12 +51,18 @@ const steps = [
   ['cargo', ['test', '--manifest-path', 'src-tauri/Cargo.toml']],
 ];
 
+const failures = [];
 for (const [command, args] of steps) {
   const printable = [command, ...args].join(' ');
   console.log(`\n==> ${printable}`);
-  await run(command, args);
+  try { await run(command, args); }
+  catch (error) {
+    failures.push(printable);
+    console.error(`Verification step failed: ${printable}`, error);
+  }
 }
 
+if (failures.length) throw new Error(`Verification failed (${failures.length} steps):\n${failures.join('\n')}`);
 console.log('\nA4Note verification passed');
 
 function run(command, args) {

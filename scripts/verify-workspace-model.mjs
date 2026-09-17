@@ -307,6 +307,6 @@ seeded = null;
 const emptySeed = store.createWorkbenchStore(fakeStorage);
 assert.deepEqual(emptySeed.getState().projects, [], '没有快照时从空工作台开始');
 assert.equal(emptySeed.getState().version, model.WORKBENCH_STATE_VERSION);
-assert.equal(store.WORKBENCH_STORAGE_KEY, 'aster.workbench');
+assert.equal(store.WORKBENCH_STORAGE_KEY, 'a4note.folderWorkbench.v2');
 
 console.log('verify-workspace-model: ok');
