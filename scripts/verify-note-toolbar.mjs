@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import ts from 'typescript';
+const editor = readFileSync('src/features/explorer/MarkdownLivePreviewEditor.tsx', 'utf8');
+const fragment = editor.slice(editor.indexOf('    const footnoteDefinition ='), editor.indexOf('    const tableRow ='));
+const execute = new Function('text', 'isActiveLine', 'line', 'decorations', 'Decoration', 'hideInlineSyntax', 'mark', 'cursorNear', `for (let once = 0; once < 1; once++) { ${fragment} }`);
+for (const active of [true, false]) {
+  let hidden = 0; const marks = [];
+  execute('[^note2]: 脚注正文，行尾也应触发', active, { from: 50, to: 80 }, [], { line: () => ({ range: n => n }) }, () => hidden++, (...args) => marks.push(args), () => { throw new Error('footnote definitions must not depend on marker proximity'); });
+  assert.equal(hidden, active ? 0 : 1);
+  assert.equal(marks.some(m => m[2] === 'cm-md-footnote-source'), active);
+}
+assert.ok(editor.includes("isActiveLine ? 'cm-md-footnote-source' : 'cm-md-footnote-reference'"));
+const exports = {};
+new Function('exports', ts.transpile(readFileSync('src/features/explorer/markdownTemplates.ts', 'utf8'), { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }))(exports);
+const templates = exports.markdownTemplates;
+assert.equal(templates.length, 51);
+for (const id of ['paragraph', 'line-break', 'table', 'quote', 'footnote', 'math', 'code', 'image', 'wiki', 'nested']) assert.ok(templates.some(t => t.id === id));
+for (let i = 1; i <= 6; i++) assert.ok(templates.some(t => t.id === `h${i}`));
+for (const tag of ['mark', 'kbd', 'u', 'sub', 'sup', 's', 'small', 'abbr']) assert.ok(templates.some(t => t.source.includes(`<${tag}>`) || t.source.includes(`<${tag} `)));
+assert.equal(templates.filter(t => t.id.startsWith('callout-')).length, 16);
+assert.ok(!templates.find(t => t.id === 'footnote').source.includes('请更换编号'));
+const tab = readFileSync('src/features/explorer/MarkdownResourceTab.tsx', 'utf8');
+assert.ok(tab.includes('全部样式模板（{markdownTemplates.length}）'));
+assert.ok(tab.includes("insertTemplate(markdownTemplates.find((item) => item.id === 'footnote')!)"));
+assert.ok(!tab.includes("insertEditorSnippet('[^1]:"));
+assert.ok(tab.includes('active && hostTabActive && documentToolbar?.enabled'));
+assert.ok(tab.includes('createPortal(viewControls, documentToolbar!.controlsHost!)'));
+assert.ok(tab.includes('createPortal(saveIndicator, documentToolbar!.saveHost!)'));
+const top = readFileSync('src/workbench/WorkbenchTopBar.tsx', 'utf8');
+assert.ok(!top.includes('{labels.toggleFileTree}'));
+assert.ok(top.indexOf('ref={documentToolbar.setSaveHost}') > top.indexOf('className="workbench-open-menu"'));
+assert.ok(readFileSync('src/workbench/TabHost.tsx', 'utf8').includes('DocumentToolbarActiveContext.Provider value={item.id === activeTabId}'));
+assert.ok(readFileSync('src/features/markdown/MarkdownWorkspaceScene.tsx', 'utf8').includes('active={activePath === file.path}'));
+const app = readFileSync('src/ui/App.tsx', 'utf8');
+assert.ok(app.includes("<DocumentToolbarProvider enabled={activeScene === 'markdown' && !settingsOpen}>"));
+assert.ok(app.includes('!/^已加载\\s*\\d+\\s*篇本地文献[。.]?$/.test(libraryStatus)'));
+console.log('Note toolbar checks passed: active-line footnotes, 51-template syntax coverage, shared quick insert, topbar portal wiring and hidden-tab guards. React interaction covered separately by local Chromium fixture, not native desktop E2E.');

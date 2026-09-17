@@ -1,14 +1,9 @@
 //! A4Note's Tauri entry point (P2-1).
 //!
-//! This file is wiring only: the module list, the command registry and the app
-//! lifecycle. Every command's body lives in the domain module that owns its
-//! tables, so adding one no longer grows this file — it grows that module.
-//!
-//! Two walls are load-bearing. `agent_cli` is a plain Rust runtime with no Tauri
-//! in it, so it can be tested with `cargo test` alone; `agent_bridge` is the only
-//! file that knows both it and Tauri, and it must never reach Aster's SQLite.
-//! The agent history commands therefore sit in `state_commands`, on the database
-//! side of that wall (CLI-4).
+//! Wiring only: module declarations, command registry and lifecycle.
+//! Command bodies belong to their domain modules. `agent_cli` has no Tauri;
+//! `agent_bridge` joins the two but never accesses SQLite. Agent history
+//! commands remain on the database side in `state_commands` (CLI-4).
 
 mod agent_bridge;
 pub mod agent_cli;
@@ -25,6 +20,7 @@ mod library_annotations;
 mod library_import;
 mod library_notes;
 mod library_summaries;
+mod library_summary_notes;
 mod library_papers;
 mod library_state;
 mod pdf_metadata;
@@ -128,6 +124,7 @@ pub fn run() {
             resource_annotations::update_resource_annotation_color,
             resource_annotations::update_resource_annotation_position,
             resource_annotations::delete_resource_annotation,
+            library_summary_notes::create_paper_summary_note,
             library_summaries::read_paper_summary,
             library_summaries::ensure_paper_summary,
             library_summaries::save_paper_summary,

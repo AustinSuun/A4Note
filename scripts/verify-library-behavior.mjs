@@ -41,7 +41,10 @@ const legacy = nativePaperToDocument({...native, created_at:undefined, last_view
 assert.equal(legacy.lastViewedAt, undefined); assert.equal(legacy.isRead, false); assert.equal(legacy.isFavorite, false);
 const app = readFileSync('src/ui/App.tsx', 'utf8');
 assert.match(app, /!isLibrarySmartView\(activeFolderId\)/);
-assert.match(app, /selectLibraryView\(aster\.documents\.list\(\), activeFolderId\)/);
+assert.match(app, /selectLibraryView\(aster\.documents\.list\(\), activeFolderId, libraryFolders\)/);
+const nestedFolders = [{folderId:'library',name:'Root',parentId:null},{folderId:'child',name:'Child',parentId:'library'}];
+assert.deepEqual(selectLibraryView(papers, 'library', nestedFolders).map(item => item.paperId), ['a','b','c']);
+assert.deepEqual(selectLibraryView(papers, 'child', nestedFolders).map(item => item.paperId), ['b']);
 assert.match(app, /paperState\.update\(paperId, 'viewed'\)/);
 assert.match(app, /stateBusy: selectedPaper \? paperState\.busyIds\.has/);
 const sidebar = readFileSync('src/features/library/LibrarySceneSidebar.tsx', 'utf8') + '\n' + readFileSync('src/shared/tree/FolderDraftRow.tsx', 'utf8');

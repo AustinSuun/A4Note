@@ -51,7 +51,8 @@ import type {
 import type { Resource } from '../core/resources';
 import type { JsonValue } from '../core/types';
 
-export const WORKBENCH_STORAGE_KEY = 'aster.workbench';
+/** Fresh folder-workspace namespace; never import the legacy workbench key. */
+export const WORKBENCH_STORAGE_KEY = 'a4note.folderWorkbench.v2';
 
 export interface WorkbenchStorage {
   read(): string | null;

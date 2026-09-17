@@ -117,3 +117,43 @@
 .summary-column-resizer { position: absolute; top: 0; right: 0; bottom: 0; width: 8px; z-index: 8; cursor: col-resize; touch-action: none; user-select: none; }
 .summary-column-resizer:hover, .summary-column-resizer:focus-visible { background: var(--accent-soft, #d8e9e0); outline: 1px solid var(--accent, #4c806c); outline-offset: -2px; }
 .summary-column-resizer[aria-disabled="true"] { cursor: default; pointer-events: none; }
+/* Native geometric zoom keeps widths, type and hit targets in the same coordinate system. */
+.summary-sheet { position: relative; min-height: 100%; }
+.summary-viewport { overflow-anchor: none; min-height: 0; }
+.summary-zoom > button:nth-child(2) { min-width: 54px; font-variant-numeric: tabular-nums; }
+.summary-toolbar { flex-shrink: 0; flex-wrap: wrap; }
+/* Title freezing is opt-in; the header itself still stays at the top vertically. */
+.summary-viewport.title-scrolls .summary-pinned { position: relative; left: auto; z-index: auto; }
+.summary-grid-head .summary-title-heading { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.summary-grid-head .summary-title-pin {
+  display: inline-flex; align-items: center; justify-content: center; align-self: center;
+  flex: 0 0 22px; width: 22px; height: 22px; min-height: 22px; margin-left: auto;
+  padding: 2px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--muted, #7d8982); box-shadow: none; cursor: pointer;
+}
+.summary-title-pin svg { width: 15px; height: 15px; }
+.summary-grid-head .summary-title-pin:hover,
+.summary-grid-head .summary-title-pin[aria-pressed="true"] { background: var(--accent-soft, #eaf5ee); color: var(--accent-strong, #286548); }
+.summary-title-pin[aria-pressed="true"] svg { fill: currentColor; }
+.summary-grid-head .summary-title-pin:focus-visible { outline: 2px solid var(--accent, #4e8d6f); outline-offset: 1px; }
+/* Manual height clips only the preview; summary source content is never changed. */
+.summary-row.manual-height { overflow: clip; min-height: 0; }
+.summary-row-resizer {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 6px; z-index: 7;
+  cursor: row-resize; touch-action: none; user-select: none;
+}
+.summary-row-resizer:hover, .summary-row-resizer:focus-visible {
+  background: var(--accent-soft, #d8e9e0); box-shadow: inset 0 -2px var(--accent, #4c806c); outline: none;
+}
+.summary-row-resizer[aria-disabled="true"] { pointer-events: none; cursor: default; }
+/* Resize handles are header/first-column only; a guide previews the full column edge. */
+.summary-column-guide { position: absolute; width: 2px; margin-left: -1px; background: var(--accent, #4c806c); opacity: .75; z-index: 9; pointer-events: none; }
+.summary-column-resizer { width: 10px; }
+.summary-column-resizer:hover, .summary-column-resizer:focus-visible { background: var(--accent-soft, #d8e9e0); outline: none; box-shadow: inset -2px 0 var(--accent, #4c806c); }
+.summary-cell[tabindex="0"]:focus-visible { outline: 2px solid var(--accent, #4c806c); outline-offset: -2px; }
+.summary-cell.is-editing { display: flex; flex-direction: column; min-height: 0; padding: 3px; box-shadow: inset 0 0 0 2px var(--accent, #4c806c); overflow: auto; }
+.summary-cell.is-editing textarea { flex: 1 0 36px; min-height: 36px; width: 100%; padding: 3px; resize: none; border: 0; box-shadow: none; background: var(--surface, white); color: var(--ink); font: inherit; line-height: 1.45; }
+.summary-cell-edit-actions { display: flex; flex-shrink: 0; gap: 4px; }
+.summary-cell-edit-actions button, .summary-cell-error button, .summary-cell-draft { padding: 1px 5px; min-height: 20px; font-size: 10px; box-shadow: none; }
+.summary-cell-error { font-size: 11px; color: #9b473b; overflow-wrap: anywhere; }
+.summary-cell-draft { color: var(--accent-strong, #286548); }

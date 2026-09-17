@@ -1,0 +1,27 @@
+.column-settings-trigger {
+  display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 5px;
+  min-height: 32px; padding: 4px 9px; border: 1px solid var(--line, #dde2e7); border-radius: 5px;
+  background: var(--surface, #fff); color: var(--ink, #37483d); font-size: 12px; white-space: nowrap;
+}
+.column-settings-trigger svg { width: 16px; height: 16px; }
+.column-settings-trigger[aria-expanded="true"] { background: var(--accent-soft, #eaf5ee); }
+.column-settings-trigger:focus-visible { outline: 2px solid var(--accent, #4e8d6f); outline-offset: 2px; }
+.column-settings-panel {
+  position: fixed; z-index: 1000; box-sizing: border-box; width: 224px;
+  max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 2px; padding: 6px;
+  border: 1px solid var(--line, #dde2e7); border-radius: 8px; background: var(--surface, #fff);
+  color: var(--ink, #37483d); box-shadow: 0 10px 30px #0002; font-size: 12px;
+}
+.column-settings-panel label {
+  display: flex; flex-shrink: 0; align-items: center; gap: 9px; min-height: 32px;
+  margin: 0; padding: 4px 8px; border-radius: 4px; cursor: pointer;
+}
+.column-settings-panel label:hover, .column-settings-panel label:focus-within { background: var(--accent-soft, #eaf5ee); }
+.column-settings-panel label.fixed { color: var(--muted, #7d8982); cursor: default; }
+.column-settings-panel input[type="checkbox"] {
+  appearance: auto; flex: 0 0 14px; width: 14px; min-width: 14px; height: 14px; min-height: 14px;
+  margin: 0; padding: 0; box-shadow: none; accent-color: var(--accent, #4e8d6f);
+}
+.column-settings-panel label > span { min-width: 0; overflow-wrap: anywhere; }
+.column-settings-panel small { margin-left: auto; white-space: nowrap; font-size: 10px; }

@@ -1,0 +1,29 @@
+/* A sliding selection surface only; document state and focus are unchanged. */
+.markdown-resource-mode-switch[data-mode] {
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.markdown-resource-mode-switch[data-mode]::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 6px) / 2);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(37,53,46,.1);
+  transform: translateX(0);
+  transition: transform 180ms cubic-bezier(.2,.8,.2,1);
+}
+.markdown-resource-mode-switch[data-mode='read']::before { transform: translateX(calc(100% + 2px)); }
+.markdown-resource-mode-switch[data-mode] button { position: relative; z-index: 1; justify-content: center; }
+.markdown-resource-mode-switch[data-mode] button.active { background: transparent; box-shadow: none; }
+.markdown-resource-mode-switch[data-mode] button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) {
+  .markdown-resource-mode-switch[data-mode]::before { transition: none; }
+}

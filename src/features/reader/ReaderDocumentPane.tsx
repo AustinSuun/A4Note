@@ -212,6 +212,7 @@ export function ReaderDocumentPane({
       ) : canShowMarkdown ? (
         <div className="markdown-document-pane">
           <MarkdownNotePanel
+            key={paper.paperId}
             paper={paper}
             draftPatch={noteDraftPatch}
             onDraftPatchConsumed={onNoteDraftPatchConsumed}

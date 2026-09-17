@@ -1,6 +1,6 @@
 [package]
 name = "a4note"
-version = "0.1.5"
+version = "0.1.7"
 description = "A4 Note knowledge workspace desktop app"
 authors = ["A4 Note"]
 edition = "2021"
@@ -23,7 +23,7 @@ uuid = { version = "1", features = ["v4"] }
 rusqlite = { version = "0.32", features = ["bundled", "backup"] }
 pdf-extract = "0.7"
 sha2 = "0.10"
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Pipes", "Win32_System_JobObjects", "Win32_System_Threading"] }
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Pipes", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Registry"] }
 
 # Opt-in browser capture bridge (no external runtime process).
 axum = "0.8"

@@ -16,6 +16,18 @@ pub fn details(root:&Path,paper:&str)->Result<Value,String> {
         let(id,kind,path)=row.map_err(|e|e.to_string())?;
         files.push(json!({"id":id,"kind":kind,"name":Path::new(&path).file_name().map(|s|s.to_string_lossy().to_string()).unwrap_or_default()}));
     }
+    for file in &mut files {
+        let id=file["id"].as_str().unwrap_or("").to_string();
+        let label=snapshots.iter().find_map(|snapshot|snapshot["envelope"]["artifacts"].as_array()?.iter().find_map(|a| {
+            let artifact=a["id"].as_str()?;
+            if snapshot["fileMap"][artifact].as_str()!=Some(id.as_str()){return None;}
+            a["label"].as_str().filter(|s|!s.trim().is_empty()).map(|s|s.chars().take(120).collect::<String>())
+        }));
+        if let Some(label)=label {
+            let ext=Path::new(file["name"].as_str().unwrap_or("")).extension().and_then(|s|s.to_str()).unwrap_or("");
+            file["name"]=json!(if ext.is_empty()||label.to_lowercase().ends_with(&format!(".{ext}")){label}else{format!("{label}.{ext}")});
+        }
+    }
     Ok(json!({"snapshots":snapshots,"files":files,"snapshotLimit":20}))
 }
 pub fn open_file(root:&Path,paper:&str,file:&str)->Result<(),String> {
@@ -25,7 +37,11 @@ pub fn open_file(root:&Path,paper:&str,file:&str)->Result<(),String> {
     let path:String=c.query_row("SELECT path FROM paper_files WHERE paper_id=?1 AND id=?2",params![paper,file],|r|r.get(0)).map_err(|e|e.to_string())?;
     let path=PathBuf::from(path).canonicalize().map_err(|e|e.to_string())?;
     let base=root.join("files").join("papers").join(paper).canonicalize().map_err(|e|e.to_string())?;
-    if !path.starts_with(base) || path.extension().and_then(|s|s.to_str()).map(|s|!s.eq_ignore_ascii_case("pdf")).unwrap_or(true) { return Err("只允许打开当前文献目录中的PDF".into()); }
+    if !path.starts_with(base) { return Err("文件不在当前文献目录内".into()); }
+    if path.extension().and_then(|s|s.to_str()).map(|s|!s.eq_ignore_ascii_case("pdf")).unwrap_or(true) {
+        // Opaque attachments are not launched, extracted, or passed to a renderer.
+        return crate::app_paths::open_path_in_file_manager(path.parent().ok_or("attachment_parent_missing")?);
+    }
     crate::app_paths::open_file_with_default_app(&path)
 }
 pub fn attach(root:&Path,paper:&str,path:&Path)->Result<Value,String> {

@@ -19,9 +19,23 @@ const malformed=assert.rejects(bridge.request('hello'),/格式/);ports.at(-1).on
 bridge.close();unsubscribe();assert.equal(bridge.pending.size,0);assert.equal(bridge.disconnectListeners.size,0);
 console.log('Native transport unit checks passed: correlation, reuse, denial, disconnect, reconnect, timeout, bounds, cleanup. Browser API mocked; real host process has a separate regression.');
 
-const frames=[];globalThis.chrome={runtime:{connectNative(){const p=port();p.postMessage=v=>{frames.push(v);queueMicrotask(()=>p.onMessage.emit({id:v.id,ok:true,result:v.operation==='pdf_begin'?{transferId:'transfer'}:{authorized:true}}));};return p;}}};
+const modernHello={authorized:true,capabilities:{folderSelection:true,captureProgress:true,supplementFiles:true,sourcePdfRequired:true,captureRetry:true},nativeHost:{capabilities:{folderSelection:true,captureRetry:true}}};
+let hello=structuredClone(modernHello);
+const frames=[];globalThis.chrome={runtime:{connectNative(){const p=port();p.postMessage=v=>{frames.push(v);queueMicrotask(()=>p.onMessage.emit({id:v.id,ok:true,result:v.operation==='hello'?hello:v.operation==='pdf_begin'?{transferId:'transfer'}:{authorized:true}}));};return p;}}};
 const api=await import('../apps/browser-extension/bridge.mjs');
 await api.sendCapture({captureId:'test'});
 await api.uploadPdf('00000000-0000-4000-8000-000000000001',0,new Blob([new Uint8Array(192*1024+17)]));
-const chunks=frames.filter(f=>f.operation==='pdf_chunk');assert.equal(chunks.length,2);assert.deepEqual(chunks.map(c=>c.payload.sequence),[0,1]);assert.equal(Buffer.from(chunks[0].payload.data,'base64').length,192*1024);assert.equal(Buffer.from(chunks[1].payload.data,'base64').length,17);assert.equal(frames.at(-1).operation,'pdf_finish');assert.equal(api.supportsFolders({capabilities:{folderSelection:true}}),false,'Desktop hello alone must not claim host support');assert.equal(api.supportsFolders({capabilities:{folderSelection:true},nativeHost:{capabilities:{folderSelection:true}}}),true);await assert.rejects(api.sendCapture({captureId:'test',targetFolderId:'library'}),e=>e.code==='folder_selection_unsupported');api.disconnectBridge();delete globalThis.chrome;
+const chunks=frames.filter(f=>f.operation==='pdf_chunk');assert.equal(chunks.length,2);assert.deepEqual(chunks.map(c=>c.payload.sequence),[0,1]);assert.equal(Buffer.from(chunks[0].payload.data,'base64').length,192*1024);assert.equal(Buffer.from(chunks[1].payload.data,'base64').length,17);assert.equal(frames.at(-1).operation,'pdf_finish');assert.equal(api.supportsFolders({capabilities:{folderSelection:true}}),false,'Desktop hello alone must not claim host support');assert.equal(api.supportsFolders({capabilities:{folderSelection:true},nativeHost:{capabilities:{folderSelection:true}}}),true);
+await api.sendCapture({captureId:'test',targetFolderId:'library'});
+assert.equal(frames.at(-1).operation,'submit');assert.equal(frames.at(-1).payload.targetFolderId,'library');
+for(const [scope,key] of [['desktop','folderSelection'],['desktop','captureProgress'],['desktop','supplementFiles'],['desktop','sourcePdfRequired'],['desktop','captureRetry'],['host','folderSelection'],['host','captureRetry']]){
+  hello=structuredClone(modernHello);(scope==='host'?hello.nativeHost.capabilities:hello.capabilities)[key]=false;
+  assert.equal(api.supportsCaptureFlow(hello),false);
+  const before=frames.length;
+  await assert.rejects(api.sendCapture({captureId:'test',targetFolderId:'library'}),/配套新版/);
+  await assert.rejects(api.retryCapture('test'),/配套新版/);
+  assert.ok(frames.slice(before).every(frame=>frame.operation==='hello'),'Unsupported peers must not receive submit or retry');
+}
+hello={authorized:true};await assert.rejects(api.captureFolders(),e=>e.code==='folder_selection_unsupported');
+api.disconnectBridge();delete globalThis.chrome;
 console.log('Shipping bridge PDF chunk dispatch verified with mocked browser port.');

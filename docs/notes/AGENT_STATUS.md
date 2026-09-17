@@ -2,9 +2,251 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-12T22:53:20+08:00
+更新时间：2026-09-17T12:49:30+08:00
 
-## 当前工作：更新中心源码完成，必要CI与0.1.5签名发布待执行（2026-09-12T22:53:20+08:00）
+- 用户明确选择发布GitHub 0.1.7，允许本次发布必需CI；本agent开始发布整理，请并行agent暂缓生产源码修改。通过受保护PR/Verify后才生成tag和签名Release，不绕过检查，不安装/关闭软件/修改真实资料。
+
+- 最新UI Windows包完成，解除打包占用：0.1.6，builtAt2026-09-17T04:48:53.892Z；package:windows cmd_34de00340b6aea0a505248384419ea487bd2a85167980b32 exit0，独立哈希核验cmd_537383d193e211036e6aed74f26798475070bda1e9f3c1c2 exit0，EXE/安装包SHA256与build-info一致、更新签名非空。包含阅读顶栏三轨、文献库顶栏切换及图标、笔记同款PDF滑块、实时源码居左、设置字号、当前已合入工作区配置/文案等生产源码。产物artifacts/windows/latest/a4note.exe与A4 Note_x64-setup.exe；旧包归档0.1.6-20260917-123917-31020。未测试/安装/关闭软件/发布/操作真实资料。详见docs/mcp-latest-ui-windows-package-2026-09-17.md。
+
+- 样式测试笔记图片已修正并补下划线：只读定位确认实际content/Markdown 样式测试.md引用src-tauri/icons/128x128.png但目标不存在。用户明确同意actual后备份该测试文件，复制同目录markdown-style-test-image.png并改相对引用，加入中文/英文/混排下划线示例；仓库样例与图片同步。没有更改图片安全规则或生产渲染代码。新verify-markdown-style-sample对仓库及实际测试文件的真实PNG字节通过共用resolver/loader验证，128x128/22893字节一致，React underline及代码字面量正确；verify-image-layout与定向diff通过，cmd_61bcbaeb4b29eabbc35f755944979ebf5a07c1993f0337eb exit0。额外旧verify-note-toolbar因App Provider已支持更多场景的固定断言失败，未改并行逻辑。未原生桌面验收/打包安装；除用户指定测试笔记及配套图片/备份外未改其他真实资料。详见docs/mcp-style-sample-local-image-2026-09-17.md。
+
+- 按两张设置页截图调整过大文字：新增settings-typography.css并由设置入口导入，只作用settings-layout。普通说明/状态/表单标签与按钮采用ui-control-font-size（默认13px），辅助说明保留caption（默认11px），面板小标题13px加粗，页面/分类标题和导航原层级保留。设置按钮补30px最小高度/内边距，操作行允许换行，说明文字1.6行高。根因原说明与Button继承大基础字号而未用UI token。不改用户字号设置、全局tokens、PDF/笔记正文或更新/采集操作逻辑。build/diff cmd_56c24171dec3a790aadc49d06f3a8ee9f164f846d3cef649 exit0、settings诊断0错误；未测试/桌面验收/打包安装/真实数据操作。详见docs/mcp-settings-typography-2026-09-17.md。
+
+- 按用户修正统一PDF原文/译文/对照滑块为笔记编辑/阅读同款：surface底面、6px滑块圆角、轻阴影、180ms相同缓动，撤销额外绿色描边/加重底色。用户澄清居左的是编辑区实时/源码，故MarkdownAuthoringDock将该切换按钮移到工具条DOM首位（样式按钮之前），保留原sourceMode/onToggleSource与分隔线、补充切换目标title。不移动顶栏编辑/阅读、不动PDF三轨布局/处理器。build/diff cmd_20db261d553c53356cc75bb50d37dd488323b6ca8acd5718 exit0、src诊断0。未测试/桌面验收/打包安装。详见docs/mcp-slider-match-live-source-left-2026-09-17.md。
+
+- 文献库视图切换对齐笔记模式按钮：用户确认列表/综览/笔记参考编辑/阅读；当前并行源码已具备三档180ms滑动背景、active portal及reduced-motion，本轮保留该实现，仅为三档补List/Table2/NotebookPen 14px图标和文字span，使图标/间距与编辑阅读一致。不修改onChange/场景选择。build/diff cmd_631655aace6d9601028afc01a8483d70151ac9861b5807cd exit0，library诊断0；未浏览器/桌面视觉验收、未打包安装。见docs/mcp-library-switch-icons-2026-09-17.md。
+
+- 侧栏工作区用途标识完成：标题与aria-label改为笔记工作区，标题下增加浅绿色“独立笔记”标签及弱化“非文献库目录”提示，避免与文献库资料目录混淆；仅文案/CSS，不改变场景范围、内部工作区状态或数据隔离逻辑。build/diff cmd_d61360072ca6c1def43cb41c76a78c8b23f8128819c58caa exit0，markdown诊断0；未桌面验收/打包安装/真实数据操作。见docs/mcp-note-workspace-scope-label-2026-09-17.md。
+
+- 原文/译文/对照增强选中辨识与滑块：新增reader-file-switch.css，三等宽段共享单个伪元素，fileMode驱动200ms平滑移动；主题色底面/描边/轻阴影、选中文字加深加粗，选中hover不盖滑块。ReaderToolbar仅导入CSS、data-file-mode/role及aria-pressed。沿用真实fileMode和禁用条件，无第二份选中状态，不改切换处理器和最新顶栏三轨位置。支持prefers-reduced-motion和键盘焦点。build/diff cmd_d7770a8b952b29d72c63971542bed1c4bfd8937f0963c5ce exit0、reader诊断0错误。未测试/桌面验收/打包安装。详见docs/mcp-reader-file-mode-slider-2026-09-17.md。
+
+- 修复用户桌面截图阅读顶栏左大留白/工具遮挡：原空breadcrumb仍受通用高优先级flex:1规则影响，改阅读专用更高优先级并隐藏空节点。阅读工具行改三轨，左原文/译文/对照，中标注，右缩放/页码/笔记入口；导航从center移至end，各轨以内容最小宽度避免挤压，剩余空间两侧平分尽量居中。极窄窗口整个工具行保留可见细横滚条及键盘焦点，不隐藏工具；笔记入口缩为30px适配36px顶栏，保留body弹层。仅ReaderToolbar和reader-titlebar.css；不改PDF/笔记保存/工作区配置。最终build/diff cmd_63352d211a952dddeebc8e8590d4257257181c7ecc723702 exit0，src诊断0。未测试/桌面视觉验收/重新打包安装。详见docs/mcp-reader-titlebar-alignment-2026-09-17.md。
+
+- 按截图将文献库列表/综览/笔记三切换按钮上移窗口顶栏左侧。LibraryViewSwitch复用DocumentToolbar宿主及笔记编辑/阅读基础样式，三段滑动选中底面、键盘焦点和减少动画支持；仅活动标签贡献控件，场景仍拥有view状态，不搬移搜索/列设置/导入/阅读按钮或资料库行。App仅扩大toolbar enabled到library；无工作区hook/配置改动。build/diff cmd_a4c3aa578d4e992ef86ca0a21162ca30bbd8d93a89f928b5 exit0，src诊断0错误。未测试/桌面验收/打包安装。详见docs/mcp-library-view-switch-titlebar-2026-09-17.md。
+
+- 侧栏空工作区信息层级优化完成：长段落改为尚未打开工作区标题+短引导，两个带图标/箭头的操作卡片（打开文件夹浅绿底、新建笔记库中性底），底部.md/本地保存轻提示；键盘焦点背景阴影、pending禁用及减弱动画支持。新增NoteWorkspaceEmpty及局部CSS；hook接线，NoteLibraryDialog增加可选initialMode让新建卡片直达新建表单，默认入口仍为选择页。不改变配置v2、场景范围/文件操作逻辑。build/diff exit0、markdown诊断0；未浏览器/桌面交互测试、未打包安装/真实数据操作。详见docs/mcp-workspace-empty-actions-2026-09-17.md。
+
+- 阅读顶栏最新Windows包完成：0.1.6，builtAt2026-09-17T04:08:49.070Z；package:windows cmd_35545f8aeda02d8f89e04fb0f91dd4e5bd7a56c142fda3b2 exit0/442922ms。独立SHA256核验cmd_2cf8b8cfb6be690a6ff64eb6878aca946dddc3b9dedaa98f exit0，两个文件与build-info一致、签名非空。latest/a4note.exe 36896768字节，latest/A4 Note_x64-setup.exe 22570475字节；包含阅读工具栏上移、紧凑笔记侧栏、总览标签及打包前已落地的工作区显示调整。旧包归档0.1.6-20260917-120129-3924。不测试/安装/关闭软件/真实资料操作/发布。打包过程中另一agent交接了独立工作区配置v2，未单独核实该新增修改的完整纳入时间，不承诺该额外任务全部包含。详见docs/mcp-reader-titlebar-windows-package-2026-09-17.md。
+
+- 用户选择stop-reading：新版工作区独立配置完成，不清理真实旧配置。桌面load/save切至独立folder_workbench_snapshot_v2表；浏览器默认key改a4note.folderWorkbench.v2，偏好改a4note.notes.folderWorkspaces.v2；移除aster.workbench迁移读取，SQLite失败只回退新版key。旧表/key留原位，不删除/迁移。首次使用新版本不恢复旧工作区列表、tabs/布局/session元数据，需要重新打开文件夹；笔记/论文/历史消息内容存储不改。build exit0，JS模拟存储专项与Rust内存SQLite隔离/往返/无效写入保护测试通过，src诊断0。未打包安装/真实资料操作；详见docs/mcp-folder-config-v2-2026-09-17.md。
+
+- 本agent阅读顶栏最新Windows打包进行中：先确认无其他打包进程，使用package:windows包含阅读顶栏/紧凑笔记/总览色标及现有并行工作区修改；不测试/安装/关闭软件/真实资料操作/发布。
+
+- 阅读顶栏/侧栏紧凑化源码完成：ReaderToolbar通过现有DocumentToolbar controlsHost上移窗口顶栏，原文/译文/对照、标注、缩放/页码与开合面板保留；隐藏标签与全宽覆盖时不贡献工具栏，原PDF区域去掉空工具行。ReaderToolPopover独立body portal避开顶栏/横滚裁切，定位/外点/Esc及卸载清理。右侧面板标签与全宽/收起单行，窄侧栏标题与笔记操作单行，状态按需换行，正文弹性填充；保留总览标签、保存/错误/编辑器状态与拖宽。App仅改DocumentToolbarProvider一行，不改另一agent的content工作区显示hook。最终build/diff cmd_b47c295e6fcd81746f046fc1ba3de323a893d70d6c50388d exit0，src诊断0错误。未测试/桌面验收/打包安装/真实资料操作。详见docs/mcp-reader-titlebar-compact-notes-2026-09-17.md。
+
+- 按最新截图修正：仅顶部NoteWorkspacePicker限定activeScene===markdown，阅读/文献库/总览/AI等不显示；侧栏文件夹工作区及打开入口保留。返回非null Fragment抑制WorkbenchTopBar旧breadcrumb回退，NoteLibraryDialog独立于picker条件保留其他场景侧栏打开功能。仅改useNoteFolderWorkspaces.tsx，build/diff exit0，markdown诊断0；未桌面测试/打包安装/真实资料操作。详见docs/mcp-topbar-workspace-md-only-2026-09-17.md。
+
+- 按用户要求移除旧工作区UI：删除SavedWorkspaceAccess组件与引用、selectSavedWorkspace回调及专用CSS，侧栏不再显示“已保存的工作区/切换到保留的工作区”；新的文件夹列表和顶部选择器保留，旧配置与笔记文件不删不迁移。保留当前并行源码的场景范围，不重放旧hook。build/diff exit0、markdown诊断0、src旧组件引用0；未打包安装/真实资料操作。详见docs/mcp-remove-legacy-workspace-entry-2026-09-17.md。
+
+- 总览笔记专属标签源码完成：ReaderMarkdown的论文笔记切换列表与当前笔记信息栏新增OverviewNoteBadge，主题强调色浅底/边框、书签书本图标和固定“总览笔记”文字。依据实际summaryNoteId绑定而非标题判断，普通新建笔记无此标签；长标题省略仍保留标签。打开/新建按钮统一用户可见术语“总览笔记”，不改已有标题、正文、DB关系或字段协议。最终build/diff cmd_0f756c9c35438e50bcfccc3a4d54cc6388da62f10d37ddcb exit0，reader诊断0错误。未测试/真实资料操作/打包安装；双链尚未实现，之前被用户中止的空态入口补充也未实施。详见docs/mcp-overview-note-badge-2026-09-17.md。
+
+- 最新UI打包完成：package:windows cmd_56bec4f75be96d3cede73e7a6f3480b70bcc94bf03d5d2ff exit0，0.1.6 windows-x64，builtAt2026-09-17T03:49:09.216Z，sourceDirty=true；包含笔记专属顶部自定义下拉/背景阴影、笔记库弹窗优化、编辑阅读滑动及当前并行源码。a4note.exe 37046784字节 SHA256 6909E032CB23FC34BC0330959E89EEE71A2988410FA8FCEA7C4821F5A76CDD97；安装包22603403字节 SHA256 0E309A72CAA867FCB21937072B5FC0BFE1B9793A849E63AF8B49E4E996045E65，位于artifacts/windows/latest。cmd_c082cbcc19f449caf8439c46c5e1da217f6e612cae87cb23 exit0独立核验哈希与build-info一致、更新签名非空。旧版归档0.1.6-20260917-114144-28152。未安装、关闭软件、真实资料操作或发布，既有架构限制不宣称通过。详见docs/mcp-windows-package-ui-2026-09-17.md。
+
+- 论文关联笔记+总览映射+阅读写作布局进度复核：当前ReaderMarkdown入口、SummaryNoteSession共享会话、总览SummaryEditableCell、Rust绑定读写及lib命令注册、ReaderSideDrawer保活/布局接线均存在。限定designated/new_only/drawer范围源码已实现并于后续Windows构建打包，但未做本任务桌面功能验收，不能标为完整交付验收完成。普通笔记不自动映射；需要侧栏显式新建总结笔记且保留a4-summary字段标记；无笔记主区空态仅普通创建，入口不明显。已有笔记指定/旧总结迁移/重新绑定及删除修复/跨设备关系同步未实现，其中多项原本明确不在授权范围。当前src诊断0错误。本轮只读审查与文档校正，不测试/新建真实论文笔记/修改数据库/重复构建打包；并行打包任务保留。详见docs/mcp-summary-reader-progress-review-2026-09-17.md。
+
+- 用户要求重新打包当前完整工作树：最新笔记专属下拉/柔和焦点、笔记库弹窗和编辑阅读滑动等源码进入标准package:windows；命令cmd_56bec4f75be96d3cede73e7a6f3480b70bcc94bf03d5d2ff已启动。只打包和核验，不安装、关闭软件、操作真实资料或发布。
+
+- 并行工作区整合源码完成（用户确认跨场景统一）：新版文件夹navigation/breadcrumb在所有场景提供，替代原仅markdown条件，阅读不再回退旧项目树。保留最新NoteWorkspacePicker自定义下拉、弹窗美化、模式滑块及其他并行源码；不是重放旧补丁或声称合并未知分支。单击保持当前场景/侧栏，双击进入笔记；旧工作区不删除，折叠SavedWorkspaceAccess保留默认工作区/工作区2及原标签访问，选择时记住所属文件夹工作区。build/diff cmd_c88507cadec60d92f0268ef295b5b161e3c5b8e36965aa16 exit0/16367ms，src诊断0错误；本agent未测试/运行时验收/打包安装/真实数据操作。此范围更新取代此前仅笔记导航及非笔记顶部隐藏的整合约定；不要按旧交接回写hook。详见docs/mcp-workspace-integration-2026-09-17.md。
+
+- 用户明确选择恢复下拉：新增NoteWorkspacePicker自定义主题菜单，保留小字号、长名省略/完整路径title、当前项勾选/滚动和菜单内打开文件夹；无独立加号，无绿色触发框，hover/open/focus用背景阴影。Portal避开顶部overflow裁切，视口定位、方向键/Home/End/Enter/Esc/Tab和外点关闭。hook在非markdown返回false抑制TopBar旧工作区fallback，其他场景顶部区域不显示；侧栏/旧配置及数据不变。不改共享TopBar/App业务。build/diff exit0，markdown诊断0；实际hook/picker/TopBar的Chromium模拟80目录、320px、键盘/切换/弹窗入口/非笔记隐藏通过，非原生E2E。未打包安装/真实数据操作，详见docs/mcp-notes-workspace-dropdown-2026-09-17.md。
+
+- 并行整合进行中（本agent）：当前同一工作树已有各agent修改，不做覆盖式拷贝或重放旧补丁。本轮统一useNoteFolderWorkspaces各场景入口，保留NoteWorkspacePicker和弹窗美化/模式滑块；旧工作区及标签保留可达。不测试/打包安装。请其他agent避免同时重写该hook，独立组件继续保留。
+
+- 笔记库弹窗轻量体验优化完成：书本标题图标、文件夹/新建图标卡片及箭头，精简说明，关闭改X且保留可访问名称，底部合并不复制不迁移提示；主题变量、悬停/处理中动画与reduced-motion、窄屏样式保留。仅改NoteLibraryDialog.tsx及note-library-dialog.css呈现，不改原打开/创建/防覆盖逻辑。build/diff exit0，markdown诊断0；实际组件Chromium+模拟FS覆盖320/480/960px、打开取消/成功、创建、Esc及焦点恢复通过，非原生E2E。未打包安装或真实资料操作。详见docs/mcp-note-library-dialog-polish-2026-09-17.md。
+
+- 截图指定顶部工作区/模式切换修正完成：顶部工作区名改小字号纯文本，保留路径title与长名省略，移除顶部select/加号，侧栏打开/切换及新笔记库弹窗保留；编辑阅读选中背景180ms横滑、等宽按钮，aria-pressed与键盘焦点保留，prefers-reduced-motion禁用动效。不改正文/保存/撤销流程、不改侧栏字号。build、verify-note-toolbar及定向diff exit0，src诊断0；实际hook与提取模式JSX的Chromium隔离测试通过名称/控件移除/保留入口/滑块位置/键盘/减弱动效，非原生桌面E2E。未打包安装或真实资料操作，详见docs/mcp-note-topbar-motion-2026-09-17.md。
+
+- 笔记库交互及排版Windows打包完成：0.1.6，builtAt2026-09-17T03:13:41.055Z。package:windows cmd_29aa1eb20e459f03fa357a98cab1dc36e5c47c21de44da90 exit0/422625ms；哈希核验cmd_cb3e6c9f83c81b5eb1c51e6ff8ee37b34281609cb3277e1b exit0/10215ms，两个文件与build-info完全一致、签名非空。latest/a4note.exe 37046784字节，latest/A4 Note_x64-setup.exe 22602566字节。包括单击切换/双击进入、打开已有与新建笔记库弹窗、字号/引导/footer排版。旧包归档0.1.6-20260917-110641-21736。本agent未测试/安装/关闭软件/真实资料操作/发布；不声称运行时验收。详见docs/mcp-note-library-windows-package-2026-09-17.md。
+
+- 笔记工作区排版复核完成：用户选择check而非打包；以当前含NoteLibraryDialog的源码为准，未重放旧hook补丁。实际ProjectSidebar/hook/model/CSS在助手Chromium隔离夹具72组检查通过（300/360/480px侧栏、18/28px UI字号、560/600px高度、0/1/100目录、导航/工作区模式）；字号一致、长名省略/列表独立滚动/导航footer贴底，工作区模式按原设计隐藏footer。应用最小侧栏300px，180/220px压力测试不属于支持范围。build及定向diff cmd_4bace603ea5188608cf40c8cd466186ad7b439afbdbac15e exit0，markdown诊断0错误。未发现支持范围内需改的问题，业务源码零修改，未打包安装或真实资料操作；非原生桌面验收。详见docs/mcp-note-workspace-layout-review-2026-09-17.md。
+
+- 笔记库交互Windows打包进行中：用户要求exe打包，执行标准package:windows及产物哈希核验；已确认无其他打包进程。不测试、不安装、不关闭软件、不操作真实资料、不发布。
+
+- 笔记库交互源码完成：文件夹单击/顶部选择只切换工作区并保持场景及侧栏状态，双击/Enter或点击笔记按钮进入笔记工作区；打开入口统一弹窗分流已有目录与新建笔记库。新建选择父目录、输入名称，复用createDirectory非递归且同名失败的后端，不覆盖/复制/迁移；创建后打开失败记录路径可重试打开。原生dialog通过portal挂载，焦点隔离、取消/错误显示、请求锁、上下文变化卸载使旧结果失效。最终build/diff cmd_3945a4b2e6c16c0e07b9e536b666dce28a04b9b1b3d77eaa exit0，markdown诊断0错误；本轮未测试/真实目录操作/打包安装/发布。详见docs/mcp-note-library-flow-2026-09-17.md。
+
+- MCP新地址重连接准备完成（financing-desktop-pdt-his，2026-09-17）：Bridge0.7.4/15工具已核对，initialize/tools/list/read_files/run_command成功；工作区D:/WorkSpace/Aster，AGENTS/开发手册与最新双状态已复核，状态和git只读探测cmd_89beabb3f9a23a124fa40b2853c0c84a7ff201000f48c502 exit0。本轮只同步准备文档，不改业务源码、不重新打包安装或操作真实资料；之前打包已完成，最新并行笔记排版源码另记为未打包，不混淆两者。等待用户下一项任务。
+
+- 笔记工作区排版修正源码完成：顶部/侧栏文件夹名统一ui-scene-font-size；删除已打开列表下的常驻说明，无文件夹时引导打开存放Markdown（.md）笔记的文件夹。列表flex填充剩余高度、列表独立滚动；全局侧栏footer不收缩并margin-top:auto贴底。只改useNoteFolderWorkspaces.tsx、note-folder-workspaces.css及workbench.css的footer规则；保留已有工作区及异步选择保护。build/diff cmd_c38974581f33c67a4807991b76908bb3a5b3542a916af011 exit0，markdown目录诊断0错误；未测试/桌面视觉验收/打包安装/真实资料操作。详见docs/mcp-note-workspace-layout-2026-09-17.md。
+
+- 本agent Windows打包完成：package:windows cmd_3e78a24d423464ae297f17f9c7bacb10a3c6f58bc3fbf3d0 exit0/401087ms；0.1.6 windows-x64，builtAt2026-09-17T02:46:27.812Z，sourceDirty=true。latest/a4note.exe 37046784字节 SHA256 628447E2AF81BB040E4C1654A85E796C56F84AA19F406B895207CE521B6EDCF6；latest/A4 Note_x64-setup.exe 22600570字节 SHA256 C229C45A8A44532A43916D3B59D08D03E5FC41A5E299FFE7493344FF1855C9FF。cmd_8a200b023e62b21ce1856d90a6a2454fb20d2ff46af5a410 exit0核验两文件与build-info哈希一致及更新签名非空。旧latest归档artifacts/windows/archive/0.1.6-20260917-103949-11288。包含当前笔记边界修复及既有并行源码；未安装、关闭软件、操作真实资料或发布，未宣称全仓architecture通过。详见docs/mcp-windows-package-2026-09-17-notes.md；下一步用户桌面验收。
+
+- 用户要求打包（2026-09-17）：本agent执行当前完整工作树的标准package:windows，包含独立笔记边界修复和已有并行修改；核验EXE/安装包哈希，不安装、不关闭软件、不操作真实资料、不发布，保留既有架构检查失败记录。
+
+- 笔记边界续修完成（2026-09-17）：文件夹选择请求随场景/工作区变更及卸载失效，A→B→A旧结果/异常不再生效，等待时禁用目录切换；图片解析明确拒绝UNC笔记基路径和控制字符，不误算本地路径。3文件补丁已确认应用，build及6项专项回归、定向diff通过，src错误0；实际hook/model的Chromium模拟FS/store覆盖延迟select/describe成功/错误、跨场景/工作区失效与后续恢复通过，非原生桌面E2E。断线后已取回cmd_72436a7230bf8e010a892961e49e2145284552e92e325e99 exit0。旧lib.rs架构约束失败未改动/未重跑；未打包安装或真实笔记操作。详见docs/mcp-note-edge-fixes-2026-09-17.md；下一步桌面实际图片和文件夹恢复验收。
+
+- 2026-09-17 MCP重连接准备完成：新隧道initialize/tools/list/read_files/run_command成功，Bridge0.7.4、15工具，工作区D:/WorkSpace/Aster；已核对AGENTS、开发手册、双状态与npm run status/git status。仅连接准备与文档同步，未应用旧边界补丁、未构建/打包/安装/操作真实资料；保留其他agent任务。旧文件夹选择A→B→A与UNC笔记基路径问题待下次核对源码后续修，不能按已修复交接。详见docs/mcp-reconnect-readiness-2026-09-17.md。
+
+- 独立笔记两项源码完成（本agent，未打包）：相对路径图片实时/阅读共用noteImageSource/Loader，笔记路径Facet更新、路径白名单/中文空格父目录、异步销毁保护/错误提示，原始Markdown地址不变；笔记场景单层文件夹工作区使用noteFolderModel/useNoteFolderWorkspaces，顶部与侧栏通用插槽，文件夹去重/打开/取消/空状态，只投影folder项目，旧配置不删除、不搬迁文件、不包含论文关联笔记，其他场景原逻辑保留。最终build、6项专项回归、定向diff检查通过，src错误0；本地Chromium实际hook+模拟FS/store的打开/重复/取消/切换/其他场景恢复通过，非原生E2E。整体architecture在本任务未改的src-tauri/src/lib.rs模块体约束失败，保留并行授权改动待协调。详见docs/mcp-note-folders-relative-images-2026-09-16.md。下一步桌面实际图片/工作区恢复验收，用户要求时再打包。
+
+- 浏览器授权弹窗源码完成：Windows系统MessageBox替换为A4 Note应用内dialog，复用浅色/纸张/深色token、共享Button和独立样式；权限分项、主次按钮、可关闭/键盘操作。新增main窗口限定的一次性120秒Broker，旧ID/重复答复/超时/退出不能授权；仍由NativeState保存授权并处理撤销代际。仅改capture模块/platform出口及main.tsx两行挂载，未改App/笔记/阅读器、未重新打包或安装。
+- 授权弹窗最终build cmd_b922297213cb9ad0070d04f924aca8c727aaf7730b832945 exit0；cargo check --lib cmd_4c9a8e7c3a1c785551a358427c5180a634be06fa27d91c69 exit0；专用Rust native_consent两项cmd_d1512eb9b019d7aea61b48cc41f661b5a9cfce6f4d8e00c6通过；src诊断0错误。真实React/Chromium隔离检查通过浅/深/纸张、焦点、Esc/关闭拒绝、显式允许、IPC失败保留、超时移除及窄窗；IPC为mock，不是Windows安装后验收。
+- test:architecture在现有lib.rs模块清单边界断言失败（cmd_6bafa74995260f46c5bc6d253804ba8a3eebd3b4c5b5b597）；本次未修改lib.rs，也未放宽断言。未声称全量verify通过。保留并行工作，未关闭应用/操作真实资料/打包安装。
+
+- MCP重连接准备完成：Bridge0.7.4，15工具，当前workspace为D:/WorkSpace/Aster；已读AGENTS/开发手册/最新状态，npm run status与git status只读探测通过。run_command已改为原生Bash，不再接受旧execution=direct或PowerShell语法。后续用户确认两项任务均做：相对路径图片实时预览修复；仅笔记场景一文件夹一工作区，保留旧配置、不移动/删除文件、不修改论文库/阅读/AI对话，论文关联笔记不纳入。尚未开始业务源码修改，不应沿用旧交接中范围未确认的结论。详见docs/mcp-reconnect-readiness-2026-09-16.md。
+
+- 三视图状态徽标源码完成：共享PaperSignals及paper-signals.css，复用列表原有小徽标基准尺寸/间距/颜色，统一PDF/缺PDF、译N、注N、笔记N含0、待补全。笔记卡片的右侧数量移至标题下；综览同样新增标题下徽标并保留年份/期刊，自动紧凑行高下限84，不覆盖手动行高。cmd220 TypeScript及diff检查exit0；未测试/视觉验收/打包安装/真实文献变更。状态文件并发变化后重新读取追加，不更改其他任务状态。
+
+## 当前工作：总结笔记与阅读布局Windows打包进行中
+
+- 用户要求打包exe，执行标准package:windows生成当前整体源码的EXE/安装包并核验哈希；不测试、不安装、不关闭软件、不操作真实资料、不发布。保留并行改动及既有architecture检查未通过记录，不声称全量verify通过。
+
+- 阅读写作布局续改源码完成：收起或同论文内切到其他面板保留笔记编辑器实例/模式/选择/撤销历史，恢复时还原可用滚动与焦点；ReaderNoteActivity与ReaderNoteRequests分离可见性和请求归属，隐藏侧栏不消费openNote/append，主区仍可正常自动保存，收起排空非错误会话、不暗中重试错误。全宽改绝对叠放、不把PDF压成零宽；useReaderLayoutPosition按页码/页内进度保存布局切换锚点，显式跳页/标注/缩放/源变化不回拉。阅读容器<720px自动叠放，放大恢复分栏，窄侧栏工具行换行；宽度保存200ms防抖。右侧继续笔记入口，Ctrl+Alt+N开合、Ctrl+Alt+Enter全宽、Esc先关闭面板菜单再返回分栏，IMEs/AltGraph/模态对话框不拦截。最终npm run build及git --no-pager diff --check cmd_0c6bb5f0303d32edd19175df260bdf08bd4f1bfd16dc341c exit0/10729ms，阅读目录诊断0错误。本agent未测试/运行时视觉验收/真实資料操作/打包安装/发布。本轮不改总结绑定迁移或后端；并行独立笔记/授权工作及已报告共享architecture阻塞保留。详见docs/mcp-reader-layout-continuation-2026-09-16.md。
+
+- 本agent仅完善阅读侧栏保活/隐藏请求隔离、PDF位置保护、窄窗叠放和快捷操作；不扩大映射/迁移范围，不测试/真实资料操作/打包安装。并行浏览器授权弹窗及独立笔记任务保留。
+
+- 论文总结笔记与阅读写作布局源码完成（designated/new_only/drawer）：每篇显式新建唯一总结笔记，SQLite事务内保存note/唯一绑定/sync_outbox，普通笔记及旧总结.md不迁移；总结内容仍是现有notes表的Markdown。总览按a4-summary稳定字段ID映射，SummaryNoteSession为同一NoteDocumentSession的视图而非第二保存队列，保留expected冲突校验/恢复草稿；旧来源单元格草稿加path隔离，旧读取不能覆盖新来源缓存，失效绑定报错不自动回退重建。阅读笔记增加新建/打开总结及标识；可见拖柄、宽度记忆、指针捕获/rAF/Esc/键盘调整、全宽写作与返回分栏，关闭复用现有保存机制并记住本次会话选中笔记。最终npm run build及git diff --check cmd_83f8630ab67c7c3749258923bcc3e5ead3767b5177422c53 exit0/10983ms；Rust cargo check --lib cmd_58e7d1a267e1d670311b88ecca68f2b98cc68373cd8cec85 exit0/4565ms；src诊断0错误。未测试/视觉验收/真实资料操作/打包安装/发布。指定关系仅本地DB，云同步关系、指定已有笔记、旧MD迁移和删除后重新绑定未实现；详见docs/mcp-summary-note-writing-2026-09-16.md。并行独立笔记文件夹工作区/图片任务未由本agent实施。
+
+- 本agent范围：用户选择designated/new_only/drawer，仅新建总结笔记参与总览映射，不迁移旧MD/普通笔记；新增可拖宽收起全宽的阅读布局。复用现有编辑器与会话，本轮不测试/真实资料操作/打包安装/发布。并行agent的独立笔记文件夹工作区与图片工作保留，不在本轮范围。
+
+- PDF兼容构建与MD下划线修复已打包：npm run package:windows cmd_251bc83092123171fb1f16b0c9c4165e3efd294c1ff33893 exit0，430.354秒。0.1.6 windows-x64，builtAt2026-09-16T14:22:03.764Z，sourceDirty=true。latest/a4note.exe 37034496字节 SHA256 31DA29B9DB741455757AE779FD0CB641CC29C74C3C3B570518B8A166E136109A；latest/A4 Note_x64-setup.exe 22586615字节 SHA256 AE5489EBDFE3319AB070B5FA2E67CB96758CAF4A7CF36FBFCA378C57DFC0AD3A。cmd_869cca4ba2b80683b4df3c434f530537667620216dc47724 exit0，两文件哈希与build-info一致，更新签名文件非空。旧latest归档artifacts/windows/archive/0.1.6-20260916-221511-8552。未测试、未安装、未关闭软件、未真实文献操作、未发布。PDF对方现场是否解决仍待反馈；同版本重打包，不保证内置更新器提示更新。
+
+- 用户明确同意生成EXE与安装包；标准package:windows，仅构建/签名/归档旧latest，不测试、不安装、不关闭软件、不发布。
+
+- 2026-09-16 PDF兼容性与MD下划线源码完成，尚未打包/现场验收。PDF.js6标准构建直接使用Promise.try等新API，改为legacy主线程及匹配worker，并统一PdfPageView/pdfGeometry运行时入口；这属于兼容性修复，未取得对方错误原文，不能确认现场根因。新增pdfLoadErrorMessage区分读取/解析/页面准备，并显示有界错误信息及密码/损坏/组件提示，不修改真实文件或数据库。remarkAsterInline改为白名单HTML兄弟节点栈配对，保留已解析Markdown子节点，忽略危险属性、不启用raw HTML，代码/数学/转义文本保持原样；综览复用插件，实时编辑显示标签时仍保留内文格式。最终npm run build及git diff --check cmd_4cb7ca00e7973fc727a69f1abff5363b62b3345f6ec5d0f4 exit0；独立无分页diff cmd_adedcede7874f658e0337f642acf2724d298a84a4faae903 exit0；src诊断0错误。未运行测试/安装/关闭软件/发布。详见docs/mcp-pdf-underline-2026-09-16.md。
+
+- 用户确认使用安装包，MD下划线为<u>文字</u>。接通Bridge0.7.4；遵守先读后改及版本保护，不测试/安装/关闭软件/真实文献操作/发布。PDF现场报错尚未提供，不能宣称根因已证实。
+
+## 上次打包：15:48 综览原位编辑EXE与安装包已生成，未安装
+
+- 综览原位编辑Windows打包完成：cmd232 npm run package:windows exit0，219.747秒；0.1.6 windows-x64，builtAt2026-09-13T07:48:39.896Z（15:48），sourceDirty=true/基线c08eda31。包含现有总览MD原位单元格编辑、表头列宽拖动参考线、首列行高拖动及当前源码；普通关联笔记迁移未实施。artifacts/windows/latest/a4note.exe SHA256 9D262AAE6FCC5691368B04DCEA6C72B8B80B7ACA8F0AF3132D07E99AE81975AF；A4 Note_x64-setup.exe SHA256 58D4A83AA2F6C59C2816E90A4C75DFE0622BA33D9652FCF8E9E6F473F754587E，更新签名已生成。旧latest归档0.1.6-20260913-154501-63084，隔离构建目录已清理；未运行测试/安装/关闭软件/操作真实文献/公开发布。
+
+- 按用户要求使用标准package:windows生成当前EXE与安装包，归档旧latest；不测试、不安装、不关闭软件、不操作真实文献或公开发布。
+
+- 综览拖动及原位MD编辑源码完成：用户确认列宽仅表头行边界、行高仅第一列底边。列拖动rAF合并/停止缩放/整列绿色参考线，保留双击内容适应与键盘调整，去掉长原生tooltip；行高handle移入第一列，非全行触发。新增SummaryEditableCell，移除＋填写，双击/Enter就地textarea，Enter/Ctrl+S/失焦保存、Shift+Enter换行、Esc取消未提交输入；中文组合输入不提前提交。复用editSummary/TextDocumentSession/updateSummaryField，字段ID映射到现有总览MD，提交时合并其他字段、检测同字段变化，磁盘expectedContent保护；MD编辑继续通过现有完整总结入口同步预览。虚拟行卸载草稿保留于内存/本地恢复记录，失败可重试/导出/打开完整MD，旧异步保存不清除新恢复编辑，未覆盖冲突内容。元数据来源列期刊仍只读并提示在论文详情修改；普通关联笔记未迁移。cmd230/231 TypeScript及diff检查exit0，未运行测试/视觉交互验收/实际文献操作/打包安装；最新EXE不含本轮修改。
+
+- 用户两次确认：列宽仅第一行表头边界，行高仅第一列底边；内容单元格均可原位编辑，同步现有总览MD，不迁移普通笔记。不测试、不真实资料操作、不安装。
+
+- Windows最新包已完成：cmd227 exit0（241.639秒），0.1.6 windows-x64，builtAt2026-09-13T07:35:06.778Z（15:35），包含最新侧栏样式和此前源码。cmd228校验SHA256与build-info一致：artifacts/windows/latest/a4note.exe 36985344字节，127D19ED1956188FA30B9733F8EFC2B0D48E7827A78F9AE8034824A4D2471E80；A4 Note_x64-setup.exe 22532828字节，991AE444D07BBDCBF6D6C8348D41FCA70691ED96486C4F7A212F6A24E9FBC9F1。updaterSigned=true，旧包归档0.1.6-20260913-153106-59076。未安装/启动产物/关闭现有软件/公开发布。
+- 下一位agent先读 [专项交接](HANDOFF_MARKDOWN_2026-09-13.md)。一文件夹一工作区结构迁移尚未实施，范围/旧配置兼容待确认；相对路径图片实时预览仍未修复；原生桌面验收仍待完成。以下历史未打包/旧哈希不代表当前包。
+
+- 接手优先阅读 [Markdown专项交接](HANDOFF_MARKDOWN_2026-09-13.md)：源码完成清单、51模板、顶部portal及隐藏笔记隔离、验证边界、相对路径图片限制、一文件夹一工作区未实施/待确认。保留其他agent任务。cmd227执行标准Windows打包，完成后核验哈希；不安装/关闭软件/发布。
+
+- 侧栏标题样式源码完成：按最新截图仅作视觉调整，工作区标题与全部场景共用32px高度、6px圆角、surface-soft底色、字号字重和内边距，保留绑定文件夹；移除全部场景右侧ListFilter按钮与空白列/无用CSS，点击全部场景标题仍可选场景。修改ProjectSidebar.tsx与workbench.css；build、architecture、定向diff通过，未桌面视觉验收/打包/安装。不改变现有工作区结构或数据；此前一文件夹一工作区的范围/迁移问题用户跳过，尚未实施，后续需明确范围。15:08 EXE不含本次侧栏修改。
+
+- 最新Windows包完成：cmd221 exit0（269.527秒），builtAt2026-09-13T07:08:45.150Z（15:08），0.1.6 windows-x64。包含最新代码/表格配色及Grid、脚注当前行触发、51模板与笔记顶部布局。cmd222校验SHA256与build-info一致：artifacts/windows/latest/a4note.exe 36985344字节 E34FFE18FAB30ED5C9668B300827F6D70D10577B514F0BBBFE631752A00EC326；A4 Note_x64-setup.exe 22534029字节 2C667B794D602A2A874141A2FF3EFA73DD767B1485575847E65F155A49C2FA01。updaterSigned=true，旧包归档0.1.6-20260913-150416-28632。未安装/启动产物/关闭软件/公开发布，桌面交互待验收；保留并发三视图徽标任务记录。
+
+- npm run package:windows已启动，含最新代码/表格对比度及Grid衔接、脚注当前行触发、51模板与顶部布局；不安装、不关闭软件，完成后校验EXE/安装包哈希。
+
+- 脚注/模板/顶部布局源码完成，未打包：脚注定义前缀与正文脚注引用改用isActiveLine触发源码，其他语法规则未变。模板补正文段落和br换行为51项，悬浮栏入口更名＋样式，右键一级新增全部样式模板；右键脚注/表格/标注/分隔线/代码/数学快捷项复用同一模板插入，脚注不再固定编号，移除模板过时手改编号提示。新增workbench/DocumentToolbar.tsx上下文portal目标，App仅markdown且非设置场景启用，TopBar编辑/阅读/目录在打开前，保存状态在打开后；Resource保留状态/handler所有权及非场景fallback，TabHost提供active context，嵌套MarkdownWorkspaceScene传active防隐藏笔记抢占。移除全局文件树按钮（不移除树本身），过滤所有场景的正常已加载N篇本地文献提示，保留错误/操作反馈。build、architecture、authoring、quote、image、新增verify-note-toolbar与diff检查通过，src错误诊断0。本地Chromium加载实际DocumentToolbar/TopBar/TabHost+编辑器替身，测标签切换状态保持、单活动控件、场景清理/恢复、保存位置及700/580/480px宽度通过；非完整桌面E2E。未打包/安装，14:42 EXE不含本次和前次对比度Grid修正。
+
+- 代码/表格对比度及控件衔接源码完成：markdown.css代码底色统一ink11%混合surface（含midnight覆写），表格新增共享body/stripe/head/line/hover色变量，加深表头与网格；阅读/实时共享，保留代码无外框与复制功能。markdown-authoring.css实时表格与4按钮改为同一3列3行Grid，统一8px外圆角与外边框、移除内部table圆角/绝对定位偏移，36px控制条，26px粗体纯+/−符号，保留title/aria-label、禁用与焦点。长内容overflow-wrap:anywhere防止窄表格撑入控件。build、architecture、authoring、table-cell、image-layout回归和diff检查通过；本地Playwright Chromium以真实两份CSS+代表性DOM测900/420/240px×0/1/4数据行，验证贴合误差<1px、36px控制条、26px符号，截图已检查。非完整CodeMirror/桌面E2E，尚需实际滚动/编辑验收。本次未打包；当前14:42 EXE不含本次颜色与Grid修正。
+
+- 第一步论文关联笔记Windows包完成：cmd213 npm run package:windows exit0，277.628秒；0.1.6 windows-x64，builtAt2026-09-13T06:56:36.115Z（14:56），sourceDirty=true，基线c08eda31。包含文献库笔记视图、阅读器左侧笔记展开/数量/新建/打开及当前已实现源码；不包含第二步抽屉重设计或第三步总览模板同步。artifacts/windows/latest/a4note.exe SHA256 38F85B3C3ED42CF0D4301058A3AB761AC2D75C3D30C56A40B48CFBFA429C1CA8；A4 Note_x64-setup.exe SHA256 C784D65994BE0E8CE7047123A8D073F04667192A33DF22844BC5475BE0DAFE82；更新签名已生成，旧latest归档0.1.6-20260913-145200-75632，隔离构建目录已清理。未测试、安装、关闭应用、实际文献操作或公开发布。
+
+- 用户要求打包EXE。包含笔记视图、阅读器左侧笔记列表及当前源码，不包含后续新抽屉或总览模板迁移；不测试、不安装、不关闭软件、不公开发布。
+
+- 用户选定phase1源码完成：文献库列表/综览旁新增笔记视图，沿用同一筛选论文列表，按论文展开笔记卡片，展示数量/标题/内容预览/已有更新时间，支持阅读/新建/打开；列表信号明确笔记N含0。ReaderSceneSidebar阅读论文条目独立展开箭头、数量和笔记/空状态/新建入口，泛PDF未绑定论文不虚构关联。新增共享PaperNoteList及LibraryNotesView。App通过paperId+noteId验证后导航并发NoteDraftPatch.openNote请求，复用MarkdownNotePanel及现有NoteDocumentSession/native保存；当前论文打开笔记不重置PDF阅读模式，已有主笔记编辑器时不重复展开旁编辑器。请求WeakSet单次领取防StrictMode/双面板重复创建，消费仅清除对应请求、保留较新请求；切换笔记/创建先flush，失败保留草稿，Markdown主面板按paperId加key防会话串论文。笔记列表入口改为论文笔记/Files图标和可见数量。只统计现有paper.notes，不迁移总览文件/模板、不实现新抽屉/浮动工具栏/脑图画板。cmd211/212 TypeScript及diff检查exit0。未运行测试、真实文献操作、打包安装或发布；当前EXE不含本轮修改。
+
+- 用户明确选择phase1：文献库第三个笔记视图、阅读器左侧展开论文笔记、数量及空状态，复用现有编辑器和保存会话。后续抽屉/悬浮工具栏/总览模板不在本轮范围；不测试、不修改真实资料或安装。
+
+- 当前源码Windows打包完成：cmd208 npm run package:windows exit0，263.747秒，0.1.6 windows-x64 builtAt2026-09-13T06:42:57.326Z（14:42），包含空白表格、贴边增减按钮、空行高度、图片悬浮缩放/对齐与此前源码。cmd209核验artifacts/windows/latest/a4note.exe 36981248字节 SHA256 605A1F0C7E7B7957151FC59A60EB4DD28936E8EC476746F6F735397D5575431A；A4 Note_x64-setup.exe 22532527字节 SHA256 6D0E0884A1BA496748B62D680098C0CC87B8ADC05D859B25AE1C5ECB0F653DC9，与build-info一致，updaterSigned=true。前版归档artifacts/windows/archive/0.1.6-20260913-143834-1248。未安装、未启动新EXE、未关闭用户软件、未公开发布；桌面实际交互仍待用户验收。
+
+- cmd208运行npm run package:windows，包含空白表格、贴边增减条、图片缩放/对齐与此前源码。仅生成EXE/安装包，不安装、不关闭现有软件；完成后核验产物与哈希。
+
+- 空白表格与图片样式源码完成（未重新打包）：模板与右键表格入口统一3列空白表头+2个空白数据行，不再预填文字。实时编辑ImageWidget增加右上角悬浮/键盘可见调整入口，支持按正文宽度10–100%缩放、居左/居中/居右、重置；面板在重建后保持打开/焦点，Esc关闭，狭小图片面板横向限制于编辑区域。通过标准图片title尾部[a4note-image:百分比:对齐]保存设置，保留URL/alt/原caption；共享imageLayout.ts解析/改写，MarkdownFigure阅读应用相同比例与对齐且隐藏元信息，HTML图片阅读归一化保留title。只对已能渲染的http(s)/data图片提供实时控件，之前相对路径实时预览限制未改变。每次修改独立undo、只读禁用与原源码片段一致性检查；阅读不提供修改按钮，保留点击放大灯箱。新增scripts/verify-image-layout.mjs覆盖空白GFM表解析、元信息/caption往返、HTML归一化、React SSR阅读渲染、实际Widget配合真实CM state/history及mock DOM的按钮/保持打开/撤销重做/过期与只读保护。build、architecture、authoring、table-cell、image-layout与定向diff检查通过，src错误诊断0；未做桌面几何/鼠标焦点/重开文件端到端验证，当前14:20 EXE不含本次及贴边按钮修复。
+
+- 表格外沿控件与空行高度源码修复：底部32px贴边横条左右＋行/−行，右侧32px贴边竖条上下＋/−列，低对比同主题背景并保留焦点/禁用状态；增删逻辑和有内容删除确认不变。th/td增加1.9em最小行高（table-cell height语义）与空单元格/编辑占位零宽伪元素，避免新增空行坍缩；不写入零宽字符到Markdown。修改markdown-authoring.css、markdown.css与MarkdownLivePreviewEditor.tsx按钮文案。build、authoring及table-cell模拟DOM回归、定向diff检查通过；尚未桌面几何/视觉验收，未重新打包，14:20包不含本次修改。下一步核对空行增删/进入编辑及宽窄表边条贴合。
+
+- 用户要求当前源码EXE打包完成：cmd200 npm run package:windows exit0，297.988秒；Windows x64/0.1.6，builtAt2026-09-13T06:20:53.123Z（14:20），sourceDirty=true/基线c08eda31。包含已实现行高拖动与持久化、标题默认不固定及Pin开关、缩放遮挡修正及打包时现有编辑器源码；多笔记/总览模板/阅读写作布局整合仅方案，未实施不包含。artifacts/windows/latest/a4note.exe SHA256 FC13E9DC31C96087028C2E03604E03EEC4C428F7C4F0EC70CA3A127EFD64B9F8；A4 Note_x64-setup.exe SHA256 C005496C6EED1B1E074B9AB0B5770B24965886B5F42C7431615D5769BC63C8C7，更新签名已生成。旧latest归档0.1.6-20260913-141556-76012；隔离构建目录由标准脚本清理。未运行测试/安装/关闭软件/操作真实文献/公开发布。
+
+- 用户再次要求打包：包含已实现行高调整、标题可选固定、缩放遮挡修正及当前编辑器源码；笔记整合仅方案，未实施不包含。标准package:windows，仅打包不测试/安装/关闭软件/发布。
+
+- 引用/标注源码触发与阅读容器源码完成：仅quote/callout前缀改为isActiveLine判定，行尾及正文点击均显示当前行标记，其他语法cursorNear不变；阅读article取消外边框/圆角/固定高度/独立overflow，内距缩至8px，与实时共用外层滚动区域与背景，保留窄版/自适应设置。修改MarkdownLivePreviewEditor.tsx、workbench.css，新增verify-quote-source.mjs。build、architecture、authoring回归、引用/标注当前行及阅读容器回归、定向diff检查通过；尚未桌面视觉/滚动条/长文模式切换验收，未重新打包。下一步验收行首/中/尾、相邻行不展开、正文外层最右滚动条、目录开启与窄版；当前EXE不含本次修改。
+
+- 综览逐论文行高调整源码完成：新增SummaryRowResizer行底6px拖动区，pointer capture与rAF预览、缩放比例补偿、松手保存，Esc/取消捕获撤销预览；双击或Enter恢复自动，上下键微调。手动行高44–2000逻辑像素，按paperId写入既有summary布局rowHeights并与列配置共存，读入校验，不修改总结内容；手动行关闭自动测量，overflow:clip避免裁切创建新滚动容器破坏可选固定标题。加载未就绪禁用调整；恢复自动删除该行覆盖值，保留其他行。cmd196 TypeScript与diff检查exit0，随后静态修正overflow:clip。未运行测试/真实资料操作/视觉验收/打包安装。
+
+- 综览标题可选固定源码完成：默认不固定，标题与其他列一起横向滚动；论文名称表头右侧新增Pin图标，可切换固定/取消，aria-pressed与提示、高亮实心状态明确，保留列宽拖动区。localStorage独立键aster.overviewTitlePinned持久化，存储不可用时仍可操作。只改LibraryOverview.tsx/summary.css，取消固定同时作用表头标题格和正文标题格，表头纵向固定保留；此前缩放锚点修正保留。cmd195 TypeScript编译与git diff --check exit0，未测试/桌面验收/真实资料操作，尚未打包安装。
+
+- 综览固定标题与缩放遮列修正源码完成：原横向鼠标/中心锚点公式会在scrollLeft=0放大时主动产生正滚动，导致相邻列滑到sticky标题下；改为保存logicalLeft=scrollLeft/旧倍率，每帧scrollLeft=logicalLeft*新倍率，保持右侧区域逻辑起点。继续固定标题、同比缩放列宽，保留手动横向滚动、纵向鼠标/中心锚点和平滑动画。只改LibraryOverview.tsx，cmd194 TypeScript编译及git diff --check exit0。未运行测试/桌面交互验收/修改真实文献，尚未打包安装，不宣称已验证用户截图问题消失。
+
+- 用户截图指出放大时右侧列被固定标题挡住。横向改为保留逻辑滚动起点，纵向继续鼠标锚点；不取消固定列，不运行测试/真实文献操作/安装。
+
+- 笔记创作入口源码完成（用户选择三项一起、编辑时常驻）：表格外沿右侧+列/底部+行，按焦点单元格插入；−行/−列删除，含内容确认、表头及最后一列保护、先提交未保存单元格、独立可撤销事务；单列表格解析已补齐。新增49个可搜索模板（标题/格式/列表/表格/代码/公式/图片/脚注/双链/HTML白名单/16种标注），右键插入→全部模板与底部常驻悬浮栏共用，块模板补空行、选首个占位文字、脚注编号避重。顶部格式按钮已移除，保留模式/目录/保存，阅读模式隐藏底部栏，预留76px不遮挡。修改MarkdownLivePreviewEditor.tsx、MarkdownResourceTab.tsx；新增tableStructure.ts、markdownTemplates.ts、MarkdownAuthoringDock.tsx、markdown-authoring.css、scripts/verify-markdown-authoring.mjs。build、architecture、表格模拟DOM回归、行列/单列解析/撤销/49模板与接线测试、diff检查通过，explorer诊断0。未真实桌面视觉/键盘/尺寸/保存重开验收，未打包安装；13:48 EXE不含本轮及复制反馈。下一步桌面核对表格按钮/确认取消/撤销、窄窗口底部栏和右键模板、输入法与模式切换；本地相对路径图片实时解析仍未实现。
+
+- 实时模式代码复制反馈源码完成：按钮旁显示复制中/已复制/复制失败；等待clipboard.writeText成功后才报成功，API缺失/权限拒绝给出失败并允许重试，复制期间防重复点击，2.6秒恢复，Widget销毁清理定时器，异步结束检查DOM存活。修改MarkdownLivePreviewEditor.tsx与workbench.css；build、architecture、定向diff检查通过，编辑器诊断0。未真实剪贴板成功/拒绝交互验收，未重新打包，13:48包不含本轮反馈。下一步桌面点击复制并粘贴核对内容与提示，检查权限拒绝分支。
+
+- 最新编辑器修复已打包：cmd182 npm run package:windows exit0（265.5秒），builtAt2026-09-13T05:48:32.112Z，Windows x64/0.1.6。包含代码框无描边、表格覆盖式编辑防跳动及任务框勾选基线修复。latest/a4note.exe（36977152字节）SHA256 2EA013C4E30128E288CA53C4F410D706BF357CD013065B1A9843C4EA6E595869；latest/A4 Note_x64-setup.exe（22528789字节）SHA256 39F45C444E1587770CA05894BCBE47E5892BC294A213946C12BA6AA7B8266230，cmd185均匹配build-info，更新签名已生成。旧包归档0.1.6-20260913-134408-77904。未安装/关闭软件/真实资料操作/公开发布；下一步用户使用13:48新版视觉验收。
+
+- 代码框与表格编辑形变修复源码完成：阅读/实时代码框取消外描边和左粗线，保留浅灰绿底与圆角；表格编辑保留隐藏原内容占位，input绝对定位覆盖，不再参与自动列宽/行高计算，焦点线减为1px。修改MarkdownLivePreviewEditor.tsx、markdown.css、workbench.css及verify-table-cell-editing.mjs。build、模拟DOM单元格回归、architecture、定向diff检查通过；未桌面几何/视觉验收，未重新打包安装。下一步验收长短内容、连续点击/取消与输入时尺寸稳定；提交新长文本后正常重排不属于进入编辑跳动。
+
+- 任务框勾选后基线偏移修复：markdown.css 将共享checkbox从inline-grid改为固定尺寸inline-block，勾号改absolute定位，不再参与行基线计算；已完成/未完成共享-.12em垂直对齐。上一轮仅调整偏移量没有消除状态间基线差异。build与定向diff检查通过；尚未桌面视觉验收/重新打包，13:34包不含本次修复。下一步切换任务勾选状态核对框位置及多字号/阅读实时模式。
+
+- 按用户要求Windows EXE打包完成：cmd177 npm run package:windows exit0，269.5秒；build-info builtAt2026-09-13T05:34:27.263Z（13:34），Windows x64/0.1.6，sourceDirty=true、基线c08eda31，本地构建非公开发布。包含打包时当前综览连续缩放、列设置、按钮/整行精简和已存在编辑器源码修改；未运行测试或真实桌面验收。artifacts/windows/latest/a4note.exe SHA256 754BDACFA022D92939EC0B18F3F528AFCA425AE809C7D658096D5230F2AA1161；A4 Note_x64-setup.exe SHA256 2FAEADD09384A7A72D77ADE4BF2A8EBF19D3244154FF48CD44667209E572A95C，更新签名已生成。旧latest归档0.1.6-20260913-132959-47856，标准脚本清理本次隔离构建目录。未安装/关闭软件/操作真实文献/发布；插件源码未改变，记录配对0.6.5。
+
+- 包含当前综览缩放/文献库精简及现有编辑器源码成果，标准package:windows产出EXE与安装包并归档旧latest。仅打包，不测试、不安装、不关闭软件、不发布。
+
+- 表格编辑源码完成：光标位于表格上一行/下一行或源码内部时展开Markdown；渲染单元格点击不移动CodeMirror源码光标，使用内嵌输入框编辑，失焦/Enter提交单次事务、Esc取消、Tab切格，输入法组合期间Enter不提前提交。安全DOM渲染行内代码，分列识别转义竖线，写回转义新竖线并保护原文档版本。修改MarkdownLivePreviewEditor.tsx、markdown.css，新增scripts/verify-table-cell-editing.mjs；build、architecture、定向diff检查及模拟DOM回归通过，编辑器诊断0。未真实桌面交互验收/重新打包；长表、连续鼠标跨格、撤销、切笔记及失焦保存仍需桌面验收。13:21 EXE不含本次修改。
+
+- 按截图精简LibraryScene源码完成：移除公共工具栏导出结果图标及其Markdown/CSV入口；列表筛选行仅保留分类/标签/搜索信息与阅读，去掉详情/关系/顶部更多/清除筛选；综览完全不渲染该筛选操作行，无空白占位。未移除截图未圈出的顶部详情面板图标，保留列设置、导入、右键/行尾菜单、批量操作、无结果时清除筛选及此前综览缩放。cmd173 npx tsc -b及git diff --check exit0；未测试、运行时视觉验收、打包安装或真实资料操作，插件未改。
+
+- 列表保留阅读与分类信息，移除红圈的详情/关系/更多/清除筛选和导出图标；综览不渲染整条筛选/操作行。保留论文右键菜单、列设置、批量操作及缩放成果。仅源码/编译，无测试/安装/真实文献操作。
+
+- 代码块样式源码更新：语言标识由.72em放大至.9em；编辑围栏源码时不生成data-language，避免渲染标签与源码重叠。阅读/实时共用主题浅灰绿底、深色语法配色、细边框和复制控件，午夜主题独立高亮；代码行字号统一在行级，行距跟随document-line-height，收紧上下留白。修改MarkdownLivePreviewEditor.tsx、markdown.css、workbench.css。build、test:architecture、定向diff检查通过，编辑器诊断0；未桌面视觉验收、未重新打包安装。13:21包不含本次修改；下一步验收围栏编辑/离开、复制、字号与主题切换。
+
+- 综览连续缩放源码完成：100%基准、40–180%原生CSS zoom，文字/行高/列宽同步；rAF合并输入与时间插值，减弱动画偏好直接定位；鼠标双轴/按钮中心锚点，普通滚动或表格交互取消未完成缩放。缩放不再改变内容档位，完整总结通过展开内容或比较/聚焦显示。逻辑坐标二分虚拟窗口、滚动rAF、memo行与Markdown，测量用未缩放offsetHeight且不随倍率清空缓存，列宽拖拽补偿比例。LibraryOverview.tsx/summary.css已应用，cmd166/168 TypeScript及diff检查exit0。未测试/真实性能或视觉验收/文献操作/打包安装；不保证实测帧率。保留并行任务cmd164打包记录，未确认该包包含本轮最终缩放源码，应用本轮修改需重新打包。
+
+- 列表左移/任务框对齐 Windows 打包完成：cmd164 npm run package:windows exit0，0.1.6 x64，builtAt 2026-09-13T05:21:48.731Z。产物 artifacts/windows/latest/a4note.exe 与 A4 Note_x64-setup.exe，EXE SHA256 9143CCA828423E5A0873433BDCB61B1BA9F5077CEDE32F35F1689766A757CCDA；旧包归档0.1.6-20260913-131710-54872。未安装/关闭软件/操作真实资料；待用户视觉验收。另有综览连续缩放并行任务进行中，本记录不改变其状态，也不宣称本包包含该任务后续修改。
+
+- 用户要求类似Excel的平滑放大。将连续几何缩放与内容展开分离，减少重复渲染并保留浏览锚点。不测试/不修改真实文献/不安装；保留此前其他源码调整。
+
+- 列表/任务对齐源码调整：workbench.css 实时模式有序与无序列表所有层级左移1em，保留1.45em嵌套间距与任务水平位置；markdown.css 任务框继承正文字号、统一margin和line-height，vertical-align由-.2em调至-.1em。cmd162 build、test:architecture、定向diff检查通过；尚未桌面视觉验收或重新打包，13:00的EXE不含本次样式修改。下一步核对列表缩进及勾选/未勾选框与文字对齐。
+
+- 本轮链接边界修复已完成 Windows x64 本地打包：npm run package:windows cmd157 exit0，builtAt 2026-09-13T05:00:51.462Z，版本0.1.6；artifacts/windows/latest/a4note.exe 与 A4 Note_x64-setup.exe 已更新，含当前工作区列表/综览等未提交源码。EXE SHA256 7C753EB59C289C02E14E954A99270EEA50E33919C220D195178235C8608B8014，旧latest归档0.1.6-20260913-125522-51424。未安装、关闭软件、修改真实资料或公开发布；下一步用户使用新版验收链接左右边界编辑与正文打开。
+
+- 实时模式链接边界误打开修复：MarkdownLivePreviewEditor 的外链文本点击回退增加模式/修饰键守卫，普通边界点击展开源码并保持编辑，渲染链接正文打开及 Ctrl/Cmd 点击源码打开保留，全局源码模式行为不变。npm run build、test:architecture、git diff --check 通过，文件诊断0；未做桌面鼠标交互验收、打包安装或真实笔记修改。下一步用隔离笔记验收左右边界与链接正文点击；已安装0.1.6不含本次源码修复。
+
+- 列表/综览简化列设置源码完成：共用ColumnSettings文字按钮和body浮层，只有列名/复选框，标题固定；列表可切换作者/年份/来源/标签，延续localStorage；综览按现有列含自定义列切换hidden，延续原布局文件保存，不删除内容/重置宽度顺序。移除综览设置里的列名编辑/宽度输入/上下移/新增类型/恢复布局，保留表格既有缩放及拖拽交互。浮层限位、长列表滚动、外部点击/滚动/窗口变化关闭与Escape返回，加载不可写时禁用勾选。cmd149 npx tsc -b和git diff --check exit0；未测试、真实文献变更、打包安装、关闭软件或发布。与上一轮文献库列表及右键修改一起仍待桌面打包升级，当前安装0.1.6不含这些源码调整。
+
+- 用户要求明确列设置按钮，仅勾选展示列；综览移除设置里的改名/宽度输入/上下排序/新增类型/恢复布局复杂项，已有列与内容保留。只源码和编译，不测试、安装或修改真实资料。
+
+- 桌面文献库布局源码完成：LibraryScene移除独立单选操作/未选中占位行，阅读/详情/关系与更多按钮上移到筛选行；保留条件出现的批量操作。library.css令表格滚动区flex填满工作区、固定表头、工具栏不压缩。新增PaperContextMenu body级fixed portal，论文右键/行省略号/顶部更多/Shift+F10共用；边缘翻转限位、视口内滚动、外部点击/表格滚动/窗口变化关闭、键盘导航与Escape返回。菜单先选中目标论文，包含阅读/详情/关系/编辑/标签/译文/BibTeX/既有删除确认；设置文件类在同一浮层切换目录页，展示完整父级路径/当前分类，复用既有移动及错误处理，不新增真实资料变更。cmd148 npx tsc -b与git diff --check exit0；未运行测试或真实UI验收，未打包安装/关闭桌面/发布，已安装0.1.6尚无本轮界面修改。
+
+- 用户指出表格未铺满高度且行菜单被裁切；要求阅读/详情/关系上移到筛选行，移除原独立选择栏，并通过论文右键提供这些操作和文件类设置。仅源码修改和编译检查，不测试、不操作真实文献、不关闭或重装桌面。
+
+- 插件0.6.5源码/本地包完成：桌面接受下载或重试后立即展示已知文件的checking状态（重复提交也不冒充重新排队），双rAF布局后仅滚动一次到进度；尊重减少动画，重扫/pagehide撤销待定位，帮助中重试返回主进度，正常主界面不抢键盘焦点；轮询不定位并保留同任务附件列表scrollTop。统一400px宽度、卡片/留白/字号、固定顶部工具栏与底部下载按钮、进度标题和蓝/绿/暖色状态，保留连接/论文信息/链接，取消重复徽章。cmd145/146三个JS语法检查、标准插件打包、git diff --check exit0，最终ZIP SHA256 35cbc2a0e799a765f56d732b82c252d6178bee0feb8947acdba1dbdaa232a896；原Chrome unpacked目录已更新，用户需重新加载核对0.6.5。桌面0.1.6不变，未测试/真实下载/重新安装/公开发布。用户截图确认上一版已显示正文入库；不冒充本轮真实浏览器验收。
+
+- 用户截图确认正文已入库，要求开始时自动下滑到进度，并优化整体使用体验。仅明确下载/重试动作触发一次定位，轮询不抢滚动；保留连接/论文信息/链接，统一布局与状态色。不测试、不重试真实任务、不重装桌面。
+
+- 插件0.6.4按用户纠正恢复主界面桌面连接/重连及状态、论文标题/作者/标识符、可展开元数据与可滚动摘要；增加原文和正文PDF可点击链接，区分已发现/排队/连接/下载/校验/入库/失败/取消，按当前captureId守卫避免重扫串状态。详细帮助、元数据解释、更新及错误明细仍在齿轮面板；不改已安装桌面0.1.6。cmd143/144 JS语法检查、标准插件打包、git diff --check exit0；最终ZIP SHA256 43bd94ce89008001ed01c7fe2da62993c5130324012ea8442b9572778159d169，原Chrome unpacked目录已更新，用户需手动重新加载并核对0.6.4。未运行测试、重新安装、真实下载重试、入库或公开发布；未确认截图中连接失败的具体原因，本轮恢复其可见状态。
+
+- 用户纠正精简过度：主界面保留桌面连接/重连与状态、标题/作者/标识符、可展开论文信息、原文/PDF链接及状态；帮助面板只承载详细说明/错误/设置。只改插件，不重新安装桌面，不重试真实任务，不运行测试。
+
+- 本轮用户明确选择已保存并授权打包升级，实际升级已完成。cmd132标准Windows签名打包和扩展打包exit0（456.8秒），桌面0.1.6/host0.6.1/插件0.6.3；artifacts/windows/latest现为0.1.6，不再是旧0.1.3，旧latest归档archive/0.1.6-20260913-103439-40088。cmd139用既有公钥验证安装器及全局签名、哈希/版本一致性通过：安装器22523729字节，SHA256 49B7D9AB7DF2CB298265BF96985AD2DB1FE500020EB82E31295379D1744E6D45；EXE 48ACAC143C42AEF421137C9131ECD85EBBF00FA6324D90F21C88B9A8C69D827C；host EA9969157217A0E1B691FD64BD34BA456039A0FCBBA754BA3099F61FDB4C09CB。cmd140安装前无旧app/host运行，无强制结束；完整安装器/S /D=D:/A4 Note exit0，文件与卸载记录均0.1.6。cmd141安装EXE与构建仅3字节UNK到NSS打包标记变化，安装EXE SHA256 d5f8e05b5e0aee18ca407fc73a6155695eab4f7cacc88bf2a1a04b600bb02a74；Chrome/Edge注册及host哈希一致，启动PID40376。cmd142只读hello exit0，authorized=true，desktop folderSelection/captureProgress/captureRetry/sourcePdfRequired/supplementFiles均true，host0.6.1且captureRetry=true。未提交/重试/删除文献，未运行测试或CI；未公开发布。
+- 插件ZIP最终SHA256 49834df1d5c059174629a4d42af8968153b394299f5cbc201067bd64872cba95。只读核对Chrome Default指定扩展配置，当前加载目录为D:/WorkSpace/Aster/artifacts/browser-extension/unpacked；已由标准打包更新为0.6.3，保留固定身份和原目录。未操作浏览器扩展重新加载，须用户到chrome://extensions点击重新加载后核对0.6.3。无须再次覆盖目录。源码未提交，build-info sourceCommit仍为基线c08eda31且sourceDirty=true，不冒充正式发布提交；公开更新通道仍0.1.5。多网站是通用规则增强，不宣称每个平台已验证。
+
+- 本轮ask_user选择“已保存，可以打包并升级”；允许正常退出旧版、完整安装器升级、重新启动；禁止强制结束旧进程，不自动重试/新增文献。不运行测试/CI、不发布GitHub。版本递增桌面0.1.6/host0.6.1，插件0.6.3；标准打包保留签名、归档旧latest，build-info增加sourceDirty标记，明确未提交本地源码并非正式发布提交。
+
+- 正文/补充材料及精简进度源码已接通：支持白名单非PDF格式，响应文件名/URL/MIME推定扩展，部分格式头+大小+SHA256，不执行/解压，拒绝HTML和明显可执行内容；附件实际关联纸条目并使用来源标签显示，非PDF按钮只打开所在目录。下载器250ms节流发布真实字节/总量/校验状态，独立队列持久化进度；列表768KiB限额及按ID查询。Native RetryCapture带index支持同captureId单文件重试，已缓存文件复验不联网，保留重试范围跨崩溃；双端能力检查阻止旧桌面/host静默降级。插件0.6.3新增独立帮助面板，主界面总体校验完成数+逐文件字节条、未知总量不确定条、失败重试；1秒轮询15分钟后可继续刷新，元数据/连接/更新/详细错误不在主界面堆叠。通用识别增强citation/DC/DCTERMS/PRISM/eprints、明确PDF按钮、唯一PDF链接及补充材料区域；不宣称各出版社已适配实测。cmd128模块路径编译错误已修复；cmd129因未应用补丁缺文件，原因popup.css单行工具截断，未写入截断内容，改独立compact-view.css后成功。cmd130前端构建、JS检查、桌面及host cargo check exit0；cmd131最终构建/JS检查/桌面cargo check/扩展标准打包/git diff --check exit0。插件ZIP SHA256 b47be4cdd96620f6ccab6c65da2537415845bb8ef1668a9693085c9192cce080，仅本地；尚未交付安装，不可与已安装旧0.1.5单独使用。桌面/host源码版本号仍0.1.5/0.6.0，完整打包前需要递增版本，不可覆盖正式版本。未运行测试、真实站点下载/入库、安装/重启或CI；未提交推送。
+- 多网站方向是通用识别与逐站补强，不是新增标识符查询。当前不把Springer/Wiley/Elsevier/IEEE等写成已验证全支持；动态按钮、机构权限、二级附件页仍有覆盖边界。未启用任意站点代理，保留arXiv限定系统代理规则。
+
+- 继续用户确认的正文PDF+补充材料范围；主界面只保留识别/保存/下载与进度条，说明和详细错误移到二级面板。编号输入查询不是现有功能：DOI页面识别/Crossref、arXiv与PMC专门规则；PMID仅citation_pmid读取，ISBN/ADS无专门适配。不扩大为全站点下载承诺。
+
+- 父目录聚合与正文失败不入库源码已完成：selectLibraryView按侧栏同一规范化森林汇总自身和全部后代；App传入libraryFolders并加入memo依赖；侧栏计数按树自底向上汇总，与列表/综览/导出同源，不移动分类。采集worker在调用ingest前要求有已校验fulltext，没有则source_pdf_required且不打开文献入库事务；独立失败任务保留用于显式重试，不删除旧文献。cmd127 exit0：npm run build（tsc+Vite）、cargo check --lib --offline、git diff --check；未运行测试或真实入库，未安装/发布。原TLS/响应长度修复及0.6.2目录树改动均保留。非PDF补充材料、总体/逐文件进度条、帮助二级界面和插件重试入口仍未完成，尚未打包升级。
+
+- 用户确认只需要正文PDF及补充材料，继续解决现存问题。本轮先落实目录查询/计数一致汇总及正文校验成功才调用入库；非PDF补充材料及精简进度条界面随后处理，不宣称全部完成。不运行测试、真实采集、安装或删除旧记录。
+
+- 下载网络修复源码完成：Windows启用本地静态代理而旧下载器强制直连，cmd116同一arXiv地址直连reset/exit35、代理HTTP200；限定arxiv.org使用系统回环HTTP代理，其他域名保持直连公开IP校验/DNS固定，每跳重判且不关闭证书校验。cmd120实际Rust下载进一步发现旧content_length在读完后取动态size_hint导致incomplete_download；已改读取前快照并保留字节完整性比对。cmd124重新编译并用同一生产下载模块临时下载成功，verified/533463字节/SHA256 8e5dba613dd6ef679fbd4c0344fbfe2eaf95cffb0137cbfd1165e10d9d6cf193；无入库。cmd117 cargo check及cmd124 git diff --check exit0。未运行测试套件/CI、未安装/重启、未提交生产采集或删除旧文献；修复尚未打包/发布，已安装0.1.5不变。父目录聚合、细分进度和失败入库策略仍待实现。
+- 诊断依据及安全边界见 `CAPTURE_NETWORK_DIAGNOSIS.md`；独立命令复用生产下载器，仅显式网址、唯一临时目录，不启动Tauri或打开数据库。
+
+- 用户要求调查TLS并尝试修复；cmd114发现Windows静态代理已启用；cmd115只读查询指定任务URL https://arxiv.org/pdf/2503.02684；cmd116同URL HEAD直连Connection reset/exit35，既有本地代理HTTP200/application-pdf/533463字节，均保持证书验证。不是已证实的证书错误。
+- 针对可信arXiv主机读取已启用的Windows本地HTTP代理；其他主机保持公开IP校验/直连DNS固定；每跳重新判断，禁止泛化任意代理目标。不安装/重启、不重试生产采集、不删除旧文献，不运行测试套件。
+- 父目录聚合与逐文件进度仍待后续；不把本轮网络修复宣称为这些功能完成。
+
+- 插件0.6.2文件夹树已完成并本地打包：替换下拉菜单，行点击选择/箭头折叠、全部展开收起、桌面六色祖先引导线、完整目标提示与定位、键盘导航。用户明确选择同时记住目标ID及展开状态，新增storage权限仅保存本浏览器本地ID；授权分类列表读取后验证记忆，删除/异常目标清空，不自动回退/提交；采集冻结期间禁止改目标。桌面继续0.1.5/host0.6.0，无需重新安装。
+- cmd_1789263609851_110 exit0：三个JS文件node --check、扩展标准打包和git diff --check通过。0.6.2 ZIP共21文件、106545 bytes，SHA256 1e5c1ee4f0a66a5e65bff11f44ac35976752ff38f826ff3b6f708677838cc405；MCP传输后哈希一致，包含三个树模块/样式。提供独立可交互HTML预览（示例目录，记忆仅当前页面），不当作真实浏览器验收。本轮未运行任何测试/CI或真实论文入库，未启动/安装/重启桌面。
+- 本轮交付artifacts/browser-extension/A4-Note-Capture-0.6.2.zip和unpacked。用户等待采集结束，覆盖原插件目录后在扩展管理页重新加载并核对0.6.2（新增本地storage权限需重载才能生效），保留固定key及原目录。桌面0.1.5不动。当前feat/capture-folder-tree-0.6.2源码/状态未提交、未推送或发布在线通道；未来发布再按用户授权走必要PR/CI，不覆盖既有正式资产。
+
+- 用户选择同时记住上次选择和展开状态。仅改插件0.6.2，兼容已安装桌面0.1.5/host0.6.0；复用桌面彩虹层级线配色与30px行节奏，真实分类读取后验证记忆ID，删除/异常目录不回退误选，不自动导入。
+- 遵守本轮不运行测试要求：只做必要静态检查和插件打包，不运行桌面、安装器、真实导入或更改文献数据；此前实际升级授权已完成，不扩展为新一轮安装授权。
+
+- 用户明确授权实际升级，并确认已保存、允许正常退出和启动新版。本轮核实原运行/注册目录D:/A4 Note仍为0.1.3；D:/A4Note另有0.1.1旧安装。cmd105使用已核验0.1.5完整安装器/S及原目录安装exit0，无强制结束旧应用；安装记录/文件版本均0.1.5，host SHA256 C6A8C55F2CEF74D90FFB8A6717E13A923683124866AD7E03C408BF3515C116C1。已启动D:/A4 Note/a4note.exe（PID76680）；cmd108只读hello成功，desktop与host folderSelection均true、host0.6.0、authorized=true，原授权有效无需重复弹窗。未主动读取论文正文、查询分类或提交采集。
+- 安装器SHA256 2165C5414229C7FCD948C1A4DB451EBDAE1CA466401AD7B5D1273C4A9E53612A再次核对。安装后的EXE SHA256 31FA3342AF7E4BEB2C14F56F70DC46CFFD210010CC23AF1A26391525A5648B28，与CI裸EXE同长36732928字节且仅三字节UNK→NSS的NSIS包类型标记不同（offset32584226），不是内容版本不一致。Chrome/Edge注册均指向D:/A4 Note/native-host。未执行测试套件或浏览器真实导入验收。
+- 现在应关闭旧插件弹窗再打开；已有授权有效，不一定再次弹窗。下方未安装/等待升级的条目为历史。本轮仅追加配对交接状态，不更改业务源码或新发版本。
+
+- 全部本轮交付完成：PR7/8正常合并，main/origin-main c08eda31bce69b871162a60cf13ebe0fb6b3722a；桌面0.1.5、扩展0.6.1、host0.6.0。精简采集/应用图标、双端分类能力与断连状态、元数据显示、插件按需检查/下载及人工重新加载指引、设置独立软件更新入口均已发布。签名Release34700856642成功，2026-09-12T15:10:05Z公开。0.1.4仅保留未公开草稿，不改写0.1.3正式资产。
+- 必要Verify34699316735及34700616438通过；最终签名Release34700856642通过。已从公开Release下载核对安装包22437667 bytes，SHA256 2165C5414229C7FCD948C1A4DB451EBDAE1CA466401AD7B5D1273C4A9E53612A；Tauri安装包及全局Ed25519签名独立验证通过。插件97610 bytes，SHA256 ff1638656967e57135bac3e2cf671b51f1583c9f442a07f9cad103d17a7541dd，18文件与软件图标一致。官方latest.json HTTP200/908bytes/0.1.5/正确正式安装器URL。cmd97下载正式CI产物、cmd98核对安装器/EXE/插件哈希成功；未安装、启动或访问真实文献库。
+- 用户保存并备份后使用artifacts/ci-release/0.1.5/windows/latest/A4 Note_x64-setup.exe完整安装器，插件使用同版本交付目录browser-extension/A4-Note-Capture-0.6.1.zip，覆盖原目录后在Chrome/Edge重新加载。正式产物已同步到该版本目录，旧artifacts/windows/latest未替换，勿误用旧包。后续设置→软件更新；插件底部→插件设置与更新。仅收尾配对交接记录留在本地工作区，业务源码已同步main。
+- 0.1.5签名发布与必要CI已完成，但没有真实Windows GUI/论文站点/用户库端到端验收。解压插件不能自动替换自身，仅提供官方检查与下载；下载受理不等于已安装。PDF候选不等于已验证文件，缺失元数据不编造。Tauri签名不是Authenticode。
 
 - 更新中心源码完成：设置独立软件更新分类及关于页快捷入口；插件0.6.1按需授权固定GitHub API、比较版本、下载官方ZIP、明确手动重新加载。cmd88生产构建/扩展打包exit0。v0.1.4 Release34699938047构建签名成功但草稿URL为untagged临时路径，发布前正式URL校验失败；草稿仍保留未公开。已改为发布前文件名/大小/哈希、发布后正式URL校验，补必要CI夹具，准备0.1.5一次发布。
 

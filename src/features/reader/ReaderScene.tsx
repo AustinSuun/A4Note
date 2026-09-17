@@ -1,3 +1,8 @@
+import { ReaderNoteActivity, ReaderNoteRequests } from './ReaderNoteActivity';
+import { useReaderLayoutPosition } from './useReaderLayoutPosition';
+import { useReaderWritingShortcuts } from './useReaderWritingShortcuts';
+import { useReaderDrawerLayout } from './useReaderDrawerLayout';
+import './reader-writing-layout.css';
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { AnnotationColor, PaperDocument, PositionJson } from '../../core/types';
 import type { ObjectNavigationTarget } from '../../core/relations';
@@ -57,7 +62,17 @@ export function ReaderScene({
 }: ReaderSceneProps) {
   const currentTranslatedFileId = preferredTranslatedFileId(paper, translatedFileId);
   const activeFileKind = fileMode === 'parallel' ? activeParallelFileKind : fileMode;
-  const [sidePanelWidth, setSidePanelWidth] = useState(360);
+  const drawer = useReaderDrawerLayout();
+  const writingExpanded = drawer.expanded && sidePanelOpen && sidePanelTab === 'notes';
+  const overlay = sidePanelOpen && drawer.compact;
+  const mainHidden = writingExpanded || overlay;
+  useReaderLayoutPosition(drawer.containerRef,
+    JSON.stringify([paper.paperId, contentMode, fileMode, currentTranslatedFileId, requestedPage, focusedAnnotationId, zoom]),
+    JSON.stringify([sidePanelOpen, drawer.width, writingExpanded, overlay]));
+  const openNotes = () => { onSidePanelTabChange('notes'); onSidePanelOpenChange(true); };
+  const toggleNotes = () => { if (sidePanelOpen && sidePanelTab === 'notes') onSidePanelOpenChange(false); else openNotes(); };
+  const toggleWriting = () => { if (!sidePanelOpen || sidePanelTab !== 'notes') { openNotes(); drawer.setExpanded(true); } else if (!drawer.compact) drawer.setExpanded(!drawer.expanded); };
+  useReaderWritingShortcuts(drawer.containerRef, toggleNotes, toggleWriting);
   const [toolSettings, setToolSettings] = useState<ReaderToolSettings>(defaultReaderToolSettings);
   const focusedAnnotation = paper.annotations.find((annotation) => annotation.id === focusedAnnotationId) ?? null;
   const focusedEditableAnnotation = focusedAnnotation && isEditableToolbarAnnotation(focusedAnnotation)
@@ -66,36 +81,8 @@ export function ReaderScene({
   const contextAnnotation = activeAnnotationTool === 'cursor' ? focusedEditableAnnotation : null;
   const contextToolSettings = contextAnnotation ? settingsFromAnnotation(contextAnnotation, toolSettings) : null;
   const readerLayoutStyle = sidePanelOpen
-    ? ({ '--reader-side-width': `${sidePanelWidth}px` } as CSSProperties)
+    ? ({ '--reader-side-width': `${drawer.width}px` } as CSSProperties)
     : undefined;
-
-  const clampSidePanelWidth = (requestedWidth: number, availableWidth = document.querySelector<HTMLElement>('.workbench-surface')?.clientWidth ?? window.innerWidth) => {
-    // Keep enough room for the document pane and its toolbar when the drawer
-    // is resized, especially after the workbench sidebar is collapsed.
-    const minimumMainWidth = 520;
-    const maximumForLayout = availableWidth - minimumMainWidth - 12;
-    const maximumWidth = Math.min(640, Math.max(300, maximumForLayout));
-    return Math.max(300, Math.min(maximumWidth, requestedWidth));
-  };
-
-  const handleSidePanelWidthChange = (requestedWidth: number) => {
-    setSidePanelWidth(clampSidePanelWidth(requestedWidth));
-  };
-
-  useEffect(() => {
-    const element = document.querySelector<HTMLElement>('.workbench-surface');
-    if (!element) return undefined;
-    const clampToContainer = () => {
-      setSidePanelWidth((current) => {
-        const next = clampSidePanelWidth(current, element.clientWidth);
-        return next === current ? current : next;
-      });
-    };
-    clampToContainer();
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(clampToContainer);
-    observer?.observe(element);
-    return () => observer?.disconnect();
-  }, []);
 
   useEffect(() => {
     if (focusedEditableAnnotation && activeAnnotationTool !== 'cursor') {
@@ -188,8 +175,15 @@ export function ReaderScene({
       onDeleteAnnotation={onDeleteAnnotation}
     >
       <section className="scene active reader-scene-shell" data-reader-layer="root">
-        <div className={sidePanelOpen ? 'reader-workspace-shell workspace-open' : 'reader-workspace-shell'} style={readerLayoutStyle}>
-          <div className="reader-main-workspace">
+        <div ref={drawer.containerRef} className={`reader-workspace-shell ${sidePanelOpen ? 'workspace-open' : ''} ${writingExpanded ? 'writing-expanded' : ''} ${overlay ? 'drawer-overlay' : ''}`} style={readerLayoutStyle}
+          onKeyDown={event => {
+            if (event.key === 'Escape' && !event.defaultPrevented && !event.nativeEvent.isComposing && writingExpanded && !drawer.compact && !(event.target as HTMLElement).closest('[role="dialog"], dialog')) {
+              event.preventDefault(); drawer.setExpanded(false);
+            }
+          }}>
+          {!sidePanelOpen && <button type="button" className="reader-note-reopen" aria-label="展开笔记侧栏" aria-keyshortcuts="Control+Alt+N" title="继续笔记（Ctrl+Alt+N）" onClick={openNotes}>继续笔记 ‹</button>}
+          <ReaderNoteActivity.Provider value={!mainHidden}><ReaderNoteRequests.Provider value={!(sidePanelOpen && sidePanelTab === 'notes')}>
+          <div className="reader-main-workspace" inert={mainHidden} aria-hidden={mainHidden}>
             <ReaderToolbar
               paper={paper}
               contentMode={contentMode}
@@ -256,10 +250,15 @@ export function ReaderScene({
               />
             </div>
           </div>
+          </ReaderNoteRequests.Provider></ReaderNoteActivity.Provider>
           <ReaderSideDrawer
             open={sidePanelOpen}
-            width={sidePanelWidth}
-            onWidthChange={handleSidePanelWidthChange}
+            width={drawer.width}
+            maximumWidth={drawer.maximum}
+            expanded={writingExpanded}
+            compact={drawer.compact}
+            onExpandedChange={drawer.setExpanded}
+            onWidthChange={drawer.changeWidth}
             sidePanels={sidePanels}
             panelViews={panelViews}
             sidePanelTab={sidePanelTab}

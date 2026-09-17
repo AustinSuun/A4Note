@@ -29,7 +29,9 @@ pub fn browser_files(root:&Path,envelope:&Value,result:&Value)->Result<Vec<Artif
     for (index,a) in envelope["artifacts"].as_array().ok_or("invalid_artifacts")?.iter().enumerate() {
         if let Some(row)=result["artifacts"].as_array().and_then(|rows|rows.iter().find(|r|r["id"]==a["id"] && r["state"]=="verified")) {
             // Never interpret client-supplied storedPath. The native index determines the path.
-            files.push(Artifact{id:text(a,"id").into(),role:text(a,"role").into(),source:root.join("items").join(id).join(format!("{index}.pdf")),hash:text(row,"sha256").into()});
+            let ext=row["extension"].as_str().unwrap_or("pdf");
+            if super::download::attachment::extension(&format!("file.{ext}")).as_deref()!=Some(ext) { return Err("invalid_attachment_extension".into()); }
+            files.push(Artifact{id:text(a,"id").into(),role:text(a,"role").into(),source:root.join("items").join(id).join(format!("{index}.{ext}")),hash:text(row,"sha256").into()});
         }
     }
     Ok(files)
@@ -96,15 +98,17 @@ pub fn ingest(root:&Path,envelope:&Value,files:&[Artifact],target:Option<&str>)-
     let mut map=oldmap.and_then(|s|serde_json::from_str::<Value>(&s).ok()).unwrap_or(json!({}));
     let mut has_source:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM paper_files WHERE paper_id=?1 AND type='source_pdf')",[&paper],|r|r.get(0)).map_err(|e|e.to_string())?;
     for artifact in files {
-        let (actual,_)=super::download::verify(&artifact.source)?;
+        let ext=artifact.source.extension().and_then(|s|s.to_str()).ok_or("missing_attachment_extension")?;
+        if artifact.role=="fulltext" && ext!="pdf" { return Err("fulltext_must_be_pdf".into()); }
+        let (actual,_)=super::download::attachment::verify(&artifact.source,ext)?;
         if actual!=artifact.hash { return Err("采集文件哈希发生变化，拒绝入库".into()); }
-        let existing:Option<String>=tx.query_row("SELECT id FROM paper_files WHERE paper_id=?1 AND content_hash=?2 LIMIT 1",params![paper,actual],|r|r.get(0)).optional().map_err(|e|e.to_string())?;
+        let existing:Option<String>=tx.query_row("SELECT id FROM paper_files WHERE paper_id=?1 AND content_hash=?2 AND (?3=0 OR type='source_pdf') LIMIT 1",params![paper,actual,artifact.role=="fulltext" && !has_source],|r|r.get(0)).optional().map_err(|e|e.to_string())?;
         if let Some(file)=existing { map[&artifact.id]=json!(file);continue; }
         let directory=root.join("files").join("papers").join(&paper).join("captures").join(id);
         fs::create_dir_all(&directory).map_err(|e|e.to_string())?;
         let base=root.join("files").join("papers").canonicalize().map_err(|e|e.to_string())?;
         if !directory.canonicalize().map_err(|e|e.to_string())?.starts_with(&base) { return Err("文献存储目录越界".into()); }
-        let dest=directory.join(format!("{actual}.pdf"));
+        let dest=directory.join(format!("{actual}.{ext}"));
         if !dest.exists() {
             let temp=directory.join(format!(".{}.part",Uuid::new_v4()));
             let written=(||->Result<(),String>{
@@ -112,16 +116,16 @@ pub fn ingest(root:&Path,envelope:&Value,files:&[Artifact],target:Option<&str>)-
                 let input=fs::File::open(&artifact.source).map_err(|e|e.to_string())?;
                 let copied=std::io::copy(&mut input.take(super::download::FILE_LIMIT+1),&mut output).map_err(|e|e.to_string())?;
                 output.flush().map_err(|e|e.to_string())?;output.sync_all().map_err(|e|e.to_string())?;drop(output);
-                if copied>super::download::FILE_LIMIT || super::download::verify(&temp)?.0!=actual { return Err("入库副本校验失败".into()); }
+                if copied>super::download::FILE_LIMIT || super::download::attachment::verify(&temp,ext)?.0!=actual { return Err("入库副本校验失败".into()); }
                 // hard_link is create-only: unlike rename on POSIX it cannot overwrite a destination.
                 fs::hard_link(&temp,&dest).map_err(|e|format!("无法原子发布入库副本：{e}"))?;
                 Ok(())
             })();
             let _=fs::remove_file(&temp);written?;
         }
-        if super::download::verify(&dest)?.0!=actual { return Err("同名入库副本内容不一致，拒绝覆盖".into()); }
+        if super::download::attachment::verify(&dest,ext)?.0!=actual { return Err("同名入库副本内容不一致，拒绝覆盖".into()); }
         let file=format!("file-{}",Uuid::new_v4());
-        let kind=if artifact.role=="fulltext" && !has_source { has_source=true;"source_pdf" } else if artifact.role=="fulltext" {"version_pdf"} else {"supplement_pdf"};
+        let kind=if artifact.role=="fulltext" && !has_source { has_source=true;"source_pdf" } else if artifact.role=="fulltext" {"version_pdf"} else if ext=="pdf" {"supplement_pdf"} else {"supplement_file"};
         tx.execute("INSERT INTO paper_files(id,paper_id,type,path,language,content_hash,created_at) VALUES(?1,?2,?3,?4,'',?5,?6)",params![file,paper,kind,dest.to_string_lossy(),actual,now]).map_err(|e|e.to_string())?;
         map[&artifact.id]=json!(file);
     }

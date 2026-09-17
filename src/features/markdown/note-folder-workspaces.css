@@ -1,0 +1,18 @@
+.note-folder-workspaces { display: flex; flex: 1 1 0; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; padding: 2px; overflow: hidden; font-size: var(--ui-scene-font-size); }
+.note-folder-workspaces header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; padding: 0 8px; border-radius: 6px; background: var(--surface-soft); color: var(--ink); font-size: var(--ui-scene-font-size); }
+.note-folder-workspaces button,.note-folder-breadcrumb button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--accent-strong); padding: 6px; cursor: pointer; font: inherit; border-radius: 6px; }
+.note-folder-workspaces header { flex-shrink: 0; }
+.note-folder-workspaces ul { flex: 1 1 auto; min-height: 0; list-style: none; padding: 0; margin: 0; overflow: auto; }
+.note-folder-workspaces li button { width: 100%; color: var(--ink); text-align: left; padding: 8px; }
+.note-folder-workspaces li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-folder-workspaces button:hover,.note-folder-workspaces button.active { background: var(--accent-soft); }
+.note-folder-workspaces p { margin: 0; color: var(--muted); padding: 0 8px; font-size: var(--ui-body-small-font-size); line-height: 1.6; overflow-wrap: anywhere; }
+.note-folder-workspaces .note-folder-empty-hint { overflow: auto; }
+.note-folder-workspaces svg,.note-folder-breadcrumb svg { flex-shrink: 0; }
+.note-folder-workspaces .note-folder-error { color: #a2463b; }
+.note-folder-breadcrumb { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; font-size: var(--ui-body-small-font-size); }
+.note-folder-breadcrumb-name { display: block; min-width: 0; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font: inherit; }
+.note-folder-workspaces button:focus-visible,.note-folder-breadcrumb :is(button,select):focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+.note-folder-empty-action { margin: 8px auto; }
+.note-folder-workspaces .note-folder-scope-hint { display: flex; flex: 0 0 auto; align-items: center; flex-wrap: wrap; gap: 6px; font-size: var(--ui-caption-font-size); }
+.note-folder-scope-hint span { padding: 1px 6px; border-radius: 4px; color: var(--accent-strong); background: var(--accent-soft); font-weight: 550; }

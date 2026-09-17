@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import 'prismjs';
 import App from './ui/App';
+import { CaptureConsent } from './features/capture';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { createWorkbenchStorage } from './platform/workbench';
 import { configureWorkbenchStorage } from './workbench';
@@ -29,6 +30,7 @@ async function bootstrap() {
     <React.StrictMode>
       <ErrorBoundary>
         <App />
+        <CaptureConsent />
       </ErrorBoundary>
     </React.StrictMode>,
   );

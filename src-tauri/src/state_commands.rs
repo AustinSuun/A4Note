@@ -15,7 +15,8 @@ use tauri::AppHandle;
 use crate::agent_history;
 use crate::app_paths::get_aster_paths;
 use crate::database::initialize_database;
-use crate::workbench_store;
+#[path = "folder_workbench_store.rs"]
+mod folder_workbench_store;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct SaveWorkbenchStateRequest {
@@ -47,7 +48,7 @@ pub(crate) struct SaveAgentMessagesRequest {
 pub fn load_workbench_state(app: AppHandle) -> Result<Option<String>, String> {
     let _access = crate::library_access::operation()?;
     let database = workbench_database(&app)?;
-    workbench_store::load_snapshot_json(&database)
+    folder_workbench_store::load(&database)
 }
 
 // Preserve the frontend serialized save queue, but never perform SQLite I/O
@@ -59,7 +60,7 @@ pub fn save_workbench_state(
 ) -> Result<(), String> {
     let _access = crate::library_access::operation()?;
     let database = workbench_database(&app)?;
-    workbench_store::save_snapshot_json(&database, &request.snapshot)
+    folder_workbench_store::save(&database, &request.snapshot)
 }
 
 /// The workbench loads before the library, so the tables have to exist even

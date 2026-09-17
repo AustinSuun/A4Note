@@ -38,3 +38,5 @@ export function acquireLibraryNoteSession(paperId: string, note: { id: string; t
   } catch { /* recovery cache is best effort; no automatic overwrite */ }
   sessions.set(sessionKey, session); registerPendingSave(session); return session;
 }
+
+export function existingLibraryNoteSession(paperId: string, noteId: string) { return sessions.get(key(paperId, noteId)); }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ZoomIn } from 'lucide-react';
+import { readImageTitle } from './imageLayout';
 
 /**
  * Image with an optional caption and click-to-zoom.
@@ -43,7 +44,8 @@ export function MarkdownFigure({ src, alt, title }: { src?: string; alt?: string
   }, [zoomed]);
 
   if (!src) return null;
-  const caption = title?.trim() ?? '';
+  const { caption: rawCaption, layout } = readImageTitle(title);
+  const caption = rawCaption.trim();
   const description = alt?.trim() || caption;
 
   const image = (
@@ -61,8 +63,8 @@ export function MarkdownFigure({ src, alt, title }: { src?: string; alt?: string
 
   return (
     <>
-      {caption
-        ? <span className="markdown-figure" role="figure" aria-label={caption}>{image}<span className="markdown-figcaption">{caption}</span></span>
+      {caption || layout
+        ? <span className={`markdown-figure${layout ? ' markdown-figure-sized' : ''}`} role="figure" aria-label={caption || description || '图片'} style={layout ? { width: `${layout.width}%`, marginLeft: layout.align === 'left' ? 0 : 'auto', marginRight: layout.align === 'right' ? 0 : 'auto' } : undefined}>{image}{caption && <span className="markdown-figcaption">{caption}</span>}</span>
         : image}
       {zoomed && createPortal(
         <div

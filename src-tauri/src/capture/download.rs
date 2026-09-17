@@ -1,5 +1,9 @@
 //! Public HTTPS downloads only: resolve, reject non-public IPs, then pin resolution.
-//! No proxy, browser cookies, automatic redirects or remote filenames.
+//! Restricted Windows loopback proxy for trusted arxiv.org only; no browser cookies, automatic redirects or remote filenames.
+#[path = "system_proxy.rs"]
+mod system_proxy;
+#[path = "attachment.rs"]
+pub(super) mod attachment;
 use reqwest::{blocking::Client, Url};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -56,7 +60,25 @@ pub(crate) fn verify(path: &Path) -> Result<(String,u64),String> {
     loop { let n=f.read(&mut buf).map_err(|_| "capture_file_read")?; if n==0 { break; } hash.update(&buf[..n]); }
     Ok((format!("{:x}",hash.finalize()),size))
 }
-fn fetch(raw:&str, part:&Path, budget:u64, cancel:&impl Fn()->bool) -> Result<(),String> {
+/// Persist only an actionable category, never URLs, query tokens or OS paths.
+fn transport_error(error: &reqwest::Error) -> &'static str {
+    if error.is_timeout() { return "download_timeout"; }
+    let mut source=std::error::Error::source(error);
+    while let Some(cause)=source {
+        if let Some(io)=cause.downcast_ref::<std::io::Error>() {
+            match io.kind() {
+                std::io::ErrorKind::ConnectionReset | std::io::ErrorKind::ConnectionAborted => return "network_connection_reset",
+                std::io::ErrorKind::ConnectionRefused => return "network_connection_refused",
+                std::io::ErrorKind::TimedOut => return "download_timeout",
+                _ => {},
+            }
+        }
+        source=cause.source();
+    }
+    // Do not label every connect failure a certificate problem.
+    if error.is_connect() { "network_connect_failed" } else { "network_or_tls_error" }
+}
+fn fetch(raw:&str, part:&Path, budget:u64, cancel:&impl Fn()->bool, pdf_only:bool, progress:&mut impl FnMut(u64,Option<u64>)) -> Result<String,String> {
     let mut url=checked_url(raw)?; let started=Instant::now();
     for _ in 0..6 {
         if cancel() { return Err("cancelled_or_service_disabled".into()); }
@@ -64,11 +86,21 @@ fn fetch(raw:&str, part:&Path, budget:u64, cancel:&impl Fn()->bool) -> Result<()
         let host=url.host_str().ok_or("invalid_host")?.to_string();
         let addresses:Vec<_>=(host.as_str(),443).to_socket_addrs().map_err(|_| "dns_failed")?.collect();
         if addresses.is_empty() || addresses.iter().any(|a| !public_ip(a.ip())) { return Err("non_public_address_rejected".into()); }
-        let client=Client::builder().no_proxy().redirect(reqwest::redirect::Policy::none())
+        // Re-evaluate every redirect. Only trusted arxiv.org may delegate DNS to
+        // the user's explicitly enabled local static proxy. Other hosts remain
+        // direct and DNS-pinned; never enable global/environment proxy discovery.
+        let proxy=system_proxy::for_public_provider(&url)?;
+        let via_proxy=proxy.is_some();
+        let mut builder=Client::builder().no_proxy().redirect(reqwest::redirect::Policy::none())
             .referer(false).connect_timeout(Duration::from_secs(12)).timeout(Duration::from_secs(45))
             .user_agent("A4Note-Capture/0.1 (user-initiated public PDF capture)")
-            .resolve_to_addrs(&host,&addresses).build().map_err(|_| "http_client_failed")?;
-        let mut response=client.get(url.clone()).send().map_err(|_e| { #[cfg(test)] eprintln!("Public PDF transport failure: {_e:?}"); "network_or_tls_error" })?;
+            .resolve_to_addrs(&host,&addresses);
+        if let Some(proxy)=proxy { builder=builder.proxy(proxy); }
+        let client=builder.build().map_err(|_| "http_client_failed")?;
+        let mut response=client.get(url.clone()).send().map_err(|error| {
+            let code=transport_error(&error);
+            if via_proxy { format!("system_proxy_{code}") } else { code.to_string() }
+        })?;
         if response.status().is_redirection() {
             let location=response.headers().get(reqwest::header::LOCATION).and_then(|v|v.to_str().ok()).ok_or("redirect_without_location")?;
             url=checked_url(url.join(location).map_err(|_| "invalid_redirect")?.as_str())?;
@@ -76,8 +108,21 @@ fn fetch(raw:&str, part:&Path, budget:u64, cancel:&impl Fn()->bool) -> Result<()
         }
         if matches!(response.status().as_u16(),401|403) { return Err("login_or_permission_required".into()); }
         if !response.status().is_success() { return Err(format!("http_status_{}",response.status().as_u16())); }
+        let mime=response.headers().get(reqwest::header::CONTENT_TYPE).and_then(|v|v.to_str().ok()).unwrap_or("").split(';').next().unwrap_or("").trim().to_ascii_lowercase();
+        if matches!(mime.as_str(),"text/html"|"application/xhtml+xml") { return Err("attachment_is_html_or_login_page".into()); }
+        let disposition=response.headers().get(reqwest::header::CONTENT_DISPOSITION).and_then(|v|v.to_str().ok()).and_then(|header|header.split(';').find_map(|part| {
+            let (key,value)=part.trim().split_once('=')?;
+            if key.eq_ignore_ascii_case("filename") || key.eq_ignore_ascii_case("filename*") { attachment::extension(value.trim().trim_matches('"')) } else { None }
+        }));
+        let mime_ext=match mime.as_str() {"application/pdf"=>Some("pdf"),"text/csv"=>Some("csv"),"text/tab-separated-values"=>Some("tsv"),"application/zip"=>Some("zip"),"application/gzip"=>Some("gz"),"application/json"=>Some("json"),"text/plain"=>Some("txt"),"image/png"=>Some("png"),"image/jpeg"=>Some("jpg"),"video/mp4"=>Some("mp4"),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"=>Some("xlsx"),_=>None};
+        let extension=if pdf_only { "pdf".into() } else { disposition.or_else(||attachment::from_url(url.as_str())).or_else(||attachment::from_url(raw)).or_else(||mime_ext.map(str::to_string)).ok_or("unsupported_supplement_format")? };
         let limit=FILE_LIMIT.min(budget);
-        if response.content_length().is_some_and(|size|size>limit) { return Err("file_or_disk_limit_exceeded".into()); }
+        // reqwest reports a body size hint, not an immutable header value.
+        // Reading the blocking body moves/drains it; snapshot before the first read.
+        let expected_length=response.content_length();
+        if expected_length.is_some_and(|size|size>limit) { return Err("file_or_disk_limit_exceeded".into()); }
+        progress(0,expected_length);
+        let mut reported=Instant::now();
         let mut file=OpenOptions::new().create_new(true).write(true).open(part).map_err(|_| "capture_temp_create")?;
         let mut bytes=0; let mut buf=[0u8;65536];
         loop {
@@ -87,9 +132,10 @@ fn fetch(raw:&str, part:&Path, budget:u64, cancel:&impl Fn()->bool) -> Result<()
             if n==0 { break; } bytes+=n as u64;
             if bytes>limit { return Err("file_or_disk_limit_exceeded".into()); }
             file.write_all(&buf[..n]).map_err(|_| "capture_disk_write")?;
+            if reported.elapsed()>=Duration::from_millis(250) { progress(bytes,expected_length);reported=Instant::now(); }
         }
-        if response.content_length().is_some_and(|expected|expected!=bytes) { return Err("incomplete_download".into()); }
-        file.sync_all().map_err(|_| "capture_disk_sync")?; return Ok(());
+        if expected_length.is_some_and(|expected|expected!=bytes) { return Err("incomplete_download".into()); }
+        file.sync_all().map_err(|_| "capture_disk_sync")?; progress(bytes,expected_length); return Ok(extension);
     }
     Err("too_many_redirects".into())
 }
@@ -113,45 +159,64 @@ pub(super) fn public_json(raw:&str,cancel:&impl Fn()->bool)->Result<Value,String
     }
     Err("provider_redirect_limit".into())
 }
-pub fn process(root:&Path, id:&str, envelope:&Value, cancel:impl Fn()->bool) -> (String,Value) {
-    let run=|| -> Result<Value,String> {
+pub fn process(root:&Path,id:&str,envelope:&Value,cancel:impl Fn()->bool)->(String,Value) {
+    process_with_progress(root,id,envelope,cancel,&json!({}),|_|{})
+}
+/// Only server-generated progress/options are accepted here; never browser paths.
+pub fn process_with_progress(root:&Path,id:&str,envelope:&Value,cancel:impl Fn()->bool,previous:&Value,progress:impl Fn(&Value))->(String,Value) {
+    let run=||->Result<Value,String> {
         let dir=root.join("items").join(id);
-        fs::create_dir_all(&dir).map_err(|_| "capture_directory_create")?;
-        if fs::symlink_metadata(&dir).map_err(|_| "capture_storage_read")?.file_type().is_symlink() { return Err("capture_symlink_rejected".into()); }
-        let mut results=Vec::new();
-        for (index, artifact) in envelope["artifacts"].as_array().ok_or("invalid_artifacts")?.iter().enumerate() {
-            if cancel() { return Err("cancelled_or_service_disabled".into()); }
-            let supplement_pdf=artifact["role"]=="supplement" && artifact["url"].as_str().and_then(|u|reqwest::Url::parse(u).ok()).is_some_and(|u|u.path().to_lowercase().ends_with(".pdf")) || (artifact["role"]=="supplement" && dir.join(format!("{index}.pdf")).exists());
-            if artifact["role"]!="fulltext" && !supplement_pdf {
-                results.push(json!({"id":artifact["id"],"state":"needs_user","error":"link_only_or_non_pdf_attachment_use_browser_download"})); continue;
+        fs::create_dir_all(&dir).map_err(|_|"capture_directory_create")?;
+        if fs::symlink_metadata(&dir).map_err(|_|"capture_storage_read")?.file_type().is_symlink(){return Err("capture_symlink_rejected".into());}
+        let artifacts=envelope["artifacts"].as_array().ok_or("invalid_artifacts")?;
+        let mut rows:Vec<Value>=artifacts.iter().enumerate().map(|(index,a)|json!({"id":a["id"],"index":index,"role":a["role"],"label":a["label"].as_str().unwrap_or("").chars().take(120).collect::<String>(),"state":"queued"})).collect();
+        let emit=|rows:&[Value]|progress(&json!({"phase":"downloading","artifacts":rows,"libraryImported":false}));
+        emit(&rows);
+        for (index,a) in artifacts.iter().enumerate() {
+            if cancel(){return Err("cancelled_or_service_disabled".into());}
+            let pdf_only=a["role"]=="fulltext";
+            if !pdf_only && a["role"]!="supplement" { rows[index]["state"]=json!("needs_user");rows[index]["error"]=json!("unsupported_artifact_role");emit(&rows);continue; }
+            let prefix=format!("{index}.");
+            let cached=fs::read_dir(&dir).map_err(|_|"capture_storage_read")?.filter_map(Result::ok).find_map(|entry| {
+                let name=entry.file_name().to_str()?.to_string();let ext=name.strip_prefix(&prefix)?;
+                let valid=attachment::extension(&name)?;
+                (ext==valid && (!pdf_only || ext=="pdf")).then_some((entry.path(),valid))
+            });
+            let old=previous["artifacts"].as_array().and_then(|v|v.iter().find(|row|row["id"]==a["id"]));
+            if cached.is_none() && previous["retryIndex"].as_u64().is_some_and(|wanted|wanted!=index as u64) {
+                rows[index]["state"]=json!("needs_user");rows[index]["error"]=old.and_then(|r|r.get("error")).cloned().unwrap_or(json!("not_retried"));emit(&rows);continue;
             }
-            let final_path=dir.join(format!("{index}.pdf"));
+            rows[index]["state"]=json!("connecting");emit(&rows);
             let part=dir.join(format!("{index}.part"));
-            let attempt=|| -> Result<(String,u64),String> {
-                // Completed bytes may survive a crash before the DB commit. Revalidate, never trust a flag.
-                if final_path.exists() { return verify(&final_path); }
-                if part.exists() { fs::remove_file(&part).map_err(|_| "capture_temp_cleanup")?; }
+            let mut attempt=||->Result<(String,u64,String),String> {
+                if let Some((path,ext))=&cached {
+                    if fs::symlink_metadata(path).map_err(|_|"capture_storage_read")?.file_type().is_symlink(){return Err("capture_symlink_rejected".into());}
+                    rows[index]["state"]=json!("verifying");emit(&rows);
+                    return attachment::verify(path,ext).map(|(hash,size)|(hash,size,ext.clone()));
+                }
+                if part.exists(){fs::remove_file(&part).map_err(|_|"capture_temp_cleanup")?;}
                 let used=directory_size(root)?;
-                fetch(artifact["url"].as_str().ok_or("missing_pdf_url")?, &part,DISK_LIMIT.saturating_sub(used),&cancel)?;
-                let verified=verify(&part)?;
-                if cancel() { return Err("cancelled_or_service_disabled".into()); }
-                fs::rename(&part,&final_path).map_err(|_| "capture_publish_failed")?;
-                Ok(verified)
+                let ext=fetch(a["url"].as_str().ok_or("missing_artifact_url")?,&part,DISK_LIMIT.saturating_sub(used),&cancel,pdf_only,&mut |bytes,total| {
+                    rows[index]["state"]=json!("downloading");rows[index]["bytesReceived"]=json!(bytes);rows[index]["totalBytes"]=json!(total);emit(&rows);
+                })?;
+                rows[index]["state"]=json!("verifying");rows[index]["extension"]=json!(ext);emit(&rows);
+                let (hash,size)=attachment::verify(&part,&ext)?;
+                if cancel(){return Err("cancelled_or_service_disabled".into());}
+                let dest=dir.join(format!("{index}.{ext}"));
+                fs::hard_link(&part,&dest).map_err(|_|"capture_publish_failed")?;
+                fs::remove_file(&part).map_err(|_|"capture_temp_cleanup")?;
+                Ok((hash,size,ext))
             };
             match attempt() {
-                Ok((hash,size))=>results.push(json!({"id":artifact["id"],"state":"verified","storedPath":format!("items/{id}/{index}.pdf"),"sha256":hash,"byteLength":size})),
-                Err(error)=>{ let _=fs::remove_file(&part); results.push(json!({"id":artifact["id"],"state":"needs_user","error":error})); }
+                Ok((hash,size,ext))=>{rows[index]["state"]=json!("verified");rows[index]["storedPath"]=json!(format!("items/{id}/{index}.{ext}"));rows[index]["sha256"]=json!(hash);rows[index]["byteLength"]=json!(size);rows[index]["bytesReceived"]=json!(size);rows[index]["totalBytes"]=json!(size);rows[index]["extension"]=json!(ext);},
+                Err(error)=>{let _=fs::remove_file(&part);rows[index]["state"]=json!("needs_user");rows[index]["error"]=json!(error);},
             }
+            emit(&rows);
         }
-        Ok(json!({"artifacts":results,"libraryImported":false,"metadataVerified":false}))
+        Ok(json!({"artifacts":rows,"libraryImported":false,"metadataVerified":false}))
     };
     match run() {
-        Ok(result)=>{
-            let rows=result["artifacts"].as_array().unwrap();
-            let good=rows.iter().filter(|a|a["state"]=="verified").count();
-            let state=if rows.is_empty() || good==0 { "needs_user" } else if good<rows.len() { "partial" } else { "complete" };
-            (state.into(),result)
-        }
+        Ok(result)=>{let rows=result["artifacts"].as_array().unwrap();let good=rows.iter().filter(|r|r["state"]=="verified").count();let state=if good==0{"needs_user"}else if good<rows.len(){"partial"}else{"complete"};(state.into(),result)},
         Err(error)=>("needs_user".into(),json!({"error":error,"libraryImported":false})),
     }
 }

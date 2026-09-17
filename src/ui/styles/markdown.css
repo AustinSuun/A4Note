@@ -12,9 +12,17 @@
 .markdown-live-codemirror {
   --md-heading: #263d32;
   --md-heading-muted: #52675b;
-  --md-code-bg: #202a24;
-  --md-code-ink: #edf3ef;
-  --md-code-muted: #aebdb3;
+  --md-code-bg: color-mix(in srgb, var(--ink) 11%, var(--surface));
+  --md-table-bg: color-mix(in srgb, var(--ink) 4%, var(--surface));
+  --md-table-stripe: color-mix(in srgb, var(--ink) 8%, var(--surface));
+  --md-table-head: color-mix(in srgb, var(--accent-strong) 20%, var(--surface));
+  --md-table-line: color-mix(in srgb, var(--ink) 23%, var(--surface));
+  --md-table-hover: color-mix(in srgb, var(--accent-strong) 30%, var(--surface));
+  --md-code-ink: var(--ink);
+  --md-code-muted: var(--muted);
+  --md-code-border: color-mix(in srgb, var(--accent-strong) 18%, var(--line));
+  --md-code-control: color-mix(in srgb, var(--accent-strong) 6%, var(--surface));
+  --md-code-hover: color-mix(in srgb, var(--accent-strong) 12%, var(--surface));
   --md-link: #2f6f55;
   --md-highlight: rgba(206,177,66,.3);
   --md-quote: #5f7869;
@@ -143,6 +151,8 @@
 .md-body .markdown-image-zoom:focus-visible .markdown-image-zoom-hint { opacity: 1; }
 .md-body .markdown-figure { display: block; width: fit-content; max-width: 100%; margin: 1.1em auto; line-height: var(--document-line-height, 1.72); }
 .md-body .markdown-figcaption { display: block; margin-top: .5em; color: var(--muted); font-size: .82em; line-height: 1.5; text-align: center; }
+.md-body .markdown-figure-sized .markdown-image-zoom,
+.md-body .markdown-figure-sized .markdown-image-zoom img { width: 100%; height: auto; }
 
 /* ---- blockquote ---- */
 .md-body blockquote:not(.markdown-callout) {
@@ -279,25 +289,40 @@
 }
 .markdown-task-checkbox,
 .cm-md-task-checkbox {
-  display: inline-grid;
+  /* Keep a bottom-edge baseline in both states. An inline grid derives its
+     baseline from the checkmark when present, shifting only checked boxes. */
+  display: inline-block;
+  position: relative;
   box-sizing: border-box;
   flex: 0 0 auto;
   width: 1.05em;
   height: 1.05em;
-  place-items: center;
-  margin-right: .48em;
+  margin: 0 .48em 0 0;
+  font: inherit;
+  line-height: 1;
   padding: 0;
   border: 1.5px solid color-mix(in srgb, var(--accent-strong) 48%, var(--line));
   border-radius: 4px;
   background: transparent;
   color: var(--on-accent, #fff);
-  vertical-align: -.2em;
+  vertical-align: -.12em;
   cursor: pointer;
 }
 .markdown-task-checkbox.is-checked,
 .cm-md-task-checkbox.is-checked { border-color: var(--accent-strong); background: var(--accent-strong); }
 .markdown-task-checkbox.is-checked::after,
-.cm-md-task-checkbox.is-checked::after { width: .5em; height: .28em; border-bottom: 2px solid currentColor; border-left: 2px solid currentColor; content: ''; transform: rotate(-45deg) translateY(-.05em); }
+.cm-md-task-checkbox.is-checked::after {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: .5em;
+  height: .28em;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  content: '';
+  transform: translate(-50%, -50%) rotate(-45deg);
+  pointer-events: none;
+}
 .md-body li.task-list-item:has(input:checked),
 .md-body li.task-list-item:has(.markdown-task-checkbox.is-checked) { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 55%, transparent); }
 
@@ -317,22 +342,23 @@
 */
 :where(.md-body, .markdown-live-codemirror) table {
   width: 100%;
+  background: var(--md-table-bg);
   overflow: hidden;
   margin: 0 0 1em;
-  border: 1px solid var(--line);
+  border: 1px solid var(--md-table-line);
   border-radius: 8px;
   border-collapse: separate;
   border-spacing: 0;
 }
-:where(.md-body, .markdown-live-codemirror) .markdown-table-wrap { max-width: 100%; overflow-x: auto; margin: 0 0 1em; border: 1px solid var(--line); border-radius: 8px; }
+:where(.md-body, .markdown-live-codemirror) .markdown-table-wrap { max-width: 100%; overflow-x: auto; margin: 0 0 1em; border: 1px solid var(--md-table-line); border-radius: 8px; }
 :where(.md-body, .markdown-live-codemirror) .markdown-table-wrap table { min-width: 420px; margin: 0; border: 0; border-radius: 0; }
 :where(.md-body, .markdown-live-codemirror) th,
-:where(.md-body, .markdown-live-codemirror) td { padding: .55em .75em; border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; }
+:where(.md-body, .markdown-live-codemirror) td { padding: .55em .75em; border: 0; border-right: 1px solid var(--md-table-line); border-bottom: 1px solid var(--md-table-line); text-align: left; }
 :where(.md-body, .markdown-live-codemirror) th:last-child,
 :where(.md-body, .markdown-live-codemirror) td:last-child { border-right: 0; }
 :where(.md-body, .markdown-live-codemirror) tr:last-child td { border-bottom: 0; }
-:where(.md-body, .markdown-live-codemirror) th { background: color-mix(in srgb, var(--accent-soft) 78%, var(--surface)); color: var(--md-heading); font-weight: 720; }
-:where(.md-body, .markdown-live-codemirror) tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-soft) 58%, transparent); }
+:where(.md-body, .markdown-live-codemirror) th { background: var(--md-table-head); color: var(--md-heading); font-weight: 720; }
+:where(.md-body, .markdown-live-codemirror) tbody tr:nth-child(even) { background: var(--md-table-stripe); }
 /* GFM column alignment arrives as the `align` attribute, which is only a
    presentational hint and therefore loses to the rule above. */
 :where(.md-body, .markdown-live-codemirror) th[align="left"],
@@ -365,8 +391,51 @@
 .markdown-live-codemirror .cm-md-table-widget th,
 .markdown-live-codemirror .cm-md-table-widget td {
   padding: .18em .6em;
+  /* Table-cell height acts as a minimum; wrapped content can still grow. */
+  height: 1.9em;
   line-height: 1.5;
   cursor: text;
+}
+.markdown-live-codemirror .cm-md-table-widget :is(th, td):empty::before,
+.markdown-live-codemirror .cm-md-table-cell-placeholder:empty::before {
+  content: '\200b';
+}
+
+.markdown-live-codemirror .cm-md-table-widget :is(th, td):focus {
+  outline: 1px solid var(--accent-strong);
+  outline-offset: -1px;
+}
+.markdown-live-codemirror .cm-md-table-widget :is(th, td) { position: relative; }
+.markdown-live-codemirror .cm-md-table-cell-placeholder { visibility: hidden; }
+.markdown-live-codemirror .cm-md-table-cell-input {
+  position: absolute;
+  inset: 0;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: .18em .6em;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  outline: none;
+}
+.markdown-live-codemirror .cm-md-table-widget :is(th, td):has(input:focus) {
+  background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--accent-strong);
+}
+.markdown-live-codemirror .cm-md-table-widget code {
+  padding: .08em .22em;
+  border-radius: 4px;
+  background: var(--md-code-bg);
+  color: var(--md-code-ink);
+  font-family: var(--font-code);
+  font-size: .9em;
 }
 
 /* ---- code ---- */
@@ -374,7 +443,7 @@
   padding: .12em .4em;
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
   border-radius: 5px;
-  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface));
+  background: var(--md-code-bg);
   color: color-mix(in srgb, var(--accent-strong) 88%, var(--ink));
   font-family: var(--font-code);
   font-size: .9em;
@@ -383,17 +452,17 @@
 .md-body pre {
   position: relative;
   margin: 1em 0;
-  border: 1px solid rgba(237,243,239,.1);
+  border: 0;
   border-radius: 9px;
   background: var(--md-code-bg);
-  box-shadow: 0 7px 18px rgba(30,45,38,.1);
+  box-shadow: none;
 }
 .md-body pre,
 .md-body .markdown-code-block pre {
   overflow: auto;
-  padding: 16px 52px 16px 16px;
+  padding: 10px 48px 10px 14px;
   color: var(--md-code-ink);
-  font: .9em/1.65 var(--font-code);
+  font: .9em/var(--document-line-height, 1.5) var(--font-code);
 }
 .md-body .markdown-code-block pre {
   margin: 0;
@@ -413,10 +482,10 @@
   height: 28px;
   place-items: center;
   padding: 0;
-  border: 1px solid rgba(237,243,239,.18);
+  border: 1px solid var(--md-code-border);
   border-radius: 6px;
-  background: rgba(237,243,239,.08);
-  color: #edf3ef;
+  background: var(--md-code-control);
+  color: var(--md-code-ink);
   opacity: .72;
   cursor: pointer;
   transition: opacity 120ms ease, background-color 120ms ease;
@@ -430,14 +499,14 @@
 .md-body .markdown-image-zoom:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
 .md-body .markdown-code-feedback { display: block; color: var(--md-code-ink); font-size: .8em; line-height: 1.5; }
 .md-body .markdown-code-feedback:not(:empty) { padding: 6px 12px; border-top: 1px solid color-mix(in srgb, var(--md-code-ink) 18%, transparent); }
-.md-body .markdown-code-copy:hover { background: rgba(237,243,239,.18); }
-.md-body .markdown-code-block.has-language pre { padding-top: 38px; }
+.md-body .markdown-code-copy:hover { background: var(--md-code-hover); }
+.md-body .markdown-code-block.has-language pre { padding-top: calc(.9em + 24px); }
 .md-body .markdown-code-language {
   position: absolute;
   top: 10px;
   left: 14px;
   color: var(--md-code-muted);
-  font: 700 .72em/1 var(--font-code);
+  font: 700 .9em/1.2 var(--font-code);
   letter-spacing: .04em;
   text-transform: uppercase;
 }
@@ -584,20 +653,20 @@
    `tok-*` classes come from @lezer/highlight's classHighlighter (reading view)
    and from fenceTokenHighlight in MarkdownLivePreviewEditor (live editor), so
    the palette stays here in CSS rather than being baked into inline colours.
-   One palette is enough: the code card is dark in every theme.
+   Muted ink colours suit the light sage card; midnight has its own palette.
 */
 :where(.md-body, .markdown-live-codemirror) {
-  --md-tok-comment: #7f9689;
-  --md-tok-keyword: #dfa2ab;
-  --md-tok-string: #cfd28c;
-  --md-tok-number: #e0b189;
-  --md-tok-function: #9ec8e8;
-  --md-tok-type: #8fd1bd;
-  --md-tok-constant: #c8b6e6;
-  --md-tok-operator: #b6c8bd;
-  --md-tok-punctuation: #9fb3a7;
-  --md-tok-meta: #93a89b;
-  --md-tok-invalid: #f0908a;
+  --md-tok-comment: #66796d;
+  --md-tok-keyword: #925368;
+  --md-tok-string: #55713b;
+  --md-tok-number: #94612f;
+  --md-tok-function: #326982;
+  --md-tok-type: #287764;
+  --md-tok-constant: #76558e;
+  --md-tok-operator: #526c5e;
+  --md-tok-punctuation: #66786d;
+  --md-tok-meta: #63754b;
+  --md-tok-invalid: #af4141;
 }
 .tok-comment,
 .tok-lineComment,
@@ -660,7 +729,7 @@
 .tok-invalid { color: var(--md-tok-invalid); text-decoration: underline wavy; }
 .tok-link,
 .tok-url { color: var(--md-tok-function); text-decoration: underline; }
-.tok-inserted { color: #9ed5a8; }
+.tok-inserted { color: var(--md-tok-string); }
 .tok-deleted { color: var(--md-tok-invalid); }
 :where(.md-body pre, .markdown-live-codemirror) .tok-heading,
 :where(.md-body pre, .markdown-live-codemirror) .tok-strong { font-weight: 700; }
@@ -672,7 +741,18 @@
 :root[data-theme="midnight"] .markdown-live-codemirror {
   --md-heading: #e6f0e8;
   --md-heading-muted: #b6c6ba;
-  --md-code-bg: #151d18;
+  --md-code-bg: color-mix(in srgb, var(--ink) 11%, var(--surface));
+  --md-tok-comment: #7f9689;
+  --md-tok-keyword: #dfa2ab;
+  --md-tok-string: #cfd28c;
+  --md-tok-number: #e0b189;
+  --md-tok-function: #9ec8e8;
+  --md-tok-type: #8fd1bd;
+  --md-tok-constant: #c8b6e6;
+  --md-tok-operator: #b6c8bd;
+  --md-tok-punctuation: #9fb3a7;
+  --md-tok-meta: #93a89b;
+  --md-tok-invalid: #f0908a;
   --md-link: #8fc4a8;
   --md-highlight: rgba(206,177,66,.26);
   --md-quote: #8fa898;

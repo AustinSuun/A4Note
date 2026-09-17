@@ -10,9 +10,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { isTauriRuntime } from '../projects';
 
-/** Pre-PWS-1 snapshots lived here. Kept readable for the one-time migration. */
-const LEGACY_STORAGE_KEY = 'aster.workbench';
-
 /** A burst of tab mutations should land as one transaction, not one each. */
 const WRITE_DEBOUNCE_MS = 250;
 
@@ -28,15 +25,6 @@ export function loadWorkbenchSnapshot() {
 
 export function saveWorkbenchSnapshot(snapshot: string) {
   return invoke<void>('save_workbench_state', { request: { snapshot } });
-}
-
-function readLegacySnapshot(): string | null {
-  if (typeof localStorage === 'undefined') return null;
-  try {
-    return localStorage.getItem(LEGACY_STORAGE_KEY);
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -83,7 +71,7 @@ function sqliteStorage(initial: string | null): WorkbenchSnapshotStorage {
 
 /**
  * Returns `null` outside the desktop runtime, or when SQLite cannot be read,
- * so the store keeps its own `localStorage` default instead of starting from a
+ * so the store keeps its new-namespace `localStorage` default instead of starting from a
  * fabricated empty workbench.
  */
 export async function createWorkbenchStorage(): Promise<WorkbenchSnapshotStorage | null> {
@@ -94,19 +82,6 @@ export async function createWorkbenchStorage(): Promise<WorkbenchSnapshotStorage
   } catch (error) {
     console.warn('读取工作台状态失败，暂时回退到浏览器存储', error);
     return null;
-  }
-  if (initial === null) {
-    // One-time migration. The legacy key is left in place so an older build
-    // still finds its snapshot after a downgrade.
-    const legacy = readLegacySnapshot();
-    if (legacy) {
-      initial = legacy;
-      try {
-        await saveWorkbenchSnapshot(legacy);
-      } catch (error) {
-        console.warn('迁移旧工作台状态失败，本次仍使用内存快照', error);
-      }
-    }
   }
   return sqliteStorage(initial);
 }

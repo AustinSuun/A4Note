@@ -1,4 +1,7 @@
 import { useEffect, useState, type CSSProperties, type WheelEvent as ReactWheelEvent } from 'react';
+import { ReaderToolbarPortal } from './ReaderToolbarPortal';
+import { ReaderToolPopover } from './ReaderToolPopover';
+import './reader-file-switch.css';
 import type { AnnotationColor, PaperDocument, ReaderTool } from '../../core/types';
 import { zh } from '../../ui/zh';
 import { AnnotationToolIcon, FitWidthIcon, SidebarIcon, ZoomInIcon, ZoomOutIcon } from './ReaderIcons';
@@ -143,16 +146,19 @@ export function ReaderToolbar({
   };
 
   return (
+    <ReaderToolbarPortal>
     <header
       className="reader-toolbar"
       data-reader-layer="toolbar"
-      aria-label="Reader toolbar"
+      aria-label="阅读工具栏（空间不足时可横向滚动）"
+      tabIndex={0}
     >
       <div className="reader-toolbar-primary">
         <div className="reader-toolbar-group reader-toolbar-file">
-          {contentMode === 'pdf' && <div className="segmented compact reader-file-switch" aria-label="PDF file mode">
+          {contentMode === 'pdf' && <div className="segmented compact reader-file-switch" data-file-mode={fileMode} role="group" aria-label="PDF 文件模式">
             <button
               className={fileMode === 'source' ? 'active' : ''}
+              aria-pressed={fileMode === 'source'}
               type="button"
               onClick={() => onFileModeChange('source')}
               disabled={!paper.sourcePdf}
@@ -161,6 +167,7 @@ export function ReaderToolbar({
             </button>
             <button
               className={fileMode === 'translated' ? 'active' : ''}
+              aria-pressed={fileMode === 'translated'}
               type="button"
               onClick={() => onFileModeChange('translated')}
               disabled={!hasTranslatedPdf}
@@ -169,6 +176,7 @@ export function ReaderToolbar({
             </button>
             <button
               className={fileMode === 'parallel' ? 'active' : ''}
+              aria-pressed={fileMode === 'parallel'}
               type="button"
               onClick={() => onFileModeChange('parallel')}
               disabled={!paper.sourcePdf || !hasTranslatedPdf}
@@ -233,6 +241,7 @@ export function ReaderToolbar({
                     )}
                   </button>
                   {optionsTool === tool.id && (
+                    <ReaderToolPopover onClose={() => { setToolSettingsOpenFor(null); if (contextAnnotationId) onClearContextAnnotation?.(); }}>
                     <ToolOptionsBar
                       tool={optionsTool}
                       toolSettings={currentToolSettings}
@@ -242,6 +251,7 @@ export function ReaderToolbar({
                       onCustomAnnotationColorChange={handleCustomColor}
                       onToolSettingsChange={handleToolSettingsChange}
                     />
+                    </ReaderToolPopover>
                   )}
                 </div>
               );
@@ -249,6 +259,9 @@ export function ReaderToolbar({
           </div>
         </div>}
 
+      </div>
+
+      <div className="reader-toolbar-end">
         {contentMode === 'pdf' && <div className="reader-toolbar-group reader-toolbar-nav">
           <div className="zoom-controls" aria-label="Zoom controls">
             <button
@@ -286,9 +299,6 @@ export function ReaderToolbar({
             <span>/ {readerPageState.totalPages}</span>
           </div>
         </div>}
-      </div>
-
-      <div className="reader-toolbar-end">
         {!sidePanelOpen && (
           <button
             className="reader-workspace-toggle"
@@ -303,6 +313,7 @@ export function ReaderToolbar({
         )}
       </div>
     </header>
+    </ReaderToolbarPortal>
   );
 }
 

@@ -76,6 +76,7 @@ if (!signature) throw new Error('Updater signature is required.');
 const metadata = {
   schemaVersion: 1,
   sourceCommit: (() => { const r = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding: 'utf8' }); if (r.status !== 0) throw new Error('Cannot resolve build commit'); return r.stdout.trim(); })(),
+  sourceDirty: (() => { const r = spawnSync('git', ['status', '--porcelain'], { cwd: rootDir, encoding: 'utf8' }); if (r.status !== 0) throw new Error('Cannot inspect build working tree'); return Boolean(r.stdout.trim()); })(),
   productName: 'A4 Note',
   version,
   builtAt: new Date().toISOString(),
