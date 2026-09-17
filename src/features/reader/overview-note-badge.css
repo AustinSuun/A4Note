@@ -1,0 +1,5 @@
+.overview-note-badge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; box-sizing: border-box; padding: 2px 6px; border: 1px solid color-mix(in srgb, var(--accent-strong) 35%, transparent); border-radius: 5px; background: var(--accent-soft); color: var(--accent-strong); font-size: 11px; font-weight: 650; line-height: 1.4; white-space: nowrap; vertical-align: middle; }
+.overview-note-badge svg { flex-shrink: 0; }
+.note-history-title.note-history-title-with-badge { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.note-history-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-overview-identity { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }

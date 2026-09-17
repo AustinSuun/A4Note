@@ -1,8 +1,9 @@
 ﻿import { type MouseEvent, type WheelEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent } from 'react';
 import { useLayoutEffect } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
+import { pdfLoadErrorMessage } from './pdfLoadError';
 import type { Annotation, AnnotationColor, AnnotationDraft, AnnotationType, PositionJson, ReaderTool } from '../../../core/types';
 import { isTauriRuntime, loadPaperFileBytes } from '../../../platform/nativeApi';
 import { readFileBytes } from '../../../platform/projects';
@@ -168,6 +169,7 @@ export default function PdfReader({
         setMessage(zh.reader.pdfPlaceholder);
         return;
       }
+      let stage: 'read' | 'parse' = 'read';
       try {
         setPdfDocument(null);
         setPages([]);
@@ -177,6 +179,7 @@ export default function PdfReader({
           ? await loadPaperFileBytes({ paperId: request.paperId, kind: request.kind, fileId: request.fileId })
           : await readFileBytes(request.path);
         if (cancelled) return;
+        stage = 'parse';
         loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(bytes) });
         const pdf = await loadingTask.promise;
         if (cancelled) return;
@@ -188,7 +191,7 @@ export default function PdfReader({
         setPdfDocument(null);
         setPages([]);
         setStatus('error');
-        setMessage(zh.reader.pdfError);
+        setMessage(pdfLoadErrorMessage(error, stage));
       }
     }
     void loadPdf();
@@ -235,7 +238,7 @@ export default function PdfReader({
         if (!cancelled) {
           setPages([]);
           setStatus('error');
-          setMessage(zh.reader.pdfError);
+          setMessage(pdfLoadErrorMessage(error, 'pages'));
         }
       }
     }

@@ -1,0 +1,28 @@
+.note-folder-breadcrumb .note-workspace-trigger {
+  min-width: 0; max-width: 100%; gap: 7px; padding: 5px 8px; color: var(--ink);
+  border: 0; outline: none; background: transparent; box-shadow: none;
+  transition: background-color .15s ease, box-shadow .15s ease;
+}
+.note-folder-breadcrumb .note-workspace-trigger:hover,
+.note-folder-breadcrumb .note-workspace-trigger[aria-expanded="true"],
+.note-folder-breadcrumb .note-workspace-trigger:focus-visible {
+  outline: none; background: var(--accent-soft); box-shadow: 0 2px 7px rgba(24,28,26,.10);
+}
+.note-workspace-trigger:disabled { opacity: .55; cursor: default; }
+.note-workspace-trigger svg { flex-shrink: 0; }
+.note-workspace-menu {
+  position: fixed; z-index: 1400; box-sizing: border-box; overflow: auto; padding: 6px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink);
+  box-shadow: var(--shadow, 0 12px 32px #0002); font-family: var(--font-sans); font-size: var(--ui-body-small-font-size);
+}
+.note-workspace-menu-label { padding: 5px 8px 7px; font-size: var(--ui-caption-font-size); color: var(--muted); }
+.note-workspace-menu button {
+  display: flex; align-items: center; gap: 8px; box-sizing: border-box; width: 100%; min-height: 34px;
+  border: 0; border-radius: 6px; padding: 8px; background: transparent; color: var(--ink); text-align: left; font: inherit; cursor: pointer;
+}
+.note-workspace-menu button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-workspace-menu svg { flex-shrink: 0; color: var(--muted); }
+.note-workspace-menu button:hover,.note-workspace-menu button:focus-visible,.note-workspace-menu button[aria-checked="true"] { outline: none; background: var(--accent-soft); color: var(--accent-strong); }
+.note-workspace-menu button:focus-visible { box-shadow: inset 0 0 0 1px var(--line); }
+.note-workspace-menu .note-workspace-open-folder { margin-top: 5px; border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; }
+@media (prefers-reduced-motion: reduce) { .note-folder-breadcrumb .note-workspace-trigger { transition: none; } }

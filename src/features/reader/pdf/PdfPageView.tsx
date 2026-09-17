@@ -1,5 +1,5 @@
 import { type MouseEvent, type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { zh } from '../../../ui/zh';
 import { outputScaleForViewport } from './pdfGeometry';
 import { PdfTextLayer } from './PdfTextLayer';

@@ -1,3 +1,5 @@
+import { RetainedReaderNote } from './ReaderNoteActivity';
+import { ReaderDrawerResizer } from './ReaderDrawerResizer';
 import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type { ObjectNavigationTarget } from '../../core/relations';
 import type { AnnotationColor, AiThreadContext, PaperDocument, PositionJson, ReaderSidePanelTab } from '../../core/types';
@@ -8,12 +10,14 @@ import { SidebarIcon } from './ReaderIcons';
 import type { NoteDraftPatch, NoteSaveInput, ReaderSidePanelDefinition } from './types';
 
 const workspacePanelTabs: ReaderSidePanelTab[] = ['notes', 'chat', 'cite'];
-const minDrawerWidth = 300;
-const maxDrawerWidth = 640;
 
 export function ReaderSideDrawer({
   open,
   width,
+  maximumWidth,
+  expanded,
+  compact,
+  onExpandedChange,
   onWidthChange,
   sidePanels,
   panelViews,
@@ -40,6 +44,10 @@ export function ReaderSideDrawer({
 }: {
   open: boolean;
   width: number;
+  maximumWidth: number;
+  expanded: boolean;
+  compact: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   onWidthChange: (width: number) => void;
   sidePanels: ReaderSidePanelDefinition[];
   panelViews: WorkbenchPanelViewContribution[];
@@ -66,6 +74,7 @@ export function ReaderSideDrawer({
 }) {
   const [openTabs, setOpenTabs] = useState<ReaderSidePanelTab[]>([sidePanelTab]);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [retainedPaper, setRetainedPaper] = useState<string | null>(open && sidePanelTab === 'notes' ? paper.paperId : null);
 
   const panelById = useMemo(() => {
     return new Map(sidePanels.map((panel) => [panel.id, panel] as const));
@@ -81,7 +90,13 @@ export function ReaderSideDrawer({
     setOpenTabs((current) => (current.includes(sidePanelTab) ? current : [...current, sidePanelTab]));
   }, [sidePanelTab]);
 
-  if (!open) return null;
+  const notesPanel = panelById.get('notes');
+  const notesView = notesPanel ? panelViews.find(view => view.id === notesPanel.panel.id) : undefined;
+  const notesActive = open && sidePanelTab === 'notes';
+  const retainNotes = notesActive || retainedPaper === paper.paperId;
+  useEffect(() => { if (notesActive) setRetainedPaper(paper.paperId); }, [notesActive, paper.paperId]);
+  useEffect(() => { if (!open) setAddMenuOpen(false); }, [open]);
+  if (!open && !retainNotes) return null;
 
   const openWorkspaceTab = (tab: ReaderSidePanelTab) => {
     setOpenTabs((current) => (current.includes(tab) ? current : [...current, tab]));
@@ -91,6 +106,7 @@ export function ReaderSideDrawer({
 
   const closeTab = (tab: ReaderSidePanelTab, event: ReactMouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
+    if (tab === 'notes') setRetainedPaper(null);
     setOpenTabs((current) => {
       const tabIndex = current.indexOf(tab);
       const next = current.filter((item) => item !== tab);
@@ -105,41 +121,19 @@ export function ReaderSideDrawer({
     });
   };
 
-  const handleResizeMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = width;
-    const previousUserSelect = document.body.style.userSelect;
-    document.body.classList.add('is-horizontal-resizing');
-    document.body.style.userSelect = 'none';
-
-    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
-      const nextWidth = clampDrawerWidth(startWidth + startX - moveEvent.clientX);
-      onWidthChange(nextWidth);
-    };
-
-    const handleMouseUp = () => {
-      document.body.classList.remove('is-horizontal-resizing');
-      document.body.style.userSelect = previousUserSelect;
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  };
-
   return (
     <aside
       className="reader-workspace-drawer"
       data-reader-layer="sidebar"
-      style={{ width }}
+      aria-label="阅读工作面板" hidden={!open} inert={!open} aria-hidden={!open}
+      style={{ width: expanded || compact ? '100%' : width, display: open ? undefined : 'none' }}
       onPointerDown={(event) => event.stopPropagation()}
       onPointerUp={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}
       onMouseUp={(event) => event.stopPropagation()}
+      onKeyDown={event => { if (event.key === 'Escape' && addMenuOpen && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); setAddMenuOpen(false); } }}
     >
-      <div className="reader-drawer-resize-handle" onMouseDown={handleResizeMouseDown} aria-hidden="true" />
+      {open && !expanded && !compact && <ReaderDrawerResizer width={width} maximum={maximumWidth} onChange={onWidthChange} />}
       <header className="reader-workspace-header">
         <div className="reader-workspace-tabs" role="tablist" aria-label={zh.reader.openPanel}>
           {openTabs.map((tab) => {
@@ -185,11 +179,12 @@ export function ReaderSideDrawer({
           </div>
         </div>
         <div className="reader-workspace-actions">
+          {sidePanelTab === 'notes' && <button type="button" className="reader-writing-expand" disabled={compact} aria-pressed={expanded || compact} aria-label={expanded ? '返回分栏' : '全宽写作'} title={compact ? '窗口空间不足，放大后自动恢复分栏' : '切换全宽写作（Ctrl+Alt+Enter）；Esc返回'} onClick={() => onExpandedChange(!expanded)}>{compact ? '叠放' : expanded ? '分栏' : '全宽'}</button>}
           <button
             className="reader-workspace-toggle active"
             type="button"
             onClick={() => onSidePanelOpenChange(false)}
-            title={zh.reader.closePanel}
+            title="收起面板，保留笔记编辑状态（Ctrl+Alt+N）"
             aria-label={zh.reader.closePanel}
             aria-pressed="true"
           >
@@ -199,16 +194,15 @@ export function ReaderSideDrawer({
       </header>
 
       <div className="workspace-panel-content">
-        {activePanel && activePanelView
+        {retainNotes && notesPanel && notesView && <RetainedReaderNote key={paper.paperId} active={notesActive}>
+          {notesView.render({ panel: notesPanel.panel, sceneId: 'reader', selectedPaper: paper })}
+        </RetainedReaderNote>}
+        {open && sidePanelTab !== 'notes' && activePanel && activePanelView
           ? activePanelView.render({ panel: activePanel.panel, sceneId: 'reader', selectedPaper: paper })
           : null}
       </div>
     </aside>
   );
-}
-
-function clampDrawerWidth(width: number) {
-  return Math.max(minDrawerWidth, Math.min(maxDrawerWidth, width));
 }
 
 function readerWorkspaceFallbackLabel(tab: ReaderSidePanelTab) {

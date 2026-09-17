@@ -8,6 +8,8 @@ export function collectPage() {
   const links = [...document.querySelectorAll('a[href],link[href]')].slice(0, limit).map(el => ({
     href: el.href, label: (el.textContent || '').trim().slice(0, 300),
     type: el.getAttribute('type') || '', rel: el.getAttribute('rel') || '',
+    primaryPdf: el.matches('a[data-track-action="download pdf"],a[data-test="pdf-link"],a.article-pdfLink,a.pdf-download,a[aria-label="Download PDF"]'),
+    supplementary: Boolean(el.closest('#supplementary-material,.supplementary-material,.supplemental-material,[data-section="supplementary-material"]')),
   }));
   const jsonLd=[];let jsonBytes=0;
   for(const node of [...document.querySelectorAll('script[type="application/ld+json"]')].slice(0,20)){

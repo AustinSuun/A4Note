@@ -5,7 +5,7 @@ import { FolderDraftRow as NewFolderTreeRow, TreeGuides } from '../../shared/tre
 import { toggleTreeExpansion } from '../../core/treeExpansion';
 import type { LibraryFolderActionProps } from './types';
 
-import { buildLibraryFolderTree, selectLibraryView, type LibraryFolderNode as FolderNode } from '../../core/libraryViews';
+import { buildLibraryFolderTree, countLibraryFolderPapers, selectLibraryView, type LibraryFolderNode as FolderNode } from '../../core/libraryViews';
 
 let closeLibraryContextMenu: (() => void) | undefined;
 
@@ -98,14 +98,7 @@ export function LibrarySceneSidebar({
       setFolderActionError('目标文件夹已不存在，请重新选择创建位置。');
     }
   }, [creationPath, newFolderParentId, folderSaving]);
-  const folderCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    papers.forEach((paper) => {
-      const folderId = paper.folderId || 'library';
-      counts.set(folderId, (counts.get(folderId) ?? 0) + 1);
-    });
-    return counts;
-  }, [papers]);
+  const folderCounts = useMemo(() => countLibraryFolderPapers(papers, folderTree), [papers, folderTree]);
 
   const submitNewFolder = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

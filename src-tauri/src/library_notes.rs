@@ -113,13 +113,19 @@ fn upsert_note_in_database_with_sync(
 ) -> Result<String, String> {
     initialize_database(database_path)?;
     let mut connection = Connection::open(database_path).map_err(|error| error.to_string())?;
+    let transaction = connection.transaction().map_err(|error| error.to_string())?;
+    let id = upsert_note_in_transaction(&transaction, request, enqueue_sync)?;
+    transaction.commit().map_err(|error| error.to_string())?;
+    Ok(id)
+}
+
+pub(crate) fn upsert_note_in_transaction(
+    transaction: &rusqlite::Transaction<'_>, request: UpsertNoteRequest, enqueue_sync: bool,
+) -> Result<String, String> {
     let now = current_timestamp_ms();
     let id = request
         .note_id
         .unwrap_or_else(|| format!("note-{}", Uuid::new_v4()));
-    let transaction = connection
-        .transaction()
-        .map_err(|error| error.to_string())?;
     let parent_exists: bool = transaction.query_row(
         "SELECT EXISTS(SELECT 1 FROM papers WHERE id = ?1)", params![request.paper_id], |row| row.get(0),
     ).map_err(|error| error.to_string())?;
@@ -172,7 +178,6 @@ fn upsert_note_in_database_with_sync(
             )
             .map_err(|error| error.to_string())?;
     }
-    transaction.commit().map_err(|error| error.to_string())?;
     Ok(id)
 }
 

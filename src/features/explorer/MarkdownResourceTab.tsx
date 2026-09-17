@@ -5,11 +5,16 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { isTauriRuntime, openExternalUrl, readFileBytes, type RenamedTextFile } from '../../platform/projects';
+import { isTauriRuntime, openExternalUrl, type RenamedTextFile } from '../../platform/projects';
 import { zh } from '../../ui/zh';
 import { MarkdownCallout, MarkdownCodeBlock, MarkdownFigure, MarkdownFootnoteBackref, MarkdownFootnoteRef, MarkdownFootnotesSection, MarkdownTable, remarkAsterInline, wikiLinkProtocol, wikiLinkTarget } from '../../shared/markdown';
 import { MarkdownLivePreviewEditor, type MarkdownLivePreviewEditorHandle } from './MarkdownLivePreviewEditor';
 import { MarkdownDocumentTitle } from './MarkdownDocumentTitle';
+import { MarkdownAuthoringDock } from './MarkdownAuthoringDock';
+import { loadNoteImage } from './noteImageLoader';
+import './markdown-mode-switch.css';
+import { markdownTemplates, type MarkdownTemplate } from './markdownTemplates';
+import { useDocumentToolbar, useDocumentToolbarActive } from '../../workbench/DocumentToolbar';
 import { useTextDocument } from './useTextDocument';
 import { splitFrontmatter, titleFromBody, stripDocumentTitle, replaceMarkdownBody, replaceMarkdownLiveBody, updateMarkdownProperties, type PropertyValue, type DocumentProperties } from '../../core/markdownDocument';
 
@@ -17,6 +22,8 @@ export interface MarkdownResourceTabProps {
   path: string;
   name: string;
   onRenamed?: (file: RenamedTextFile) => void;
+  /** Nested note tabs must not publish controls while hidden. */
+  active?: boolean;
   /** Opens a `[[note]]` link. Without it, wiki links render as inert text. */
   onOpenWikiLink?: (target: string) => void | Promise<void>;
 }
@@ -122,38 +129,19 @@ function safeMarkdownUrl(url: string) {
   return trimmed;
 }
 
-function joinDocumentPath(documentPath: string, source: string) {
-  if (/^(?:[a-z]+:|[\\/])/i.test(source)) return source;
-  const base = documentPath.replace(/[\\/][^\\/]*$/, '');
-  return `${base}\\${source.replace(/^\.\//, '').replace(/\//g, '\\')}`;
-}
-
-function mimeForPath(path: string) {
-  const extension = path.split(/[?#]/)[0].split('.').pop()?.toLowerCase();
-  return ({ png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', avif: 'image/avif', bmp: 'image/bmp' } as Record<string, string>)[extension ?? ''] ?? 'application/octet-stream';
-}
-
-function bytesToDataUrl(bytes: number[], mime: string) {
-  const chunks: string[] = [];
-  for (let index = 0; index < bytes.length; index += 0x8000) chunks.push(String.fromCharCode(...bytes.slice(index, index + 0x8000)));
-  return `data:${mime};base64,${btoa(chunks.join(''))}`;
-}
-
 function MarkdownImage({ src, alt, title, documentPath }: { src?: string; alt?: string; title?: string; documentPath: string }) {
-  const [resolved, setResolved] = useState(src ?? '');
+  const [result, setResult] = useState({ key: '', url: '', failed: false });
+  const key = `${documentPath}\n${src ?? ''}`;
   useEffect(() => {
     let cancelled = false;
-    const source = safeMarkdownUrl(src ?? '');
-    setResolved(source);
-    if (!source || /^(?:data:|https?:|blob:)/i.test(source) || !isTauriRuntime()) return undefined;
-    const path = joinDocumentPath(documentPath, source);
-    void readFileBytes(path).then((bytes) => {
-      if (!cancelled) setResolved(bytesToDataUrl(bytes, mimeForPath(path)));
-    }).catch(() => undefined);
+    setResult({ key, url: '', failed: false });
+    void loadNoteImage(documentPath, src ?? '').then(url => {
+      if (!cancelled) setResult({ key, url, failed: false });
+    }).catch(() => { if (!cancelled) setResult({ key, url: '', failed: true }); });
     return () => { cancelled = true; };
-  }, [documentPath, src]);
-  if (!resolved) return null;
-  return <MarkdownFigure src={resolved} alt={alt} title={title} />;
+  }, [documentPath, src, key]);
+  if (result.key !== key || !result.url) return <span role="status">{result.key === key && result.failed ? '图片加载失败，请检查路径或文件是否存在' : '正在加载图片…'}</span>;
+  return <MarkdownFigure src={result.url} alt={alt} title={title} />;
 }
 
 function normalizeEmbeddedMarkdown(markdown: string) {
@@ -162,7 +150,9 @@ function normalizeEmbeddedMarkdown(markdown: string) {
     .replace(/<hr\s*\/?>/gi, '\n---\n')
     .replace(/<img\s+[^>]*src=["']([^"']+)["'][^>]*>/gi, (tag, src: string) => {
       const alt = tag.match(/alt=["']([^"']*)["']/i)?.[1] ?? '';
-      return `![${alt}](${src})`;
+      const title = (tag.match(/\btitle\s*=\s*(["'])(.*?)\1/i)?.[2] ?? '').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+      const escapedTitle = title.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      return `![${alt}](${src}${title ? ` "${escapedTitle}"` : ''})`;
     })
     .replace(/==([^=\n]+)==/g, (_, value: string) => `[${value}](a4note-highlight:${encodeURIComponent(value)})`);
 }
@@ -295,7 +285,10 @@ function ArrayPropertyEditor({ value, onChange, placeholder, suggestions = [] }:
   return <div className="markdown-property-array-editor"><div className="markdown-property-chips">{value.map((item) => <span className="markdown-property-chip" key={item}>{item}<button type="button" onClick={() => onChange(value.filter((candidate) => candidate !== item))} aria-label={`删除 ${item}`}>×</button></span>)}</div><div className="markdown-property-value-input"><input value={draft} onChange={(event) => { setDraft(event.target.value); setSuggestionsOpen(true); }} onFocus={() => setSuggestionsOpen(true)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ',') { event.preventDefault(); add(); } }} onBlur={() => { add(); window.setTimeout(() => setSuggestionsOpen(false), 120); }} placeholder={placeholder} />{suggestionsOpen && visibleSuggestions.length > 0 && <div className="markdown-property-value-suggestions" role="listbox">{visibleSuggestions.map((item) => <button type="button" key={item} onMouseDown={(event) => event.preventDefault()} onClick={() => { onChange([...value, item]); setDraft(''); setSuggestionsOpen(false); }} role="option">{item}</button>)}</div>}</div></div>;
 }
 
-export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink }: MarkdownResourceTabProps) {
+export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, active = true }: MarkdownResourceTabProps) {
+  const documentToolbar = useDocumentToolbar();
+  const hostTabActive = useDocumentToolbarActive();
+  const toolbarInTopBar = Boolean(active && hostTabActive && documentToolbar?.enabled && documentToolbar.controlsHost && documentToolbar.saveHost);
   const displayTitle = name.replace(/\.(?:md|markdown|mdx)$/i, '') || '\u672a\u547d\u540d\u6587\u6863';
   const { documentId, content, setContent, loading, error, saveState, saveError, save: saveImmediately, reload } = useTextDocument(path);
   const [operationError, setOperationError] = useState('');
@@ -320,6 +313,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink }: M
   const [propertyDragPreview, setPropertyDragPreview] = useState<PropertyDragPreview | null>(null);
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
   const [editorMenuSection, setEditorMenuSection] = useState<'format' | 'paragraph' | 'insert' | null>(null);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [editorHasSelection, setEditorHasSelection] = useState(false);
   const [recentProperties, setRecentProperties] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('a4note.markdown.recent-properties') ?? '[]') as string[]; } catch { return []; }
@@ -603,8 +597,9 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink }: M
     });
   };
 
+  const insertTemplate = (template: MarkdownTemplate) => { liveEditorRef.current?.insertTemplate(template.source, template.block); };
   const insertEditorSnippet = (snippet: string) => {
-    insertMarkdown('', '', snippet);
+    liveEditorRef.current?.insertTemplate(snippet, true);
     setEditorContextMenu(null);
     setEditorMenuSection(null);
   };
@@ -948,27 +943,23 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink }: M
   const activeTocIndex = useMemo(() => tocHeadings.findIndex((heading) => heading.id === activeHeadingId), [tocHeadings, activeHeadingId]);
   const hoveredTocIndex = useMemo(() => tocHeadings.findIndex((heading) => heading.id === hoveredHeadingId), [tocHeadings, hoveredHeadingId]);
 
-  return (
-    <section className="markdown-resource-tab">
-      <header className="markdown-resource-toolbar">
-        <div className="markdown-resource-mode-switch" role="group" aria-label="Markdown \u89c6\u56fe\u6a21\u5f0f">
-          <button type="button" className={mode === 'edit' ? 'active' : ''} onClick={() => setMode('edit')} title="\u7f16\u8f91 Markdown" aria-label="\u7f16\u8f91 Markdown"><Pencil size={14} aria-hidden="true" /><span>{'\u7f16\u8f91'}</span></button>
-          <button type="button" className={mode === 'read' ? 'active' : ''} onClick={() => setMode('read')} title="\u9605\u8bfb\u6e32\u67d3\u7ed3\u679c" aria-label="\u9605\u8bfb\u6e32\u67d3\u7ed3\u679c"><BookOpen size={14} aria-hidden="true" /><span>{'\u9605\u8bfb'}</span></button>
+  const viewControls = <>
+        <div className="markdown-resource-mode-switch" data-mode={mode} role="group" aria-label="Markdown \u89c6\u56fe\u6a21\u5f0f">
+          <button type="button" className={mode === 'edit' ? 'active' : ''} aria-pressed={mode === 'edit'} onClick={() => setMode('edit')} title="\u7f16\u8f91 Markdown" aria-label="\u7f16\u8f91 Markdown"><Pencil size={14} aria-hidden="true" /><span>{'\u7f16\u8f91'}</span></button>
+          <button type="button" className={mode === 'read' ? 'active' : ''} aria-pressed={mode === 'read'} onClick={() => setMode('read')} title="\u9605\u8bfb\u6e32\u67d3\u7ed3\u679c" aria-label="\u9605\u8bfb\u6e32\u67d3\u7ed3\u679c"><BookOpen size={14} aria-hidden="true" /><span>{'\u9605\u8bfb'}</span></button>
         </div>
         <button type="button" className={'markdown-toc-toggle' + (tocOpen ? ' active' : '')} onClick={() => setTocOpen((open) => !open)} title={tocOpen ? '关闭目录' : '打开目录'} aria-label={tocOpen ? '关闭目录' : '打开目录'} aria-pressed={tocOpen}><ListTree size={16} aria-hidden="true" /><span>目录</span></button>
-        {mode === 'edit' && <div className="markdown-source-tools" role="toolbar" aria-label="Markdown \u683c\u5f0f\u5de5\u5177">
-          <button type="button" onClick={() => insertMarkdown('# ', '', '\u6807\u9898')} title="\u63d2\u5165\u4e00\u7ea7\u6807\u9898" aria-label="\u63d2\u5165\u4e00\u7ea7\u6807\u9898"><Heading1 size={14} /></button>
-          <button type="button" onClick={() => insertMarkdown('**', '**', '\u7c97\u4f53')} title="\u63d2\u5165\u7c97\u4f53" aria-label="\u63d2\u5165\u7c97\u4f53"><Bold size={14} /></button>
-          <button type="button" onClick={() => insertMarkdown('- ', '', '\u5217\u8868\u9879')} title="\u63d2\u5165\u65e0\u5e8f\u5217\u8868" aria-label="\u63d2\u5165\u65e0\u5e8f\u5217\u8868"><List size={14} /></button>
-          <button type="button" onClick={() => insertMarkdown('1. ', '', '\u5217\u8868\u9879')} title="\u63d2\u5165\u6709\u5e8f\u5217\u8868" aria-label="\u63d2\u5165\u6709\u5e8f\u5217\u8868"><ListOrdered size={14} /></button>
-          <button type="button" onClick={insertLink} title="\u63d2\u5165\u94fe\u63a5" aria-label="\u63d2\u5165\u94fe\u63a5"><LinkIcon size={14} /></button>
-          <button type="button" onClick={() => imageInputRef.current?.click()} title="\u63d2\u5165\u56fe\u7247" aria-label="\u63d2\u5165\u56fe\u7247"><ImagePlus size={14} /></button>
-          <button type="button" onClick={insertImageUrl} title="\u63d2\u5165\u56fe\u7247\u5730\u5740" aria-label="\u63d2\u5165\u56fe\u7247\u5730\u5740"><LinkIcon size={14} /></button>
-          <button type="button" className={editSurface === 'source' ? 'active' : ''} onClick={() => setEditSurface((surface) => surface === 'live' ? 'source' : 'live')} title={editSurface === 'live' ? '\u5207\u6362\u4e3a\u5b8c\u6574\u6e90\u7801' : '\u5207\u6362\u4e3a\u5b9e\u65f6\u9884\u89c8'} aria-label={editSurface === 'live' ? '\u5207\u6362\u4e3a\u5b8c\u6574\u6e90\u7801' : '\u5207\u6362\u4e3a\u5b9e\u65f6\u9884\u89c8'}><Code2 size={14} /></button>
-        </div>}
+  </>;
+  const saveIndicator = (
+        <span className={'markdown-save-state ' + saveState} role="status" aria-live="polite">{saveState === 'saving' && <LoaderCircle size={13} className="spin" aria-hidden="true" />}{saveState === 'saved' && <Check size={13} aria-hidden="true" />}{saveState === 'saving' ? '\u4fdd\u5b58\u4e2d' : saveState === 'error' ? '\u4fdd\u5b58\u5931\u8d25' : '\u5df2\u4fdd\u5b58'}</span>
+  );
+  return (
+    <section className="markdown-resource-tab">
+      {toolbarInTopBar ? <>
+        {createPortal(viewControls, documentToolbar!.controlsHost!)}
+        {createPortal(saveIndicator, documentToolbar!.saveHost!)}
+      </> : <header className="markdown-resource-toolbar">{viewControls}{saveIndicator}</header>}
         <input ref={imageInputRef} className="markdown-image-input" type="file" accept="image/*" onChange={(event) => { insertImageFile(event.target.files?.[0]); event.target.value = ''; }} />
-        <span className={'markdown-save-state ' + saveState}>{saveState === 'saving' && <LoaderCircle size={13} className="spin" aria-hidden="true" />}{saveState === 'saved' && <Check size={13} aria-hidden="true" />}{saveState === 'saving' ? '\u4fdd\u5b58\u4e2d' : saveState === 'error' ? '\u4fdd\u5b58\u5931\u8d25' : '\u5df2\u4fdd\u5b58'}</span>
-      </header>
       {(saveError || operationError) && <div className="file-tab-hint error" role="alert">
         <span>{saveError || operationError}</span>
         {saveError && <>
@@ -981,6 +972,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink }: M
           <button type="button" onClick={() => { if (window.confirm('重新加载会丢弃当前编辑草稿，请先导出需要保留的内容。继续？')) void reload(); }}>重新加载磁盘版本</button>
         </>}
       </div>}
+      {mode === 'edit' && !loading && !error && <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertMarkdown} onImage={() => imageInputRef.current?.click()} sourceMode={editSurface === 'source'} onToggleSource={() => setEditSurface((surface) => surface === 'live' ? 'source' : 'live')} />}
       <div className={`markdown-resource-body mode-${mode}${tocOpen ? ' has-toc' : ''}`}>
         <div ref={contentScrollerRef} className="markdown-resource-content">
         {loading && <p className="file-tab-hint">{'\u6b63\u5728\u52a0\u8f7d\u6587\u4ef6\u2026'}</p>}
@@ -1026,8 +1018,9 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink }: M
             </>}
           </aside>}
           <div className="markdown-editor-context-shell" onContextMenu={openEditorContextMenu}>
-            <MarkdownLivePreviewEditor key={editSurface} ref={liveEditorRef} markdown={editSurface === 'live' ? bodyWithoutTitle : body} sourceMode={editSurface === 'source'} sessionId={editorSessionId} onChange={editSurface === 'live' ? updateEditorBody : updateSourceBody} onBlur={saveImmediately} onOpenWikiLink={openWikiLink} placeholder={'\u5f00\u59cb\u5199\u2026'} />
+            <MarkdownLivePreviewEditor key={editSurface} ref={liveEditorRef} documentPath={path} markdown={editSurface === 'live' ? bodyWithoutTitle : body} sourceMode={editSurface === 'source'} sessionId={editorSessionId} onChange={editSurface === 'live' ? updateEditorBody : updateSourceBody} onBlur={saveImmediately} onOpenWikiLink={openWikiLink} placeholder={'\u5f00\u59cb\u5199\u2026'} />
             {editorContextMenu && createPortal(<div className={`markdown-editor-context-menu${editorContextMenu.submenuSide === 'left' ? ' submenu-left' : ''}${editorContextMenu.verticalSide === 'bottom' ? ' menu-bottom' : ''}`} style={{ left: editorContextMenu.x, top: editorContextMenu.y }} onClick={(event) => event.stopPropagation()} role="menu" aria-label="Markdown 编辑菜单">
+              <button type="button" onClick={() => { closeEditorContextMenu(); setTemplateOpen(true); }}><Plus size={17} aria-hidden="true" /><span>全部样式模板（{markdownTemplates.length}）…</span></button>
               <button type="button" onClick={() => { insertLink(); closeEditorContextMenu(); }}><LinkIcon size={17} aria-hidden="true" /><span>新增链接</span></button>
               <button type="button" onClick={() => { insertLink(); closeEditorContextMenu(); }}><ExternalLink size={17} aria-hidden="true" /><span>新增外部链接</span></button>
               <div className="markdown-editor-menu-parent" onMouseEnter={() => setEditorMenuSection('format')}>
@@ -1062,13 +1055,16 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink }: M
               <div className="markdown-editor-menu-parent" onMouseEnter={() => setEditorMenuSection('insert')}>
                 <button type="button" aria-haspopup="menu" aria-expanded={editorMenuSection === 'insert'} onFocus={() => setEditorMenuSection('insert')} onClick={() => setEditorMenuSection((section) => section === 'insert' ? null : 'insert')}><Plus size={17} aria-hidden="true" /><span>插入</span><ChevronRight size={16} aria-hidden="true" /></button>
                 {editorMenuSection === 'insert' && <div className="markdown-editor-submenu" role="menu" aria-label="插入">
-                  <button type="button" onClick={() => insertEditorSnippet('[^1]: 脚注内容')}><span className="markdown-editor-menu-glyph">¹</span><span>脚注</span></button>
-                  <button type="button" onClick={() => insertEditorSnippet('| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |')}><Table2 size={17} aria-hidden="true" /><span>表格</span></button>
-                  <button type="button" onClick={() => insertEditorSnippet('> [!NOTE] 提示\n> 在这里输入内容')}><Quote size={17} aria-hidden="true" /><span>标注块</span></button>
-                  <button type="button" onClick={() => insertEditorSnippet('---')}><Minus size={17} aria-hidden="true" /><span>分隔线</span></button>
+                  <button type="button" onClick={() => { closeEditorContextMenu(); setTemplateOpen(true); }}><Plus size={17} aria-hidden="true" /><span>全部模板…</span></button>
+                  <button type="button" onClick={() => { imageInputRef.current?.click(); closeEditorContextMenu(); }}><ImagePlus size={17} aria-hidden="true" /><span>本地图片</span></button>
+                  <button type="button" onClick={() => { insertImageUrl(); closeEditorContextMenu(); }}><ImagePlus size={17} aria-hidden="true" /><span>图片地址</span></button>
+                  <button type="button" onClick={() => { closeEditorContextMenu(); insertTemplate(markdownTemplates.find((item) => item.id === 'footnote')!); }}><span className="markdown-editor-menu-glyph">¹</span><span>脚注</span></button>
+                  <button type="button" onClick={() => { closeEditorContextMenu(); insertTemplate(markdownTemplates.find((item) => item.id === 'table')!); }}><Table2 size={17} aria-hidden="true" /><span>表格</span></button>
+                  <button type="button" onClick={() => { closeEditorContextMenu(); insertTemplate(markdownTemplates.find((item) => item.id === 'callout-NOTE')!); }}><Quote size={17} aria-hidden="true" /><span>标注块</span></button>
+                  <button type="button" onClick={() => { closeEditorContextMenu(); insertTemplate(markdownTemplates.find((item) => item.id === 'rule')!); }}><Minus size={17} aria-hidden="true" /><span>分隔线</span></button>
                   <div className="markdown-editor-submenu-divider" />
-                  <button type="button" onClick={() => insertEditorSnippet('```text\n代码\n```')}><Code2 size={17} aria-hidden="true" /><span>代码块</span></button>
-                  <button type="button" onClick={() => insertEditorSnippet('$$\n公式\n$$')}><Sigma size={17} aria-hidden="true" /><span>数学块</span></button>
+                  <button type="button" onClick={() => { closeEditorContextMenu(); insertTemplate(markdownTemplates.find((item) => item.id === 'code')!); }}><Code2 size={17} aria-hidden="true" /><span>代码块</span></button>
+                  <button type="button" onClick={() => { closeEditorContextMenu(); insertTemplate(markdownTemplates.find((item) => item.id === 'math')!); }}><Sigma size={17} aria-hidden="true" /><span>数学块</span></button>
                 </div>}
               </div>
               <div className="markdown-editor-menu-divider" />

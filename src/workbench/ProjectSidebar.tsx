@@ -1,4 +1,4 @@
-import { Check, FolderPlus, ListFilter, Plus, Trash2, X } from 'lucide-react';
+import { Check, FolderPlus, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AgentSession, Project, Workspace } from '../core/workspace';
 import type { WorkbenchLabels } from './workbenchLabels';
@@ -51,6 +51,8 @@ export interface ProjectSidebarProps {
   onOpenSettings: () => void;
   /** A scene-owned contextual sidebar panel, when the active scene contributes one. */
   contextualSidebar?: ReactNode;
+  /** Optional scene-owned replacement for legacy project/workspace navigation. */
+  workspaceNavigation?: ReactNode;
   contextualSidebarLabel?: string;
   /** When true, the scene-owned sidebar occupies the whole navigation column. */
   sidebarWorkspaceOpen?: boolean;
@@ -91,6 +93,7 @@ export function ProjectSidebar({
   onOpenCommandPalette,
   onOpenSettings,
   contextualSidebar,
+  workspaceNavigation,
   contextualSidebarLabel,
   sidebarWorkspaceOpen = false,
 }: ProjectSidebarProps) {
@@ -208,16 +211,6 @@ export function ProjectSidebar({
             >
               <span>{pickerLabel}</span>
             </button>
-            <button
-              type="button"
-              className="workbench-scene-picker-toggle"
-              aria-label="Select scenes"
-              title="Select scenes"
-              aria-expanded={scenePickerOpen}
-              onClick={() => setScenePickerOpen((current) => !current)}
-            >
-              <ListFilter size={16} aria-hidden="true" />
-            </button>
           </div>
           {scenePickerOpen && (
             <div className="workbench-scene-picker-menu" role="menu" aria-label={labels.scenes}>
@@ -308,6 +301,7 @@ export function ProjectSidebar({
           <div className="workbench-sidebar-file-tree">{contextualSidebar}</div>
         </section>
       )}
+      {workspaceNavigation ?? (
       <section className="workbench-sidebar-section workbench-sidebar-projects">
         <header className="workbench-sidebar-heading">
           <span>{labels.projects}</span>
@@ -366,6 +360,7 @@ export function ProjectSidebar({
           </ul>
         )}
       </section>
+      )}
       <footer className="workbench-sidebar-footer">
         <button type="button" className="workbench-tool" onClick={onOpenCommandPalette}>
           <span className="workbench-tool-icon" aria-hidden="true">{commandIcon}</span>

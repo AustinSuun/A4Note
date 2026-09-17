@@ -162,8 +162,9 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
   margin-bottom: 10px;
 }
 .workbench-scene-picker { position: relative; padding: 0 2px; }
-.workbench-scene-picker-control { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 4px; }
-.workbench-scene-picker-trigger {
+.workbench-scene-picker-control { display: grid; grid-template-columns: minmax(0, 1fr); }
+.workbench-scene-picker-trigger,
+.workbench-sidebar-projects > .workbench-sidebar-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -181,21 +182,15 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
   text-align: left;
   cursor: default;
 }
-.workbench-scene-picker-toggle {
-  display: grid;
-  width: 32px;
-  min-height: 32px;
-  place-items: center;
-  border: 0;
-  border-radius: 6px;
-  background: var(--surface-soft);
-  color: var(--muted);
-  cursor: pointer;
+.workbench-sidebar-projects > .workbench-sidebar-heading {
+  box-sizing: border-box;
+  width: calc(100% - 4px);
+  margin: 0 2px;
+  letter-spacing: normal;
+  text-transform: none;
 }
 .workbench-scene-picker-trigger:hover { background: var(--surface-soft); }
 .workbench-scene-picker-trigger[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent-strong); }
-.workbench-scene-picker-toggle:hover,
-.workbench-scene-picker-toggle[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent-strong); }
 .workbench-scene-picker-menu {
   position: absolute;
   top: calc(100% + 4px);
@@ -483,7 +478,7 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
 .file-tree-row.renaming .file-tree-rename-input { min-width: 0; flex: 1 1 auto; font: inherit; font-size: inherit; outline: none; }
 .file-tree-row.renaming .file-tree-rename-input:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent); }
 .file-tree-rename-extension { flex: 0 0 auto; margin-right: 2px; color: var(--muted); font-size: .86em; }
-.workbench-sidebar-footer { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); }
+.workbench-sidebar-footer { display: flex; flex: 0 0 auto; flex-direction: column; gap: 2px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
 .workbench-sidebar.scene-workspace-view { gap: 8px; }
 .workbench-sidebar-workspace { flex: 1 1 auto; min-height: 0; }
 .workbench-sidebar-workspace-header {
@@ -814,6 +809,18 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
 .window-titlebar-projectbar .workbench-topbar-status { flex: 0 1 300px; max-width: 30%; }
 .workbench-status-text { color: var(--accent-strong); font-size: var(--ui-body-small-font-size); }
 .workbench-topbar-actions { display: flex; flex: 0 1 auto; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }
+/* Active document controls share the title bar; save state follows Open. */
+.workbench-document-controls { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+.workbench-document-save { display: flex; flex: 0 0 auto; align-items: center; margin-left: 6px; }
+.workbench-document-save .markdown-save-state { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.workbench-document-controls:empty, .workbench-document-save:empty { display: none; }
+.workbench-topbar:has(.workbench-document-controls:not(:empty)) .workbench-breadcrumb { flex: 1 1 0; min-width: 0; overflow: hidden; }
+.workbench-topbar:has(.workbench-document-controls:not(:empty)) .workbench-topbar-actions { flex: 0 0 auto; }
+@media (max-width: 1100px) {
+  .workbench-document-controls { gap: 2px; }
+  .workbench-document-controls .markdown-toc-toggle span { display: none; }
+  .window-titlebar-projectbar .workbench-topbar:has(.workbench-document-controls:not(:empty)) { padding-left: 8px; padding-right: 8px; gap: 5px; }
+}
 
 .workbench-action {
   min-height: 27px;
@@ -1305,7 +1312,7 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
 .agent-composer-hint { margin-right: auto; color: var(--muted); font-size: var(--ui-caption-font-size); }
 .markdown-resource-tab { display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; }
 .markdown-resource-body { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--bg); }
-.markdown-resource-body.mode-read { background: var(--surface); }
+.markdown-resource-body.mode-read { background: var(--bg); }
 .markdown-resource-content { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 0 22px 22px; }
 .markdown-resource-toolbar { display: flex; align-items: center; gap: 11px; min-height: 42px; padding: 5px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .markdown-resource-mode-switch { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-soft); }
@@ -1494,7 +1501,7 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
 .markdown-live-codemirror .cm-md-list-line {
   position: relative;
   min-height: 1.5em;
-  padding-left: 1.65em !important;
+  padding-left: .65em !important;
 }
 /* The marker is a replaced widget, not a pseudo-element: see ListMarkerWidget.
    Colour and weight follow `.md-body li::marker` in markdown.css. */
@@ -1536,15 +1543,14 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
   transform: translateX(-1.2em);
   overflow: visible;
 }
-/* Indent ladder in em, matching `.md-body ul/ol` (1.65em) plus `li > ul` (1.45em)
-   per extra level. The reading view draws no vertical guide lines, so neither
-   does the editor. */
-.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-1 { padding-left: 3.1em !important; }
-.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-2 { padding-left: 4.55em !important; }
-.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-3 { padding-left: 6em !important; }
-.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-4 { padding-left: 7.45em !important; }
-.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-5 { padding-left: 8.9em !important; }
-.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-6 { padding-left: 10.35em !important; }
+/* Move ordinary lists one em toward the task column, preserving the 1.45em
+   nesting step. Task rows retain their independent indent ladder below. */
+.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-1 { padding-left: 2.1em !important; }
+.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-2 { padding-left: 3.55em !important; }
+.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-3 { padding-left: 5em !important; }
+.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-4 { padding-left: 6.45em !important; }
+.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-5 { padding-left: 7.9em !important; }
+.markdown-live-codemirror .cm-md-list-line.cm-md-list-level-6 { padding-left: 9.35em !important; }
 .markdown-live-codemirror .cm-md-table-line {
   min-height: 1.55em;
   padding: 2px 10px !important;
@@ -1759,13 +1765,14 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
 .markdown-live-codemirror .cm-md-callout-title { color: var(--ink); font-weight: 760; }
 .markdown-live-codemirror .cm-md-callout-body { color: var(--ink); }
 .markdown-live-codemirror .cm-line.cm-md-code-fence,
-.markdown-live-codemirror .cm-line.cm-md-code-line { position: relative; padding: 0 14px; border-right: 1px solid rgba(237,243,239,.1); border-left: 3px solid var(--md-code-bg); background: var(--md-code-bg); color: var(--md-code-ink); }
+.markdown-live-codemirror .cm-line.cm-md-code-line { position: relative; padding: 0 14px; border: 0; background: var(--md-code-bg); color: var(--md-code-ink); }
+.markdown-live-codemirror .cm-line.cm-md-code-line { font-family: var(--font-code); font-size: .9em; line-height: var(--document-line-height, 1.5); }
 /* Caps come from the explicit start/end classes, so the closing fence no longer
    inherits the opening fence's top rounding. The opening fence doubles as the
    card's header bar: it keeps a clickable height and holds the language badge
    and the copy button, like the reading view's code card. */
-.markdown-live-codemirror .cm-line.cm-md-code-fence.cm-md-code-start { min-height: 30px; padding-top: 6px; border-top: 1px solid rgba(237,243,239,.1); border-top-right-radius: 9px; border-top-left-radius: 9px; }
-.markdown-live-codemirror .cm-line.cm-md-code-fence.cm-md-code-end { min-height: 14px; padding-bottom: 6px; border-bottom: 1px solid rgba(237,243,239,.1); border-bottom-right-radius: 9px; border-bottom-left-radius: 9px; box-shadow: 0 8px 16px -8px rgba(30,45,38,.28); }
+.markdown-live-codemirror .cm-line.cm-md-code-fence.cm-md-code-start { min-height: max(34px, 1.8em); padding-top: 4px; border-top: 0; border-top-right-radius: 9px; border-top-left-radius: 9px; }
+.markdown-live-codemirror .cm-line.cm-md-code-fence.cm-md-code-end { min-height: 10px; padding-bottom: 4px; border-bottom: 0; border-bottom-right-radius: 9px; border-bottom-left-radius: 9px; box-shadow: none; }
 /* The fence lines themselves are hidden. Collapsing their text as well keeps the
    card's cap at the 7px padding instead of leaving an empty dark row. */
 .markdown-live-codemirror .cm-line.cm-md-code-fence .cm-md-syntax-hidden { visibility: hidden; font-size: 0; }
@@ -1780,19 +1787,36 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
   height: 28px;
   place-items: center;
   padding: 0;
-  border: 1px solid rgba(237,243,239,.18);
+  border: 1px solid var(--md-code-border);
   border-radius: 6px;
-  background: rgba(237,243,239,.08);
+  background: var(--md-code-control);
   color: var(--md-code-ink);
   opacity: .72;
   cursor: pointer;
   transition: opacity 120ms ease, background-color 120ms ease;
 }
 .markdown-live-codemirror .cm-md-code-copy svg { width: 14px; height: 14px; }
+.markdown-live-codemirror .cm-md-code-copy-feedback {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 500 12px/1.4 var(--font-document);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.markdown-live-codemirror .cm-md-code-copy-feedback:empty { display: none; }
+.markdown-live-codemirror .cm-md-code-copy:has(.cm-md-code-copy-feedback:not(:empty)) { opacity: 1; }
+.markdown-live-codemirror .cm-md-code-copy:disabled { cursor: progress; }
+.markdown-live-codemirror .cm-md-code-copy.is-copy-error { color: var(--md-tok-invalid); }
 .markdown-live-codemirror .cm-line.cm-md-code-fence:hover .cm-md-code-copy { opacity: 1; }
-.markdown-live-codemirror .cm-md-code-copy:hover { background: rgba(237,243,239,.18); }
-.markdown-live-codemirror .cm-md-code-copy.is-copied { border-color: rgba(126,196,150,.5); color: #9ed5a8; opacity: 1; }
-.markdown-live-codemirror .cm-md-code-content { color: #edf3ef; font-family: var(--font-code); font-size: .9em; line-height: 1.65; }
+.markdown-live-codemirror .cm-md-code-copy:hover { background: var(--md-code-hover); }
+.markdown-live-codemirror .cm-md-code-copy.is-copied { border-color: var(--accent-strong); color: var(--accent-strong); opacity: 1; }
+.markdown-live-codemirror .cm-md-code-content { color: var(--md-code-ink); font-family: inherit; font-size: inherit; line-height: inherit; }
 .markdown-live-codemirror .cm-md-link { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 2px; }
 .markdown-live-codemirror .cm-md-highlight,
 .markdown-live-codemirror .cm-md-highlight-source { padding: .08em .26em; border-radius: 4px; background: var(--md-highlight); color: var(--ink); }
@@ -1994,7 +2018,9 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
 .markdown-property-summary-item strong { overflow: hidden; max-width: 260px; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
 .markdown-content-start { min-width: 0; }
 .markdown-resource-preview .markdown-document-title { margin: 48px 0 20px; color: var(--ink); font-size: calc(var(--document-font-size) * 2); font-weight: 780; line-height: 1.2; text-decoration: none; }
-.markdown-resource-preview { flex: 1; width: 100%; height: 100%; min-height: 0; padding: 24px 28px 72px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-family: var(--font-document); font-size: var(--document-font-size); line-height: var(--document-line-height); }
+/* Reading and editing share the outer content scroller. The article must not
+   become a second framed, fixed-height scroll viewport inside the document. */
+.markdown-resource-body .markdown-resource-preview { flex: 0 0 auto; width: 100%; height: auto; min-width: 0; min-height: 100%; overflow: visible; padding: 0 8px 72px; border: 0; border-radius: 0; background: transparent; font-family: var(--font-document); font-size: var(--document-font-size); line-height: var(--document-line-height); }
 /* The TOC is pinned to the resource viewport while its list scrolls on its own. */
 .markdown-toc-panel { position: absolute; z-index: 2; top: 0; right: 0; bottom: 0; display: flex; width: min(280px, 28vw); min-width: 220px; max-width: 320px; flex-direction: column; min-height: 0; overflow: hidden; border-left: 0; background: transparent; contain: layout paint; animation: markdown-toc-reveal 180ms cubic-bezier(.2,.75,.25,1) both; }
 .markdown-toc-list {
@@ -2181,13 +2207,13 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
   left: 14px;
   color: var(--md-code-muted);
   content: attr(data-language);
-  font: 700 .72em/1 var(--font-code);
+  font: 700 .9em/1.2 var(--font-code);
   letter-spacing: .04em;
   opacity: .85;
   text-transform: uppercase;
 }
 .markdown-live-codemirror .cm-line.cm-md-code-fence[data-language] .cm-md-syntax-hidden { visibility: hidden; }
-.markdown-live-codemirror .cm-line.cm-md-code-fence[data-language]:has(.cm-md-code-fence-source)::before { opacity: .42; }
+/* data-language is omitted while the fence source is being edited. */
 .markdown-live-codemirror .cm-md-task-source { color: color-mix(in srgb, var(--accent-strong) 82%, var(--ink)); font-family: var(--font-code); font-size: inherit; line-height: inherit; }
 .markdown-live-codemirror .cm-md-task-item { color: var(--ink); }
 .markdown-live-codemirror .cm-md-bold-source,

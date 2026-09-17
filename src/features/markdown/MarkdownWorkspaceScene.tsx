@@ -30,9 +30,9 @@ function remapMovedPath(path: string, sourcePath: string, destinationPath: strin
   return `${destination}${separator}${suffix}`;
 }
 
-export type MarkdownWorkspaceSceneProps = { rootPath: string | null; projectName: string; showFileTree?: boolean };
+export type MarkdownWorkspaceSceneProps = { rootPath: string | null; projectName: string; showFileTree?: boolean; onOpenFolder?: () => void; folderPending?: boolean; folderError?: string };
 
-export function MarkdownWorkspaceScene({ rootPath, projectName, showFileTree = true }: MarkdownWorkspaceSceneProps) {
+export function MarkdownWorkspaceScene({ rootPath, projectName, showFileTree = true, onOpenFolder, folderPending, folderError }: MarkdownWorkspaceSceneProps) {
   const [treeRevision, setTreeRevision] = useState(0);
   const [openFiles, setOpenFiles] = useState<OpenMarkdownFile[]>([]);
   const [activePath, setActivePath] = useState('');
@@ -137,7 +137,10 @@ export function MarkdownWorkspaceScene({ rootPath, projectName, showFileTree = t
     return (
       <section className="scene active markdown-workspace-scene">
         <main className="markdown-workspace-editor markdown-workspace-empty-editor">
-          <p className="markdown-workspace-empty-hint">{zh.workbench.fileTreeNeedsFolder}</p>
+          <h2>打开文件夹以创建工作区</h2>
+          <p className="markdown-workspace-empty-hint">一个文件夹就是一个工作区，用来存放和查看独立笔记，并为后续脑图等文件预留空间。论文关联笔记仍在论文中管理。</p>
+          {onOpenFolder && <button type="button" className="primary rounded-button note-folder-empty-action" disabled={folderPending} onClick={onOpenFolder}>{folderPending ? '正在打开…' : '打开文件夹'}</button>}
+          {folderError && <p role="alert">{folderError}</p>}
         </main>
       </section>
     );
@@ -177,6 +180,7 @@ export function MarkdownWorkspaceScene({ rootPath, projectName, showFileTree = t
                   <MarkdownResourceTab
                     path={file.path}
                     name={file.name}
+                    active={activePath === file.path}
                     onOpenWikiLink={(target) => void openWikiLink(file.path, target)}
                     onRenamed={(renamed) => {
                       setOpenFiles((current) => current.map((candidate) => candidate.id === file.id ? { ...candidate, ...renamed } : candidate));

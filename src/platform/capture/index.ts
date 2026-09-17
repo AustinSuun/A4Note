@@ -44,3 +44,10 @@ export async function subscribeCaptureLibraryChanges(handler: () => void): Promi
 
 
 export const setCaptureEnrichment = (enrichMetadata: boolean) => control('preferences', { enrichMetadata });
+
+export const getCaptureConsent = () => control<{ requestId: string | null }>('consent_status');
+export const respondCaptureConsent = (requestId: string, allowed: boolean) => control('consent_respond', { requestId, allowed });
+export async function subscribeCaptureConsent(handler: () => void): Promise<() => void> {
+  if (!isTauri()) return () => {};
+  return listen('capture://consent-changed', handler);
+}

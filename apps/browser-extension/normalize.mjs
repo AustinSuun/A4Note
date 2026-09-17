@@ -30,14 +30,14 @@ export function normalizePage(page, captureId, capturedAt) {
     for (const key of keys) { const row = rows.find(m => m.name === key); if (row) return row.content.trim(); }
     return undefined;
   }
-  const title = field('title', ['citation_title', 'dc.title', 'dcterms.title', 'og:title']) || '';
-  field('authors', ['citation_author', 'dc.creator', 'dcterms.creator']);
-  const authorKeys = ['citation_author', 'dc.creator', 'dcterms.creator'];
+  const title = field('title', ['citation_title', 'dc.title', 'dcterms.title', 'eprints.title', 'og:title']) || '';
+  field('authors', ['citation_author', 'dc.creator', 'dcterms.creator', 'eprints.creators_name']);
+  const authorKeys = ['citation_author', 'dc.creator', 'dcterms.creator', 'eprints.creators_name'];
   const selectedAuthorKey = authorKeys.find(key => values([key]).length);
   // Equal names can represent distinct authors; preserve source order and multiplicity.
   const authors = entries(selectedAuthorKey ? [selectedAuthorKey] : []).map(m => ({ name: m.content.trim(), affiliations: [] }));
   const identifiers = {};
-  const doiKeys = ['citation_doi', 'prism.doi', 'dc.identifier'];
+  const doiKeys = ['citation_doi', 'prism.doi', 'dc.identifier.doi', 'dc.identifier', 'dcterms.identifier', 'bepress_citation_doi'];
   field('identifiers.doi', doiKeys);
   const doi = doiKeys.flatMap(key => values([key])).map(normalizeDoi).find(Boolean);
   if (doi) identifiers.doi = doi;
@@ -91,15 +91,27 @@ export function normalizePage(page, captureId, capturedAt) {
   for (const value of values(['citation_pdf_url'])) add(value, 'fulltext', '正文 PDF', 'citation_pdf_url');
   if (arxiv) add(`https://arxiv.org/pdf/${arxiv}`, 'fulltext', 'arXiv PDF', 'arxiv_url');
   if (/\.pdf$/i.test(source.pathname)) add(sourceUrl, 'fulltext', '当前 PDF', 'url');
+  const genericPdfs=[];
   for (const link of (page.links || []).slice(0, 2000)) {
-    const url = httpUrl(link.href, sourceUrl); if (!url) continue;
+    const url = httpUrl(link.href, sourceUrl); if (!url || url===sourceUrl) continue;
     const path = new URL(url).pathname;
     const label = String(link.label || '').slice(0, 300);
     // Restrict discovery to explicit publisher metadata or recognizable links.
-    const supplementary = /supplement|supporting information|附录|补充材料/i.test(label) || /\/supp(?:l|lement)/i.test(path);
-    if (supplementary) add(url, 'supplement', label || '补充材料候选', 'link');
+    const supplementary = /supplement|supporting information|additional files?|补充材料|附录|附件/i.test(label) || /\/supp(?:l|lement)/i.test(path);
+    if (supplementary || link.supplementary && /\.(?:pdf|zip|gz|csv|tsv|xlsx?|docx?|pptx?|txt|json|png|jpe?g|tiff?|mp4|avi|h5|nc)$/i.test(path)) add(url, 'supplement', label || '补充材料候选', 'link');
     else if (pmcid && new URL(url).origin === source.origin && /\/pdf\/[^/]+\.pdf$/i.test(path)) add(url, 'fulltext', label || 'PMC PDF', 'pmc_link');
-    else if (link.type === 'application/pdf' && /^(pdf|full text|全文|下载)/i.test(label)) add(url, 'fulltext', label, 'typed_link');
+    else {
+      const pdfPath=/\.pdf$/i.test(path)||/\/(?:pdf|epdf|pdfdirect|pdfft)(?:\/|$)/i.test(path)||new URL(url).searchParams.get('format')==='pdf';
+      const pdfLabel=/^(?:download\s+)?(?:article\s+|full[ -]text\s+)?pdf\b|^下载(?:全文|PDF)|^全文下载/i.test(label);
+      let sameDoi=false;try{sameDoi=Boolean(doi)&&decodeURIComponent(path).toLowerCase().includes(doi.toLowerCase());}catch{}
+      if(link.primaryPdf || sameDoi&&pdfPath || (pdfPath||link.type==='application/pdf')&&pdfLabel)genericPdfs.push({url,label});
+    }
+  }
+  if(!artifacts.some(a=>a.role==='fulltext')) {
+    const candidates=[...new Map(genericPdfs.map(a=>[a.url,a])).values()];
+    // A page may advertise related papers too: do not silently pick among them.
+    if(candidates.length===1)add(candidates[0].url,'fulltext',candidates[0].label||'正文 PDF','explicit_pdf_link');
+    else if(candidates.length>1)warnings.push('多个正文下载候选无法唯一确定，请在下载帮助中核对；未猜测其他论文的PDF');
   }
   if (!metadata.title) warnings.push('缺少可信论文标题；未用网页标题猜测');
   if (!metadata.authors.length) warnings.push('缺少作者列表');

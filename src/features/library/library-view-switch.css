@@ -1,0 +1,24 @@
+/* Match the note edit/read control, with a three-position selection surface. */
+.library-titlebar-switch.markdown-resource-mode-switch {
+  position: relative; isolation: isolate; display: inline-grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)); flex: 0 0 auto;
+  -webkit-app-region: no-drag;
+}
+.library-titlebar-switch::before {
+  content: ''; position: absolute; z-index: 0; pointer-events: none;
+  top: 2px; bottom: 2px; left: 2px; width: calc((100% - 8px) / 3);
+  border-radius: 6px; background: var(--surface);
+  box-shadow: 0 1px 3px rgba(37,53,46,.1);
+  transform: translateX(0); transition: transform 180ms cubic-bezier(.2,.8,.2,1);
+}
+.library-titlebar-switch[data-view='overview']::before { transform: translateX(calc(100% + 2px)); }
+.library-titlebar-switch[data-view='notes']::before { transform: translateX(calc(200% + 4px)); }
+.library-titlebar-switch.markdown-resource-mode-switch button { position: relative; z-index: 1; justify-content: center; white-space: nowrap; }
+.library-titlebar-switch.markdown-resource-mode-switch button.active { background: transparent; box-shadow: none; }
+.library-titlebar-switch button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+/* The library has no workspace breadcrumb: align to the screenshot's left titlebar slot. */
+.workbench-topbar:has(.library-titlebar-switch) .workbench-breadcrumb:empty { display: none; }
+.workbench-document-controls:has(.library-titlebar-switch) { margin-right: auto; }
+@media (prefers-reduced-motion: reduce) {
+  .library-titlebar-switch::before { transition: none; }
+}

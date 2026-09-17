@@ -1,15 +1,18 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="popup.css"><title>A4 Note · 保存论文</title></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="popup.css"><link rel="stylesheet" href="folder-tree.css"><link rel="stylesheet" href="compact-view.css"><title>A4 Note · 保存论文</title></head>
 <body>
 <header class="brand"><img src="icons/48.png" width="32" height="32" alt=""><div><strong>A4 Note</strong><span>保存论文到文献库</span></div><button id="scan" class="icon-button" disabled title="重新识别当前页" aria-label="重新识别当前页">↻</button></header>
 <div class="connection"><p id="connection-status" role="status" aria-live="polite">正在连接桌面…</p><button id="connect" hidden>连接桌面</button><button id="reconnect">重试</button></div>
 <main>
 <p id="status" class="status" role="status" aria-live="polite">正在识别当前论文…</p>
 <section id="result" hidden>
-  <article class="paper"><span class="eyebrow">当前论文</span><h1 id="title"></h1><p id="authors" class="authors"></p><p id="ids" class="identifiers"></p><div class="included"><span>✓ 论文信息</span><span id="pdf-evidence">正文链接待确认</span></div></article>
-  <section class="destination"><div class="section-heading"><label for="folder-select">保存到</label><button id="folders-refresh" class="text-button">刷新文件夹</button></div>
-    <select id="folder-select" disabled aria-describedby="folder-status"><option value="">正在读取文献库文件夹…</option></select>
+  <article class="paper"><span class="eyebrow">当前论文</span><h1 id="title"></h1><p id="authors" class="authors"></p><p id="ids" class="identifiers"></p><div id="paper-links" class="paper-links"></div><div class="included"><span>✓ 论文信息</span><span id="pdf-evidence">正文链接待确认</span></div></article>
+  <section class="destination"><div class="section-heading"><label id="folder-tree-label">保存到</label><div class="folder-actions"><button id="folders-toggle-all" class="text-button" disabled>全部收起</button><button id="folders-refresh" class="text-button" aria-label="刷新文件夹" title="刷新桌面文献库文件夹">刷新</button></div></div>
+    <div id="folder-tree" class="folder-tree" role="tree" aria-labelledby="folder-tree-label" aria-describedby="folder-tree-hint folder-status" aria-disabled="true"><p class="folder-tree-empty">正在读取文献库文件夹…</p></div>
+    <span id="folder-tree-hint" class="tree-hint">上下键移动，左右键展开收起，回车或空格选择保存位置。</span>
+    <div class="folder-selection-row"><span id="folder-selection" class="folder-selection">点击文件夹选择保存位置</span><button id="folder-locate" class="text-button" hidden>定位</button></div>
     <p id="folder-status" class="field-message" role="status">等待桌面连接…</p>
+    <div class="folder-memory-row"><span id="folder-memory-status">自动记住选择和展开状态</span><button id="folder-memory-clear" class="text-button" disabled title="清除上次保存位置并恢复默认展开状态">清除记忆</button></div>
   </section>
   <details class="disclosure" id="metadata-panel"><summary>论文信息 <span id="metadata-summary"></span></summary><div id="metadata-details"></div><p class="muted">按网页实际提供的信息保存；缺失字段不会编造。原始来源记录会一并入库。</p></details>
   <details class="disclosure"><summary>下载遇到问题？</summary><p class="muted">先提交到桌面；自动下载失败后，可使用浏览器辅助获取 PDF。</p><div id="files"></div><details><summary>识别提示</summary><ul id="warnings"></ul></details><button id="export" class="text-button">导出论文信息 JSON</button></details>

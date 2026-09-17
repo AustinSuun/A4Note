@@ -1,0 +1,44 @@
+.note-library-dialog { box-sizing: border-box; width: min(480px, calc(100vw - 32px)); max-height: calc(100vh - 40px); padding: 22px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font-family: inherit; font-size: var(--ui-scene-font-size); box-shadow: 0 18px 60px #0003; }
+.note-library-dialog::backdrop { background: #0005; }
+.note-library-dialog header,.note-library-dialog footer,.note-library-location { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.note-library-dialog h2 { margin: 0; font-size: var(--ui-control-font-size); }
+.note-library-dialog button { border: 1px solid var(--line); border-radius: 7px; padding: 8px 12px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
+.note-library-dialog button:hover:not(:disabled) { background: var(--accent-soft); }
+.note-library-dialog button:disabled { opacity: .55; cursor: default; }
+.note-library-options { display: grid; gap: 12px; margin-top: 20px; }
+.note-library-options button { display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px; transition: background-color .16s ease, border-color .16s ease; }
+.note-library-option-description,.note-library-dialog p { color: var(--muted); line-height: 1.6; font-size: var(--ui-body-small-font-size); overflow-wrap: anywhere; }
+.note-library-dialog form { display: grid; gap: 16px; margin-top: 20px; }
+.note-library-dialog label { display: grid; gap: 8px; }
+.note-library-dialog input { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid var(--line); padding: 9px; border-radius: 6px; font: inherit; background: var(--surface); color: var(--ink); }
+.note-library-location span { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--muted); }
+.note-library-location button { flex-shrink: 0; }
+.note-library-dialog .note-library-primary { color: var(--accent-strong); background: var(--accent-soft); }
+.note-library-dialog .note-library-error { color: #b04436; }
+.note-library-dialog :is(button,input):focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+
+.note-library-heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.note-library-heading-icon { display: grid; place-items: center; flex: 0 0 40px; height: 40px; border-radius: 11px; color: var(--accent-strong); background: var(--accent-soft); }
+.note-library-heading p { margin: 4px 0 0; }
+.note-library-dialog .note-library-close { display: grid; place-items: center; flex: 0 0 30px; height: 30px; padding: 0; border-color: transparent; color: var(--muted); align-self: flex-start; }
+.note-library-option-icon { display: grid; place-items: center; flex: 0 0 46px; height: 46px; border-radius: 10px; background: var(--surface-soft); color: var(--accent-strong); }
+.note-library-option-copy { display: grid; flex: 1; gap: 4px; min-width: 0; }
+.note-library-option-copy strong { font-weight: 650; line-height: 1.5; }
+.note-library-option-arrow { flex-shrink: 0; color: var(--muted); transition: transform .16s ease; }
+.note-library-options button:hover:not(:disabled) { border-color: var(--accent); }
+.note-library-options button:hover:not(:disabled) .note-library-option-arrow { transform: translateX(3px); }
+.note-library-safety,.note-library-progress { display: flex; align-items: center; gap: 7px; margin: 16px 0 0; }
+.note-library-safety svg,.note-library-progress svg { flex-shrink: 0; }
+.note-library-progress svg { animation: note-library-spin .9s linear infinite; }
+@keyframes note-library-spin { to { transform: rotate(360deg); } }
+@media (max-width: 420px) {
+  .note-library-dialog { padding: 18px; }
+  .note-library-options button { padding: 12px; gap: 10px; }
+  .note-library-option-icon { flex-basis: 36px; height: 36px; }
+  .note-library-heading-icon { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-library-options button,.note-library-option-arrow { transition: none; }
+  .note-library-options button:hover:not(:disabled) .note-library-option-arrow { transform: none; }
+  .note-library-progress svg { animation: none; }
+}

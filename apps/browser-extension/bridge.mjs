@@ -2,6 +2,7 @@ import {NativeMessenger} from './native-bridge.mjs';
 const native=new NativeMessenger();
 export const onBridgeDisconnect=listener=>native.subscribeDisconnect(listener);
 export const supportsFolders=hello=>hello.capabilities?.folderSelection===true && hello.nativeHost?.capabilities?.folderSelection===true;
+export const supportsCaptureFlow=hello=>supportsFolders(hello)&&hello.capabilities?.captureProgress===true&&hello.capabilities?.supplementFiles===true&&hello.capabilities?.sourcePdfRequired===true&&hello.capabilities?.captureRetry===true&&hello.nativeHost?.capabilities?.captureRetry===true;
 export const nativeHello=async()=>{try{return await native.request('hello');}catch(e){if(e.code!=='desktop_unavailable')throw e;return native.request('hello');}};
 const connectedRequest=async(operation,payload={})=>{await nativeHello();return native.request(operation,payload);};
 export const authorizeNative=()=>native.request('request_access');
@@ -13,9 +14,10 @@ const folderRequest=async(operation,payload={})=>{
   }
   return native.request(operation,payload);
 };
-export const sendCapture=envelope=>Object.hasOwn(envelope,'targetFolderId')?folderRequest('submit',envelope):connectedRequest('submit',envelope);
+export const sendCapture=async envelope=>{const hello=await nativeHello();if(!supportsCaptureFlow(hello))throw new Error('需要配套新版桌面与通信组件，避免旧版仅保存论文信息');return Object.hasOwn(envelope,'targetFolderId')?folderRequest('submit',envelope):connectedRequest('submit',envelope);};
 export const captureFolders=()=>folderRequest('list_folders');
-export const captureTasks=()=>connectedRequest('list_tasks');
+export const captureTasks=captureId=>connectedRequest('list_tasks',captureId?{captureId}:{});
+export const retryCapture=async(captureId,index)=>{const hello=await nativeHello();if(!supportsCaptureFlow(hello))throw new Error('需要配套新版桌面与通信组件');return native.request('retry_capture',{captureId,...(index===undefined?{}:{index})});};
 export const disconnectBridge=()=>native.close();
 export const bridgeError=error=>String(error?.message||'无法连接A4 Note，请检查桌面软件与通信组件');
 export async function uploadPdf(captureId,index,blob){

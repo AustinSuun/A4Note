@@ -1,4 +1,9 @@
-import { type DragEvent as ReactDragEvent, type KeyboardEvent, useEffect, useMemo, useState } from 'react';
+import { PaperSignals } from '../PaperSignals';
+import { LibraryNotesView } from './LibraryNotesView';
+import { LibraryViewSwitch } from './LibraryViewSwitch';
+import { ColumnSettings } from './ColumnSettings';
+import { type DragEvent as ReactDragEvent, type KeyboardEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { PaperContextMenu, type PaperMenuAnchor } from './PaperContextMenu';
 import type { LibraryFolder, PaperDocument } from '../../core/types';
 import { WorkspacePanelHost } from '../../workbench';
 import { zh } from '../../ui/zh';
@@ -32,6 +37,8 @@ export function LibraryScene({
   onBulkSelectionChange,
   onMovePapersToFolder,
   onOpenPaper,
+  onOpenNote,
+  onCreateNote,
   onSelectTag,
   onSelectFolder,
   onSortChange,
@@ -49,12 +56,12 @@ export function LibraryScene({
   onOpenBulkTagsEdit,
   onBulkDelete,
   onDeletePaper,
-  onCopyMarkdown,
-  onCopyCsv,
   onCopyBibtex,
   onCopyBulkBibtex,
 }: LibrarySceneProps) {
-  const [view, setView] = useState<'list' | 'overview'>('list');
+  const [paperMenu, setPaperMenu] = useState<PaperMenuAnchor | null>(null);
+  const closePaperMenu = useCallback(() => setPaperMenu(null), []);
+  const [view, setView] = useState<'list' | 'overview' | 'notes'>('list');
   const [visibleColumns, setVisibleColumns] = useState<Record<LibraryColumnId, boolean>>(loadLibraryColumns);
 
   // The host supplies the single filtered/sorted list used by the view and exports.
@@ -69,6 +76,17 @@ export function LibraryScene({
   const detailPanel = sidePanels.find((panel) => panel.id === 'library.details')?.panel;
   const detailView = panelViews.find((view) => view.id === 'library.details' && view.sceneId === 'library');
   const detailVisible = Boolean(detailOpen && selectedInView && detailPanel && detailView);
+
+  const menuPaper = paperMenu && selectedInView?.paperId === paperMenu.paperId ? selectedInView : null;
+  useEffect(() => { setPaperMenu(null); }, [query, activeTag, activeFolderId, view]);
+  useEffect(() => {
+    if (paperMenu && paperMenu.paperId !== selectedInView?.paperId) setPaperMenu(null);
+  }, [paperMenu, selectedInView?.paperId]);
+  const openPaperMenu = (paperId: string, x: number, y: number, trigger: HTMLElement) => {
+    // Select before rendering actions: callbacks supplied by the host use the selected paper.
+    onSelectPaper(paperId);
+    setPaperMenu({ paperId, x, y, trigger });
+  };
 
   const activeFolderLabel = useMemo(() => {
     switch (activeFolderId) {
@@ -100,7 +118,14 @@ export function LibraryScene({
   };
 
   const handleTableKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!visiblePapers.length) return;
+    if (event.target !== event.currentTarget || !visiblePapers.length) return;
+    if ((event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) && selectedInView) {
+      event.preventDefault();
+      const row = event.currentTarget.querySelector('tr.selected');
+      const rect = row?.getBoundingClientRect() ?? event.currentTarget.getBoundingClientRect();
+      openPaperMenu(selectedInView.paperId, rect.left + 36, rect.top + 24, event.currentTarget);
+      return;
+    }
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       const nextIndex = selectedIndex < 0 ? 0 : Math.min(selectedIndex + 1, visiblePapers.length - 1);
@@ -142,7 +167,7 @@ export function LibraryScene({
       <div className={`library-layout ${detailVisible ? 'detail-open' : ''}`.trim()}>
         <section className="library-main">
           <div className="library-commandbar">
-            <div className="library-view-switch" role="group" aria-label="文献显示方式"><button type="button" className={view === 'list' ? 'active' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')}>列表</button><button type="button" className={view === 'overview' ? 'active' : ''} aria-pressed={view === 'overview'} onClick={() => setView('overview')}>综览</button></div>
+            <LibraryViewSwitch view={view} onChange={setView} />
             <label className="library-search-field">
               <LibraryIcon name="search" />
               <input ref={searchInputRef} value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={zh.library.search} />
@@ -163,48 +188,26 @@ export function LibraryScene({
             >
               <LibraryIcon name="details" />
             </button>
-            <details className="library-menu library-columns-menu" hidden={view === 'overview'}>
-              <summary title="设置显示列" aria-label="设置显示列">
-                <LibraryIcon name="columns" />
-              </summary>
-              <div className="library-menu-popover library-column-menu align-right">
-                <label>
-                  <input type="checkbox" checked disabled />
-                  <span>标题</span>
-                </label>
-                {(Object.keys(libraryColumnLabels) as LibraryColumnId[]).map((columnId) => (
-                  <label key={columnId}>
-                    <input
-                      type="checkbox"
-                      checked={visibleColumns[columnId]}
-                      onChange={() => setVisibleColumns((current) => ({ ...current, [columnId]: !current[columnId] }))}
-                    />
-                    <span>{libraryColumnLabels[columnId]}</span>
-                  </label>
-                ))}
-              </div>
-            </details>
-            <details className="library-menu">
-              <summary title="导出当前结果" aria-label="导出当前结果">
-                <LibraryIcon name="export" />
-              </summary>
-              <div className="library-menu-popover align-right">
-                <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onCopyMarkdown)}>复制 Markdown 清单</button>
-                <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onCopyCsv)}>复制 CSV</button>
-              </div>
-            </details>
+            {view === 'list' && <ColumnSettings columns={[
+              { id: 'title', label: '标题', visible: true, fixed: true },
+              ...(Object.keys(libraryColumnLabels) as LibraryColumnId[]).map(id => ({ id, label: libraryColumnLabels[id], visible: visibleColumns[id] })),
+            ]} onChange={(id, visible) => {
+              if (Object.hasOwn(libraryColumnLabels, id)) setVisibleColumns(current => ({ ...current, [id]: visible }));
+            }} />}
             <button type="button" className="primary library-import-button" onClick={onOpenImport}>
               <LibraryIcon name="import" />
               <span>{zh.library.importPdf}</span>
             </button>
           </div>
 
-          <div className="library-filter-line">
+          {view === 'list' && <div className="library-filter-line">
             <span>{activeFolderLabel}</span>
             {activeTag !== 'all' && <span>标签：{activeTag}</span>}
             {query && <span>搜索：{query}</span>}
-            {filtersActive && <button type="button" onClick={clearFilters}>清除筛选</button>}
-          </div>
+            <div className="library-selection-actions library-inline-actions" role="group" aria-label="所选论文操作">
+              <button type="button" className="primary" disabled={!selectedInView} onClick={onOpenReader}><LibraryIcon name="book" />{zh.library.openReader}</button>
+            </div>
+          </div>}
 
           {bulkSelectedPaperIds.length > 0 ? (
             <div className="bulk-actions library-bulkbar">
@@ -217,30 +220,11 @@ export function LibraryScene({
                 <button type="button" onClick={() => onBulkSelectionChange([])}>{zh.library.clearSelection}</button>
               </div>
             </div>
-          ) : selectedInView ? (
-            <div className="library-selection-bar">
-              <div className="library-selection-actions">
-                <button type="button" className="primary" onClick={onOpenReader}><LibraryIcon name="book" />{zh.library.openReader}</button>
-                <button type="button" onClick={() => onDetailOpenChange(!detailOpen)}><LibraryIcon name="details" />{zh.library.details}</button>
-                <button type="button" onClick={onOpenRelations}><LibraryIcon name="relations" />{zh.library.viewRelations}</button>
-                <details className="library-menu">
-                  <summary title="更多操作" aria-label="更多操作"><LibraryIcon name="more" /></summary>
-                  <div className="library-menu-popover align-right">
-                    <FolderMoveMenu folders={folders} onMove={(folderId) => onMovePapersToFolder([selectedInView.paperId], folderId)} />
-                    <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenMetadataEdit)}><LibraryIcon name="edit" />{zh.library.edit}</button>
-                    <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenTagsEdit)}><LibraryIcon name="tag" />{zh.library.tagsEdit}</button>
-                    <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenTranslationImport)}><LibraryIcon name="translate" />{zh.library.importTranslationPdf}</button>
-                    <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onCopyBibtex)}><LibraryIcon name="export" />{zh.library.copyBibtex}</button>
-                    <button type="button" className="danger" onClick={(event) => runMenuAction(event.currentTarget, onDeletePaper)}><LibraryIcon name="trash" />{zh.library.delete}</button>
-                  </div>
-                </details>
-              </div>
-            </div>
-          ) : (
-            <div className="library-selection-bar empty"><span>未选择文献</span></div>
-          )}
+          ) : null}
 
-          {view === 'overview' ? (
+          {view === 'notes' ? (
+            <LibraryNotesView papers={visiblePapers} onOpenPaper={onOpenPaper} onOpenNote={onOpenNote} onCreateNote={onCreateNote} />
+          ) : view === 'overview' ? (
             <LibraryOverview papers={visiblePapers} selectedIds={bulkSelectedPaperIds} selectedId={selectedInView?.paperId} onSelect={onSelectPaper} onSelection={onBulkSelectionChange} onOpen={onOpenPaper} />
           ) : visiblePapers.length ? (
             <div className="paper-table-wrap" tabIndex={0} onKeyDown={handleTableKeyDown}>
@@ -265,6 +249,10 @@ export function LibraryScene({
                       onDragStart={(event) => writePaperDragData(event, selectedSet.has(paper.paperId) ? bulkSelectedPaperIds : [paper.paperId])}
                       onClick={() => onSelectPaper(paper.paperId)}
                       onDoubleClick={() => onOpenPaper(paper.paperId)}
+                      onContextMenu={(event) => {
+                        event.preventDefault(); event.stopPropagation();
+                        openPaperMenu(paper.paperId, event.clientX, event.clientY, event.currentTarget.closest<HTMLElement>('.paper-table-wrap') ?? event.currentTarget);
+                      }}
                     >
                       <td className="select-col" onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
                         <input type="checkbox" checked={selectedSet.has(paper.paperId)} onChange={() => toggleBulkPaper(paper.paperId)} aria-label={zh.library.selectPaper(paper.title)} />
@@ -283,22 +271,14 @@ export function LibraryScene({
                         </div>
                       </td>}
                       <td className="actions-col" onDoubleClick={(event) => event.stopPropagation()}>
-                        <details className="library-menu library-row-menu">
-                          <summary title={`操作：${paper.title}`} aria-label={`操作：${paper.title}`}>
-                            <LibraryIcon name="more" />
-                          </summary>
-                            <div className="library-menu-popover align-right">
-                            <FolderMoveMenu folders={folders} onMove={(folderId) => onMovePapersToFolder([paper.paperId], folderId)} />
-                            <button type="button" onClick={(event) => runMenuAction(event.currentTarget, () => onOpenPaper(paper.paperId))}><LibraryIcon name="book" />{zh.library.openReader}</button>
-                            <button type="button" onClick={(event) => runMenuAction(event.currentTarget, () => onDetailOpenChange(true))}><LibraryIcon name="details" />{zh.library.details}</button>
-                            <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenRelations)}><LibraryIcon name="relations" />{zh.library.viewRelations}</button>
-                            <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenMetadataEdit)}><LibraryIcon name="edit" />{zh.library.edit}</button>
-                            <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenTagsEdit)}><LibraryIcon name="tag" />{zh.library.tagsEdit}</button>
-                            <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onOpenTranslationImport)}><LibraryIcon name="translate" />{zh.library.importTranslationPdf}</button>
-                            <button type="button" onClick={(event) => runMenuAction(event.currentTarget, onCopyBibtex)}><LibraryIcon name="export" />{zh.library.copyBibtex}</button>
-                            <button type="button" className="danger" onClick={(event) => runMenuAction(event.currentTarget, onDeletePaper)}><LibraryIcon name="trash" />{zh.library.delete}</button>
-                          </div>
-                        </details>
+                        <button type="button" className="library-icon-button library-row-menu-trigger"
+                          title={`操作：${paper.title}`} aria-label={`操作：${paper.title}`} aria-haspopup="menu"
+                          aria-expanded={menuPaper?.paperId === paper.paperId}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            openPaperMenu(paper.paperId, rect.left, rect.bottom + 4, event.currentTarget);
+                          }}><LibraryIcon name="more" /></button>
                       </td>
                     </tr>
                   ))}
@@ -332,6 +312,12 @@ export function LibraryScene({
           />
         )}
       </div>
+      {paperMenu && menuPaper && <PaperContextMenu key={menuPaper.paperId} anchor={paperMenu} paper={menuPaper} folders={folders}
+        onClose={closePaperMenu}
+        onRead={() => onOpenPaper(menuPaper.paperId)} onDetails={() => onDetailOpenChange(true)}
+        onRelations={onOpenRelations} onEdit={onOpenMetadataEdit} onTags={onOpenTagsEdit}
+        onTranslation={onOpenTranslationImport} onCopy={onCopyBibtex} onDelete={onDeletePaper}
+        onMove={(folderId) => onMovePapersToFolder([menuPaper.paperId], folderId)} />}
     </section>
   );
 }
@@ -381,19 +367,6 @@ function SortIndicator({ active, direction }: { active: boolean; direction: Libr
   );
 }
 
-function PaperSignals({ paper }: { paper: PaperDocument }) {
-  const incomplete = paperMetadataIncomplete(paper);
-  return (
-    <div className="paper-index-signals">
-      <span className={paper.sourcePdf ? 'paper-signal ready' : 'paper-signal missing'}>{paper.sourcePdf ? 'PDF' : '缺 PDF'}</span>
-      {paper.translatedPdfs.length > 0 && <span className="paper-signal translated">译 {paper.translatedPdfs.length}</span>}
-      {paper.annotations.length > 0 && <span className="paper-signal annotated">注 {paper.annotations.length}</span>}
-      {paper.notes.length > 0 && <span className="paper-signal notes">记 {paper.notes.length}</span>}
-      {incomplete && <span className="paper-signal metadata">待补全</span>}
-    </div>
-  );
-}
-
 function LibraryEmptyState({ hasFilters, onClearFilters, onOpenImport }: { hasFilters: boolean; onClearFilters: () => void; onOpenImport: () => void }) {
   return (
     <div className="library-empty">
@@ -406,9 +379,7 @@ function LibraryEmptyState({ hasFilters, onClearFilters, onOpenImport }: { hasFi
   );
 }
 
-function paperMetadataIncomplete(paper: PaperDocument) {
-  return !paper.title.trim() || !paper.authors.trim() || !paper.year || !paper.venue.trim();
-}
+
 
 function runMenuAction(button: HTMLElement, action: () => void) {
   button.closest('details')?.removeAttribute('open');

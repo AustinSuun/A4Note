@@ -9,6 +9,7 @@ mod store;
 mod native_state;
 mod native_upload;
 mod native_runtime;
+mod native_consent;
 #[cfg(windows)] mod native_server;
 #[path = "../native_messaging/protocol.rs"] mod native_protocol;
 #[cfg(windows)] #[path = "../native_messaging/windows.rs"] mod native_windows;
@@ -26,9 +27,15 @@ fn slot()->&'static Mutex<Option<Arc<Service>>>{SERVICE.get_or_init(||Mutex::new
 fn current()->Result<Arc<Service>,String>{slot().lock().map_err(|_|"capture_service_lock")?.clone().ok_or("capture_service_not_started".into())}
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
-pub struct Control {action:String,capture_id:Option<String>,paper_id:Option<String>,file_id:Option<String>,local_path:Option<String>,enrich_metadata:Option<bool>}
+pub struct Control {action:String,capture_id:Option<String>,paper_id:Option<String>,file_id:Option<String>,local_path:Option<String>,enrich_metadata:Option<bool>,request_id:Option<String>,allowed:Option<bool>}
 #[tauri::command(async)]
-pub fn capture_control(app:AppHandle,request:Control)->Result<Value,String>{
+pub fn capture_control(app:AppHandle,window:tauri::WebviewWindow,request:Control)->Result<Value,String>{
+    if matches!(request.action.as_str(),"consent_status"|"consent_respond") {
+        if window.label()!="main" { return Err("consent_main_window_required".into()); }
+        if request.action=="consent_status" { return native_consent::status(); }
+        native_consent::resolve(request.request_id.as_deref().ok_or("missing_consent_id")?,request.allowed.ok_or("missing_consent_decision")?)?;
+        return Ok(json!({"ok":true}));
+    }
     if matches!(request.action.as_str(),"paper_details"|"open_library_file"|"attach_pdf"){
         let root=crate::app_paths::app_data_root(&app)?;let paper=request.paper_id.as_deref().ok_or("missing_paper_id")?;
         return match request.action.as_str(){
@@ -41,14 +48,14 @@ pub fn capture_control(app:AppHandle,request:Control)->Result<Value,String>{
     if request.action=="pair"{return Err("旧HTTP配对已停用，请使用新版原生通信扩展".into());}
     let native=native_runtime::current_native()?;let s=&native.service;
     match request.action.as_str(){
-        "disable"=>{native.revoke()?;Ok(json!({"enabled":false}))},
+        "disable"=>{native.revoke()?;native_consent::cancel();Ok(json!({"enabled":false}))},
         "preferences"=>{let enabled=request.enrich_metadata.ok_or("missing_preference")?;s.store.set_native_setting("enrich_metadata",enabled)?;s.enrich_metadata.store(enabled,Ordering::Release);Ok(json!({"ok":true}))},
         "retry"|"cancel"=>{s.store.action(request.capture_id.as_deref().ok_or("missing_capture_id")?,&request.action)?;Ok(json!({"ok":true}))},
         "reveal"=>{crate::app_paths::open_path_in_file_manager(&s.root)?;Ok(json!({"ok":true}))},
         _=>Err("unknown_capture_action".into()),
     }
 }
-pub fn shutdown(){if let Ok(s)=current(){s.enabled.store(false,Ordering::Release);s.terminating.store(true,Ordering::Release);s.generation.fetch_add(1,Ordering::AcqRel);}}
+pub fn shutdown(){native_consent::cancel();if let Ok(s)=current(){s.enabled.store(false,Ordering::Release);s.terminating.store(true,Ordering::Release);s.generation.fetch_add(1,Ordering::AcqRel);}}
 fn worker_loop(s:Arc<Service>) {
     loop {
         if s.terminating.load(Ordering::Acquire) { break; }
@@ -56,13 +63,26 @@ fn worker_loop(s:Arc<Service>) {
         let generation=s.generation.load(Ordering::Acquire);
         match s.store.claim() {
             Ok(Some((id,mut envelope)))=>{
+                let previous=match s.store.work_options(&id){Ok(v)=>v,Err(_)=>{s.enabled.store(false,Ordering::Release);continue;}};
                 if s.enrich_metadata.load(Ordering::Acquire){
                     metadata::enrich(&mut envelope,&|| !s.enabled.load(Ordering::Acquire) || generation!=s.generation.load(Ordering::Acquire) || s.store.cancelled(&id));
                     if s.store.save_enriched(&id,&envelope).is_err(){s.enabled.store(false,Ordering::Release);continue;}
                 }
-                let (mut state,mut result)=download::process(&s.root,&id,&envelope,|| !s.enabled.load(Ordering::Acquire) || generation!=s.generation.load(Ordering::Acquire) || s.store.cancelled(&id));
+                let (mut state,mut result)=download::process_with_progress(&s.root,&id,&envelope,|| !s.enabled.load(Ordering::Acquire) || generation!=s.generation.load(Ordering::Acquire) || s.store.cancelled(&id),&previous,|value| {
+                    if s.store.progress(&id,value).is_err(){s.enabled.store(false,Ordering::Release);}
+                });
                 if s.enabled.load(Ordering::Acquire) && generation==s.generation.load(Ordering::Acquire) && !s.store.cancelled(&id) {
-                    let imported=ingest::browser_files(&s.root,&envelope,&result).and_then(|files|ingest::ingest(&s.library_root,&envelope,&files,None));
+                    let mut importing=result.clone();importing["phase"]=json!("importing");
+                    if s.store.progress(&id,&importing).is_err(){s.enabled.store(false,Ordering::Release);continue;}
+                    let imported=ingest::browser_files(&s.root,&envelope,&result).and_then(|files| {
+                        // No metadata-only library entry when the requested source PDF
+                        // failed or was not discovered. Keep the independent task for
+                        // explicit retry; never delete/modify an existing paper here.
+                        if !files.iter().any(|file|file.role=="fulltext") {
+                            return Err("source_pdf_required".into());
+                        }
+                        ingest::ingest(&s.library_root,&envelope,&files,None)
+                    });
                     match imported {
                         Ok(value)=>{result["libraryImported"]=json!(true);result["library"]=value.clone();if let Some(notify)=&s.notify {notify(&value);}},
                         Err(error)=>{result["libraryImported"]=json!(false);result["libraryError"]=json!(error);state="needs_user".into();},

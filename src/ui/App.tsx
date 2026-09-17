@@ -1,3 +1,6 @@
+import { useNoteFolderWorkspaces } from '../features/markdown';
+import { DocumentToolbarProvider } from '../workbench/DocumentToolbar';
+import { onSummaryNoteSaved } from '../platform/library/summaryNotes';
 import { useCaptureLibraryUpdates } from '../features/library';
 import { flushPendingSaves } from '../platform/pendingSaves';
 import { isLibrarySmartView, selectLibraryView } from '../core/libraryViews';
@@ -522,6 +525,12 @@ export default function App() {
   const [readerSidePanelTab, setReaderSidePanelTab] = useState<ReaderSidePanelTab>(persistedUiState.readerSidePanelTab);
   const [noteDraftPatch, setNoteDraftPatch] = useState<NoteDraftPatch | null>(null);
   const [revision, setRevision] = useState(0);
+  useEffect(() => onSummaryNoteSaved(note => {
+    if (!aster.documents.get(note.paperId)) return;
+    try { aster.commands.execute('document.upsertNote', note); }
+    catch (error) { console.warn('总结笔记已保存，视图缓存更新失败', error); }
+    setRevision(current => current + 1);
+  }), [aster]);
   const [markdownTreeRevision, setMarkdownTreeRevision] = useState(0);
   const [restoreRestartPath, setRestoreRestartPath] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -860,11 +869,11 @@ export default function App() {
   const filteredPapers = useMemo(() => {
     const searched = aster.documents.search(query);
     const searchIds = new Set(searched.map((paper) => paper.paperId));
-    const foldered = selectLibraryView(aster.documents.list(), activeFolderId).filter((paper) => searchIds.has(paper.paperId));
+    const foldered = selectLibraryView(aster.documents.list(), activeFolderId, libraryFolders).filter((paper) => searchIds.has(paper.paperId));
     const tagged = activeTag === 'all' ? foldered : foldered.filter((paper) => paper.tags.includes(activeTag));
     const sorted = [...tagged].sort((left, right) => comparePaper(left, right, librarySort));
     return sorted;
-  }, [activeFolderId, activeTag, librarySort, query, revision]);
+  }, [activeFolderId, activeTag, libraryFolders, librarySort, query, revision]);
 
   useEffect(() => {
     if (activeTag !== 'all' && !tags.includes(activeTag)) {
@@ -1032,7 +1041,7 @@ export default function App() {
     }
   };
 
-  const setScene = (sceneId: string) => {
+  const setScene = (sceneId: string, targetWorkspaceId?: string) => {
     const scene = aster.scenes.list().find((candidate) => candidate.id === sceneId);
     if (!scene) return;
     if (scene?.pluginId && !aster.plugins.has(scene.pluginId)) return;
@@ -1040,7 +1049,7 @@ export default function App() {
     setActiveFileTabId(null);
     setSidebarWorkspaceOpen(scene.sidebarMode === 'workspace');
     setVisibleSceneIds((current) => (current.includes(sceneId) ? current : [...current, sceneId]));
-    const workspaceId = ensureWorkspaceId();
+    const workspaceId = targetWorkspaceId ?? ensureWorkspaceId();
     if (!workspaceId) return;
     ensureContextualSidebar(sceneId, workspaceId);
     // Compatibility contract: scene title comes from the plugin registry. A
@@ -1085,6 +1094,15 @@ export default function App() {
       workbenchStore.setActiveTab(canonicalTab.id);
     }
   };
+
+  const noteFolderWorkspaces = useNoteFolderWorkspaces({
+    workbench, activeScene,
+    onEnterWorkspace: workspaceId => setScene('markdown', workspaceId),
+    onSelectWorkspace: workspaceId => {
+      setScene(activeScene ?? 'overview', workspaceId);
+      setSidebarWorkspaceOpen(sidebarWorkspaceOpen);
+    },
+  });
 
   const addProjectFolder = async () => {
     setAddProjectPending(true);
@@ -2019,7 +2037,7 @@ export default function App() {
       onNoteSave={saveNote}
       onCreateNote={createNoteAndSwitch}
       noteDraftPatch={noteDraftPatch}
-      onNoteDraftPatchConsumed={() => setNoteDraftPatch(null)}
+      onNoteDraftPatchConsumed={() => setNoteDraftPatch(current => current === noteDraftPatch ? null : current)}
       onAppendAnnotationToNote={appendAnnotationToNote}
     />
   ) : (
@@ -2148,6 +2166,16 @@ export default function App() {
       activePath={activeMarkdownPath}
     />
   ) : null;
+  const openLinkedNote = (paperId: string, noteId?: string) => {
+    const paper = aster.documents.get(paperId);
+    if (!paper || (noteId && !paper.notes.some(note => note.id === noteId))) return;
+    const alreadyReading = activeScene === 'reader' && selectedPaperId === paperId && paperIdFromReaderTabKey(activeTab?.key ?? '') === paperId;
+    if (!alreadyReading) openReaderForPaper(paperId);
+    const mainNoteEditor = (alreadyReading ? readerContentMode : preferredReaderMode(paper)) === 'markdown' && paper.notes.length > 0;
+    setReaderSidePanelOpen(!mainNoteEditor);
+    setReaderSidePanelTab('notes');
+    setNoteDraftPatch({ openNote: { paperId, noteId, create: !noteId } });
+  };
   const readerOpenItems = workspaceTabs
     .filter((tab) => sceneForWorkspaceTab(tab) === 'reader' && (tab.kind === 'pdf' || (tab.kind === 'tool' && Boolean(paperIdFromReaderTabKey(tab.key)))))
     .map((tab) => ({
@@ -2155,6 +2183,8 @@ export default function App() {
       title: tab.title,
       hint: tab.kind === 'pdf' ? tabStateString(tab, 'path', tab.title) : tab.title,
       active: activeTab?.id === tab.id,
+      paperId: paperIdFromReaderTabKey(tab.key) ?? undefined,
+      notes: documents.find(paper => paper.paperId === paperIdFromReaderTabKey(tab.key))?.notes,
     }));
   // Core plugins register React-free identities. The host supplies trusted
   // first-party adapters through one feature-owned factory, then intersects
@@ -2171,6 +2201,8 @@ export default function App() {
     library: {
       papers: filteredPapers,
       folders: libraryFolders,
+      onOpenNote: openLinkedNote,
+      onCreateNote: (paperId) => openLinkedNote(paperId),
       selectedPaper,
       tags,
       activeTag,
@@ -2314,6 +2346,8 @@ export default function App() {
     },
     readerSidebar: {
       openItems: readerOpenItems,
+      onOpenNote: openLinkedNote,
+      onCreateNote: (paperId) => openLinkedNote(paperId),
       onSelectItem: (tabId) => {
         setSettingsOpen(false);
         setActiveFileTabId(null);
@@ -2354,8 +2388,8 @@ export default function App() {
       },
     },
     markdown: {
-      view: { rootPath: folderProjectPath, projectName: activeProject?.name ?? 'Markdown', showFileTree: false },
-      sidebar: markdownFileTree ?? <p className="workbench-sidebar-hint">请先打开一个项目文件夹。</p>,
+      view: { rootPath: folderProjectPath, projectName: activeProject?.name ?? 'Markdown', showFileTree: false, onOpenFolder: () => void noteFolderWorkspaces.openFolder(), folderPending: noteFolderWorkspaces.pending, folderError: noteFolderWorkspaces.error },
+      sidebar: markdownFileTree ?? noteFolderWorkspaces.navigation,
       resource: {
         onOpenFile: openFileTab,
         onRenamed: (tabId, file) => {
@@ -2399,7 +2433,7 @@ export default function App() {
       translatedFileId: readerTranslatedFileId,
       focusedAnnotationId: readerFocusedAnnotationId,
       noteDraftPatch,
-      onNoteDraftPatchConsumed: () => setNoteDraftPatch(null),
+      onNoteDraftPatchConsumed: () => setNoteDraftPatch(current => current === noteDraftPatch ? null : current),
       onNoteSave: saveNote,
       onCreateNote: createNoteAndSwitch,
       onFocusAnnotation: setReaderFocusedAnnotationId,
@@ -2878,6 +2912,7 @@ export default function App() {
   const hostActiveTabId = activeFileTabId ?? activeTab?.id ?? null;
 
   return (
+    <DocumentToolbarProvider enabled={(activeScene === 'markdown' || activeScene === 'reader' || activeScene === 'library') && !settingsOpen}>
     <WorkbenchShell
       sidebar={
         <ProjectSidebar
@@ -2897,6 +2932,7 @@ export default function App() {
           commandIcon={<CommandIcon />}
           settingsIcon={<SettingsGlyph size={16} strokeWidth={1.9} aria-hidden="true" />}
           contextualSidebar={contextualSidebar}
+          workspaceNavigation={noteFolderWorkspaces.navigation}
           contextualSidebarLabel={activeSidebarScene?.label}
           sidebarWorkspaceOpen={sidebarWorkspaceOpen && Boolean(activeSceneUsesWorkspaceSidebar)}
           onOpenScene={setScene}
@@ -2941,7 +2977,8 @@ export default function App() {
           canBrowseFolder={Boolean(folderProjectPath) || Boolean(activeSidebarView)}
           providers={agentProviders}
           providersLoading={agentProvidersLoading}
-          status={libraryStatus && activeScene !== 'library' ? <span className="workbench-status-text">{libraryStatus}</span> : null}
+          workspaceBreadcrumb={noteFolderWorkspaces.breadcrumb}
+          status={libraryStatus && !/^已加载\s*\d+\s*篇本地文献[。.]?$/.test(libraryStatus) && activeScene !== 'library' ? <span className="workbench-status-text">{libraryStatus}</span> : null}
           onToggleFileTree={toggleFileTree}
           onOpenInVSCode={() => folderProjectPath && void openPathInVSCode(folderProjectPath)}
           onRevealFolder={() => folderProjectPath && void revealPath(folderProjectPath)}
@@ -2994,6 +3031,7 @@ export default function App() {
       sidebarWidth={sidebarWidth}
       onSidebarWidthChange={setSidebarWidth}
     />
+    </DocumentToolbarProvider>
   );
 }
 

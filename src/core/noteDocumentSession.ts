@@ -41,6 +41,12 @@ export class NoteDocumentSession {
     this.emit({ title: this.snapshot.baselineTitle, content: this.snapshot.baselineContent, status: 'saved', error: '' });
     try { this.draft(this.snapshot); } catch { this.emit({ error: '草稿缓存清理失败，重启后可能仍会提示恢复，请保留导出的副本。' }); }
   }
+  async settle() { try { await this.running; } catch { /* explicit reload retains caller control */ } }
+  reloadContent(content: string) {
+    this.emit({ content, baselineContent: content, status: this.snapshot.title === this.snapshot.baselineTitle ? 'saved' : 'dirty', error: '' });
+    this.draft(this.snapshot);
+  }
+  fail(message: string) { this.emit({ status: 'error', error: message }); }
   pending() { return this.dirty() || this.running !== null; }
   async flush(): Promise<void> {
     if (this.running) return this.running;

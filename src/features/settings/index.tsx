@@ -1,4 +1,5 @@
 ﻿import { UpdateSettings } from './UpdateSettings';
+import './settings-typography.css';
 import { CaptureSettings } from './CaptureSettings';
 import { useState } from 'react';
 import { CircleHelp, LibraryBig, Palette, Plug, RefreshCw, Settings, SlidersHorizontal } from 'lucide-react';

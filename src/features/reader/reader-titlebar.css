@@ -1,0 +1,28 @@
+/* Reader-owned three-zone titlebar; leave workspace picker behavior untouched. */
+.workbench-topbar .workbench-document-controls:has(.reader-titlebar-tools) { flex: 1 1 0; min-width: 0; overflow: hidden; }
+.window-titlebar-projectbar .workbench-topbar:has(.workbench-document-controls .reader-titlebar-tools) .workbench-breadcrumb { flex: 0 0 auto; }
+.workbench-topbar:has(.workbench-document-controls .reader-titlebar-tools) .workbench-breadcrumb:empty { display: none; }
+.reader-titlebar-tools { flex: 1 1 0; width: 100%; min-width: 0; -webkit-app-region: no-drag; }
+.reader-titlebar-tools .reader-toolbar {
+  display: grid; grid-template-areas: none;
+  grid-template-columns: minmax(max-content, 1fr) max-content minmax(max-content, 1fr);
+  box-sizing: border-box; width: 100%; height: 36px; min-height: 0;
+  padding: 0 2px; gap: 6px; border: 0; background: transparent;
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+}
+.reader-titlebar-tools .reader-toolbar::-webkit-scrollbar { height: 4px; }
+.reader-titlebar-tools .reader-toolbar::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.reader-titlebar-tools .reader-toolbar:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+.reader-titlebar-tools .reader-toolbar-primary,
+.reader-titlebar-tools .reader-toolbar-center,
+.reader-titlebar-tools .reader-toolbar-end { grid-area: auto; min-width: max-content; margin: 0; flex: 0 0 auto; overflow: visible; }
+.reader-titlebar-tools .reader-toolbar-primary { justify-content: flex-start; }
+.reader-titlebar-tools .reader-toolbar-center { justify-content: center; }
+.reader-titlebar-tools .reader-toolbar-end { justify-content: flex-end; gap: 6px; }
+.reader-titlebar-tools .reader-toolbar .reader-toolbar-group { flex: 0 0 auto; min-height: 30px; padding: 0 2px; gap: 3px; background: transparent; box-shadow: none; }
+.reader-titlebar-tools .reader-toolbar button { min-height: 26px; }
+.reader-titlebar-tools .reader-toolbar .segmented button { min-height: 26px; padding: 0 7px; }
+.reader-titlebar-tools .reader-toolbar .reader-workspace-toggle { width: 30px; min-width: 30px; height: 30px; min-height: 30px; flex-basis: 30px; }
+.reader-main-workspace:not(:has(> .reader-toolbar)) { grid-template-rows: minmax(0, 1fr); }
+.reader-tool-popover { position: fixed; z-index: 500; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; -webkit-app-region: no-drag; }
+.reader-tool-popover .reader-tool-options-bar { position: static; transform: none; box-sizing: border-box; max-width: 100%; flex-wrap: wrap; background: var(--surface); color: var(--ink); }

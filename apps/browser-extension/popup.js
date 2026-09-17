@@ -1,3 +1,4 @@
+import './compact-view.js';
 import { browserAssist } from './browser-assist.mjs';
 import { setupBridge } from './bridge-ui.js';
 import { collectPage } from './collector.js';
@@ -18,12 +19,13 @@ async function scan() {
     if (!result?.result) throw new Error('页面不可读取；浏览器内置PDF查看器可返回论文详情页重试');
     const detected = normalizePage(result.result, crypto.randomUUID(), new Date().toISOString());
     const paperSignal = ['doi','arxiv','pmcid','pmid'].some(key => detected.metadata.identifiers[key])
-      || detected.evidence.some(item => item.field === 'title' && /citation_|dc\.|dcterms\.|jsonld/i.test(item.method || ''));
+      || detected.evidence.some(item => item.field === 'title' && /citation_|dc\.|dcterms\.|eprints\.|jsonld/i.test(item.method || ''));
     if (!detected.metadata.title?.trim() || !paperSignal) throw new Error('未识别到可信论文信息，请打开论文详情页后重试');
     envelope = detected;
     get('title').textContent = envelope.metadata.title || '未识别到论文标题';
     get('title').title = envelope.metadata.title;
     renderMetadata(envelope);
+    renderPaperLinks(envelope);
     get('authors').textContent = envelope.metadata.authors.map(a => a.name).join(' · ');
     get('ids').textContent = Object.entries(envelope.metadata.identifiers).map(([k, v]) => `${k}: ${v}`).join(' / ');
     get('warnings').replaceChildren(...envelope.warnings.map(text => { const li = document.createElement('li'); li.textContent = text; return li; }));
@@ -41,7 +43,7 @@ async function scan() {
         finally { button.disabled = false; }
       });
       row.append(label, button);
-      if (['fulltext','supplement'].includes(artifact.role)) {
+      if (artifact.role==='fulltext'||artifact.role==='supplement'&&/\.pdf(?:$|[?#])/i.test(artifact.url)) {
         const assist=document.createElement('button');assist.textContent='浏览器辅助获取 PDF';assist.dataset.assist='true';assist.disabled=true;
         assist.addEventListener('click',async()=>{assist.disabled=true;try{await bridge.assist(index,browserAssist);}catch(e){status(`辅助入库：${e.message}`);}});
         row.append(assist);
@@ -49,7 +51,7 @@ async function scan() {
       return row;
     }));
     get('result').hidden = false;
-    status(envelope.artifacts.some(a=>a.role==='fulltext')?'已识别，选择文件夹即可保存。':'未找到正文链接，提交后可能只保存论文信息。');
+    status(envelope.artifacts.some(a=>a.role==='fulltext')?'已识别，选择文件夹即可保存。':'未找到正文链接；不会创建缺PDF条目，请检查论文详情或下载帮助。');
   } catch (error) { status(`识别失败：${error.message}\n请在普通论文详情页重试，浏览器系统页不允许访问。`); }
   finally { await bridge.scanned(); }
 }
@@ -73,4 +75,15 @@ function renderMetadata(capture) {
   for(const [label,value] of entries){if(!value)continue;count++;const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;if(label==='摘要')dd.className='abstract';dl.append(dt,dd);}
   get('metadata-details').replaceChildren(dl);get('metadata-summary').textContent=`${count} 项已识别`;
   get('pdf-evidence').textContent=capture.artifacts.some(a=>a.role==='fulltext')?'＋ 正文 PDF 链接':'正文 PDF 待补充';
+}
+
+function renderPaperLinks(capture) {
+  const items=[{url:capture.sourceUrl,label:'原文页面'},...capture.artifacts.filter(a=>a.role==='fulltext').map(a=>({...a,label:a.label||'正文 PDF'}))];
+  get('paper-links').replaceChildren(...items.map(item=>{
+    const row=document.createElement('div');row.className='paper-link-row';
+    const link=document.createElement('a');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=item.label;link.title=item.url;
+    const state=document.createElement('span');state.className='paper-link-state';state.textContent=item.id?'已发现，未下载':'当前识别来源';
+    if(item.id)row.dataset.artifactId=item.id;
+    row.append(link,state);return row;
+  }));
 }

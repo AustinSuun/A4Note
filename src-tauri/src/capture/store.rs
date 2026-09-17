@@ -61,6 +61,28 @@ impl Store {
         c.execute("UPDATE capture_tasks SET envelope=?2 WHERE id=?1 AND state='downloading'",params![id,text]).map_err(|_|"capture_db_write")?;
         Ok(())
     }
+    pub fn work_options(&self,id:&str)->Result<Value,String>{
+        let c=self.connection.lock().map_err(|_|"capture_db_lock")?;
+        let text:String=c.query_row("SELECT result FROM capture_tasks WHERE id=?1",[id],|r|r.get(0)).map_err(|_|"capture_db_read")?;
+        serde_json::from_str(&text).map_err(|_|"invalid_stored_capture".into())
+    }
+    /// Throttled by the downloader. Preserve an explicit single-file retry over a crash.
+    pub fn progress(&self,id:&str,value:&Value)->Result<(),String>{
+        let c=self.connection.lock().map_err(|_|"capture_db_lock")?;
+        c.execute("UPDATE capture_tasks SET result=json_set(?2,'$.retryIndex',json_extract(result,'$.retryIndex')),updated=?3 WHERE id=?1 AND state='downloading'",params![id,value.to_string(),now()]).map_err(|_|"capture_db_write")?;Ok(())
+    }
+    pub fn retry(&self,id:&str,index:Option<usize>)->Result<(),String>{
+        let c=self.connection.lock().map_err(|_|"capture_db_lock")?;
+        let (envelope,result):(String,String)=c.query_row("SELECT envelope,result FROM capture_tasks WHERE id=?1 AND state IN ('needs_user','failed','partial','cancelled')",[id],|r|Ok((r.get(0)?,r.get(1)?))).map_err(|_|"task_not_found_or_not_actionable")?;
+        let envelope:Value=serde_json::from_str(&envelope).map_err(|_|"invalid_stored_capture")?;
+        let mut result:Value=serde_json::from_str(&result).map_err(|_|"invalid_stored_capture")?;
+        if let Some(index)=index {
+            let artifact=envelope["artifacts"].as_array().and_then(|rows|rows.get(index)).ok_or("invalid_artifact_index")?;
+            if result["artifacts"].as_array().is_some_and(|rows|rows.iter().any(|r|r["id"]==artifact["id"]&&r["state"]=="verified")){return Err("artifact_already_verified".into());}
+        }
+        result["retryIndex"]=json!(index);
+        c.execute("UPDATE capture_tasks SET state='queued',result=?2,updated=?3 WHERE id=?1",params![id,result.to_string(),now()]).map_err(|_|"capture_db_write")?;Ok(())
+    }
     pub fn begin_browser_upload(&self,id:&str,index:usize)->Result<(),String>{
         let c=self.connection.lock().map_err(|_|"capture_db_lock")?;
         let text:String=c.query_row("SELECT envelope FROM capture_tasks WHERE id=?1 AND state IN ('needs_user','failed','partial')",[id],|r|r.get(0)).map_err(|_|"请先发送任务并等待自动下载结束，再使用辅助入库")?;
@@ -90,6 +112,7 @@ impl Store {
         Ok(())
     }
     pub fn action(&self, id: &str, action: &str) -> Result<(), String> {
+        if action=="retry" { return self.retry(id,None); }
         let c = self.connection.lock().map_err(|_| "capture_db_lock")?;
         let sql = match action {
             "retry" => "UPDATE capture_tasks SET state='queued',updated=?2 WHERE id=?1 AND state IN ('failed','partial','needs_user','cancelled')",
@@ -103,16 +126,18 @@ impl Store {
         let Ok(c) = self.connection.lock() else { return true; };
         c.query_row("SELECT state FROM capture_tasks WHERE id=?1", [id], |r| r.get::<_,String>(0)).map(|s| s=="cancelled").unwrap_or(true)
     }
-    pub fn list(&self) -> Result<Value,String> {
+    pub fn list(&self) -> Result<Value,String> { self.list_for(None) }
+    pub fn list_for(&self,id:Option<&str>) -> Result<Value,String> {
         let c = self.connection.lock().map_err(|_| "capture_db_lock")?;
-        let mut statement = c.prepare("SELECT id,state,result,updated,json_extract(envelope,'$.metadata.title') FROM capture_tasks ORDER BY created DESC LIMIT 100").map_err(|_| "capture_db_read")?;
-        let rows = statement.query_map([], |r| Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,String>(2)?,r.get::<_,i64>(3)?,r.get::<_,String>(4)?))).map_err(|_| "capture_db_read")?;
-        let mut records=Vec::new();
+        let mut statement = c.prepare("SELECT id,state,result,updated,json_extract(envelope,'$.metadata.title') FROM capture_tasks WHERE (?1 IS NULL OR id=?1) ORDER BY created DESC LIMIT 100").map_err(|_| "capture_db_read")?;
+        let rows = statement.query_map([id], |r| Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,String>(2)?,r.get::<_,i64>(3)?,r.get::<_,String>(4)?))).map_err(|_| "capture_db_read")?;
+        let mut records=Vec::new();let mut bytes=0usize;let mut truncated=false;
         for row in rows {
             let (id,state,result,updated,title)=row.map_err(|_| "capture_db_read")?;
-            records.push(json!({"captureId":id,"state":state,"result":serde_json::from_str::<Value>(&result).unwrap_or(json!({})),"updatedAt":updated,"title":title}));
+            let record=json!({"captureId":id,"state":state,"result":serde_json::from_str::<Value>(&result).unwrap_or(json!({})),"updatedAt":updated,"title":title.chars().take(500).collect::<String>()});
+            let size=record.to_string().len();if bytes+size>768*1024 {truncated=true;break;}bytes+=size;records.push(record);
         }
-        Ok(json!({"tasks":records,"limit":100,"libraryImported":false}))
+        Ok(json!({"tasks":records,"limit":100,"truncated":truncated,"libraryImported":false}))
     }
 }
 #[cfg(test)]

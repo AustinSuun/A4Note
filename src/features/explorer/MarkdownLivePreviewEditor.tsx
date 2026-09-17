@@ -3,14 +3,19 @@ import { basicSetup } from 'codemirror';
 import { markdown as markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
 import { languages as codeLanguages } from '@codemirror/language-data';
 import { calloutLabel, isKnownCalloutType } from '../../shared/markdown';
-import { defaultKeymap, indentWithTab, historyKeymap } from '@codemirror/commands';
-import { Annotation, EditorState, StateEffect, StateField, type Range, type Transaction } from '@codemirror/state';
+import { defaultKeymap, indentWithTab, historyKeymap, isolateHistory, undo, redo } from '@codemirror/commands';
+import { Annotation, Compartment, Facet, EditorState, StateEffect, StateField, type Range, type Transaction } from '@codemirror/state';
 import { codeFolding, defaultHighlightStyle, foldedRanges, foldEffect, HighlightStyle, syntaxHighlighting, syntaxTree, unfoldEffect } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { Decoration, EditorView, WidgetType, keymap, placeholder } from '@codemirror/view';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { isTauriRuntime, openExternalUrl } from '../../platform/projects';
+import { changeTableStructure, type TableAction } from './tableStructure';
+import './markdown-authoring.css';
+import { canPreviewNoteImage, directNoteImage } from './noteImageSource';
+import { loadNoteImage } from './noteImageLoader';
+import { imageSourceTitle, readImageTitle, withImageLayout, type ImageLayout } from '../../shared/markdown/imageLayout';
 
 export interface MarkdownLivePreviewEditorHandle {
   setMarkdown: (markdown: string) => void;
@@ -19,12 +24,14 @@ export interface MarkdownLivePreviewEditorHandle {
   hasSelection: () => boolean;
   insertMarkdown: (before: string, after?: string, placeholder?: string) => void;
   clearFormatting: () => void;
+  insertTemplate: (source: string, block: boolean) => void;
 }
 
 interface MarkdownLivePreviewEditorProps {
   markdown: string;
   placeholder: string;
   sourceMode?: boolean;
+  documentPath?: string;
   /** Identifies the editor instance that owns a change callback. */
   sessionId?: number;
   onChange: (markdown: string, context?: { previousMarkdown: string; sourceMode: boolean; sessionId: number }) => void;
@@ -33,6 +40,8 @@ interface MarkdownLivePreviewEditorProps {
 }
 
 const modeChanged = StateEffect.define<boolean>();
+const noteDocumentPath = Facet.define<string, string>({ combine: values => values[0] ?? '' });
+const imageDisposers = new WeakMap<HTMLElement, () => void>();
 // Parent state can update the editor (for example after changing the document
 // title or applying an external patch). Those transactions must not be
 // reported back as user edits, otherwise the parent and CodeMirror can keep
@@ -279,43 +288,152 @@ class LatexWidget extends WidgetType {
   }
 }
 
+const openImageTools = new WeakMap<EditorView, number>();
 class ImageWidget extends WidgetType {
   constructor(
     private readonly source: string,
     private readonly alt: string,
-    private readonly sourceFrom?: number,
-    private readonly sourceTo?: number,
+    private readonly sourceFrom: number,
+    private readonly sourceTo: number,
+    private readonly rawSource: string,
+    private readonly sourceVisible = false,
+    private readonly documentPath = '',
   ) { super(); }
   eq(other: ImageWidget) {
-    return other.source === this.source
-      && other.alt === this.alt
-      && other.sourceFrom === this.sourceFrom
-      && other.sourceTo === this.sourceTo;
+    return other.source === this.source && other.alt === this.alt
+      && other.sourceFrom === this.sourceFrom && other.sourceTo === this.sourceTo
+      && other.rawSource === this.rawSource && other.sourceVisible === this.sourceVisible && other.documentPath === this.documentPath;
   }
   toDOM(view: EditorView) {
     const wrapper = document.createElement('span');
     wrapper.className = 'cm-md-image-wrap cm-md-image-preview';
+    wrapper.dataset.imageFrom = String(this.sourceFrom);
+    const { caption, layout } = readImageTitle(imageSourceTitle(this.rawSource));
+    if (layout) {
+      wrapper.classList.add('cm-md-image-sized');
+      wrapper.style.width = `${layout.width}%`;
+      wrapper.style.marginLeft = layout.align === 'left' ? '0' : 'auto';
+      wrapper.style.marginRight = layout.align === 'right' ? '0' : 'auto';
+    }
     const image = document.createElement('img');
     image.className = 'cm-md-image';
-    image.src = this.source;
+    if (directNoteImage(this.source)) image.src = this.source;
     image.alt = this.alt;
+    if (caption) image.title = caption;
     image.loading = 'lazy';
+    image.addEventListener('load', () => { if (wrapper.isConnected) view.requestMeasure(); });
     wrapper.append(image);
+    if (!directNoteImage(this.source)) {
+      let disposed = false;
+      imageDisposers.set(wrapper, () => { disposed = true; });
+      const status = document.createElement('span');
+      status.className = 'cm-md-image-load-status';
+      status.setAttribute('role', 'status');
+      status.textContent = '正在加载图片…';
+      wrapper.append(status);
+      void loadNoteImage(this.documentPath, this.source).then(url => {
+        if (disposed) return;
+        image.src = url;
+        status.remove();
+        if (wrapper.isConnected) view.requestMeasure();
+      }).catch(() => {
+        if (disposed) return;
+        status.textContent = '图片加载失败，请检查相对路径或文件是否存在';
+        if (wrapper.isConnected) view.requestMeasure();
+      });
+    }
     const sourceFrom = this.sourceFrom;
     const sourceTo = this.sourceTo;
-    if (sourceFrom != null && sourceTo != null) {
-      // The preview is a zero-width widget appended after the real Markdown
-      // source. Clicking it enters the source range instead of leaving the
-      // caret stranded on the following line.
+    if (this.sourceVisible) {
       wrapper.addEventListener('mousedown', (event) => {
+        if ((event.target as HTMLElement).closest('.cm-md-image-tools')) return;
         event.preventDefault();
         event.stopPropagation();
         view.dispatch({ selection: { anchor: sourceFrom, head: sourceTo } });
         view.focus();
       });
     }
+    if (!view.state.readOnly) {
+      const tools = document.createElement('span');
+      tools.className = 'cm-md-image-tools';
+      tools.setAttribute('aria-label', '图片样式');
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'cm-md-image-tools-toggle';
+      toggle.textContent = '⤢';
+      toggle.title = '调整图片大小与对齐';
+      toggle.setAttribute('aria-label', toggle.title);
+      const panel = document.createElement('span');
+      panel.className = 'cm-md-image-tools-panel';
+      panel.setAttribute('role', 'group');
+      panel.setAttribute('aria-label', '图片大小与对齐');
+      const setOpen = (open: boolean) => {
+        panel.hidden = !open;
+        wrapper.classList.toggle('image-tools-open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+        if (open) openImageTools.set(view, sourceFrom);
+        else if (openImageTools.get(view) === sourceFrom) openImageTools.delete(view);
+        if (open) window.requestAnimationFrame(() => {
+          if (!panel.isConnected || panel.hidden) return;
+          const bounds = view.dom.getBoundingClientRect();
+          const edge = tools.getBoundingClientRect().right;
+          const left = Math.max(bounds.left + 4, Math.min(edge - panel.offsetWidth, bounds.right - panel.offsetWidth - 4));
+          panel.style.right = `${edge - left - panel.offsetWidth}px`;
+        });
+      };
+      toggle.addEventListener('click', () => setOpen(panel.hidden !== false));
+      tools.addEventListener('mousedown', event => event.stopPropagation());
+      tools.addEventListener('click', event => event.stopPropagation());
+      tools.addEventListener('keydown', event => {
+        event.stopPropagation();
+        if (event.key === 'Escape') { event.preventDefault(); setOpen(false); toggle.focus(); }
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+          event.preventDefault(); (event.shiftKey ? redo : undo)(view); view.focus();
+        }
+      });
+      tools.addEventListener('focusout', event => {
+        if (event.relatedTarget && !tools.contains(event.relatedTarget as Node)) setOpen(false);
+      });
+      wrapper.addEventListener('mouseleave', () => { if (!tools.contains(document.activeElement)) setOpen(false); });
+      const currentLayout = (): ImageLayout => {
+        const containerWidth = wrapper.closest('.cm-line')?.getBoundingClientRect().width || image.getBoundingClientRect().width || 1;
+        return layout ?? { width: Math.max(10, Math.min(100, Math.round(image.getBoundingClientRect().width / containerWidth * 100))), align: 'left' };
+      };
+      const apply = (next: ImageLayout | null, action: string) => {
+        if (view.state.readOnly || sourceTo > view.state.doc.length || view.state.doc.sliceString(sourceFrom, sourceTo) !== this.rawSource) return;
+        const insert = withImageLayout(this.rawSource, next);
+        if (!insert || insert === this.rawSource) return;
+        openImageTools.set(view, sourceFrom);
+        view.dispatch({ changes: { from: sourceFrom, to: sourceTo, insert }, userEvent: 'input.image-layout', annotations: isolateHistory.of('full') });
+        view.requestMeasure();
+        // Rebuilt widgets must keep keyboard focus and the panel open for repeat clicks.
+        const replacement = view.dom.querySelector<HTMLElement>(`[data-image-from="${sourceFrom}"]`);
+        replacement?.querySelector<HTMLButtonElement>(`[data-image-action="${action}"]`)?.focus({ preventScroll: true });
+      };
+      const addButton = (action: string, text: string, label: string, getNext: () => ImageLayout | null) => {
+        const button = document.createElement('button');
+        button.type = 'button'; button.textContent = text; button.title = label;
+        button.dataset.imageAction = action; button.setAttribute('aria-label', label);
+        if (['left', 'center', 'right'].includes(action)) button.setAttribute('aria-pressed', String((layout?.align ?? 'left') === action));
+        button.addEventListener('click', () => apply(getNext(), action));
+        panel.append(button);
+      };
+      addButton('smaller', '−', '缩小图片（正文宽度的10%）', () => ({ ...currentLayout(), width: Math.max(10, currentLayout().width - 10) }));
+      const size = document.createElement('span');
+      size.textContent = layout ? `${layout.width}%` : '自动'; size.className = 'cm-md-image-size';
+      panel.append(size);
+      addButton('larger', '＋', '放大图片（正文宽度的10%）', () => ({ ...currentLayout(), width: Math.min(100, currentLayout().width + 10) }));
+      for (const [align, label] of [['left', '居左'], ['center', '居中'], ['right', '居右']] as const) {
+        addButton(align, label, `图片${label}`, () => ({ ...currentLayout(), align }));
+      }
+      addButton('reset', '重置', '恢复自动大小与默认对齐', () => null);
+      tools.append(toggle, panel); wrapper.append(tools);
+      setOpen(openImageTools.get(view) === sourceFrom);
+    }
     return wrapper;
   }
+  destroy(dom: HTMLElement) { imageDisposers.get(dom)?.(); imageDisposers.delete(dom); }
+  ignoreEvent() { return true; }
 }
 
 class MarkdownLinkWidget extends WidgetType {
@@ -495,6 +613,8 @@ class CalloutMarkerWidget extends WidgetType {
  * It is attached to the opening fence line and reads the block back out of the
  * document, so it keeps working while the code is being edited.
  */
+const codeCopyFeedbackTimers = new WeakMap<HTMLElement, number>();
+
 class CodeCopyWidget extends WidgetType {
   constructor(private readonly fenceLine: number) { super(); }
   eq(other: CodeCopyWidget) { return other.fenceLine === this.fenceLine; }
@@ -517,9 +637,21 @@ class CodeCopyWidget extends WidgetType {
       icon.appendChild(path);
     }
     button.appendChild(icon);
-    button.addEventListener('mousedown', (event) => event.preventDefault());
-    button.addEventListener('click', (event) => {
+    const feedback = document.createElement('span');
+    feedback.className = 'cm-md-code-copy-feedback';
+    feedback.setAttribute('role', 'status');
+    feedback.setAttribute('aria-live', 'polite');
+    button.appendChild(feedback);
+    button.addEventListener('mousedown', (event) => { event.preventDefault(); event.stopPropagation(); });
+    button.addEventListener('click', async (event) => {
       event.preventDefault();
+      event.stopPropagation();
+      if (button.disabled) return;
+      window.clearTimeout(codeCopyFeedbackTimers.get(button));
+      button.classList.remove('is-copied', 'is-copy-error');
+      button.disabled = true;
+      feedback.textContent = '复制中…';
+      button.setAttribute('aria-label', '正在复制代码');
       const doc = view.state.doc;
       const body: string[] = [];
       for (let line = this.fenceLine + 1; line <= doc.lines; line += 1) {
@@ -527,11 +659,38 @@ class CodeCopyWidget extends WidgetType {
         if (/^\s{0,3}(`{3,}|~{3,})/.test(text)) break;
         body.push(text);
       }
-      void navigator.clipboard?.writeText(body.join('\n'));
-      button.classList.add('is-copied');
-      window.setTimeout(() => button.classList.remove('is-copied'), 1200);
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(body.join('\n'));
+        if (!button.isConnected) return;
+        feedback.textContent = '已复制';
+        button.classList.add('is-copied');
+        button.title = '代码已复制';
+        button.setAttribute('aria-label', '代码已复制');
+      } catch {
+        if (!button.isConnected) return;
+        feedback.textContent = '复制失败，请重试';
+        button.classList.add('is-copy-error');
+        button.title = '复制失败，请检查剪贴板权限后重试';
+        button.setAttribute('aria-label', button.title);
+      } finally {
+        button.disabled = false;
+        if (button.isConnected) {
+          codeCopyFeedbackTimers.set(button, window.setTimeout(() => {
+            feedback.textContent = '';
+            button.classList.remove('is-copied', 'is-copy-error');
+            button.title = '复制代码';
+            button.setAttribute('aria-label', '复制代码');
+            codeCopyFeedbackTimers.delete(button);
+          }, 2600));
+        }
+      }
     });
     return button;
+  }
+  destroy(dom: HTMLElement) {
+    window.clearTimeout(codeCopyFeedbackTimers.get(dom));
+    codeCopyFeedbackTimers.delete(dom);
   }
   ignoreEvent() { return true; }
 }
@@ -547,7 +706,7 @@ type TableRegion = {
 };
 
 const tableRowPattern = /^\s*\|.*\|\s*$/;
-const tableDelimiterPattern = /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/;
+const tableDelimiterPattern = /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$/;
 
 /** Splits `| a | b |` into cells, keeping each cell's document offset. */
 function splitTableRow(text: string, lineFrom: number) {
@@ -558,7 +717,9 @@ function splitTableRow(text: string, lineFrom: number) {
   let start = cursor;
   for (; cursor <= text.length; cursor += 1) {
     const char = text[cursor];
-    if (char === '|' || cursor === text.length) {
+    let backslashes = 0;
+    for (let previous = cursor - 1; previous >= 0 && text[previous] === '\\'; previous -= 1) backslashes += 1;
+    if ((char === '|' && backslashes % 2 === 0) || cursor === text.length) {
       const raw = text.slice(start, cursor);
       if (!(cursor === text.length && raw.trim() === '')) {
         const leading = raw.length - raw.trimStart().length;
@@ -624,60 +785,189 @@ function findTableRegions(state: EditorState, fencedLines: Set<number>): TableRe
   return regions;
 }
 
-/**
- * A rendered GFM table.
- *
- * Editing stays source-based: clicking a cell drops the caret into that cell's
- * text, which reveals the whole table as source on the next redraw. Cells carry
- * plain text rather than re-parsed inline Markdown — the caret lands in the
- * source the moment you want to change anything, so a second inline renderer
- * would be a lot of surface area for a fraction of a second of fidelity.
- */
+/** Render cell code spans as DOM text, never as injected HTML. */
+function renderTableCell(element: HTMLElement, source: string) {
+  element.replaceChildren();
+  let offset = 0;
+  for (const match of source.matchAll(/(`+)([\s\S]*?)\1(?!`)/g)) {
+    const index = match.index ?? 0;
+    element.append(document.createTextNode(source.slice(offset, index).replace(/\\\|/g, '|')));
+    const code = document.createElement('code');
+    code.textContent = match[2].replace(/\\\|/g, '|');
+    element.append(code);
+    offset = index + match[0].length;
+  }
+  element.append(document.createTextNode(source.slice(offset).replace(/\\\|/g, '|')));
+}
+
+/** Cells edit locally, committing one undoable Markdown transaction on blur. */
 class TableWidget extends WidgetType {
   constructor(private readonly region: TableRegion) { super(); }
   eq(other: TableWidget) {
-    return other.region.from === this.region.from
-      && other.region.to === this.region.to
-      && other.region.rows.length === this.region.rows.length
-      && other.region.rows.every((row, index) => {
-        const mine = this.region.rows[index];
-        return mine.cells.length === row.cells.length && row.cells.every((cell, cellIndex) => cell.text === mine.cells[cellIndex].text);
-      });
+    return JSON.stringify(other.region) === JSON.stringify(this.region);
   }
-  /**
-   * One compact row plus the wrapper padding. Kept close to the real rendered
-   * height so CodeMirror's height oracle does not have to correct itself after
-   * paint, which is what makes clicks below the table land on the wrong line.
-   */
-  get estimatedHeight() { return Math.max(1, this.region.rows.length) * 30 + 9; }
+  get estimatedHeight() { return Math.max(1, this.region.rows.length) * 30 + 37; }
   toDOM(view: EditorView) {
     const wrap = document.createElement('div');
     wrap.className = 'markdown-table-wrap cm-md-table-widget';
     const table = document.createElement('table');
     const head = document.createElement('thead');
     const body = document.createElement('tbody');
+    let activeRow = this.region.rows.length - 1;
+    let activeColumn = Math.max(0, this.region.align.length - 1);
+    let commitCell: (() => void) | null = null;
+    const controls: Partial<Record<TableAction, HTMLButtonElement>> = {};
+    const refreshControls = () => {
+      const deleteRow = controls['delete-row'];
+      const deleteColumn = controls['delete-column'];
+      if (deleteRow) {
+        deleteRow.disabled = view.state.readOnly || activeRow === 0;
+        deleteRow.title = activeRow === 0 ? '表头不能删除' : `删除第 ${activeRow} 个数据行`;
+      }
+      if (deleteColumn) {
+        deleteColumn.disabled = view.state.readOnly || this.region.align.length <= 1;
+        deleteColumn.title = `删除第 ${activeColumn + 1} 列（至少保留一列）`;
+      }
+    };
     this.region.rows.forEach((row, rowIndex) => {
       const tr = document.createElement('tr');
       row.cells.forEach((cell, cellIndex) => {
         const element = document.createElement(rowIndex === 0 ? 'th' : 'td');
-        element.textContent = cell.text;
+        renderTableCell(element, cell.text);
+        element.tabIndex = 0;
+        element.addEventListener('focusin', () => {
+          activeRow = rowIndex;
+          activeColumn = cellIndex;
+          refreshControls();
+        });
+        element.setAttribute('aria-label', `第${rowIndex + 1}行，第${cellIndex + 1}列，点击编辑`);
         const align = this.region.align[cellIndex];
         if (align) element.setAttribute('align', align);
-        element.addEventListener('mousedown', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          view.dispatch({ selection: { anchor: Math.min(cell.from, this.region.to) } });
-          view.focus();
+        let editing = false;
+        const startEditing = () => {
+          if (editing || view.state.readOnly) return;
+          editing = true;
+          // Keep the CodeMirror selection outside the replaced table. Moving it
+          // into the cell source would destroy this widget before input begins.
+          const originalDoc = view.state.doc;
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'cm-md-table-cell-input';
+          input.value = cell.text.replace(/\\\|/g, '|');
+          input.setAttribute('aria-label', `编辑第${rowIndex + 1}行，第${cellIndex + 1}列`);
+          let finished = false;
+          let composing = false;
+          const finish = (cancel = false) => {
+            if (finished) return;
+            finished = true;
+            editing = false;
+            // A pasted pipe must stay inside this cell, not add a new column.
+            const value = input.value.replace(/[\r\n]+/g, ' ').replace(/(?<!\\)(?:\\\\)*\|/g, (pipe) => pipe.slice(0, -1) + '\\|').trim();
+            if (!cancel && value !== cell.text && view.state.doc === originalDoc) {
+              view.dispatch({
+                changes: { from: cell.from, to: cell.from + cell.text.length, insert: value },
+                userEvent: 'input.table',
+              });
+            } else {
+              renderTableCell(element, cell.text);
+            }
+          };
+          commitCell = () => finish();
+          input.addEventListener('compositionstart', () => { composing = true; });
+          input.addEventListener('compositionend', () => { composing = false; });
+          input.addEventListener('blur', () => finish());
+          input.addEventListener('keydown', (event) => {
+            event.stopPropagation();
+            if (composing || event.isComposing) return;
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              finish(true);
+              element.focus();
+            } else if (event.key === 'Enter' || event.key === 'Tab') {
+              event.preventDefault();
+              const cells = Array.from(wrap.querySelectorAll<HTMLElement>('th, td'));
+              const index = cells.indexOf(element);
+              const next = index + (event.key === 'Tab' && event.shiftKey ? -1 : 1);
+              finish();
+              // Commit may rebuild the widget; find its replacement by doc offset.
+              const tables = Array.from(view.dom.querySelectorAll<HTMLElement>('.cm-md-table-widget'));
+              const current = tables.find((node) => Number(node.dataset.from) === this.region.from);
+              const target = current?.querySelectorAll<HTMLElement>('th, td')[event.key === 'Enter' ? index : next];
+              if (target) target.focus();
+              else view.focus();
+            }
+          });
+          // Keep the original content in flow so auto table layout sees exactly
+          // the same intrinsic width and height while the input overlays it.
+          const placeholder = document.createElement('span');
+          placeholder.className = 'cm-md-table-cell-placeholder';
+          placeholder.setAttribute('aria-hidden', 'true');
+          placeholder.append(...Array.from(element.childNodes));
+          element.replaceChildren(placeholder, input);
+          input.focus();
+        };
+        element.addEventListener('mousedown', (event) => event.stopPropagation());
+        element.addEventListener('click', (event) => { event.stopPropagation(); startEditing(); });
+        element.addEventListener('keydown', (event) => {
+          if (event.target !== element) return;
+          if (event.key === 'Enter' || event.key === 'F2') {
+            event.preventDefault();
+            event.stopPropagation();
+            startEditing();
+          }
         });
         tr.appendChild(element);
       });
       (rowIndex === 0 ? head : body).appendChild(tr);
     });
     table.append(head, body);
+    wrap.dataset.from = String(this.region.from);
     wrap.appendChild(table);
+    const addControl = (action: TableAction, label: string, title: string) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `cm-md-table-structure-button cm-md-table-${action}`;
+      button.textContent = label;
+      button.title = title;
+      button.setAttribute('aria-label', title);
+      button.disabled = view.state.readOnly;
+      button.addEventListener('mousedown', (event) => { event.preventDefault(); event.stopPropagation(); });
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (view.state.readOnly) return;
+        commitCell?.();
+        // A cell commit can replace this widget. Re-read its current source,
+        // never apply the old offsets or discard a pending cell edit.
+        const region = findTableRegions(view.state, new Set()).find((item) => item.from === this.region.from);
+        if (!region) return;
+        const rows = region.rows.map((row) => row.cells.map((cell) => cell.text));
+        const removed = action === 'delete-row' ? rows[activeRow] : action === 'delete-column' ? rows.map((row) => row[activeColumn] ?? '') : [];
+        if (removed?.some((text) => text.trim()) && !window.confirm('该行/列含有内容，确定删除？删除后可通过 Ctrl/Cmd+Z 撤销。')) return;
+        const insert = changeTableStructure(rows, region.align, action, activeRow, activeColumn);
+        if (insert === null) return;
+        view.dispatch({ changes: { from: region.from, to: region.to, insert }, userEvent: 'input.table-structure', annotations: isolateHistory.of('full') });
+        const next = Array.from(view.dom.querySelectorAll<HTMLElement>('.cm-md-table-widget')).find((node) => Number(node.dataset.from) === region.from);
+        next?.querySelector<HTMLButtonElement>(`.cm-md-table-${action}`)?.focus();
+      });
+      button.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+          event.preventDefault(); event.stopPropagation();
+          (event.shiftKey ? redo : undo)(view);
+          view.focus();
+        }
+      });
+      controls[action] = button;
+      wrap.appendChild(button);
+    };
+    addControl('add-column', '+', '在当前列右侧添加一列');
+    addControl('add-row', '+', '在当前行下方添加一行');
+    addControl('delete-row', '−', '删除当前数据行');
+    addControl('delete-column', '−', '删除当前列');
+    refreshControls();
     return wrap;
   }
-  ignoreEvent() { return false; }
+  ignoreEvent() { return true; }
 }
 
 class HeadingFoldWidget extends WidgetType {
@@ -753,6 +1043,7 @@ function collectMarkdownHeadings(state: EditorState): MarkdownHeading[] {
 }
 
 function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
+  const documentPath = state.facet(noteDocumentPath);
   const decorations: Range<Decoration>[] = [];
   const headings = collectMarkdownHeadings(state);
   const activePos = state.selection.main.head;
@@ -824,7 +1115,9 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       if (fence) fenced = !fenced;
     }
     for (const region of findTableRegions(state, fencedLines)) {
-      if (cursorNear(region.from, region.to)) continue;
+      if (cursorNear(region.from, region.to)
+        || activeLine === region.firstLine - 1
+        || activeLine === region.lastLine + 1) continue;
       if ([...mathBlockLines].some((line) => line >= region.firstLine && line <= region.lastLine)) continue;
       decorations.push(Decoration.replace({ widget: new TableWidget(region), inclusive: false, block: true }).range(region.from, region.to));
       for (let line = region.firstLine; line <= region.lastLine; line += 1) tableWidgetLines.add(line);
@@ -861,7 +1154,8 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       const boundaryClass = insideFence ? ' cm-md-code-end' : ' cm-md-code-start';
       decorations.push(Decoration.line({
         class: `cm-md-code-fence${languageClass}${boundaryClass}`,
-        attributes: language ? { 'data-language': language } : undefined,
+        // Never overlay the rendered badge on the editable fence/info string.
+        attributes: language && !cursorNear(line.from, line.to) ? { 'data-language': language } : undefined,
       }).range(line.from));
       // The whole line is the reveal target: clicking the header bar puts the
       // caret past the language word, which a backticks-only range missed.
@@ -940,7 +1234,7 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       const prefixFrom = line.from + text.indexOf('[^');
       const prefixTo = line.from + footnoteDefinition[0].length;
       decorations.push(Decoration.line({ class: 'cm-md-footnote-definition' }).range(line.from));
-      if (!cursorNear(prefixFrom, prefixTo)) hideInlineSyntax(prefixFrom, prefixTo);
+      if (!isActiveLine) hideInlineSyntax(prefixFrom, prefixTo);
       else mark(prefixFrom, prefixTo, 'cm-md-footnote-source');
       mark(prefixTo, line.to, 'cm-md-footnote-content');
       continue;
@@ -1054,7 +1348,9 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       if (callout) {
         const calloutPrefixFrom = line.from + callout[1].indexOf('>');
         const calloutPrefixTo = line.from + callout[0].length;
-        if (cursorNear(calloutPrefixFrom, calloutPrefixTo)) {
+        // Quote/callout markers reveal anywhere on their own active line;
+        // other Markdown constructs retain their existing cursorNear rules.
+        if (isActiveLine) {
           mark(line.from + callout[1].length, line.from + callout[0].length, 'cm-md-callout-marker');
         } else {
           const type = callout[2].toLowerCase();
@@ -1070,7 +1366,7 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       } else {
         const quotePrefixFrom = line.from + quote[1].indexOf('>');
         const quotePrefixTo = line.from + quote[1].length;
-        if (!cursorNear(quotePrefixFrom, quotePrefixTo)) hide(quotePrefixFrom, quotePrefixTo);
+        if (!isActiveLine) hide(quotePrefixFrom, quotePrefixTo);
         mark(line.from + quote[1].length, line.to, currentCalloutType ? 'cm-md-callout-body' : 'cm-md-quote');
       }
     } else {
@@ -1088,9 +1384,9 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       }
     }
 
-    for (const match of text.matchAll(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g)) {
-      const source = match[2];
-      if (!/^(?:data:image\/|https?:\/\/)/i.test(source)) continue;
+    for (const match of text.matchAll(/!\[([^\]]*)\]\((<[^>\n]+>|(?:\\.|[^)\s])+)(?:\s+(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'))?\)/g)) {
+      const source = match[2].replace(/^<|>$/g, '');
+      if (!canPreviewNoteImage(documentPath, source)) continue;
       const from = line.from + (match.index ?? 0);
       const to = from + match[0].length;
       if (isActiveLine && cursorNear(from, to)) {
@@ -1098,28 +1394,29 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
         // and edit alt text, URL and optional title. The image remains visible
         // as an inline preview immediately after the source.
         mark(from, to, 'cm-md-image-source');
-        decorations.push(Decoration.widget({ widget: new ImageWidget(source, match[1], from, to), side: 1, block: false }).range(to));
+        decorations.push(Decoration.widget({ widget: new ImageWidget(source, match[1], from, to, match[0], true, documentPath), side: 1, block: false }).range(to));
       } else {
-        decorations.push(Decoration.replace({ widget: new ImageWidget(source, match[1]), inclusive: false }).range(from, to));
+        decorations.push(Decoration.replace({ widget: new ImageWidget(source, match[1], from, to, match[0], false, documentPath), inclusive: false }).range(from, to));
       }
       imageWidgetAdded = true;
       if (isActiveLine) decorations.push(Decoration.line({ class: 'cm-md-image-line-active' }).range(line.from));
     }
-    for (const match of text.matchAll(/<img\s+[^>]*src=["'](data:image\/[^"']+|https?:\/\/[^"']+)["'][^>]*>/gi)) {
+    for (const match of text.matchAll(/<img\s+[^>]*src=["']([^"']+)["'][^>]*>/gi)) {
       const source = match[1];
+      if (!canPreviewNoteImage(documentPath, source)) continue;
       const alt = match[0].match(/alt=["']([^"']*)["']/i)?.[1] ?? '';
       const from = line.from + (match.index ?? 0);
       const to = from + match[0].length;
       if (isActiveLine && cursorNear(from, to)) {
         mark(from, to, 'cm-md-image-source');
-        decorations.push(Decoration.widget({ widget: new ImageWidget(source, alt, from, to), side: 1, block: false }).range(to));
+        decorations.push(Decoration.widget({ widget: new ImageWidget(source, alt, from, to, match[0], true, documentPath), side: 1, block: false }).range(to));
       } else {
-        decorations.push(Decoration.replace({ widget: new ImageWidget(source, alt), inclusive: false }).range(from, to));
+        decorations.push(Decoration.replace({ widget: new ImageWidget(source, alt, from, to, match[0], false, documentPath), inclusive: false }).range(from, to));
       }
       imageWidgetAdded = true;
       if (isActiveLine) decorations.push(Decoration.line({ class: 'cm-md-image-line-active' }).range(line.from));
     }
-    if (imageWidgetAdded && /^\s*(?:!\[[^\]]*\]\((?:data:image\/|https?:\/\/)[^)]+\)|<img\s+[^>]*src=["'](?:data:image\/|https?:\/\/)[^"']+["'][^>]*>)\s*$/i.test(text)) {
+    if (imageWidgetAdded && /^\s*(?:!\[[^\]]*\]\([\s\S]+\)|<img\s+[^>]*>)\s*$/i.test(text)) {
       decorations.push(Decoration.line({ class: 'cm-md-image-line' }).range(line.from));
     }
 
@@ -1190,8 +1487,9 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       } else {
         hideInlineSyntax(from, from + openLength);
         hideInlineSyntax(to - closeLength, to);
-        mark(from + openLength, to - closeLength, `cm-md-inline-html cm-md-inline-html-${tag}`);
       }
+      // Keep the formatting visible while revealing the editable tag syntax.
+      mark(from + openLength, to - closeLength, `cm-md-inline-html cm-md-inline-html-${tag}`);
     }
 
     for (const link of collectMarkdownLinks(text)) {
@@ -1222,7 +1520,7 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
     }
     for (const match of text.matchAll(/\[\^([^\]]+)\]/g)) {
       const from = line.from + (match.index ?? 0);
-      mark(from, from + match[0].length, cursorNear(from, from + match[0].length) ? 'cm-md-footnote-source' : 'cm-md-footnote-reference');
+      mark(from, from + match[0].length, isActiveLine ? 'cm-md-footnote-source' : 'cm-md-footnote-reference');
     }
   }
   return Decoration.set(decorations, true);
@@ -1232,7 +1530,7 @@ function createDecorationsField(sourceMode: () => boolean) {
   return StateField.define<ReturnType<typeof Decoration.set>>({
     create: (state) => buildLiveDecorations(state, sourceMode()),
     update: (decorations, transaction: Transaction) => {
-      if (transaction.docChanged || transaction.selection || transaction.effects.some((effect) => effect.is(modeChanged) || effect.is(foldEffect) || effect.is(unfoldEffect))) {
+      if (transaction.docChanged || transaction.selection || transaction.reconfigured || transaction.effects.some((effect) => effect.is(modeChanged) || effect.is(foldEffect) || effect.is(unfoldEffect))) {
         return buildLiveDecorations(transaction.state, sourceMode());
       }
       return decorations.map(transaction.changes);
@@ -1279,10 +1577,11 @@ function replaceEditorDocument(view: EditorView, markdown: string) {
 
 /** CodeMirror 6 Markdown editor with Obsidian-like inactive-line syntax hiding. */
 export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHandle, MarkdownLivePreviewEditorProps>(
-  function MarkdownLivePreviewEditor({ markdown, placeholder: emptyPlaceholder, sourceMode = false, sessionId = 0, onChange, onBlur, onOpenWikiLink }, forwardedRef) {
+  function MarkdownLivePreviewEditor({ markdown, placeholder: emptyPlaceholder, sourceMode = false, documentPath = '', sessionId = 0, onChange, onBlur, onOpenWikiLink }, forwardedRef) {
     const hostRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
     const modeRef = useRef(sourceMode);
+    const imagePathCompartment = useRef(new Compartment());
     const onChangeRef = useRef(onChange);
     const onBlurRef = useRef(onBlur);
     const onOpenWikiLinkRef = useRef(onOpenWikiLink);
@@ -1300,6 +1599,7 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
       const state = EditorState.create({
         doc: markdown,
         extensions: [
+          imagePathCompartment.current.of(noteDocumentPath.of(documentPath)),
           basicSetup,
           markdownLanguage({ codeLanguages }),
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
@@ -1344,6 +1644,7 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
           EditorView.domEventHandlers({
             mousedown: (event, view) => {
               const target = event.target as HTMLElement | null;
+              if (target?.closest('.cm-md-image-tools')) return true;
               if (!target?.closest('.cm-md-image-wrap')) return false;
               const position = view.posAtCoords({ x: event.clientX, y: event.clientY });
               if (position == null) return false;
@@ -1352,9 +1653,9 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
               return false;
             },
             click: (event, view) => {
-              // Rendered link widgets handle their own click. This branch is
-              // for source-mode text and links temporarily exposed at a live
-              // editor boundary, where CodeMirror still renders plain text.
+              // Rendered link widgets handle their own click. A boundary
+              // mousedown can reveal source before this click arrives; plain
+              // clicks on that source must remain caret/editing operations.
               if ((event.target as HTMLElement | null)?.closest('.cm-md-link-widget')) return false;
               const position = view.posAtCoords({ x: event.clientX, y: event.clientY });
               if (position != null && onOpenWikiLinkRef.current && ((event.ctrlKey || event.metaKey) || (event.target as HTMLElement | null)?.closest('.cm-md-wiki-link'))) {
@@ -1370,6 +1671,7 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
                   if (!opaque) { event.preventDefault(); event.stopPropagation(); onOpenWikiLinkRef.current(wiki[1].trim()); return true; }
                 }
               }
+              if (!modeRef.current && !event.ctrlKey && !event.metaKey) return false;
               const link = position == null ? null : markdownLinkAt(view.state, position);
               if (!link) return false;
               event.preventDefault();
@@ -1384,6 +1686,10 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
       viewRef.current = new EditorView({ state, parent: hostRef.current });
       return () => { viewRef.current?.destroy(); viewRef.current = null; };
     }, [emptyPlaceholder, sessionId]);
+
+    useEffect(() => {
+      viewRef.current?.dispatch({ effects: imagePathCompartment.current.reconfigure(noteDocumentPath.of(documentPath)) });
+    }, [documentPath, sessionId]);
 
     useEffect(() => {
       const view = viewRef.current;
@@ -1441,6 +1747,22 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
         const selected = view.state.sliceDoc(selection.from, selection.to) || placeholderText;
         const insert = before + selected + after;
         view.dispatch({ changes: { from: selection.from, to: selection.to, insert }, selection: { anchor: selection.from + before.length, head: selection.from + before.length + selected.length } });
+        view.focus();
+      },
+      insertTemplate: (source, block) => {
+        const view = viewRef.current;
+        if (!view || view.state.readOnly) return;
+        const { from, to } = view.state.selection.main;
+        if (source.includes('[^note]')) {
+          let index = 1;
+          while (view.state.doc.toString().includes(`[^note${index}]`)) index += 1;
+          source = source.replaceAll('[^note]', `[^note${index}]`);
+        }
+        const prefix = block && from > 0 ? (view.state.sliceDoc(0, from).endsWith('\n\n') ? '' : view.state.sliceDoc(0, from).endsWith('\n') ? '\n' : '\n\n') : '';
+        const suffix = block ? (view.state.sliceDoc(to).startsWith('\n\n') ? '' : view.state.sliceDoc(to).startsWith('\n') ? '\n' : '\n\n') : '';
+        const editable = /标题|文字|内容|代码|待完成任务|列表项一|笔记名称|图片说明/.exec(source);
+        const anchor = from + prefix.length + (editable?.index ?? source.length);
+        view.dispatch({ changes: { from, to, insert: prefix + source + suffix }, selection: { anchor, head: anchor + (editable?.[0].length ?? 0) }, userEvent: 'input.template', annotations: isolateHistory.of('full'), scrollIntoView: true });
         view.focus();
       },
       clearFormatting: () => {

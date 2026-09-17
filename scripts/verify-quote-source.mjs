@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import ts from 'typescript';
+const source = readFileSync('src/features/explorer/MarkdownLivePreviewEditor.tsx', 'utf8');
+const start = source.indexOf('    const quote = text.match(');
+const end = source.indexOf('\n    for (const match', start);
+const branch = source.slice(start, end);
+const run = new Function('text', 'isActiveLine', 'calloutType', `
+  const state = {doc: {lines: 1}};
+  const lineNumber = 1, line = {from: 0, to: text.length};
+  const decorations = [], hidden = [], marked = [];
+  const cursorNear = () => { throw new Error('Quote reveal must not depend on symbol proximity'); };
+  const hide = (from, to) => hidden.push([from, to]);
+  const mark = (from, to, name) => marked.push(name);
+  const Decoration = {line: (spec) => ({range: () => spec}), replace: (spec) => ({range: () => spec})};
+  const CalloutMarkerWidget = class {};
+  const isKnownCalloutType = () => true, calloutLabel = () => 'note';
+  ${ts.transpile(branch, { target: ts.ScriptTarget.ES2022 })}
+  return {hidden, marked, decorations};
+`);
+assert.equal(run('> 引用内容的末尾', true, null).hidden.length, 0);
+assert.equal(run('> 引用内容的末尾', false, null).hidden.length, 1);
+assert.ok(run('> [!NOTE] 很长的标注标题末尾', true, null).marked.includes('cm-md-callout-marker'));
+assert.ok(!run('> [!NOTE] 很长的标注标题末尾', false, null).marked.includes('cm-md-callout-marker'));
+assert.equal(run('> 标注正文末尾', true, 'note').hidden.length, 0);
+assert.equal(run('> 标注正文末尾', false, 'note').hidden.length, 1);
+assert.ok(source.includes('if (cursorNear(taskFrom, taskTo))'));
+assert.ok(source.includes("if (cursorNear(from, to)) {\n        mark(from, to, 'cm-md-link-source')"));
+const css = readFileSync('src/ui/styles/workbench.css', 'utf8');
+const rule = css.match(/\.markdown-resource-body \.markdown-resource-preview \{([^}]+)\}/)?.[1];
+for (const token of ['height: auto', 'overflow: visible', 'border: 0', 'padding: 0 8px 72px']) assert.ok(rule?.includes(token));
+console.log('Quote/callout active-line and reading container regression checks passed (not a browser layout test).');

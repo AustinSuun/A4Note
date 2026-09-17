@@ -1,0 +1,88 @@
+.markdown-resource-tab { position: relative; box-sizing: border-box; }
+
+/* Image tools belong to the image, not the surrounding text selection. */
+.markdown-live-codemirror .cm-md-image-wrap { position: relative; }
+.markdown-live-codemirror .cm-md-image-wrap.cm-md-image-sized { display: flex; max-width: 100%; margin-top: 8px; margin-bottom: 12px; }
+.markdown-live-codemirror .cm-md-image-sized .cm-md-image { width: 100%; height: auto; max-width: 100%; max-height: none; margin: 0; }
+.cm-md-image-tools { position: absolute; top: 6px; right: 6px; z-index: 5; line-height: 1.3; font: 12px/1.3 var(--font-document); }
+.cm-md-image-tools button { display: inline-grid; place-items: center; min-width: 28px; min-height: 28px; padding: 4px 6px; border: 0; border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
+.cm-md-image-tools button:hover,.cm-md-image-tools button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); }
+.cm-md-image-tools button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+.cm-md-image-tools-toggle { opacity: 0; box-shadow: var(--shadow-soft); }
+.cm-md-image-wrap:hover .cm-md-image-tools-toggle,.cm-md-image-wrap:focus-within .cm-md-image-tools-toggle,.cm-md-image-wrap.image-tools-open .cm-md-image-tools-toggle { opacity: 1; }
+.cm-md-image-tools-panel { position: absolute; top: 33px; right: 0; display: grid; grid-template-columns: repeat(3, 1fr); width: 152px; gap: 3px; padding: 6px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: var(--shadow-soft); }
+.cm-md-image-tools-panel[hidden] { display: none; }
+.cm-md-image-size { display: grid; place-items: center; color: var(--muted); font-size: 11px; }
+.cm-md-image-tools-panel [data-image-action="reset"] { grid-column: 1 / -1; }
+@media (hover: none) { .cm-md-image-tools-toggle { opacity: 1; } }
+.markdown-resource-tab:has(.markdown-authoring-dock) { padding-bottom: 76px; }
+.markdown-authoring-dock { position: absolute; z-index: 30; bottom: 16px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 24px); color: var(--ink); }
+.markdown-authoring-actions { display: flex; align-items: center; gap: 3px; padding: 7px 9px; overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 7px 24px rgba(30,45,38,.12); }
+.markdown-authoring-actions button { flex: 0 0 auto; border: 0; background: transparent; color: var(--ink); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.markdown-authoring-actions button:hover,.markdown-authoring-actions button.active { background: var(--accent-soft); color: var(--accent-strong); }
+.markdown-authoring-dock button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+.markdown-dock-divider { flex: 0 0 1px; height: 20px; background: var(--line); margin: 0 3px; }
+.markdown-template-panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(430px, 100%); max-height: min(520px, 65vh); display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 10px 35px rgba(30,45,38,.15); }
+.markdown-template-heading { display: flex; align-items: center; justify-content: space-between; }
+.markdown-template-heading button { background: none; border: 0; color: var(--muted); font-size: 22px; cursor: pointer; }
+.markdown-template-panel input { flex: 0 0 auto; width: 100%; padding: 9px; background: var(--surface-soft); color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+.markdown-template-list { overflow-y: auto; min-height: 0; }
+.markdown-template-list h4 { font-size: 11px; color: var(--muted); margin: 14px 6px 6px; }
+.markdown-template-list button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.markdown-template-list button:hover { background: var(--accent-soft); }
+.markdown-template-list code { max-width: 52%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--muted); font-size: 11px; }
+.markdown-template-panel small { font-size: 11px; line-height: 1.5; color: var(--muted); }
+/* One grid owns the table and controls: no calculated absolute offsets or inner rounded frame. */
+.markdown-live-codemirror .markdown-table-wrap.cm-md-table-widget {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) 36px;
+  position: relative;
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--md-table-line);
+  border-radius: 8px;
+  background: var(--md-table-head);
+  overflow-x: auto;
+}
+.markdown-live-codemirror .markdown-table-wrap.cm-md-table-widget > table {
+  grid-area: 1 / 1 / 3 / 3;
+  overflow-wrap: anywhere;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+.cm-md-table-structure-button {
+  position: static;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--md-table-head);
+  color: var(--ink);
+  font: 700 26px/1 var(--font-code);
+  cursor: pointer;
+}
+.cm-md-table-structure-button:hover:not(:disabled) { background: var(--md-table-hover); color: var(--ink); }
+.cm-md-table-structure-button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -3px; }
+.cm-md-table-structure-button:disabled { color: color-mix(in srgb, var(--ink) 35%, var(--md-table-head)); cursor: default; }
+.cm-md-table-add-row { grid-area: 3 / 1; border-top: 1px solid var(--md-table-line); }
+.cm-md-table-delete-row { grid-area: 3 / 2; border-top: 1px solid var(--md-table-line); border-left: 1px solid var(--md-table-line); }
+.cm-md-table-add-column { grid-area: 1 / 3; border-left: 1px solid var(--md-table-line); }
+.cm-md-table-delete-column { grid-area: 2 / 3; border-left: 1px solid var(--md-table-line); border-top: 1px solid var(--md-table-line); }
+.markdown-live-codemirror .markdown-table-wrap.cm-md-table-widget::after {
+  content: '';
+  grid-area: 3 / 3;
+  border-top: 1px solid var(--md-table-line);
+  border-left: 1px solid var(--md-table-line);
+  pointer-events: none;
+}

@@ -58,7 +58,7 @@ async fn run()->Result<(),String>{
             Ok(mut v)=>{
                 if v["id"]!=request.id{return Err("desktop_response_mismatch".into());}
                 if request.operation==protocol::Operation::Hello && v["ok"]==true && v["result"].is_object(){
-                    v["result"]["nativeHost"]=json!({"version":env!("CARGO_PKG_VERSION"),"capabilities":{"folderSelection":true}});
+                    v["result"]["nativeHost"]=json!({"version":env!("CARGO_PKG_VERSION"),"capabilities":{"folderSelection":true,"captureRetry":true}});
                 }
                 protocol::write_frame(&mut output,&v)?;
             },

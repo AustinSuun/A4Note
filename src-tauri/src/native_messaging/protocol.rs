@@ -9,7 +9,7 @@ pub const PDF_CHUNK_BYTES: usize = 192 * 1024;
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Operation {
-    Hello, RequestAccess, Submit, ListTasks, ListFolders, PdfBegin, PdfChunk, PdfFinish, PdfAbort,
+    Hello, RequestAccess, Submit, RetryCapture, ListTasks, ListFolders, PdfBegin, PdfChunk, PdfFinish, PdfAbort,
 }
 
 #[derive(Debug, Deserialize)]

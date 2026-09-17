@@ -20,7 +20,7 @@ export { defaultReaderToolSettings };
 export type ReaderContentMode = 'pdf' | 'markdown';
 export type ReaderFileMode = PaperFileKind | 'parallel';
 
-export type NoteDraftPatch = { append?: string };
+export type NoteDraftPatch = { append?: string; openNote?: { paperId: string; noteId?: string; create?: boolean } };
 
 export type NoteSaveInput = {
   expected?: { title: string; content: string };

@@ -1,4 +1,4 @@
-import * as pdfjsLib from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { PositionJson } from '../../../core/types';
 import type { DragDraft, RectBox, TextItemBox } from './types';
 

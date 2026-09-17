@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { DocumentToolbarActiveContext } from './DocumentToolbar';
 
 export interface TabHostItem {
   id: string;
@@ -25,7 +26,7 @@ export function TabHost({ items, activeTabId, fallback }: TabHostProps) {
           className={item.id === activeTabId ? 'workbench-tab-frame active' : 'workbench-tab-frame hidden'}
           aria-hidden={item.id !== activeTabId}
         >
-          {item.content}
+          <DocumentToolbarActiveContext.Provider value={item.id === activeTabId}>{item.content}</DocumentToolbarActiveContext.Provider>
         </div>
       ))}
     </div>

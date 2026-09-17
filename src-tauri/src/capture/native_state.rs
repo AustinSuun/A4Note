@@ -26,7 +26,7 @@ impl NativeState {
     }
     pub fn dispatch(&self,request:Request,session:&mut Session)->Value{
         let result=(||->Result<Value,String>{
-            if request.operation==Operation::Hello{return Ok(json!({"protocolVersion":1,"authorized":self.allowed(),"transport":"native_messaging","version":"0.6.0","capabilities":{"folderSelection":true}}));}
+            if request.operation==Operation::Hello{return Ok(json!({"protocolVersion":1,"authorized":self.allowed(),"transport":"native_messaging","version":"0.6.1","capabilities":{"folderSelection":true,"captureProgress":true,"captureRetry":true,"supplementFiles":true,"sourcePdfRequired":true}}));}
             if request.operation==Operation::RequestAccess{return self.request_access();}
             if request.operation==Operation::PdfFinish{
                 if !self.allowed(){session.upload=None;return Err("access_required".into());}
@@ -42,7 +42,18 @@ impl NativeState {
                     self.service.store.submit_validated(&request.payload,selection)
                 },
                 Operation::ListFolders=>super::folders::list(&self.service.library_root),
-                Operation::ListTasks=>self.service.store.list(),
+                Operation::ListTasks=>{
+                    let id=request.payload.get("captureId").and_then(Value::as_str);
+                    if let Some(id)=id { if Uuid::parse_str(id).is_err(){return Err("invalid_capture_id".into());} }
+                    self.service.store.list_for(id)
+                },
+                Operation::RetryCapture=>{
+                    #[derive(Deserialize)] #[serde(rename_all="camelCase",deny_unknown_fields)]
+                    struct Retry { capture_id:String,index:Option<usize> }
+                    let retry:Retry=serde_json::from_value(request.payload).map_err(|_|"invalid_retry_request")?;
+                    if Uuid::parse_str(&retry.capture_id).is_err(){return Err("invalid_capture_id".into());}
+                    self.service.store.retry(&retry.capture_id,retry.index)?;Ok(json!({"captureId":retry.capture_id,"queued":true}))
+                },
                 Operation::PdfBegin=>{if session.upload.is_some(){return Err("已有文件正在传输".into());}let upload=super::native_upload::Upload::begin(self.service.clone(),&request.payload)?;let result=json!({"transferId":upload.transfer_id});session.upload=Some(upload);Ok(result)},
                 Operation::PdfChunk=>session.upload.as_mut().ok_or("missing_pdf_transfer")?.chunk(&request.payload),
                 Operation::PdfAbort=>{session.upload=None;Ok(json!({"aborted":true}))},

@@ -1,4 +1,4 @@
-//! Paper-bound Markdown summaries. No note-table mutation; files/papers is covered by backups.
+//! Legacy Markdown summaries, routed to the designated note only after explicit creation.
 use std::{fs, path::{Path, PathBuf}, io::Write};
 use rusqlite::{Connection, OptionalExtension};
 use serde::Serialize;
@@ -9,7 +9,8 @@ pub(crate) fn mutation() -> Result<std::sync::MutexGuard<'static, ()>, String> {
 const MAX_SUMMARY: u64 = 2 * 1024 * 1024;
 const MAX_IMAGE: usize = 3 * 1024 * 1024;
 #[derive(Debug, Serialize)]
-pub(crate) struct SummaryFile { pub path: String, pub content: String, pub exists: bool }
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SummaryFile { pub path: String, pub content: String, pub exists: bool, pub note_id: Option<String>, pub title: Option<String> }
 fn valid_id(id: &str) -> Result<(), String> {
     if id.is_empty() || id.len() > 128 || !id.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_') { return Err("无效的文献标识".into()); }
     Ok(())
@@ -52,10 +53,11 @@ fn read(path: &Path) -> Result<SummaryFile, String> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
         Err(e) => return Err(e.to_string()),
     };
-    Ok(SummaryFile { path: path.to_string_lossy().into(), exists: content.is_some(), content: content.unwrap_or_default() })
+    Ok(SummaryFile { path: path.to_string_lossy().into(), exists: content.is_some(), content: content.unwrap_or_default(), note_id: None, title: None })
 }
 fn ensure(root: &Path, id: &str) -> Result<SummaryFile, String> {
     let _mutation = mutation()?;
+    if let Some(note) = crate::library_summary_notes::read_bound(root, id)? { return Ok(note); }
     let path = summary_path(root, id)?;
     if !path.exists() {
         fs::create_dir_all(path.parent().ok_or("缺少总结目录")?).map_err(|e| e.to_string())?;
@@ -67,6 +69,7 @@ fn ensure(root: &Path, id: &str) -> Result<SummaryFile, String> {
 fn save(root: &Path, id: &str, content: &str, expected: &str) -> Result<(), String> {
     if content.len() as u64 > MAX_SUMMARY || content.contains('\0') { return Err("总结超过2MB或不是文本".into()); }
     let _mutation = mutation()?;
+    if crate::library_summary_notes::read_bound(root, id)?.is_some() { return Err("本论文已启用总结笔记，旧MD编辑不会转写到新笔记。请导出草稿后重新打开。".into()); }
     let path = summary_path(root, id)?;
     // Missing/deleted files must never be silently recreated by a stale editor.
     text_file_io::atomic_write(&path, content, Some(expected))
@@ -74,12 +77,16 @@ fn save(root: &Path, id: &str, content: &str, expected: &str) -> Result<(), Stri
 #[tauri::command]
 pub async fn read_paper_summary(app: AppHandle, paper_id: String) -> Result<SummaryFile, String> {
     let _access = crate::library_access::operation()?;
-    read(&summary_path(&app_data_root(&app)?, &paper_id)?)
+    let root = app_data_root(&app)?;
+    if let Some(note) = crate::library_summary_notes::read_bound(&root, &paper_id)? { return Ok(note); }
+    read(&summary_path(&root, &paper_id)?)
 }
 #[tauri::command]
 pub async fn ensure_paper_summary(app: AppHandle, paper_id: String) -> Result<SummaryFile, String> {
     let _access = crate::library_access::operation()?;
-    ensure(&app_data_root(&app)?, &paper_id)
+    let root = app_data_root(&app)?;
+    if let Some(note) = crate::library_summary_notes::read_bound(&root, &paper_id)? { return Ok(note); }
+    ensure(&root, &paper_id)
 }
 #[tauri::command]
 pub async fn save_paper_summary(app: AppHandle, paper_id: String, content: String, expected_content: String) -> Result<(), String> {

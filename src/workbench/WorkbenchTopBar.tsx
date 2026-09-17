@@ -2,6 +2,7 @@ import { ChevronDown, FolderOpen, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Project, Workspace } from '../core/workspace';
 import type { WorkbenchLabels } from './workbenchLabels';
+import { useDocumentToolbar } from './DocumentToolbar';
 
 export interface TopBarProviderOption {
   id: string;
@@ -29,6 +30,7 @@ export interface WorkbenchTopBarProps {
   onCreateWorkspace: (projectId: string) => void;
   onRemoveWorkspace: (workspaceId: string) => void;
   status?: ReactNode;
+  workspaceBreadcrumb?: ReactNode;
 }
 
 /** Breadcrumb on the left, the four project-level actions on the right. */
@@ -50,7 +52,9 @@ export function WorkbenchTopBar({
   onCreateWorkspace,
   onRemoveWorkspace,
   status,
+  workspaceBreadcrumb,
 }: WorkbenchTopBarProps) {
+  const documentToolbar = useDocumentToolbar();
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [openMenuOpen, setOpenMenuOpen] = useState(false);
   const workspacePickerRef = useRef<HTMLDivElement>(null);
@@ -78,6 +82,7 @@ export function WorkbenchTopBar({
   return (
     <header className="workbench-topbar">
       <div className="workbench-breadcrumb">
+        {workspaceBreadcrumb ?? <>
         <span className="workbench-breadcrumb-project" title={project?.rootPath}>
           {project?.name ?? labels.brand}
         </span>
@@ -143,18 +148,11 @@ export function WorkbenchTopBar({
             </div>
           )}
         </div>
+        </>}
       </div>
-      {status && <div className="workbench-topbar-status">{status}</div>}
+      {status && <div className="workbench-topbar-status" role="status">{status}</div>}
+      {documentToolbar?.enabled && <div className="workbench-document-controls" ref={documentToolbar.setControlsHost} />}
       <div className="workbench-topbar-actions">
-        <button
-          type="button"
-          className={fileTreeVisible ? 'workbench-action active' : 'workbench-action'}
-          disabled={!canToggleFileTree}
-          aria-pressed={fileTreeVisible}
-          onClick={onToggleFileTree}
-        >
-          {labels.toggleFileTree}
-        </button>
         <div className="workbench-open-menu" ref={openMenuRef}>
           <button type="button" className="workbench-action workbench-open-trigger" disabled={!canBrowseFolder} aria-haspopup="menu" aria-expanded={openMenuOpen} onClick={() => setOpenMenuOpen((current) => !current)}>
             <FolderOpen size={15} aria-hidden="true" />
@@ -168,6 +166,7 @@ export function WorkbenchTopBar({
             </div>
           )}
         </div>
+        {documentToolbar?.enabled && <div className="workbench-document-save" ref={documentToolbar.setSaveHost} />}
       </div>
     </header>
   );

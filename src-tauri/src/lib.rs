@@ -25,6 +25,7 @@ mod library_annotations;
 mod library_import;
 mod library_notes;
 mod library_summaries;
+mod library_summary_notes;
 mod library_papers;
 mod library_state;
 mod pdf_metadata;
@@ -128,6 +129,7 @@ pub fn run() {
             resource_annotations::update_resource_annotation_color,
             resource_annotations::update_resource_annotation_position,
             resource_annotations::delete_resource_annotation,
+            library_summary_notes::create_paper_summary_note,
             library_summaries::read_paper_summary,
             library_summaries::ensure_paper_summary,
             library_summaries::save_paper_summary,
