@@ -1,3 +1,5 @@
+import './library-typography.css';
+import { SummaryProvisionNotice } from './SummaryProvisionNotice';
 import { PaperSignals } from '../PaperSignals';
 import { LibraryNotesView } from './LibraryNotesView';
 import { LibraryViewSwitch } from './LibraryViewSwitch';
@@ -88,22 +90,6 @@ export function LibraryScene({
     setPaperMenu({ paperId, x, y, trigger });
   };
 
-  const activeFolderLabel = useMemo(() => {
-    switch (activeFolderId) {
-      case 'all':
-        return '全部文献';
-      case 'recently-viewed':
-        return '最近查看';
-      case 'recently-imported':
-        return '最近导入';
-      case 'unread':
-        return '未读文献';
-      case 'favorites':
-        return '收藏文献';
-      default:
-        return folders.find((folder) => folder.folderId === activeFolderId)?.name ?? activeFolderId;
-    }
-  }, [activeFolderId, folders]);
 
   useEffect(() => {
     localStorage.setItem(LIBRARY_COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumns));
@@ -166,6 +152,7 @@ export function LibraryScene({
     <section className={`scene active library-scene ${view === 'overview' ? 'overview-mode' : ''}`}>
       <div className={`library-layout ${detailVisible ? 'detail-open' : ''}`.trim()}>
         <section className="library-main">
+          <SummaryProvisionNotice />
           <div className="library-commandbar">
             <LibraryViewSwitch view={view} onChange={setView} />
             <label className="library-search-field">
@@ -200,14 +187,7 @@ export function LibraryScene({
             </button>
           </div>
 
-          {view === 'list' && <div className="library-filter-line">
-            <span>{activeFolderLabel}</span>
-            {activeTag !== 'all' && <span>标签：{activeTag}</span>}
-            {query && <span>搜索：{query}</span>}
-            <div className="library-selection-actions library-inline-actions" role="group" aria-label="所选论文操作">
-              <button type="button" className="primary" disabled={!selectedInView} onClick={onOpenReader}><LibraryIcon name="book" />{zh.library.openReader}</button>
-            </div>
-          </div>}
+
 
           {bulkSelectedPaperIds.length > 0 ? (
             <div className="bulk-actions library-bulkbar">

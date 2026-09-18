@@ -257,6 +257,10 @@ export async function openPaperFile(request: { paperId: string; kind: PaperFileK
 }
 
 export async function listNativePapers() {
+  // Startup and every import/capture refresh provision missing summaries before notes are loaded.
+  // Keep pure native record mapping usable without loading editor/browser services.
+  const { provisionLibrarySummaries } = await import('./library/provisionSummaryNotes');
+  await provisionLibrarySummaries();
   return invoke<NativePaperSummary[]>('list_papers');
 }
 

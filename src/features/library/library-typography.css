@@ -1,0 +1,34 @@
+/* Follow the actual library sidebar label token, including the user's UI-size setting.
+   Scope to list/scene chrome; never scale PDF, Markdown or overview editor content. */
+.library-scene { --library-label-size: var(--ui-body-small-font-size, 12px); --library-caption-size: var(--ui-caption-font-size, 11px); }
+.library-scene .library-paper-index,
+.library-scene .library-paper-index th,
+.library-scene .library-search-field input,
+.library-scene .library-import-button,
+.library-scene .column-settings-trigger,
+.library-scene .library-selection-actions button,
+.library-scene .library-bulkbar button,
+.library-scene .library-bulkbar > span { font-size: var(--library-label-size); line-height: 1.5; }
+.library-scene .paper-index-title { font-size: calc(var(--library-label-size) * 1.083333); line-height: 1.5; }
+.library-scene .library-result-count,
+.library-scene .library-filter-line,
+.library-scene .library-filter-line button,
+.library-scene .library-paper-index .tag,
+.library-scene .library-paper-index .paper-status-badge { font-size: var(--library-caption-size); line-height: 1.5; }
+/* Let rows/controls grow with readable type instead of clipping at fixed heights. */
+.library-scene .library-search-field { height: auto; min-height: 34px; padding-top: 2px; padding-bottom: 2px; }
+.library-scene .library-search-field input { height: auto; min-height: 30px; }
+.library-scene .library-import-button,
+.library-scene .column-settings-trigger,
+.library-scene .library-selection-actions button,
+.library-scene .library-bulkbar button { min-height: 32px; padding-top: 4px; padding-bottom: 4px; white-space: nowrap; }
+.library-scene .library-paper-index th { height: 34px; padding-top: 5px; padding-bottom: 5px; }
+.library-scene .library-paper-index td { height: 64px; padding-top: 9px; padding-bottom: 9px; line-height: 1.5; }
+.library-scene .library-paper-index .paper-status-badges { flex-wrap: wrap; row-gap: 3px; overflow: visible; }
+.library-scene .library-paper-index .tag { flex: 0 1 auto; min-width: 0; max-width: 9em; }
+.library-scene .library-paper-index .tag-more { flex-shrink: 0; }
+.library-scene .library-filter-line { flex-wrap: wrap; overflow: visible; }
+/* Keep columns legible at the supported minimum window size; scroll the table only. */
+.library-scene .library-paper-index { min-width: 760px; }
+.library-scene .library-detail-content :is(.detail-muted, .detail-meta-grid span, .detail-meta-grid strong, .binding-row span, .binding-row strong, .binding-row button, .binding-stats span, .detail-actions button, .tag) { font-size: var(--library-label-size); line-height: 1.5; }
+.library-scene .library-detail-content h2 { font-size: calc(var(--library-label-size) * 1.25); }

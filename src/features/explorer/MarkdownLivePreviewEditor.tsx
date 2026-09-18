@@ -289,6 +289,21 @@ class LatexWidget extends WidgetType {
 }
 
 const openImageTools = new WeakMap<EditorView, number>();
+const imageWidgetOwners = new WeakMap<HTMLElement, ImageWidget>();
+function imageControlIcon(action: string) {
+  const paths: Record<string, string> = {
+    settings: 'M4 7h16M4 17h16M8 4v6M16 14v6',
+    smaller: 'M5 12h14', larger: 'M5 12h14M12 5v14',
+    left: 'M4 4v16M8 6h12v12H8z', center: 'M12 2v3M12 19v3M5 6h14v12H5z',
+    right: 'M20 4v16M4 6h12v12H4z', reset: 'M3 10a9 9 0 1 1 2 8M3 4v6h6',
+  };
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '1.7'); svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+  const path = document.createElementNS(svg.namespaceURI, 'path');
+  path.setAttribute('d', paths[action] ?? paths.settings); svg.append(path); return svg;
+}
 class ImageWidget extends WidgetType {
   constructor(
     private readonly source: string,
@@ -304,9 +319,21 @@ class ImageWidget extends WidgetType {
       && other.sourceFrom === this.sourceFrom && other.sourceTo === this.sourceTo
       && other.rawSource === this.rawSource && other.sourceVisible === this.sourceVisible && other.documentPath === this.documentPath;
   }
-  toDOM(view: EditorView) {
-    const wrapper = document.createElement('span');
+  updateDOM(dom: HTMLElement, view: EditorView) {
+    const previous = imageWidgetOwners.get(dom);
+    if (!previous || previous.source !== this.source || previous.alt !== this.alt
+      || previous.documentPath !== this.documentPath || previous.sourceFrom !== this.sourceFrom
+      || previous.sourceVisible !== this.sourceVisible) return false;
+    // Keep the decoded image and its geometry through layout-only Markdown edits.
+    this.toDOM(view, dom);
+    return true;
+  }
+  toDOM(view: EditorView, existing?: HTMLElement) {
+    const wrapper = existing ?? document.createElement('span');
+    imageWidgetOwners.set(wrapper, this);
+    wrapper.querySelector('.cm-md-image-tools')?.remove();
     wrapper.className = 'cm-md-image-wrap cm-md-image-preview';
+    wrapper.style.width = ''; wrapper.style.marginLeft = ''; wrapper.style.marginRight = '';
     wrapper.dataset.imageFrom = String(this.sourceFrom);
     const { caption, layout } = readImageTitle(imageSourceTitle(this.rawSource));
     if (layout) {
@@ -315,15 +342,15 @@ class ImageWidget extends WidgetType {
       wrapper.style.marginLeft = layout.align === 'left' ? '0' : 'auto';
       wrapper.style.marginRight = layout.align === 'right' ? '0' : 'auto';
     }
-    const image = document.createElement('img');
+    const image = wrapper.querySelector<HTMLImageElement>('img.cm-md-image') ?? document.createElement('img');
     image.className = 'cm-md-image';
-    if (directNoteImage(this.source)) image.src = this.source;
+    if (!existing && directNoteImage(this.source)) image.src = this.source;
     image.alt = this.alt;
-    if (caption) image.title = caption;
+    image.title = caption || '';
     image.loading = 'lazy';
-    image.addEventListener('load', () => { if (wrapper.isConnected) view.requestMeasure(); });
+    if (!existing) image.addEventListener('load', () => { if (wrapper.isConnected) view.requestMeasure(); });
     wrapper.append(image);
-    if (!directNoteImage(this.source)) {
+    if (!existing && !directNoteImage(this.source)) {
       let disposed = false;
       imageDisposers.set(wrapper, () => { disposed = true; });
       const status = document.createElement('span');
@@ -344,12 +371,13 @@ class ImageWidget extends WidgetType {
     }
     const sourceFrom = this.sourceFrom;
     const sourceTo = this.sourceTo;
-    if (this.sourceVisible) {
+    if (this.sourceVisible && !existing) {
       wrapper.addEventListener('mousedown', (event) => {
         if ((event.target as HTMLElement).closest('.cm-md-image-tools')) return;
         event.preventDefault();
         event.stopPropagation();
-        view.dispatch({ selection: { anchor: sourceFrom, head: sourceTo } });
+        const current = imageWidgetOwners.get(wrapper);
+        view.dispatch({ selection: { anchor: current?.sourceFrom ?? sourceFrom, head: current?.sourceTo ?? sourceTo } });
         view.focus();
       });
     }
@@ -360,7 +388,7 @@ class ImageWidget extends WidgetType {
       const toggle = document.createElement('button');
       toggle.type = 'button';
       toggle.className = 'cm-md-image-tools-toggle';
-      toggle.textContent = '⤢';
+      toggle.append(imageControlIcon('settings'));
       toggle.title = '调整图片大小与对齐';
       toggle.setAttribute('aria-label', toggle.title);
       const panel = document.createElement('span');
@@ -394,7 +422,7 @@ class ImageWidget extends WidgetType {
       tools.addEventListener('focusout', event => {
         if (event.relatedTarget && !tools.contains(event.relatedTarget as Node)) setOpen(false);
       });
-      wrapper.addEventListener('mouseleave', () => { if (!tools.contains(document.activeElement)) setOpen(false); });
+      wrapper.onmouseleave = () => { if (!tools.contains(document.activeElement)) setOpen(false); };
       const currentLayout = (): ImageLayout => {
         const containerWidth = wrapper.closest('.cm-line')?.getBoundingClientRect().width || image.getBoundingClientRect().width || 1;
         return layout ?? { width: Math.max(10, Math.min(100, Math.round(image.getBoundingClientRect().width / containerWidth * 100))), align: 'left' };
@@ -412,7 +440,8 @@ class ImageWidget extends WidgetType {
       };
       const addButton = (action: string, text: string, label: string, getNext: () => ImageLayout | null) => {
         const button = document.createElement('button');
-        button.type = 'button'; button.textContent = text; button.title = label;
+        button.type = 'button'; button.append(imageControlIcon(action)); button.title = label;
+        if (action === 'reset') { const copy = document.createElement('span'); copy.textContent = text; button.append(copy); }
         button.dataset.imageAction = action; button.setAttribute('aria-label', label);
         if (['left', 'center', 'right'].includes(action)) button.setAttribute('aria-pressed', String((layout?.align ?? 'left') === action));
         button.addEventListener('click', () => apply(getNext(), action));
@@ -420,6 +449,7 @@ class ImageWidget extends WidgetType {
       };
       addButton('smaller', '−', '缩小图片（正文宽度的10%）', () => ({ ...currentLayout(), width: Math.max(10, currentLayout().width - 10) }));
       const size = document.createElement('span');
+      size.title = '相对于正文宽度';
       size.textContent = layout ? `${layout.width}%` : '自动'; size.className = 'cm-md-image-size';
       panel.append(size);
       addButton('larger', '＋', '放大图片（正文宽度的10%）', () => ({ ...currentLayout(), width: Math.min(100, currentLayout().width + 10) }));
@@ -432,7 +462,7 @@ class ImageWidget extends WidgetType {
     }
     return wrapper;
   }
-  destroy(dom: HTMLElement) { imageDisposers.get(dom)?.(); imageDisposers.delete(dom); }
+  destroy(dom: HTMLElement) { imageDisposers.get(dom)?.(); imageDisposers.delete(dom); imageWidgetOwners.delete(dom); }
   ignoreEvent() { return true; }
 }
 
@@ -1045,6 +1075,12 @@ function collectMarkdownHeadings(state: EditorState): MarkdownHeading[] {
 function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
   const documentPath = state.facet(noteDocumentPath);
   const decorations: Range<Decoration>[] = [];
+  // Tint parsed Markdown delimiters, never the prose or fenced-code tokens.
+  syntaxTree(state).iterate({ enter(node) {
+    if (/^(HeaderMark|EmphasisMark|StrikethroughMark|LinkMark|QuoteMark|ListMark|CodeMark|Escape)$/.test(node.name) && node.to > node.from) {
+      decorations.push(Decoration.mark({ class: 'cm-md-source-marker' }).range(node.from, node.to));
+    }
+  } });
   const headings = collectMarkdownHeadings(state);
   const activePos = state.selection.main.head;
   const activeLine = state.doc.lineAt(activePos).number;
@@ -1093,8 +1129,14 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       if (!isFenced) mathBlocks.push({ from, to, source: match[2] ?? match[3] ?? '', lines });
     }
     for (const block of mathBlocks) {
-      if (cursorNear(block.from, block.to)) {
+      const firstLine = state.doc.lineAt(block.from).number;
+      const lastLine = state.doc.lineAt(block.to).number;
+      if (cursorNear(block.from, block.to) || activeLine === firstLine - 1 || activeLine === lastLine + 1) {
         decorations.push(Decoration.mark({ class: 'cm-md-math-source cm-md-math-display-source' }).range(block.from, block.to));
+        for (const token of state.doc.sliceString(block.from, block.to).matchAll(/\\[a-zA-Z]+|\\[\[\]]|[$^_{}&]/g)) {
+          const start = block.from + (token.index ?? 0);
+          decorations.push(Decoration.mark({ class: 'cm-md-source-marker' }).range(start, start + token[0].length));
+        }
       } else {
         decorations.push(Decoration.replace({ widget: new LatexWidget(block.source, true, block.from, block.to, 2), inclusive: false, block: true }).range(block.from, block.to));
       }
@@ -1141,6 +1183,12 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
     const hideInlineSyntax = (from: number, to: number) => hide(from, to, 'cm-md-inline-syntax-hidden');
     const mark = (from: number, to: number, className: string) => {
       if (to > from) decorations.push(Decoration.mark({ class: className }).range(from, to));
+      if (to > from && className.includes('source')) {
+        for (const token of state.doc.sliceString(from, to).matchAll(/<\/?[a-zA-Z]+\b[^>]*>|[\[\]()*_~`#$=|!^]+/g)) {
+          const start = from + (token.index ?? 0);
+          decorations.push(Decoration.mark({ class: 'cm-md-source-marker' }).range(start, start + token[0].length));
+        }
+      }
     };
     if (fenceMatch) {
       // The fence regexp only captures the backtick run, so the info string has

@@ -236,7 +236,7 @@
 }
 .pdf-parallel-pane {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -245,15 +245,6 @@
   background: rgba(255,255,255,.38);
 }
 .pdf-parallel-pane.active { box-shadow: none; }
-.pdf-parallel-header {
-  display: flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 0 10px;
-  color: var(--muted);
-  font-size: var(--ui-caption-font-size);
-  border-bottom: 1px solid rgba(36,45,39,.05);
-}
 .markdown-reader, .markdown-empty {
   width: min(820px, 100%);
   min-height: 780px;
@@ -351,14 +342,21 @@
 .pdf-document::-webkit-scrollbar { width: 0; height: 0; }
 .pdf-document-content {
   display: grid;
-  justify-items: center;
+  /* One viewport-wide track: a later poster page must not shift normal pages. */
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
   align-content: start;
   gap: 9px;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
   min-height: 100%;
   transform-origin: 0 0;
   will-change: transform;
+}
+.pdf-document-content > .pdf-page {
+  /* Auto margins center fitting pages; resolve to zero for oversized pages,
+     preserving the left edge and horizontal scrolling without negative offsets. */
+  margin-inline: auto;
 }
 .annotation-color-pill {
   width: 18px;
@@ -1669,7 +1667,7 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 }
 .pdf-keepalive-stage.parallel .pdf-keepalive-pane {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   border-radius: 9px;
   background: rgba(255,255,255,.38);
 }

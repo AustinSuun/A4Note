@@ -15,6 +15,8 @@ const version = packageConfig.version ?? '0.0.0';
 const runId = `${formatStamp(new Date())}-${process.pid}`;
 const runRoot = path.join(rootDir, '.build', 'tauri-packaging', runId);
 const cargoTargetDir = path.join(runRoot, 'target');
+const frontendDistDir = path.join(runRoot, 'frontend');
+const buildOverridePath = path.join(runRoot, 'tauri-build.json');
 const stagedLatestDir = path.join(runRoot, 'latest');
 const archiveDir = path.join(archiveRoot, `${version}-${runId}`);
 
@@ -41,11 +43,22 @@ const hostBuild = spawnSync(process.execPath, ['scripts/prepare-native-host.mjs'
 if (hostBuild.error) throw hostBuild.error;
 if (hostBuild.status !== 0) process.exit(hostBuild.status || 1);
 
+// Tauri embeds frontend files while Rust compiles. A concurrent ordinary Vite
+// build clears the shared dist folder, so isolate frontend assets as well as Cargo.
+await writeFile(buildOverridePath, JSON.stringify({
+  build: {
+    // Absolute Windows drive paths can parse as URLs (d:), disabling asset embedding.
+    frontendDist: path.relative(path.join(rootDir, 'src-tauri'), frontendDistDir).split(path.sep).join('/'),
+    beforeBuildCommand: `npm run build -- --outDir ${path.relative(rootDir, frontendDistDir).split(path.sep).join('/')}`,
+  },
+}, null, 2) + '\n', 'utf8');
 const buildCommand = process.platform === 'win32'
-  ? { command: process.env.ComSpec ?? 'cmd.exe', args: ['/d', '/s', '/c', 'npm run tauri:build'] }
-  : { command: 'npm', args: ['run', 'tauri:build'] };
+  ? { command: process.env.ComSpec ?? 'cmd.exe', args: ['/d', '/s', '/c', `npm run tauri:build -- --config ${path.relative(rootDir, buildOverridePath).split(path.sep).join('/')}`] }
+  : { command: 'npm', args: ['run', 'tauri:build', '--', '--config', buildOverridePath] };
 const result = spawnSync(buildCommand.command, buildCommand.args, {
   cwd: rootDir,
+  // cmd.exe parses its own command string; Node must not backslash-escape its quotes.
+  windowsVerbatimArguments: process.platform === 'win32',
   env: { ...signingEnv, CARGO_TARGET_DIR: cargoTargetDir },
   stdio: 'inherit',
 });
@@ -63,6 +76,19 @@ const releaseDir = path.join(cargoTargetDir, 'release');
 const executableSource = path.join(releaseDir, 'a4note.exe');
 const installerSource = await findInstaller(path.join(releaseDir, 'bundle', 'nsis'));
 await assertFile(executableSource, 'Tauri release executable');
+
+// A successful Rust build alone is not proof that frontend files were embedded.
+// Verify the actual executable before replacing any known-good delivery package.
+const frontendIndex = await readFile(path.join(frontendDistDir, 'index.html'), 'utf8');
+const entryAssets = [...frontendIndex.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g)].map((match) => match[1]);
+if (!entryAssets.length) throw new Error('Frontend index has no generated asset references.');
+const executableBytes = await readFile(executableSource);
+for (const asset of entryAssets) {
+  if (!executableBytes.includes(Buffer.from(asset))) {
+    throw new Error(`Frontend asset was not embedded in the executable: ${asset}`);
+  }
+}
+console.log(`Verified ${entryAssets.length} frontend entry assets inside the executable.`);
 
 await mkdir(stagedLatestDir, { recursive: true });
 const executableTarget = path.join(stagedLatestDir, 'a4note.exe');

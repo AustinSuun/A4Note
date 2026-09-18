@@ -1,0 +1,14 @@
+.library-scene .summary-provision-notice {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--ink);
+  background: var(--surface-soft);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.library-scene .summary-provision-notice details { max-width: 100%; }
+.library-scene .summary-provision-notice ul { max-height: 160px; overflow: auto; }

@@ -43,6 +43,15 @@ export function createMarkdownPlugin(scene: SceneContribution = defaultMarkdownS
     activate: (context) => {
       scenePlugin.activate(context);
       context.settings.register({
+        id: 'markdown.dockLabels', title: '笔记悬浮栏显示', defaultValue: 'chinese',
+        options: [{ value: 'chinese', label: '中文文字' }, { value: 'icons', label: '图标' }],
+        description: '两种显示方式使用相同功能；图标保留中文悬停提示。', sceneId: 'markdown',
+      });
+      context.settings.register({
+        id: 'markdown.dockGlass', title: '悬浮栏玻璃效果', defaultValue: false,
+        description: '同时应用于笔记编辑悬浮栏和 PDF 标注悬浮栏；关闭使用实色，不支持模糊的环境自动回退。', sceneId: 'markdown',
+      });
+      context.settings.register({
         id: 'markdown.documentLayout',
         title: '正文宽度',
         defaultValue: 'fluid',

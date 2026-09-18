@@ -1,5 +1,5 @@
 import { summaryNoteSession, publishSummaryNote } from './summaryNotes';
-import { parseSummaryLayout, updateSummaryField } from '../../core/librarySummary';
+import { summaryNoteTemplate } from '../../core/summaryNoteTemplate';
 import { invoke } from '@tauri-apps/api/core';
 import { acquireTextDocument } from '../projects/textDocuments';
 import type { TextDocumentSession } from '../../core/textDocumentSession';
@@ -35,6 +35,9 @@ export async function loadSummary(paperId: string, refresh = false): Promise<Sum
   const running = loading.get(paperId); if (running) return running;
   const baseline = sessions.get(paperId)?.getSnapshot().baseline;
   const promise = limited(() => invoke<SummaryFile>('read_paper_summary', { paperId })).then(file => {
+    // A pre-provisioning read must not restore an absent/legacy source over a new note.
+    const provisioned = cache.get(paperId);
+    if (provisioned?.noteId && !file.noteId) return provisioned;
     let session = sessions.get(paperId);
     if (session && session.getSnapshot().path !== file.path) {
       // A legacy read started before explicit creation cannot replace the new source.
@@ -54,6 +57,15 @@ export async function loadSummary(paperId: string, refresh = false): Promise<Sum
   loading.set(paperId, promise); return promise;
 }
 export function invalidateSummaryPreviews() { cache.clear(); cacheBytes = 0; sessions.forEach((_session, id) => staleSessions.add(id)); }
+/** Publish only newly provisioned papers, without resetting unrelated editor sessions. */
+export function acceptProvisionedSummary(paperId: string, file: SummaryFile) {
+  const snapshot = sessions.get(paperId)?.getSnapshot();
+  const current = snapshot?.path === file.path ? { ...file, content: snapshot.content } : file;
+  identities.set(paperId, { noteId: current.noteId, title: current.title });
+  remember(paperId, current);
+  publishSummaryNote(current, paperId);
+  for (const listener of listeners) { try { listener(paperId); } catch (error) { console.warn(error); } }
+}
 export async function editSummary(paperId: string): Promise<TextDocumentSession> {
   const file = await invoke<SummaryFile>('ensure_paper_summary', { paperId });
   const session = file.noteId ? summaryNoteSession(paperId, file) : await acquireTextDocument(file.path, {
@@ -107,9 +119,7 @@ export async function createSummaryNote(paperId: string): Promise<SummaryFile> {
   const old = sessions.get(paperId);
   if (old?.pending()) throw new Error('旧总览还有未保存修改，请先保存或导出后再启用总结笔记。');
   const layout = await summaryLayoutSession();
-  const { columns } = parseSummaryLayout(layout.getSnapshot().content);
-  let content = '# 总结笔记\n\n此笔记的字段与论文总览同步。请保留 a4-summary 字段标记；可在字段外自由写作。\n';
-  for (const column of columns.filter(c => !c.source)) content = updateSummaryField(content, column, '');
+  const content = summaryNoteTemplate(layout.getSnapshot().content);
   if (sessions.get(paperId)?.pending()) throw new Error('准备模板期间总览产生新编辑，请先保存或导出。');
   const file = await invoke<SummaryFile>('create_paper_summary_note', { paperId, content });
   sessions.delete(paperId); identities.set(paperId, { noteId: file.noteId, title: file.title }); remember(paperId, file);

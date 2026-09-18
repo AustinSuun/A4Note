@@ -198,10 +198,8 @@ export function ReaderDocumentPane({
                   onMouseDownCapture={() => onActiveParallelFileKindChange(reader.fileKind)}
                   onFocusCapture={() => onActiveParallelFileKindChange(reader.fileKind)}
                   aria-hidden={!visible}
+                  aria-label={reader.fileKind === 'source' ? zh.reader.sourcePdf : zh.reader.translatedPdf}
                 >
-                  {fileMode === 'parallel' && visible && (
-                    <div className="pdf-parallel-header">{reader.fileKind === 'source' ? zh.reader.sourcePdf : zh.reader.translatedPdf}</div>
-                  )}
                   {renderPdfReader(reader.fileKind, reader.fileId, active)}
                 </section>
               );

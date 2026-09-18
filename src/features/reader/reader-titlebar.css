@@ -5,7 +5,7 @@
 .reader-titlebar-tools { flex: 1 1 0; width: 100%; min-width: 0; -webkit-app-region: no-drag; }
 .reader-titlebar-tools .reader-toolbar {
   display: grid; grid-template-areas: none;
-  grid-template-columns: minmax(max-content, 1fr) max-content minmax(max-content, 1fr);
+  grid-template-columns: max-content minmax(max-content, 1fr);
   box-sizing: border-box; width: 100%; height: 36px; min-height: 0;
   padding: 0 2px; gap: 6px; border: 0; background: transparent;
   overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;

@@ -413,7 +413,7 @@ export default function PdfReader({
       };
     }
     const delta = event.deltaY > 0 ? -0.1 : 0.1;
-    pendingZoomRef.current = clamp(Number((pendingZoomRef.current + delta).toFixed(2)), 0.7, 2.2);
+    pendingZoomRef.current = clamp(Number((pendingZoomRef.current + delta).toFixed(2)), 0.2, 5);
     // Keep the wheel gesture on the compositor. PDF.js only renders once the
     // user pauses, instead of starting a canvas render for every wheel event.
     // The old path called setDisplayZoom(pendingZoomRef.current) here, which

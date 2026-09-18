@@ -1,10 +1,11 @@
 import { useEffect, useState, type CSSProperties, type WheelEvent as ReactWheelEvent } from 'react';
 import { ReaderToolbarPortal } from './ReaderToolbarPortal';
+import { ReaderAnnotationDock } from './ReaderAnnotationDock';
 import { ReaderToolPopover } from './ReaderToolPopover';
 import './reader-file-switch.css';
 import type { AnnotationColor, PaperDocument, ReaderTool } from '../../core/types';
 import { zh } from '../../ui/zh';
-import { AnnotationToolIcon, FitWidthIcon, SidebarIcon, ZoomInIcon, ZoomOutIcon } from './ReaderIcons';
+import { AnnotationToolIcon, FitWidthIcon, ZoomInIcon, ZoomOutIcon } from './ReaderIcons';
 import { annotationColorInputValue, annotationTools, defaultToolColors, toolColorPresets } from './readerConstants';
 import type { PdfZoomAnchor, ReaderContentMode, ReaderFileMode, ReaderToolSettings } from './types';
 
@@ -31,8 +32,6 @@ export function ReaderToolbar({
   contextAnnotationColor,
   contextToolSettings,
   zoom,
-  readerPageState,
-  sidePanelOpen,
   onFileModeChange,
   onContentModeChange,
   onTranslatedFileIdChange,
@@ -46,8 +45,6 @@ export function ReaderToolbar({
   onClearContextAnnotation,
   onZoomChange,
   onFitWidth,
-  onJumpToPage,
-  onSidePanelOpenChange,
 }: {
   paper: PaperDocument;
   contentMode: ReaderContentMode;
@@ -63,8 +60,6 @@ export function ReaderToolbar({
   contextAnnotationColor?: AnnotationColor | null;
   contextToolSettings?: ReaderToolSettings | null;
   zoom: number;
-  readerPageState: { currentPage: number; totalPages: number };
-  sidePanelOpen: boolean;
   onFileModeChange: (mode: ReaderFileMode) => void;
   onContentModeChange: (mode: ReaderContentMode) => void;
   onTranslatedFileIdChange: (fileId: string) => void;
@@ -78,17 +73,11 @@ export function ReaderToolbar({
   onClearContextAnnotation?: () => void;
   onZoomChange: (zoom: number, anchor?: PdfZoomAnchor) => void;
   onFitWidth: () => void;
-  onJumpToPage: (page: number) => void;
-  onSidePanelOpenChange: (open: boolean) => void;
 }) {
   const hasTranslatedPdf = Boolean(paper.translatedPdfs.length);
-  const [pageInput, setPageInput] = useState(String(readerPageState.currentPage));
   const [toolColors, setToolColors] = useState<Record<ReaderTool, AnnotationColor>>(() => ({ ...defaultToolColors }));
   const [toolSettingsOpenFor, setToolSettingsOpenFor] = useState<ReaderTool | null>(null);
 
-  useEffect(() => {
-    setPageInput(String(readerPageState.currentPage));
-  }, [readerPageState.currentPage, paper.paperId]);
 
   useEffect(() => {
     setToolSettingsOpenFor((current) => (current === activeAnnotationTool ? current : null));
@@ -128,11 +117,7 @@ export function ReaderToolbar({
     onSelectAnnotationColor(color);
   };
 
-  const handlePageSubmit = () => {
-    const nextPage = Math.max(1, Math.min(readerPageState.totalPages, Number(pageInput) || readerPageState.currentPage));
-    setPageInput(String(nextPage));
-    onJumpToPage(nextPage);
-  };
+
 
   const optionsTool = contextAnnotationTool ?? toolSettingsOpenFor;
   const currentColor = contextAnnotationColor ?? toolColors[activeAnnotationTool] ?? activeAnnotationColor;
@@ -146,6 +131,7 @@ export function ReaderToolbar({
   };
 
   return (
+    <>
     <ReaderToolbarPortal>
     <header
       className="reader-toolbar"
@@ -218,7 +204,37 @@ export function ReaderToolbar({
         </div>
       </div>
 
-      <div className="reader-toolbar-center">
+      <div className="reader-toolbar-end">
+        {contentMode === 'pdf' && <div className="reader-toolbar-group reader-toolbar-nav">
+          <div className="zoom-controls" aria-label="Zoom controls">
+            <button
+              type="button"
+              onClick={() => onZoomChange(Math.max(0.2, Number((zoom - 0.1).toFixed(2))))}
+              title={zh.reader.zoomOut}
+            >
+              <ZoomOutIcon />
+            </button>
+            <button type="button" className="zoom-pct-btn" onClick={() => onZoomChange(1)} title="Reset to 100%">
+              {Math.round(zoom * 100)}%
+            </button>
+            <button type="button" onClick={onFitWidth} title={zh.reader.fitWidth}>
+              <FitWidthIcon />
+            </button>
+            <button
+              type="button"
+              onClick={() => onZoomChange(Math.min(5, Number((zoom + 0.1).toFixed(2))))}
+              title={zh.reader.zoomIn}
+            >
+              <ZoomInIcon />
+            </button>
+          </div>
+
+
+        </div>}
+      </div>
+    </header>
+    </ReaderToolbarPortal>
+    {contentMode === 'pdf' && <ReaderAnnotationDock>
         {contentMode === 'pdf' && <div className="reader-toolbar-group reader-toolbar-annotations">
           <div className="annotation-toolbar" aria-label="Annotation tools">
             {annotationTools.map((tool) => {
@@ -231,9 +247,11 @@ export function ReaderToolbar({
                     className={`annotation-tool-btn ${isActive ? 'active' : ''} ${isContextual ? 'contextual' : ''}`.trim()}
                     type="button"
                     onClick={() => handleSelectTool(tool.id)}
-                    title={tool.label}
+                    title={toolHasSettings(tool.id) ? `${tool.label}（再次点击打开设置）` : tool.label}
+                    aria-label={tool.label}
                     aria-pressed={isActive}
-                    aria-expanded={optionsTool === tool.id}
+                    aria-haspopup={toolHasSettings(tool.id) ? 'dialog' : undefined}
+                    aria-expanded={toolHasSettings(tool.id) ? optionsTool === tool.id : undefined}
                   >
                     <AnnotationToolIcon id={tool.id} />
                     {tool.id !== 'cursor' && tool.id !== 'eraser' && (
@@ -259,61 +277,8 @@ export function ReaderToolbar({
           </div>
         </div>}
 
-      </div>
-
-      <div className="reader-toolbar-end">
-        {contentMode === 'pdf' && <div className="reader-toolbar-group reader-toolbar-nav">
-          <div className="zoom-controls" aria-label="Zoom controls">
-            <button
-              type="button"
-              onClick={() => onZoomChange(Math.max(0.7, Number((zoom - 0.1).toFixed(2))))}
-              title={zh.reader.zoomOut}
-            >
-              <ZoomOutIcon />
-            </button>
-            <button type="button" className="zoom-pct-btn" onClick={() => onZoomChange(1)} title="Reset to 100%">
-              {Math.round(zoom * 100)}%
-            </button>
-            <button type="button" onClick={onFitWidth} title={zh.reader.fitWidth}>
-              <FitWidthIcon />
-            </button>
-            <button
-              type="button"
-              onClick={() => onZoomChange(Math.min(2.2, Number((zoom + 0.1).toFixed(2))))}
-              title={zh.reader.zoomIn}
-            >
-              <ZoomInIcon />
-            </button>
-          </div>
-
-          <div className="page-jump-shell" title={zh.reader.pageStatus(readerPageState.currentPage, readerPageState.totalPages)}>
-            <input
-              value={pageInput}
-              onChange={(event) => setPageInput(event.target.value.replace(/[^\d]/g, ''))}
-              onBlur={handlePageSubmit}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') handlePageSubmit();
-              }}
-              aria-label={zh.reader.pageStatus(readerPageState.currentPage, readerPageState.totalPages)}
-            />
-            <span>/ {readerPageState.totalPages}</span>
-          </div>
-        </div>}
-        {!sidePanelOpen && (
-          <button
-            className="reader-workspace-toggle"
-            type="button"
-            onClick={() => onSidePanelOpenChange(true)}
-            title={zh.reader.openPanel}
-            aria-label={zh.reader.openPanel}
-            aria-pressed="false"
-          >
-            <SidebarIcon />
-          </button>
-        )}
-      </div>
-    </header>
-    </ReaderToolbarPortal>
+    </ReaderAnnotationDock>}
+    </>
   );
 }
 
@@ -340,6 +305,7 @@ function ToolOptionsBar({
 
   return (
     <div className={`reader-tool-options-bar tool-options-${tool}`} onMouseDown={(event) => event.stopPropagation()}>
+      <small className="tool-option-hint">{tool === 'eraser' ? '仅擦除手写笔迹；其他标注请选中后删除。' : tool === 'highlight' || tool === 'underline' ? '拖选 PDF 文字后应用；扫描图片需要先有可选文字层。' : '设置应用于当前工具，选中已有标注时修改该标注。'}</small>
       {(tool === 'highlight' || tool === 'underline') && (
         <ToolColorPalette
           label={tool === 'highlight' ? '高亮颜色' : '下划线颜色'}
@@ -378,6 +344,7 @@ function ToolOptionsBar({
             <input
               className="annotation-tool-range"
               type="range"
+              aria-label="橡皮粗细"
               min={ERASER_THICKNESS_MIN}
               max={ERASER_THICKNESS_MAX}
               step={2}
@@ -648,6 +615,7 @@ function ThicknessOption({
       <input
         className="annotation-tool-range"
         type="range"
+        aria-label={label}
         min={min}
         max={max}
         step={step}
@@ -693,10 +661,10 @@ function ToolColorPalette({
       <label className="tool-option-color-custom" title={`${label}：自定义颜色`}>
         <input
           type="color"
+          aria-label={`${label}：自定义颜色`}
           value={inputValue}
           onChange={(event) => {
             onCustomColorChange(event.target.value);
-            onChange(event.target.value);
           }}
         />
         <span style={{ background: inputValue }} />
@@ -706,7 +674,8 @@ function ToolColorPalette({
           <button
             key={color}
             type="button"
-            className={value === color ? 'active' : ''}
+            className={inputValue.toLowerCase() === color.toLowerCase() && value !== 'transparent' ? 'active' : ''}
+            aria-pressed={inputValue.toLowerCase() === color.toLowerCase() && value !== 'transparent'}
             style={{ background: color }}
             title={color}
             aria-label={color}

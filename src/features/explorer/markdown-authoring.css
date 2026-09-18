@@ -4,16 +4,18 @@
 .markdown-live-codemirror .cm-md-image-wrap { position: relative; }
 .markdown-live-codemirror .cm-md-image-wrap.cm-md-image-sized { display: flex; max-width: 100%; margin-top: 8px; margin-bottom: 12px; }
 .markdown-live-codemirror .cm-md-image-sized .cm-md-image { width: 100%; height: auto; max-width: 100%; max-height: none; margin: 0; }
-.cm-md-image-tools { position: absolute; top: 6px; right: 6px; z-index: 5; line-height: 1.3; font: 12px/1.3 var(--font-document); }
-.cm-md-image-tools button { display: inline-grid; place-items: center; min-width: 28px; min-height: 28px; padding: 4px 6px; border: 0; border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
+.cm-md-image-tools { position: absolute; top: 8px; right: 8px; z-index: 5; font: var(--ui-control-font-size, 13px)/1.3 var(--font-document); }
+.cm-md-image-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 30px; min-height: 30px; padding: 5px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: inherit; cursor: pointer; transition: background 120ms ease, color 120ms ease; }
+.cm-md-image-tools button svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .cm-md-image-tools button:hover,.cm-md-image-tools button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); }
 .cm-md-image-tools button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
-.cm-md-image-tools-toggle { opacity: 0; box-shadow: var(--shadow-soft); }
+.cm-md-image-tools .cm-md-image-tools-toggle { opacity: 0; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(30,45,38,.12); }
 .cm-md-image-wrap:hover .cm-md-image-tools-toggle,.cm-md-image-wrap:focus-within .cm-md-image-tools-toggle,.cm-md-image-wrap.image-tools-open .cm-md-image-tools-toggle { opacity: 1; }
-.cm-md-image-tools-panel { position: absolute; top: 33px; right: 0; display: grid; grid-template-columns: repeat(3, 1fr); width: 152px; gap: 3px; padding: 6px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: var(--shadow-soft); }
+.cm-md-image-tools-panel { position: absolute; top: 38px; right: 0; display: grid; grid-template-columns: repeat(3, 1fr); width: 156px; gap: 5px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 28px rgba(30,45,38,.15); }
 .cm-md-image-tools-panel[hidden] { display: none; }
-.cm-md-image-size { display: grid; place-items: center; color: var(--muted); font-size: 11px; }
-.cm-md-image-tools-panel [data-image-action="reset"] { grid-column: 1 / -1; }
+.cm-md-image-size { display: grid; place-items: center; color: var(--ink); font-size: var(--ui-control-font-size, 13px); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cm-md-image-tools-panel [data-image-action="reset"] { grid-column: 1 / -1; margin-top: 2px; border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; padding-top: 9px; font-size: var(--ui-helper-font-size, 11px); }
+@media (prefers-reduced-motion: reduce) { .cm-md-image-tools button { transition: none; } }
 @media (hover: none) { .cm-md-image-tools-toggle { opacity: 1; } }
 .markdown-resource-tab:has(.markdown-authoring-dock) { padding-bottom: 76px; }
 .markdown-authoring-dock { position: absolute; z-index: 30; bottom: 16px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 24px); color: var(--ink); }
@@ -35,14 +37,14 @@
 /* One grid owns the table and controls: no calculated absolute offsets or inner rounded frame. */
 .markdown-live-codemirror .markdown-table-wrap.cm-md-table-widget {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) 36px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 18px;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) 18px;
   position: relative;
   gap: 0;
   padding: 0;
   border: 1px solid var(--md-table-line);
   border-radius: 8px;
-  background: var(--md-table-head);
+  background: color-mix(in srgb, var(--md-table-head) 28%, var(--surface));
   overflow-x: auto;
 }
 .markdown-live-codemirror .markdown-table-wrap.cm-md-table-widget > table {
@@ -67,9 +69,9 @@
   padding: 0;
   border: 0;
   border-radius: 0;
-  background: var(--md-table-head);
-  color: var(--ink);
-  font: 700 26px/1 var(--font-code);
+  background: color-mix(in srgb, var(--md-table-head) 28%, var(--surface));
+  color: var(--muted);
+  font: 500 16px/1 var(--font-code);
   cursor: pointer;
 }
 .cm-md-table-structure-button:hover:not(:disabled) { background: var(--md-table-hover); color: var(--ink); }
@@ -86,3 +88,37 @@
   border-left: 1px solid var(--md-table-line);
   pointer-events: none;
 }
+/* Both label modes share the exact same buttons and callbacks. */
+.markdown-authoring-actions .markdown-dock-icon { display: none; flex-shrink: 0; }
+.markdown-authoring-actions button { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; white-space: nowrap; font-size: var(--ui-control-font-size, 13px); }
+:root[data-markdown-dock-labels="icons"] .markdown-authoring-actions .markdown-dock-icon { display: block; }
+:root[data-markdown-dock-labels="icons"] .markdown-authoring-actions .markdown-dock-label { display: none; }
+:root[data-markdown-dock-labels="icons"] .markdown-authoring-actions button { min-width: 36px; padding: 8px; }
+.markdown-authoring-actions { max-width: 100%; box-sizing: border-box; scrollbar-width: thin; }
+.markdown-authoring-dock { width: max-content; }
+@supports ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
+  :root[data-dock-glass="true"] .markdown-authoring-actions {
+    background: color-mix(in srgb, var(--surface) 68%, transparent);
+    backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border-color: color-mix(in srgb, var(--line) 65%, transparent);
+    box-shadow: 0 8px 28px rgba(30,45,38,.14), inset 0 1px 0 rgba(255,255,255,.28);
+  }
+}
+/* UI popovers must not inherit the document's 20px typography. */
+.markdown-authoring-dock .markdown-template-panel { font-family: var(--font-ui, sans-serif); font-size: var(--ui-control-font-size, 13px); line-height: 1.45; gap: 10px; padding: 12px; border-radius: 12px; box-sizing: border-box; }
+.markdown-template-panel .markdown-template-heading strong { font-size: var(--ui-control-font-size, 13px); font-weight: 650; }
+.markdown-authoring-dock .markdown-template-panel input,
+.markdown-authoring-dock .markdown-template-panel select,
+.markdown-authoring-dock .markdown-template-panel button { font-family: inherit; font-size: var(--ui-control-font-size, 13px); line-height: 1.45; }
+.markdown-template-panel .markdown-template-heading button { width: 28px; min-height: 28px; padding: 0; font-size: 20px; }
+.markdown-template-list { min-height: 0; overscroll-behavior: contain; }
+.markdown-template-list button { min-height: 32px; padding: 6px 8px; }
+.markdown-template-list code, .markdown-template-panel small, .markdown-template-list h4 { font-size: var(--ui-caption-font-size, 11px); }
+.markdown-template-panel button:focus-visible, .markdown-template-panel input:focus-visible, .markdown-template-panel select:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+.markdown-insert-options { width: min(340px, calc(100vw - 32px)); }
+.markdown-insert-options form { display: grid; gap: 10px; }
+.markdown-insert-options label { display: grid; gap: 5px; color: var(--muted); }
+.markdown-insert-options select { padding: 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.markdown-insert-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.markdown-insert-options button { padding: 7px 9px; border: 0; border-radius: 6px; background: var(--surface-soft); color: var(--ink); cursor: pointer; }
+.markdown-insert-options button:hover, .markdown-insert-options .markdown-insert-confirm { background: var(--accent-soft); color: var(--accent-strong); }

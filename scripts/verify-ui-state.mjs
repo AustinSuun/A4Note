@@ -348,11 +348,12 @@ assert.match(readerToolbarSource, /className="reader-toolbar-group reader-toolba
 assert.doesNotMatch(readerToolbarSource, /className="reader-toolbar-group reader-toolbar-colors"/);
 assert.match(readerToolbarSource, /className="reader-toolbar-group reader-toolbar-nav"/);
 assert.match(readerToolbarSource, /className="reader-toolbar-primary"/);
-assert.match(readerToolbarSource, /className="reader-toolbar-center"/);
+assert.match(readerToolbarSource, /<ReaderAnnotationDock>/);
 assert.match(readerToolbarSource, /className="reader-toolbar-end"/);
-assert.match(readerToolbarSource, /\{!sidePanelOpen && \(/);
-assert.match(readerToolbarSource, /className="reader-workspace-toggle"[\s\S]*onClick=\{\(\) => onSidePanelOpenChange\(true\)\}/);
-assert.match(readerToolbarSource, /aria-label=\{zh\.reader\.openPanel\}/);
+assert.match(readerSceneSource, /\{!sidePanelOpen && <button[^>]*className="reader-note-reopen"/);
+assert.match(readerSceneSource, /className="reader-note-reopen"[^>]*onClick=\{openNotes\}/);
+assert.match(readerSceneSource, /const openNotes = \(\) => \{ onSidePanelTabChange\('notes'\); onSidePanelOpenChange\(true\); \}/);
+assert.match(readerSceneSource, /aria-label="继续笔记，展开笔记侧栏"/);
 assert.match(readerSideDrawerSource, /className="reader-workspace-tabs"[\s\S]*className="reader-workspace-add-shell"[\s\S]*className="reader-workspace-add"/);
 assert.match(readerSideDrawerSource, /className="reader-workspace-actions"[\s\S]*className="reader-workspace-toggle active"[\s\S]*onClick=\{\(\) => onSidePanelOpenChange\(false\)\}/);
 assert.doesNotMatch(readerToolbarSource, /<span>侧栏<\/span>/);

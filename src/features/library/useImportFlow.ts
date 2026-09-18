@@ -144,7 +144,8 @@ export function useImportFlow({
       setReaderContentMode('pdf');
       setReaderFileMode('translated');
       setReaderTranslatedFileId(imported.file_id);
-      setLibraryStatus(zh.library.translationImported);
+      // The selected translation is the success feedback; do not leave a titlebar banner.
+      setLibraryStatus('');
     } catch (error) {
       console.error('Translated PDF import failed', error);
       setLibraryStatus(zh.library.translationImportFailed);

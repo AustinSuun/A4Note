@@ -1,6 +1,6 @@
 [package]
 name = "a4note"
-version = "0.1.7"
+version = "0.1.8"
 description = "A4 Note knowledge workspace desktop app"
 authors = ["A4 Note"]
 edition = "2021"
