@@ -2,6 +2,30 @@ import { CornerUpLeft } from 'lucide-react';
 import { useEffect, useRef, useState, type FocusEvent, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+/** IDs are local to this rendered note: parallel/hidden notes may repeat them. */
+function footnoteTarget(source: HTMLElement, href?: string): HTMLElement | undefined {
+  if (!href?.startsWith('#')) return;
+  let id: string;
+  try { id = decodeURIComponent(href.slice(1)); } catch { return; }
+  return Array.from(source.closest('.md-body')?.querySelectorAll<HTMLElement>('[id]') ?? [])
+    .find(element => element.id === id);
+}
+
+function navigateFootnote(event: MouseEvent<HTMLAnchorElement>, href?: string) {
+  if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  const target = footnoteTarget(event.currentTarget, href);
+  if (!target) return;
+  // Do not change the application hash or let another note consume the anchor.
+  target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
+  const temporaryTabIndex = !target.hasAttribute('tabindex') && !target.matches('a[href], button, input, textarea, select');
+  if (temporaryTabIndex) {
+    target.tabIndex = -1;
+    target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
+  }
+  target.focus({ preventScroll: true });
+}
+
 /**
  * Footnote reference with hover preview.
  *
@@ -10,7 +34,7 @@ import { createPortal } from 'react-dom';
  * preview is extracted from the `.footnotes` section at the bottom of the
  * rendered document.
  */
-export function MarkdownFootnoteRef({ href, children }: { href?: string; children?: ReactNode }) {
+export function MarkdownFootnoteRef({ href, id, children }: { href?: string; id?: string; children?: ReactNode }) {
   const [preview, setPreview] = useState<{ x: number; y: number; html: string } | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
@@ -19,18 +43,13 @@ export function MarkdownFootnoteRef({ href, children }: { href?: string; childre
     const target = event.currentTarget;
     const rect = target.getBoundingClientRect();
 
-    // Extract footnote ID from href (#user-content-fn-1)
-    const footnoteId = href?.replace(/^#/, '');
-    if (!footnoteId) return;
-
-    // Find the footnote content in the document
-    const footnoteElement = document.getElementById(footnoteId);
+    const footnoteElement = footnoteTarget(target, href);
     if (!footnoteElement) return;
 
     // Clone and clean: remove the backref link
     const clone = footnoteElement.cloneNode(true) as HTMLElement;
-    const backref = clone.querySelector('[data-footnote-backref]');
-    if (backref) backref.remove();
+    clone.querySelectorAll('[data-footnote-backref]').forEach(link => link.remove());
+    clone.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
 
     const x = rect.left + rect.width / 2;
     const y = rect.bottom + 6;
@@ -45,9 +64,13 @@ export function MarkdownFootnoteRef({ href, children }: { href?: string; childre
 
   return (
     <>
-      <sup className="footnote-ref">
+      {/* GFM already provides the surrounding sup; do not nest another one. */}
         <a
           href={href}
+          id={id}
+          className="footnote-ref"
+          aria-label="查看脚注"
+          onClick={(event) => { if (timeoutRef.current) clearTimeout(timeoutRef.current); setPreview(null); navigateFootnote(event, href); }}
           data-footnote-ref="true"
           onMouseEnter={showPreview}
           onMouseLeave={hidePreview}
@@ -56,7 +79,6 @@ export function MarkdownFootnoteRef({ href, children }: { href?: string; childre
         >
           {children}
         </a>
-      </sup>
       {preview && createPortal(
         <div
           className="markdown-footnote-preview"
@@ -80,8 +102,8 @@ export function MarkdownFootnoteRef({ href, children }: { href?: string; childre
  */
 export function MarkdownFootnoteBackref({ href, children }: { href?: string; children?: ReactNode }) {
   return (
-    <a href={href} className="markdown-footnote-backref" data-footnote-backref="true" title="返回正文" aria-label="返回正文">
-      <CornerUpLeft size={13} aria-hidden="true" />
+    <a href={href} className="markdown-footnote-backref" data-footnote-backref="true" title="返回正文中的脚注引用位置" aria-label="返回正文中的脚注引用位置" onClick={(event) => navigateFootnote(event, href)}>
+      <CornerUpLeft size={20} aria-hidden="true" /><span>返回正文</span>
     </a>
   );
 }

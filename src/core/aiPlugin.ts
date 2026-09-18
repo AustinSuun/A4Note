@@ -11,7 +11,7 @@ const defaultAiScene: SceneContribution = {
   sidebarMode: 'workspace',
   supportsOpenItems: true,
   defaultSidebarPanel: 'ai.sessions',
-  enabledByDefault: true,
+  enabledByDefault: false,
 };
 
 /** First-party AI scene; provider and conversation settings belong here. */

@@ -114,7 +114,7 @@ export function AnnotationOverlay({
       {inkPreview && <AnnotationMark annotation={inkPreview} draft />}
       {arrowPreview && <AnnotationMark annotation={arrowPreview} draft />}
       {shapePreview && <AnnotationMark annotation={shapePreview} draft />}
-      {dragPosition && activeTool !== 'cursor' && activeTool !== 'comment' && activeTool !== 'text' && activeTool !== 'ink' && activeTool !== 'eraser' && activeTool !== 'rect' && (
+      {dragPosition && activeTool !== 'cursor' && activeTool !== 'hand' && activeTool !== 'comment' && activeTool !== 'text' && activeTool !== 'ink' && activeTool !== 'eraser' && activeTool !== 'rect' && (
         <div
           className={`annotation-mark ${activeTool} ${annotationColor(activeTool)} draft drag-preview`}
           style={activeTool === 'underline' ? underlinePositionStyle(dragPosition) : activeTool === 'highlight' ? highlightPositionStyle(dragPosition) : positionStyle(dragPosition)}

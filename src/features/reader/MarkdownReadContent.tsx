@@ -44,7 +44,7 @@ export function MarkdownReadContent({
         },
         a: ({ href, children, ...props }) => {
           // Footnote reference link [^1]
-          if ('data-footnote-ref' in props) return <MarkdownFootnoteRef href={href}>{children}</MarkdownFootnoteRef>;
+          if ('data-footnote-ref' in props) return <MarkdownFootnoteRef href={href} id={props.id}>{children}</MarkdownFootnoteRef>;
           // Footnote backref (return arrow)
           if ('data-footnote-backref' in props) return <MarkdownFootnoteBackref href={href}>{children}</MarkdownFootnoteBackref>;
           // Internal note link. Reader notes live in the database and have no

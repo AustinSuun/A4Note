@@ -27,7 +27,7 @@ export function BrandUpdateNotice() {
   }, []);
   useEffect(() => { if (!state.version) setOpen(false); }, [state.version]);
   if (!state.version) return null;
-  const label = state.phase === 'downloading' ? '下载中' : state.phase === 'installing' ? '安装中' : state.downloaded ? '可安装' : '新版本';
+  const label = state.phase === 'downloading' ? '下载中' : state.phase === 'installing' ? state.installStep === 'backing-up' ? '备份中' : '安装中' : state.downloaded ? '可安装' : '新版本';
   return <>
     <button ref={trigger} type="button" className="brand-update-badge" aria-haspopup="dialog" aria-expanded={open}
       aria-label={`${label} ${state.version}`} title={`发现新版本 ${state.version}`}

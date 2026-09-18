@@ -1,3 +1,4 @@
+@import "../../shared/segmented-mode-switch.css";
 /* A single moving selection surface, driven by the actual PDF file mode. */
 .reader-toolbar .reader-file-switch[data-file-mode] {
   position: relative; isolation: isolate; display: inline-grid;

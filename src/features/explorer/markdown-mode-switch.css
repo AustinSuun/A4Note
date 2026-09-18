@@ -1,3 +1,4 @@
+@import "../../shared/segmented-mode-switch.css";
 /* A sliding selection surface only; document state and focus are unchanged. */
 .markdown-resource-mode-switch[data-mode] {
   position: relative;

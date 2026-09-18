@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
+import { registerHooks } from 'node:module';
+import { extname } from 'node:path';
+// Node strip-types needs explicit extensions; production bundler imports stay unchanged.
+const resolution = registerHooks({ resolve(specifier, context, nextResolve) {
+  return nextResolve(specifier.startsWith('.') && !extname(specifier) ? `${specifier}.ts` : specifier, context);
+} });
 
 const selection = await import('../src/features/reader/pdf/pdfSelection.ts');
 const interaction = await import('../src/features/reader/pdf/pdfInteraction.ts');
+resolution.deregister();
 
 const mergedRects = selection.mergeRectsIntoLineSegments([
   { x: 10, y: 10, width: 6, height: 2 },
@@ -61,6 +68,7 @@ const point = interaction.pointFromEvent({
     stopped = true;
   },
   currentTarget: {
+    closest() { return this; },
     getBoundingClientRect() {
       return { left: 10, top: 5, width: 100, height: 80 };
     },

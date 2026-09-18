@@ -1,0 +1,52 @@
+/* PDF file modes are the visual reference. Limit this contract to the three
+   mode switches, not floating docks, document text, or arbitrary buttons.
+   Root/body specificity makes lazy stylesheet loading order irrelevant. */
+:root body :is(.reader-toolbar .reader-file-switch[data-file-mode], .markdown-resource-mode-switch[data-mode], .library-titlebar-switch.markdown-resource-mode-switch) {
+  box-sizing: border-box;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  font-family: var(--font-sans, sans-serif);
+}
+:root body :is(.reader-toolbar .reader-file-switch[data-file-mode], .markdown-resource-mode-switch[data-mode], .library-titlebar-switch.markdown-resource-mode-switch) > button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  font-family: var(--font-sans, sans-serif);
+  font-size: var(--ui-control-font-size, 14px);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--muted);
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+:root body :is(.reader-toolbar .reader-file-switch[data-file-mode], .markdown-resource-mode-switch[data-mode], .library-titlebar-switch.markdown-resource-mode-switch) > button.active {
+  font-weight: 750;
+  color: var(--accent-strong);
+  background: transparent;
+  box-shadow: none;
+}
+:root body :is(.reader-toolbar .reader-file-switch[data-file-mode], .markdown-resource-mode-switch[data-mode], .library-titlebar-switch.markdown-resource-mode-switch) > button:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: -2px;
+}
+:root body :is(.reader-toolbar .reader-file-switch[data-file-mode], .markdown-resource-mode-switch[data-mode], .library-titlebar-switch.markdown-resource-mode-switch) > button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+:root body :is(.markdown-resource-mode-switch[data-mode], .library-titlebar-switch.markdown-resource-mode-switch) > button > svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}

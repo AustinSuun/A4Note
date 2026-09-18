@@ -12,7 +12,7 @@ import { createElement } from 'react';
 const require = createRequire(import.meta.url);
 function load(path, imports = {}) {
   const exports = {};
-  new Function('exports', 'require', ts.transpile(readFileSync(path, 'utf8'), { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX }))(exports, name => imports[name] ?? require(name));
+  new Function('exports', 'require', ts.transpile(readFileSync(path, 'utf8'), { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX }))(exports, name => name.endsWith('.css') ? {} : (imports[name] ?? require(name)));
   return exports;
 }
 const helpers = load('src/shared/markdown/imageLayout.ts');
@@ -53,6 +53,7 @@ assert.ok(!tab.includes('| 列 1 |')); assert.ok(!table.includes('内容'));
 // Execute the actual image widget with real CodeMirror state/history and a minimal DOM.
 class Element {
   constructor(tag) { this.tag = tag; this.children = []; this.listeners = {}; this.dataset = {}; this.style = {}; this.attrs = {}; this.classList = { add() {}, toggle() {} }; this.isConnected = false; }
+  get valueAsNumber() { return this.value?.trim() ? Number(this.value) : NaN; }
   append(...nodes) { this.children.push(...nodes); }
   remove() { this.removed = true; }
   setAttribute(key, value) { this.attrs[key] = value; }
@@ -64,14 +65,14 @@ class Element {
   contains(node) { return this === node || this.children.some(c => c.contains(node)); }
   querySelector() { return null; }
 }
-const document = { createElement: tag => new Element(tag), activeElement: null };
+const document = { createElement: tag => new Element(tag), createElementNS: (namespaceURI, tag) => Object.assign(new Element(tag), { namespaceURI }), activeElement: null };
 const window = { requestAnimationFrame() {} };
 const source = readFileSync('src/features/explorer/MarkdownLivePreviewEditor.tsx', 'utf8');
 const fragment = source.slice(source.indexOf('const openImageTools'), source.indexOf('class MarkdownLinkWidget'));
 const compiled = ts.transpile(fragment + '\nreturn ImageWidget;', { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None });
 let completeLocal;
 const localRead = () => new Promise(resolve => { completeLocal = resolve; });
-const ImageWidget = new Function('directNoteImage', 'loadNoteImage', 'imageDisposers', 'WidgetType', 'document', 'window', 'imageSourceTitle', 'readImageTitle', 'withImageLayout', 'isolateHistory', 'undo', 'redo', compiled)(load('src/features/explorer/noteImageSource.ts').directNoteImage, localRead, new WeakMap(), class {}, document, window, imageSourceTitle, readImageTitle, withImageLayout, isolateHistory, undo, redo);
+const ImageWidget = new Function('directNoteImage', 'loadNoteImage', 'imageDisposers', 'WidgetType', 'document', 'window', 'HTMLElement', 'imageSourceTitle', 'readImageTitle', 'withImageLayout', 'isolateHistory', 'undo', 'redo', 'requestPreviewLayoutMeasure', compiled)(load('src/features/explorer/noteImageSource.ts').directNoteImage, localRead, new WeakMap(), class {}, document, window, Element, imageSourceTitle, readImageTitle, withImageLayout, isolateHistory, undo, redo, view => view.requestMeasure());
 const raw = '![](https://example.com/a.png)';
 let state = EditorState.create({ doc: 'before\n' + raw + '\nafter', extensions: [history()] });
 let writes = 0;
@@ -80,7 +81,10 @@ function widget() { const line = state.doc.line(2); return new ImageWidget('http
 let wrap = widget(); let tools = wrap.children[1];
 assert.equal(tools.children[1].hidden, true);
 tools.children[0].fire('click'); assert.equal(tools.children[1].hidden, false);
-const action = (wrap, id) => wrap.children[1].children[1].children.find(b => b.dataset.imageAction === id);
+const action = (wrap, id) => {
+  const find = node => node.dataset.imageAction === id ? node : node.children.map(find).find(Boolean);
+  return find(wrap);
+};
 action(wrap, 'smaller').fire('click');
 assert.equal(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout.width, 40);
 assert.equal(state.selection.main.head, 0, 'toolbar must not select source');
@@ -89,7 +93,30 @@ action(wrap, 'right').fire('click');
 assert.deepEqual(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout, { width: 40, align: 'right' });
 undo(view); assert.equal(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout.align, 'left');
 redo(view); assert.equal(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout.align, 'right');
-wrap = widget(); action(wrap, 'reset').fire('click'); assert.equal(state.doc.line(2).text, raw);
+wrap = widget(); action(wrap, 'reset').fire('click');
+assert.deepEqual(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout, { width: 100, align: 'right' }, 'fill keeps alignment');
+wrap = widget(); action(wrap, 'center').fire('click');
+assert.deepEqual(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout, { width: 100, align: 'center' });
+wrap = widget(); action(wrap, 'smaller').fire('click');
+assert.deepEqual(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout, { width: 90, align: 'center' });
+wrap = widget(); let width = action(wrap, 'width');
+assert.equal(width.placeholder, '原图'); assert.equal(width.value, '90');
+width.value = '63'; width.fire('keydown', { key: 'Enter' });
+assert.equal(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout.width, 63);
+wrap = widget(); width = action(wrap, 'width'); width.value = '120'; width.fire('keydown', { key: 'Enter' });
+assert.equal(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout.width, 100);
+wrap = widget(); width = action(wrap, 'width'); width.value = '3'; width.fire('keydown', { key: 'Enter' });
+assert.equal(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout.width, 10);
+wrap = widget(); width = action(wrap, 'width'); width.value = '45.6'; width.fire('keydown', { key: 'Enter' });
+assert.equal(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout.width, 46);
+wrap = widget(); width = action(wrap, 'width'); width.value = ''; width.fire('keydown', { key: 'Enter' });
+assert.equal(width.value, '46');
+width.value = '88'; width.fire('keydown', { key: 'Escape' }); assert.equal(width.value, '46');
+width.value = '40'; action(wrap, 'larger').fire('click');
+assert.equal(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout.width, 50);
+wrap = widget(); action(wrap, 'reset').fire('click'); assert.deepEqual(readImageTitle(imageSourceTitle(state.doc.line(2).text)).layout, { width: 100, align: 'center' });
+assert.ok(rendered.includes('markdown-image-corner-action'));
+assert.ok(source.includes('cm-md-image-tools-toggle markdown-image-corner-action'));
 wrap = widget(); state = state.update({ changes: { from: 0, insert: 'moved' } }).state;
 const before = writes; action(wrap, 'larger').fire('click'); assert.equal(writes, before, 'stale source must not be overwritten');
 state = EditorState.create({ doc: 'before\n' + raw, extensions: [EditorState.readOnly.of(true)] });

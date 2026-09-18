@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { reportReaderSaveError } from './readerSaveErrors';
+import { useEffect, useRef, useState } from 'react';
 import type { createAsterCore } from '../../core/asterCore';
 import type { AnnotationColor, AnnotationDraft, PaperDocument, PositionJson } from '../../core/types';
 import { preferredTranslatedFileId } from './readerHelpers';
@@ -12,7 +13,6 @@ import {
   updateNativeAnnotationPosition,
   type PaperFileKind,
 } from '../../platform/nativeApi';
-import { zh } from '../../ui/zh';
 
 type AsterCore = ReturnType<typeof createAsterCore>;
 
@@ -40,274 +40,214 @@ export function useAnnotationHistory({
   setRevision: (value: number | ((current: number) => number)) => void;
   setLibraryStatus: (status: string) => void;
 }) {
-  const [annotationUndoStack, setAnnotationUndoStack] = useState<AnnotationHistoryAction[]>([]);
-  const [annotationRedoStack, setAnnotationRedoStack] = useState<AnnotationHistoryAction[]>([]);
-  const deletingAnnotationIdsRef = useRef(new Set<string>());
-  const annotationPersistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
+  // Keep independent histories per paper; all model/history commits share one write queue.
+  type HistoryScope = { paperId: string; undo: AnnotationHistoryAction[]; redo: AnnotationHistoryAction[] };
+  const scopes = useRef(new Map<string, HistoryScope>());
+  const activeScope = useRef<HistoryScope | null>(null);
+  const [, setHistoryRevision] = useState(0);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const paperId = selectedPaper?.paperId ?? '';
+  if (paperId && !scopes.current.has(paperId)) scopes.current.set(paperId, { paperId, undo: [], redo: [] });
+  const scope = paperId ? scopes.current.get(paperId)! : null;
+  activeScope.current = scope;
+  const annotationUndoStack = scope?.undo ?? [];
+  const annotationRedoStack = scope?.redo ?? [];
+  const annotationPersistenceQueueRef = useRef<Promise<unknown>>(Promise.resolve());
 
-  const queueAnnotationPersistence = (operation: () => Promise<void>) => {
-    const next = annotationPersistenceQueueRef.current.then(operation, operation);
-    annotationPersistenceQueueRef.current = next.catch((error) => {
-      console.error('Annotation persistence queue failed', error);
+  const publish = (owner: HistoryScope) => {
+    if (!mounted.current) return;
+    setRevision((current) => current + 1);
+    if (activeScope.current === owner) setHistoryRevision((current) => current + 1);
+  };
+  const focus = (owner: HistoryScope, id: string | null) => {
+    if (mounted.current && activeScope.current === owner) setReaderFocusedAnnotationId(id);
+  };
+  const requirePaper = (owner: HistoryScope) => {
+    const paper = aster.documents.get(owner.paperId);
+    if (!paper) throw new Error('文献已移除，无法保存标注');
+    return paper;
+  };
+  const requireAnnotation = (owner: HistoryScope, annotationId: string) => {
+    const annotation = requirePaper(owner).annotations.find(item => item.id === annotationId);
+    if (!annotation) throw new Error('标注已移除，请重新选择');
+    return annotation;
+  };
+  const queueAnnotationPersistence = <T,>(owner: HistoryScope, label: string, operation: () => Promise<T>): Promise<T> => {
+    const next = annotationPersistenceQueueRef.current.then(operation);
+    // Recover the queue, but return the original rejection to the caller retaining its draft.
+    annotationPersistenceQueueRef.current = next.catch(() => undefined);
+    const reported = next.catch(error => {
+      console.error('Annotation operation failed', error);
+      const message = `${label}失败，未提交本次界面和历史变更，请重试原操作`;
+      if (mounted.current) {
+        setLibraryStatus(message);
+        reportReaderSaveError(owner.paperId, message);
+      }
+      throw error;
     });
-    return next;
+    // Some toolbar adapters intentionally ignore the promise; callers that await still see failure.
+    void reported.catch(() => undefined);
+    return reported;
+  };
+  const pushAnnotationHistory = (owner: HistoryScope, action: AnnotationHistoryAction) => {
+    if (scopes.current.get(owner.paperId) !== owner) return;
+    owner.undo = [...owner.undo.slice(-39), action];
+    owner.redo = [];
   };
 
-  const persistHistoryAction = (action: AnnotationHistoryAction, direction: 'undo' | 'redo') => {
+  const persistHistoryAction = async (action: AnnotationHistoryAction, direction: 'undo' | 'redo') => {
     if (!isTauriRuntime()) return;
-    try {
-      if (action.kind === 'create') {
-        if (direction === 'undo') void queueAnnotationPersistence(() => deleteNativeAnnotation(action.annotation.id).then(() => undefined));
-        else void queueAnnotationPersistence(() => restoreNativeAnnotation(action.annotation).then(() => undefined));
-        return;
-      }
-      if (action.kind === 'delete') {
-        if (direction === 'undo') void queueAnnotationPersistence(() => restoreNativeAnnotation(action.annotation).then(() => undefined));
-        else void queueAnnotationPersistence(() => deleteNativeAnnotation(action.annotation.id).then(() => undefined));
-        return;
-      }
-      if (action.kind === 'updateComment') {
-        void queueAnnotationPersistence(() =>
-          updateNativeAnnotationComment({ annotationId: action.annotationId, comment: direction === 'undo' ? action.previous : action.next }).then(() => undefined),
-        );
-        return;
-      }
-      if (action.kind === 'updateColor') {
-        void queueAnnotationPersistence(() =>
-          updateNativeAnnotationColor({ annotationId: action.annotationId, color: direction === 'undo' ? action.previous : action.next }).then(() => undefined),
-        );
-        return;
-      }
-      if (action.kind === 'updatePosition') {
-        void queueAnnotationPersistence(() =>
-          updateNativeAnnotationPosition({ annotationId: action.annotationId, positionJson: direction === 'undo' ? action.previous : action.next }).then(() => undefined),
-        );
-      }
-    } catch (error) {
-      console.error('Failed to persist annotation history action', error);
+    if (action.kind === 'create' || action.kind === 'delete') {
+      const remove = (action.kind === 'create') === (direction === 'undo');
+      if (remove) await deleteNativeAnnotation(action.annotation.id);
+      else await restoreNativeAnnotation(cloneAnnotation(action.annotation));
+    } else if (action.kind === 'updateComment') {
+      await updateNativeAnnotationComment({ annotationId: action.annotationId, comment: direction === 'undo' ? action.previous : action.next });
+    } else if (action.kind === 'updateColor') {
+      await updateNativeAnnotationColor({ annotationId: action.annotationId, color: direction === 'undo' ? action.previous : action.next });
+    } else {
+      await updateNativeAnnotationPosition({ annotationId: action.annotationId, positionJson: clonePositionJson(direction === 'undo' ? action.previous : action.next) });
     }
   };
-
-  const restoreAnnotation = (annotation: PaperDocument['annotations'][number]) => {
-    const paper = aster.documents.get(annotation.paperId);
-    if (!paper || paper.annotations.some((item) => item.id === annotation.id)) return;
-    paper.annotations = [...paper.annotations, cloneAnnotation(annotation)].sort((a, b) => a.page - b.page || (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
-    setReaderFocusedAnnotationId(annotation.id);
-    setRevision((current) => current + 1);
-  };
-
-  const removeLocalAnnotation = (annotation: PaperDocument['annotations'][number]) => {
-    const paper = aster.documents.get(annotation.paperId);
-    if (!paper) return;
-    paper.annotations = paper.annotations.filter((item) => item.id !== annotation.id);
-    setReaderFocusedAnnotationId((current) => (current === annotation.id ? null : current));
-    setRevision((current) => current + 1);
-  };
-
-  const updateLocalAnnotation = (annotationId: string, patch: Partial<PaperDocument['annotations'][number]>) => {
-    const paper = selectedPaper ? aster.documents.get(selectedPaper.paperId) : null;
-    const annotation = paper?.annotations.find((item) => item.id === annotationId);
-    if (!annotation) return;
-    const safePatch = patch.positionJson ? { ...patch, positionJson: clonePositionJson(patch.positionJson) } : patch;
-    Object.assign(annotation, safePatch);
-    setReaderFocusedAnnotationId(annotationId);
-    setRevision((current) => current + 1);
-  };
-
-  const applyAnnotationHistoryAction = (action: AnnotationHistoryAction, direction: 'undo' | 'redo') => {
-    if (action.kind === 'create') {
-      if (direction === 'undo') removeLocalAnnotation(action.annotation);
-      else restoreAnnotation(action.annotation);
-      persistHistoryAction(action, direction);
-      return;
-    }
-    if (action.kind === 'delete') {
-      if (direction === 'undo') restoreAnnotation(action.annotation);
-      else removeLocalAnnotation(action.annotation);
-      persistHistoryAction(action, direction);
-      return;
-    }
-    if (action.kind === 'updateComment') {
-      updateLocalAnnotation(action.annotationId, { comment: direction === 'undo' ? action.previous : action.next });
-      persistHistoryAction(action, direction);
-      return;
-    }
-    if (action.kind === 'updateColor') {
-      updateLocalAnnotation(action.annotationId, { color: direction === 'undo' ? action.previous : action.next });
-      persistHistoryAction(action, direction);
-      return;
-    }
-    if (action.kind === 'updatePosition') {
-      updateLocalAnnotation(action.annotationId, { positionJson: direction === 'undo' ? action.previous : action.next });
-      persistHistoryAction(action, direction);
-    }
-  };
-
-  const undoAnnotationAction = () => {
-    const action = annotationUndoStack[annotationUndoStack.length - 1];
-    if (!action) return;
-    setAnnotationUndoStack((current) => current.slice(0, -1));
-    setAnnotationRedoStack((current) => [...current.slice(-39), action]);
-    applyAnnotationHistoryAction(action, 'undo');
-  };
-
-  const redoAnnotationAction = () => {
-    const action = annotationRedoStack[annotationRedoStack.length - 1];
-    if (!action) return;
-    setAnnotationRedoStack((current) => current.slice(0, -1));
-    setAnnotationUndoStack((current) => [...current.slice(-39), action]);
-    applyAnnotationHistoryAction(action, 'redo');
-  };
-
-  const pushAnnotationHistory = (action: AnnotationHistoryAction) => {
-    setAnnotationUndoStack((current) => [...current.slice(-39), action]);
-    setAnnotationRedoStack([]);
-  };
-
-  const createAnnotation = async (annotation: AnnotationDraft & { page: number }, fileKind = readerFileMode) => {
-    if (!selectedPaper) return;
-    const fileId = fileKind === 'translated' ? preferredTranslatedFileId(selectedPaper, readerTranslatedFileId) : selectedPaper.sourceFileId;
-    if (isTauriRuntime() && fileId) {
-      try {
-        const { page, ...annotationPayload } = annotation;
-        const created = await createNativeAnnotation({ paperId: selectedPaper.paperId, fileId, page, ...annotationPayload });
-        const localPaper = aster.documents.get(selectedPaper.paperId);
-        const nextAnnotation = {
-          id: created.id,
-          paperId: selectedPaper.paperId,
-          fileId,
-          page,
-          ...annotationPayload,
-          createdAt: new Date().toISOString(),
-        };
-        if (localPaper && !localPaper.annotations.some((item) => item.id === created.id)) {
-          localPaper.annotations = [...localPaper.annotations, nextAnnotation].sort(
-            (left, right) => left.page - right.page || (left.createdAt ?? '').localeCompare(right.createdAt ?? ''),
-          );
+  const applyAnnotationHistoryAction = (owner: HistoryScope, action: AnnotationHistoryAction, direction: 'undo' | 'redo') => {
+    const paper = requirePaper(owner);
+    if (action.kind === 'create' || action.kind === 'delete') {
+      const remove = (action.kind === 'create') === (direction === 'undo');
+      if (remove) {
+        paper.annotations = paper.annotations.filter(item => item.id !== action.annotation.id);
+        if (mounted.current && activeScope.current === owner) setReaderFocusedAnnotationId(current => current === action.annotation.id ? null : current);
+      } else {
+        if (!paper.annotations.some(item => item.id === action.annotation.id)) {
+          paper.annotations = [...paper.annotations, cloneAnnotation(action.annotation)].sort((a, b) => a.page - b.page || (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
         }
-        pushAnnotationHistory({ kind: 'create', annotation: cloneAnnotation(nextAnnotation) });
-        setRevision((current) => current + 1);
-        return created.id;
-      } catch (error) {
-        console.error('Annotation create failed', error);
-        setLibraryStatus(zh.reader.annotationCreateFailed);
-        throw error;
+        focus(owner, action.annotation.id);
       }
-    }
-    const annotationForFile = { ...annotation, fileId };
-    const created = aster.commands.execute<unknown, { id: string } | null>('document.addAnnotation', { paperId: selectedPaper.paperId, annotation: annotationForFile });
-    if (created?.id) {
-      const localPaper = aster.documents.get(selectedPaper.paperId);
-      const createdAnnotation = localPaper?.annotations.find((item) => item.id === created.id);
-      if (createdAnnotation) pushAnnotationHistory({ kind: 'create', annotation: cloneAnnotation(createdAnnotation) });
-    }
-    setRevision((current) => current + 1);
-    return created?.id;
-  };
-
-  const updateAnnotationComment = async (annotationId: string, comment: string) => {
-    if (!selectedPaper) return;
-    const localPaper = aster.documents.get(selectedPaper.paperId);
-    const annotation = localPaper?.annotations.find((item) => item.id === annotationId);
-    if (!annotation) return;
-    const previousComment = annotation.comment ?? '';
-    if (previousComment === comment) return;
-    pushAnnotationHistory({ kind: 'updateComment', annotationId, previous: previousComment, next: comment });
-    annotation.comment = comment;
-    setRevision((current) => current + 1);
-    if (isTauriRuntime()) {
-      try {
-        await queueAnnotationPersistence(() => updateNativeAnnotationComment({ annotationId, comment }).then(() => undefined));
-        return;
-      } catch (error) {
-        annotation.comment = previousComment;
-        setRevision((current) => current + 1);
-        console.error('Annotation comment update failed', error);
-        setLibraryStatus(zh.reader.annotationSaveFailed);
-        throw error;
-      }
+    } else {
+      const annotation = requireAnnotation(owner, action.annotationId);
+      if (action.kind === 'updateComment') annotation.comment = direction === 'undo' ? action.previous : action.next;
+      else if (action.kind === 'updateColor') annotation.color = direction === 'undo' ? action.previous : action.next;
+      else annotation.positionJson = clonePositionJson(direction === 'undo' ? action.previous : action.next);
+      focus(owner, action.annotationId);
     }
   };
-
-  const updateAnnotationColor = async (annotationId: string, color: AnnotationColor) => {
-    if (!selectedPaper) return;
-    const localPaper = aster.documents.get(selectedPaper.paperId);
-    const annotation = localPaper?.annotations.find((item) => item.id === annotationId);
-    if (!annotation) return;
-    const previousColor = annotation.color ?? '';
-    if (previousColor === color) return;
-    pushAnnotationHistory({ kind: 'updateColor', annotationId, previous: previousColor, next: color });
-    annotation.color = color;
-    setRevision((current) => current + 1);
-    if (isTauriRuntime()) {
-      try {
-        await queueAnnotationPersistence(() => updateNativeAnnotationColor({ annotationId, color }).then(() => undefined));
-        return;
-      } catch (error) {
-        annotation.color = previousColor;
-        setRevision((current) => current + 1);
-        console.error('Annotation color update failed', error);
-        setLibraryStatus(zh.reader.annotationSaveFailed);
-        throw error;
+  const runHistoryAction = (direction: 'undo' | 'redo') => {
+    const owner = scope;
+    if (!owner) return Promise.resolve(false);
+    return queueAnnotationPersistence(owner, direction === 'undo' ? '撤销标注' : '重做标注', async () => {
+      // A queued shortcut must not operate on a document that has since lost focus/been cleared.
+      if (activeScope.current !== owner || scopes.current.get(owner.paperId) !== owner) return false;
+      const from = direction === 'undo' ? owner.undo : owner.redo;
+      const action = from[from.length - 1];
+      if (!action) return false;
+      requirePaper(owner);
+      if (action.kind !== 'create' && action.kind !== 'delete') requireAnnotation(owner, action.annotationId);
+      await persistHistoryAction(action, direction);
+      applyAnnotationHistoryAction(owner, action, direction);
+      // No pop/push until the native write succeeds. Failure leaves the same action retryable.
+      if (scopes.current.get(owner.paperId) === owner) {
+        if (direction === 'undo') { owner.undo = owner.undo.slice(0, -1); owner.redo = [...owner.redo.slice(-39), action]; }
+        else { owner.redo = owner.redo.slice(0, -1); owner.undo = [...owner.undo.slice(-39), action]; }
       }
-    }
+      publish(owner);
+      return true;
+    }).catch(() => false); // Keyboard/toolbar callers deliberately do not await; no unhandled rejection.
+  };
+  const undoAnnotationAction = () => runHistoryAction('undo');
+  const redoAnnotationAction = () => runHistoryAction('redo');
+
+  const createAnnotation = (annotation: AnnotationDraft & { page: number }, fileKind = readerFileMode) => {
+    const owner = scope;
+    if (!owner || !selectedPaper) return Promise.resolve(undefined);
+    const fileId = fileKind === 'translated' ? preferredTranslatedFileId(selectedPaper, readerTranslatedFileId) : selectedPaper.sourceFileId;
+    const draft = { ...annotation, positionJson: clonePositionJson(annotation.positionJson) };
+    return queueAnnotationPersistence(owner, '创建标注', async () => {
+      let paper = requirePaper(owner);
+      let createdId: string | undefined;
+      if (isTauriRuntime()) {
+        if (!fileId) throw new Error('PDF 文件标识缺失，未写入标注');
+        const { page, ...payload } = draft;
+        const created = await createNativeAnnotation({ paperId: owner.paperId, fileId, page, ...payload });
+        createdId = created.id;
+        paper = requirePaper(owner);
+        if (!paper.annotations.some(item => item.id === created.id)) {
+          paper.annotations = [...paper.annotations, { id: created.id, paperId: owner.paperId, fileId, ...draft, createdAt: new Date().toISOString() }]
+            .sort((a, b) => a.page - b.page || (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+        }
+      } else {
+        const created = aster.commands.execute<unknown, { id: string } | null>('document.addAnnotation', { paperId: owner.paperId, annotation: { ...draft, fileId } });
+        createdId = created?.id;
+      }
+      const createdAnnotation = paper.annotations.find(item => item.id === createdId);
+      if (!createdAnnotation) throw new Error('未确认标注创建成功');
+      pushAnnotationHistory(owner, { kind: 'create', annotation: cloneAnnotation(createdAnnotation) });
+      publish(owner);
+      return createdId;
+    });
   };
 
-  const updateAnnotationPosition = async (annotationId: string, positionJson: PositionJson) => {
-    if (!selectedPaper) return;
-    const localPaper = aster.documents.get(selectedPaper.paperId);
-    const annotation = localPaper?.annotations.find((item) => item.id === annotationId);
-    if (!annotation) return;
-    const previousPosition = clonePositionJson(annotation.positionJson);
+  const updateAnnotationComment = (annotationId: string, comment: string) => {
+    const owner = scope;
+    if (!owner) return Promise.resolve();
+    return queueAnnotationPersistence(owner, '保存批注', async () => {
+      const annotation = requireAnnotation(owner, annotationId);
+      const previousComment = annotation.comment ?? '';
+      if (previousComment === comment) return;
+      if (isTauriRuntime()) await updateNativeAnnotationComment({ annotationId, comment });
+      requireAnnotation(owner, annotationId).comment = comment;
+      pushAnnotationHistory(owner, { kind: 'updateComment', annotationId, previous: previousComment, next: comment });
+      publish(owner);
+    });
+  };
+  const updateAnnotationColor = (annotationId: string, color: AnnotationColor) => {
+    const owner = scope;
+    if (!owner) return Promise.resolve();
+    return queueAnnotationPersistence(owner, '保存颜色', async () => {
+      const annotation = requireAnnotation(owner, annotationId);
+      const previousColor = annotation.color ?? '';
+      if (previousColor === color) return;
+      if (isTauriRuntime()) await updateNativeAnnotationColor({ annotationId, color });
+      requireAnnotation(owner, annotationId).color = color;
+      pushAnnotationHistory(owner, { kind: 'updateColor', annotationId, previous: previousColor, next: color });
+      publish(owner);
+    });
+  };
+  const updateAnnotationPosition = (annotationId: string, positionJson: PositionJson) => {
+    const owner = scope;
+    if (!owner) return Promise.resolve();
     const nextPosition = clonePositionJson(positionJson);
-    if (JSON.stringify(previousPosition) === JSON.stringify(nextPosition)) return;
-    pushAnnotationHistory({ kind: 'updatePosition', annotationId, previous: clonePositionJson(previousPosition), next: clonePositionJson(nextPosition) });
-    annotation.positionJson = clonePositionJson(nextPosition);
-    setRevision((current) => current + 1);
-    if (isTauriRuntime()) {
-      try {
-        await queueAnnotationPersistence(() => updateNativeAnnotationPosition({ annotationId, positionJson: nextPosition }).then(() => undefined));
-        return;
-      } catch (error) {
-        annotation.positionJson = clonePositionJson(previousPosition);
-        setRevision((current) => current + 1);
-        console.error('Annotation position update failed', error);
-        setLibraryStatus(zh.reader.annotationSaveFailed);
-        throw error;
-      }
-    }
+    return queueAnnotationPersistence(owner, '保存位置', async () => {
+      const annotation = requireAnnotation(owner, annotationId);
+      const previousPosition = clonePositionJson(annotation.positionJson);
+      if (JSON.stringify(previousPosition) === JSON.stringify(nextPosition)) return;
+      if (isTauriRuntime()) await updateNativeAnnotationPosition({ annotationId, positionJson: clonePositionJson(nextPosition) });
+      requireAnnotation(owner, annotationId).positionJson = clonePositionJson(nextPosition);
+      pushAnnotationHistory(owner, { kind: 'updatePosition', annotationId, previous: previousPosition, next: clonePositionJson(nextPosition) });
+      publish(owner);
+    });
   };
-
-  const deleteAnnotation = async (annotationId: string) => {
-    if (!selectedPaper) return;
-    if (deletingAnnotationIdsRef.current.has(annotationId)) return;
-    const localPaper = aster.documents.get(selectedPaper.paperId);
-    const removedAnnotation = localPaper?.annotations.find((annotation) => annotation.id === annotationId) ?? null;
-    if (!removedAnnotation) return;
-    const removedSnapshot = cloneAnnotation(removedAnnotation);
-    deletingAnnotationIdsRef.current.add(annotationId);
-    if (isTauriRuntime()) {
-      try {
-        await queueAnnotationPersistence(() => deleteNativeAnnotation(annotationId).then(() => undefined));
-      } catch (error) {
-        console.error('Annotation delete failed', error);
-        setLibraryStatus(zh.reader.annotationDeleteFailed);
-        deletingAnnotationIdsRef.current.delete(annotationId);
-        throw error;
-      }
-    }
-    pushAnnotationHistory({ kind: 'delete', annotation: removedSnapshot });
-    if (localPaper) {
-      localPaper.annotations = localPaper.annotations.filter((annotation) => annotation.id !== annotationId);
-      setReaderFocusedAnnotationId((current) => (current === annotationId ? null : current));
-      setRevision((current) => current + 1);
-    }
-    deletingAnnotationIdsRef.current.delete(annotationId);
+  const deleteAnnotation = (annotationId: string) => {
+    const owner = scope;
+    if (!owner) return Promise.resolve();
+    return queueAnnotationPersistence(owner, '删除标注', async () => {
+      const paper = requirePaper(owner);
+      const annotation = paper.annotations.find(item => item.id === annotationId);
+      if (!annotation) return; // Repeated deletion queued after a successful delete is idempotent.
+      const snapshot = cloneAnnotation(annotation);
+      if (isTauriRuntime()) await deleteNativeAnnotation(annotationId);
+      const currentPaper = requirePaper(owner);
+      currentPaper.annotations = currentPaper.annotations.filter(item => item.id !== annotationId);
+      pushAnnotationHistory(owner, { kind: 'delete', annotation: snapshot });
+      if (mounted.current && activeScope.current === owner) setReaderFocusedAnnotationId(current => current === annotationId ? null : current);
+      publish(owner);
+    });
   };
-
   const clearAnnotationHistory = () => {
-    setAnnotationUndoStack([]);
-    setAnnotationRedoStack([]);
+    if (!scope) return;
+    const replacement: HistoryScope = { paperId: scope.paperId, undo: [], redo: [] };
+    scopes.current.set(scope.paperId, replacement);
+    if (activeScope.current === scope) activeScope.current = replacement;
+    publish(replacement);
   };
 
   return {

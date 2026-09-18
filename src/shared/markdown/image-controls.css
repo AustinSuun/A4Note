@@ -1,0 +1,39 @@
+/* One visual treatment for reading/authoring; icons retain their distinct actions. */
+.md-body .markdown-image-zoom .markdown-image-corner-action,
+.markdown-live-codemirror .cm-md-image-tools .markdown-image-corner-action {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px; min-width: 28px; min-height: 28px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 8px;
+  background: rgba(20,28,23,.62);
+  color: #f1f6f2;
+  box-shadow: 0 2px 7px rgba(0,0,0,.14);
+  opacity: 0;
+  transition: opacity 120ms ease, background 120ms ease;
+}
+.md-body .markdown-image-zoom .markdown-image-corner-action svg,
+.markdown-live-codemirror .cm-md-image-tools .markdown-image-corner-action svg {
+  width: 16px; height: 16px; stroke-width: 1.8; flex: 0 0 auto;
+}
+.md-body .markdown-image-zoom:hover .markdown-image-corner-action,
+.md-body .markdown-image-zoom:focus-visible .markdown-image-corner-action,
+.markdown-live-codemirror .cm-md-image-wrap:hover .cm-md-image-tools .markdown-image-corner-action,
+.markdown-live-codemirror .cm-md-image-wrap:focus-within .cm-md-image-tools .markdown-image-corner-action,
+.markdown-live-codemirror .cm-md-image-wrap.image-tools-open .cm-md-image-tools .markdown-image-corner-action { opacity: 1; }
+.md-body .markdown-image-zoom:hover .markdown-image-corner-action,
+.markdown-live-codemirror .cm-md-image-wrap:hover .cm-md-image-tools .markdown-image-corner-action,
+.markdown-live-codemirror .cm-md-image-tools .markdown-image-corner-action:hover { background: rgba(20,28,23,.78); }
+.md-body .markdown-image-zoom:focus-visible .markdown-image-corner-action,
+.markdown-live-codemirror .cm-md-image-tools .markdown-image-corner-action:focus-visible { outline: 2px solid #f1f6f2; outline-offset: 2px; }
+@media (hover: none) {
+  .md-body .markdown-image-zoom .markdown-image-corner-action,
+  .markdown-live-codemirror .cm-md-image-tools .markdown-image-corner-action { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .md-body .markdown-image-zoom .markdown-image-corner-action,
+  .markdown-live-codemirror .cm-md-image-tools .markdown-image-corner-action { transition: none; }
+}

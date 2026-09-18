@@ -1,4 +1,6 @@
+export { requestPdfFind, pdfFitWidth } from './readerNavigation';
 export { ReaderScene } from './ReaderScene';
+export { capturePdfCenterAnchor, restorePdfPageAnchor } from './pdf/pdfZoomAnchor';
 export { ReaderSceneSidebar } from './ReaderSceneSidebar';
 export { PdfResourceTab } from './PdfResourceTab';
 export { ReaderProvider, useReaderContext } from './ReaderContext';

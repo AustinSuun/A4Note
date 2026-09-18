@@ -1,0 +1,13 @@
+.reader-responsive-toolbar { position: relative; width: 100%; min-width: 0; height: 36px; overflow: hidden; }
+/* Keep the full controls measurable, but inert and invisible when moved into the menu. */
+.reader-responsive-full { width: max-content; min-width: 100%; }
+.reader-responsive-toolbar[data-compact="true"] > .reader-responsive-full { position: absolute; visibility: hidden; pointer-events: none; }
+.reader-responsive-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; max-width: 100%; height: 32px; margin-block: 2px; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--surface-soft); font: 600 var(--ui-control-font-size, 13px)/1.2 var(--font-ui, sans-serif); cursor: pointer; }
+.reader-responsive-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reader-responsive-trigger[aria-expanded="true"] { color: var(--accent-strong); background: var(--accent-soft); }
+.reader-responsive-trigger:focus-visible, .reader-responsive-popover button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+.reader-responsive-popover { position: fixed; z-index: 550; box-sizing: border-box; width: 390px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; overflow: auto; color: var(--ink); background: var(--surface); box-shadow: var(--shadow); font: var(--ui-control-font-size, 13px)/1.4 var(--font-ui, sans-serif); -webkit-app-region: no-drag; }
+.reader-responsive-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.reader-responsive-heading > button { width: 28px; height: 28px; border: 0; border-radius: 5px; color: var(--muted); background: transparent; cursor: pointer; font: inherit; }
+.reader-responsive-popover .reader-toolbar { display: flex; flex-wrap: wrap; align-items: center; width: 100%; height: auto; min-height: 0; padding: 0; gap: 10px; overflow: visible; }
+.reader-responsive-popover .reader-toolbar-primary, .reader-responsive-popover .reader-toolbar-end, .reader-responsive-popover .reader-toolbar-group { display: flex; flex-wrap: wrap; min-width: 0; max-width: 100%; margin: 0; padding: 0; gap: 6px; }

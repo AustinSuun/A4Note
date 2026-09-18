@@ -1,4 +1,5 @@
 import { useNoteFolderWorkspaces } from '../features/markdown';
+import { capturePdfCenterAnchor, restorePdfPageAnchor, requestPdfFind } from '../features/reader';
 import { BrandUpdateNotice } from '../features/updates';
 import { DocumentToolbarProvider } from '../workbench/DocumentToolbar';
 import { onSummaryNoteSaved } from '../platform/library/summaryNotes';
@@ -536,7 +537,7 @@ export default function App() {
   const [restoreRestartPath, setRestoreRestartPath] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<'general' | 'appearance' | 'library' | 'plugins' | 'sync' | 'about'>('general');
-  const [disabledPluginIds, setDisabledPluginIds] = useState<string[]>(loadDisabledPluginIds);
+  const [disabledPluginIds, setDisabledPluginIds] = useState<string[]>(() => [...persistedDisabledPluginIds]);
   const [syncUser, setSyncUser] = useState<SyncAuthResult['user'] | null>(null);
   const [syncState, setSyncState] = useState<SyncSettingsState>({ supported: isTauriRuntime(), authenticated: false, pendingOperations: 0 });
   const [pluginMarket, setPluginMarket] = useState<PluginMarketSettingsState>(() => {
@@ -589,11 +590,12 @@ export default function App() {
     const markdownDocumentFontSize = pluginSettingValues['markdown.documentFontSize'];
     const documentFontSize = typeof markdownDocumentFontSize === 'number' && Number.isFinite(markdownDocumentFontSize)
       ? Math.min(48, Math.max(10, markdownDocumentFontSize))
-      : 20;
+      : 16;
     document.documentElement.style.setProperty('--document-font-size', `${documentFontSize}px`);
     document.documentElement.dataset.documentLineHeight = settings.documentLineHeight;
-    const markdownLayout = pluginSettingValues['markdown.documentLayout'];
-    document.documentElement.dataset.documentLayout = markdownLayout === 'narrow' || markdownLayout === 'fluid' ? markdownLayout : settings.documentLayout;
+    // Fixed-width Markdown is the only supported layout. Preserve old saved
+    // values on disk, but do not let a legacy fluid preference widen the page.
+    document.documentElement.dataset.documentLayout = 'narrow';
     const markdownTitleAlignment = pluginSettingValues['markdown.titleAlignment'];
     document.documentElement.dataset.markdownTitleAlign = markdownTitleAlignment === 'center' || markdownTitleAlignment === 'right' || markdownTitleAlignment === 'left'
       ? markdownTitleAlignment
@@ -605,7 +607,7 @@ export default function App() {
       delete document.documentElement.dataset.markdownParagraphIndent;
     }
     document.documentElement.dataset.markdownDockLabels = pluginSettingValues['markdown.dockLabels'] === 'icons' ? 'icons' : 'chinese';
-    document.documentElement.dataset.dockGlass = pluginSettingValues['markdown.dockGlass'] === true ? 'true' : 'false';
+    document.documentElement.dataset.dockGlass = pluginSettingValues['markdown.dockGlass'] !== false ? 'true' : 'false';
     saveAppSettings(settings);
   }, [pluginSettingValues, settings]);
 
@@ -931,6 +933,7 @@ export default function App() {
     // committed page layout, never the old transformed rectangle.
     content?.style.removeProperty('transform');
     content?.style.removeProperty('transform-origin');
+    if (restorePdfPageAnchor(scroller, anchor)) return;
     const scale = readerZoom / anchor.zoom;
     const maxLeft = Math.max(scroller.scrollWidth - scroller.clientWidth, 0);
     const maxTop = Math.max(scroller.scrollHeight - scroller.clientHeight, 0);
@@ -955,30 +958,15 @@ export default function App() {
       ?? document.querySelector<HTMLElement>('.workbench-tab-frame.active .pdf-document')
       ?? document.querySelector<HTMLElement>('.pdf-document');
     if (scroller && nextZoom !== readerZoom) {
-      const rect = scroller.getBoundingClientRect();
-      const left = anchorPoint ? anchorPoint.x - rect.left : rect.width / 2;
-      const top = anchorPoint ? anchorPoint.y - rect.top : rect.height / 2;
-      const content = scroller.querySelector<HTMLElement>('.pdf-document-content');
-      const contentRect = content?.getBoundingClientRect();
-      const contentOriginX = anchorPoint?.contentOriginX
-        ?? (contentRect ? contentRect.left - rect.left + scroller.scrollLeft : 0);
-      const contentOriginY = anchorPoint?.contentOriginY
-        ?? (contentRect ? contentRect.top - rect.top + scroller.scrollTop : 0);
-      const contentX = anchorPoint?.contentX
-        ?? (contentRect ? scroller.scrollLeft + left - contentOriginX : scroller.scrollLeft + left);
-      const contentY = anchorPoint?.contentY
-        ?? (contentRect ? scroller.scrollTop + top - contentOriginY : scroller.scrollTop + top);
-      readerZoomAnchorRef.current = {
-        x: anchorPoint?.x ?? rect.left + left,
-        y: anchorPoint?.y ?? rect.top + top,
-        zoom: readerZoom,
-        contentX,
-        contentY,
-        contentOriginX,
-        contentOriginY,
-        left,
-        top,
-      };
+      const captured = anchorPoint ?? capturePdfCenterAnchor(scroller);
+      if (captured) {
+        readerZoomAnchorRef.current = {
+          ...captured,
+          zoom: readerZoom,
+          left: scroller.clientLeft + scroller.clientWidth / 2,
+          top: scroller.clientTop + scroller.clientHeight / 2,
+        };
+      }
     }
     setReaderZoom(nextZoom);
   };
@@ -1465,6 +1453,7 @@ export default function App() {
 
   useEffect(() => {
     const handleGlobalKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing) return;
       const target = event.target as HTMLElement | null;
       const isEditable =
         target instanceof HTMLInputElement ||
@@ -1518,6 +1507,9 @@ export default function App() {
         setUiZoom(1);
         return;
       }
+
+      // Editors and form fields own their undo/redo and text shortcuts.
+      if (isEditable) return;
 
       if (readerKey === 'z') {
         if (activeScene === 'reader' && event.shiftKey) {
@@ -1591,6 +1583,7 @@ export default function App() {
       }
       if (event.key.toLowerCase() === 'f') {
         event.preventDefault();
+        if (activeScene === 'reader') { requestPdfFind(); return; }
         setScene('library');
         requestAnimationFrame(() => librarySearchRef.current?.focus());
         return;
@@ -1909,10 +1902,11 @@ export default function App() {
       },
       {
         id: 'library.search',
-        title: zh.command.searchLibrary,
+        title: activeScene === 'reader' ? '搜索当前 PDF' : zh.command.searchLibrary,
         group: zh.command.groupLibrary,
         shortcut: 'Ctrl+F',
         run: () => {
+          if (activeScene === 'reader') { requestPdfFind(); return; }
           setScene('library');
           requestAnimationFrame(() => librarySearchRef.current?.focus());
         },
@@ -1964,7 +1958,7 @@ export default function App() {
           },
         })),
     ],
-    [visibleSceneIds, openImportDialog, pluginRuntimeVersion, sceneCatalog, selectedPaper?.paperId, workbenchPanelCommandDefinitions, commandPaletteOpen],
+    [activeScene, visibleSceneIds, openImportDialog, pluginRuntimeVersion, sceneCatalog, selectedPaper?.paperId, workbenchPanelCommandDefinitions, commandPaletteOpen],
   );
 
   const sidebarScenes: SidebarSceneItem[] = aster.scenes.list().filter((scene) => visibleSceneIds.includes(scene.id) && (!scene.pluginId || aster.plugins.has(scene.pluginId))).map((scene) => ({
@@ -3042,11 +3036,22 @@ export default function App() {
 function loadDisabledPluginIds() {
   try {
     const raw = localStorage.getItem('aster.disabledPlugins');
-    if (!raw) return [];
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? Array.from(new Set(value.filter((item): item is string => typeof item === 'string'))) : [];
+    if (raw === null) {
+      // Only a fresh profile gets the new default. Older installations without
+      // plugin switches retain the historical enabled state and other settings.
+      const existingProfile = ['aster.uiState', 'aster.settings', 'aster.pluginSettings',
+        'aster.sidebarCollapsed', 'aster.sidebarWidth', 'aster.localPlugins']
+        .some((key) => localStorage.getItem(key) !== null);
+      return existingProfile ? [] : ['ai.core'];
+    }
+    try {
+      const value = JSON.parse(raw);
+      return Array.isArray(value) ? Array.from(new Set(value.filter((item): item is string => typeof item === 'string'))) : [];
+    } catch {
+      return []; // Keep the previous fallback for a malformed existing record.
+    }
   } catch {
-    return [];
+    return ['ai.core']; // Do not enable the optional scene if storage is unavailable.
   }
 }
 

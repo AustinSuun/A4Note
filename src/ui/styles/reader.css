@@ -338,8 +338,12 @@
   background: rgba(77,131,107,.34);
   transition: transform .14s ease;
 }
-.pdf-document { position: relative; display: block; width: 100%; height: 100%; overflow: auto; padding: 7px 7px 12px; scrollbar-width: none; }
+.pdf-document { position: relative; display: block; width: 100%; height: 100%; overflow: auto; padding: 7px 7px 12px; scrollbar-width: none; overflow-anchor: none; scroll-behavior: auto; }
 .pdf-document::-webkit-scrollbar { width: 0; height: 0; }
+.pdf-document.hand-mode, .pdf-document.pan-ready { cursor: grab; }
+.pdf-document.hand-mode .pdf-page *, .pdf-document.pan-ready .pdf-page * { cursor: grab !important; user-select: none !important; }
+.pdf-document.panning, .pdf-document.panning .pdf-page * { cursor: grabbing !important; user-select: none !important; }
+.pdf-document:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
 .pdf-document-content {
   display: grid;
   /* One viewport-wide track: a later poster page must not shift normal pages. */

@@ -1,3 +1,4 @@
+@import "../../shared/segmented-mode-switch.css";
 /* Match the note edit/read control, with a three-position selection surface. */
 .library-titlebar-switch.markdown-resource-mode-switch {
   position: relative; isolation: isolate; display: inline-grid;

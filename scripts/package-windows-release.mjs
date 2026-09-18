@@ -77,6 +77,14 @@ const executableSource = path.join(releaseDir, 'a4note.exe');
 const installerSource = await findInstaller(path.join(releaseDir, 'bundle', 'nsis'));
 await assertFile(executableSource, 'Tauri release executable');
 
+// Reject a package whose minified CSS silently lost Chromium's blur property.
+const dockCssCheck = spawnSync(process.execPath, ['scripts/verify-floating-dock-css.mjs', frontendDistDir], {
+  cwd: rootDir,
+  stdio: 'inherit',
+});
+if (dockCssCheck.error) throw dockCssCheck.error;
+if (dockCssCheck.status !== 0) throw new Error('Built floating dock CSS verification failed.');
+
 // A successful Rust build alone is not proof that frontend files were embedded.
 // Verify the actual executable before replacing any known-good delivery package.
 const frontendIndex = await readFile(path.join(frontendDistDir, 'index.html'), 'utf8');

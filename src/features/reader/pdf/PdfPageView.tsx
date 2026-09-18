@@ -29,6 +29,8 @@ export type PdfPageViewProps = {
   priorityDistance: number;
   onCommentPopoverChange: (value: CommentPopover | null) => void;
   onSaveComment: () => void | Promise<void>;
+  commentSaving?: boolean;
+  commentSaveError?: string;
 };
 
 export function PdfPageView({
@@ -44,6 +46,8 @@ export function PdfPageView({
   priorityDistance,
   onCommentPopoverChange,
   onSaveComment,
+  commentSaving = false,
+  commentSaveError = '',
 }: PdfPageViewProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -192,7 +196,7 @@ export function PdfPageView({
   }, [shouldRender, hasBitmap, priorityDistance, flashKind, commentPopover]);
 
   return (
-    <div className={`pdf-page ${isUpdating ? 'updating' : ''} ${!hasBitmap ? 'released' : ''} ${flashKind ? `flash-${flashKind}` : ''}`} data-reader-layer="pdf-page" data-page={pageMeta.pageNumber} ref={rootRef} {...pageHandlers}>
+    <div className={`pdf-page ${isUpdating ? 'updating' : ''} ${!hasBitmap ? 'released' : ''} ${flashKind ? `flash-${flashKind}` : ''}`} data-reader-layer="pdf-page" data-page={pageMeta.pageNumber} data-base-width={pageMeta.baseWidth} ref={rootRef} {...pageHandlers}>
       {renderError && <div className="pdf-render-error" role="alert" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
         <span>{renderError}</span><button type="button" onClick={() => setRetryRevision((current) => current + 1)}>重新渲染本页</button>
       </div>}
@@ -214,6 +218,7 @@ export function PdfPageView({
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
+            <fieldset disabled={commentSaving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
             <div className="sticky-format-row">
               <button type="button" className={commentPopover.bold ? 'active' : ''} onClick={() => onCommentPopoverChange({ ...commentPopover, bold: !commentPopover.bold })}>
                 B
@@ -230,15 +235,17 @@ export function PdfPageView({
               </select>
               <input type="color" value={commentPopover.textColor} onChange={(event) => onCommentPopoverChange({ ...commentPopover, textColor: event.target.value })} />
             </div>
-            <textarea value={commentPopover.text} onChange={(event) => onCommentPopoverChange({ ...commentPopover, text: event.target.value })} placeholder={zh.reader.commentPlaceholder} autoFocus />
+            <textarea aria-label="标注内容" value={commentPopover.text} onChange={(event) => onCommentPopoverChange({ ...commentPopover, text: event.target.value })} placeholder={zh.reader.commentPlaceholder} autoFocus />
             <div>
               <button type="button" className="subtle-button rounded-button" onClick={() => onCommentPopoverChange(null)}>
                 {zh.reader.cancelComment}
               </button>
               <button type="button" className="primary rounded-button" onClick={() => void onSaveComment()}>
-                {zh.reader.saveComment}
+                {commentSaving ? '保存中…' : zh.reader.saveComment}
               </button>
             </div>
+            </fieldset>
+            {commentSaveError && <p className="comment-save-error" role="alert">{commentSaveError}</p>}
           </div>
         )}
       </div>

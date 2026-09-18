@@ -1,3 +1,4 @@
+import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
 import { useReaderNoteActive, useReaderNoteRequests } from './ReaderNoteActivity';
 import { OverviewNoteBadge } from './OverviewNoteBadge';
 import { createSummaryNote, editSummary, loadSummary } from '../../platform/library/summaries';
@@ -22,12 +23,13 @@ const MarkdownReadContent = lazy(() =>
 
 export function MarkdownReadView({ paper, onNavigateAnnotation }: { paper: PaperDocument; onNavigateAnnotation: (annotationId: string) => void }) {
   const content = paper.notes[0]?.content ?? '';
+  const endSpaceRef = useMarkdownEndSpace<HTMLDivElement>();
   return (
     <div className="markdown-reader">
       <div className="markdown-reader-header">
         <div className="panel-title">{zh.reader.noteTitle}</div>
       </div>
-      <div className="md-body markdown-reader-content">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</div>
+      <div ref={endSpaceRef} className="md-body markdown-reader-content">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</div>
     </div>
   );
 }
@@ -59,6 +61,7 @@ export function MarkdownNotePanel({
   onCreateNote: () => void | Promise<string | void>;
   onNavigateAnnotation: (annotationId: string) => void;
 }) {
+  const endSpaceRef = useMarkdownEndSpace<HTMLElement>();
   const surfaceActive = useReaderNoteActive();
   const acceptsRequests = useReaderNoteRequests();
   const surfaceActiveRef = useRef(surfaceActive); surfaceActiveRef.current = surfaceActive;
@@ -272,7 +275,7 @@ export function MarkdownNotePanel({
           <MarkdownLiveEditor key={selectedNoteId} ref={editorRef} markdown={content} onChange={updateContent} onBlur={() => void saveCurrent()} placeholder={zh.reader.notePlaceholder} />
         </Suspense>
       ) : (
-        <article className="md-body markdown-preview note-preview-only">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</article>
+        <article ref={endSpaceRef} className="md-body markdown-preview note-preview-only">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</article>
       )}
     </div>
   );
