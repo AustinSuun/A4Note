@@ -15,6 +15,10 @@ if (!tauriMainSource.includes('#![cfg_attr(not(debug_assertions), windows_subsys
 
 const isWindows = process.platform === 'win32';
 const steps = [
+  ['node', ['scripts/verify-file-tree-display-name.mjs']],
+  ['node', ['scripts/verify-markdown-end-space.mjs']],
+  ['node', ['scripts/verify-annotation-history.mjs']],
+  ['node', ['scripts/verify-reader-priority-fixes.mjs']],
   ...(isWindows ? [['node', ['scripts/prepare-native-host.mjs', '--debug']]] : []),
   ['npm', ['run', 'build']],
   ['npm', ['run', 'test:core']],

@@ -109,7 +109,7 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
   }, []);
   const changeZoom = useCallback((value: number) => {
     captureZoomPoint();
-    nextZoom.current = Math.max(40, Math.min(180, value));
+    nextZoom.current = Math.max(20, Math.min(500, value));
     animateZoom();
   }, [captureZoomPoint, animateZoom]);
   useLayoutEffect(() => {
@@ -129,7 +129,7 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
       if (!event.deltaY) return;
       if (!wheelFrame.current) captureZoomPoint(event.clientY);
       const pixels = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? node.clientHeight : 1);
-      nextZoom.current = Math.max(40, Math.min(180, nextZoom.current * Math.exp(-Math.max(-120, Math.min(120, pixels)) * .0015)));
+      nextZoom.current = Math.max(20, Math.min(500, nextZoom.current * Math.exp(-Math.max(-120, Math.min(120, pixels)) * .0015)));
       animateZoom();
     };
     node.addEventListener('wheel', wheel, { passive: false });

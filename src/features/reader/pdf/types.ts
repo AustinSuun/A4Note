@@ -41,6 +41,7 @@ export type PdfScrollAnchor = {
 
 /** Zoom gesture anchor used to restore the same PDF point after layout. */
 export type PdfZoomAnchor = {
+  pageAnchor?: { page: number; xRatio: number; yRatio: number; offsetX: number; offsetY: number };
   x: number;
   y: number;
   contentX: number;

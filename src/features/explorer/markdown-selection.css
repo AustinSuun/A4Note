@@ -1,0 +1,35 @@
+/* CodeMirror draws selection behind text by default. Opaque Markdown cards
+   conceal it. Keep the existing measured rectangles, but paint their translucent
+   wash over ONE isolated content stacking context, below CM cursors/tooltips.
+   No document dimensions, decorations, DOM ranges or input handlers change. */
+.markdown-live-codemirror .cm-editor > .cm-scroller > .cm-content {
+  isolation: isolate;
+}
+.markdown-live-codemirror .cm-editor > .cm-scroller > .cm-selectionLayer {
+  /* CM writes negative z-index inline; a scoped important override is required. */
+  z-index: 1 !important;
+  pointer-events: none;
+}
+.markdown-live-codemirror .cm-selectionLayer .cm-selectionBackground {
+  /* Must stay translucent now that the wash is above glyphs and widget faces.
+     Also beat CM's more specific opaque focused/light-theme default. */
+  background: rgba(82,123,104,.18) !important;
+  background: color-mix(in srgb, var(--accent-strong) 18%, transparent) !important;
+  pointer-events: none;
+}
+.markdown-live-codemirror .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: rgba(82,123,104,.28) !important;
+  background: color-mix(in srgb, var(--accent-strong) 28%, transparent) !important;
+}
+:where(:root[data-theme="midnight"]) .markdown-live-codemirror .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: color-mix(in srgb, var(--accent-strong) 32%, transparent) !important;
+}
+/* Preserve CM's touch selection handles, without intercepting regular dragging. */
+.markdown-live-codemirror .cm-selectionLayer .cm-selectionHandle { pointer-events: auto; }
+@media (forced-colors: active) {
+  :root .markdown-live-codemirror .cm-editor:is(.cm-focused, :not(.cm-focused)) > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+    forced-color-adjust: none;
+    background: Highlight !important;
+    opacity: .35;
+  }
+}

@@ -1,4 +1,5 @@
 import type { MouseEvent, PointerEvent } from 'react';
+import { pdfCoordinateLayer } from './pdfCoordinates';
 import type { PositionJson } from '../../../core/types';
 import type { AnnotationResize, DragDraft, PdfScrollAnchor, StickyDrag } from './types';
 
@@ -7,11 +8,12 @@ const PAGE_VISIBLE_THRESHOLD = 0.08;
 
 export function pointFromEvent(
   event: MouseEvent<HTMLElement> | PointerEvent<HTMLElement>,
-  coordinateTarget: Pick<HTMLElement, 'getBoundingClientRect'> = event.currentTarget,
+  coordinateTarget: Pick<HTMLElement, 'getBoundingClientRect'> = pdfCoordinateLayer(event.currentTarget),
 ) {
   event.preventDefault();
   event.stopPropagation();
   const rect = coordinateTarget.getBoundingClientRect();
+  if (!(rect.width > 0 && rect.height > 0) || ![rect.left, rect.top, rect.width, rect.height, event.clientX, event.clientY].every(Number.isFinite)) return null;
   return {
     x: clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100),
     y: clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100),

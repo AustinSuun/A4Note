@@ -43,7 +43,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          A4NOTE_RELEASE_NOTES: '修复混合尺寸PDF正文偏右；PDF缩放范围20%–500%；简化标注悬浮栏并增强图标清晰度；新增品牌旁新版本提示、下载与确认安装入口；改进笔记编辑和总结笔记。配套浏览器插件0.6.5。升级前请备份重要资料。'
+          A4NOTE_RELEASE_NOTES: 'Markdown 正文默认16px并收紧段落间距，保留原界面字号及已保存设置；引用/代码中文跟随正文字体；修复脚注上标、返回定位和不透明预览；改进表格、选区、文末留白与图片控制；笔记文件树类型标签、紧凑双排悬浮栏和更轻的毛玻璃；统一模式切换、适配窄宽阅读工具栏；改进PDF交互与标注撤销/保存队列；更新前资料库备份不含外部Markdown文件。配套浏览器插件0.6.5不变。'
         run: |
           npm run package:windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

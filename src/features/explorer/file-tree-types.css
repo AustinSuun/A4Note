@@ -1,0 +1,30 @@
+/* Feature-local badges: leave the shared file-tree row sizing/typography untouched. */
+.file-tree-row > .file-tree-type {
+  --file-type-hue: #64748b;
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+  box-sizing: border-box;
+  max-width: min(40%, 10ch);
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--file-type-hue) 25%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--file-type-hue) 12%, var(--surface, #fff));
+  color: color-mix(in srgb, var(--file-type-hue) 55%, var(--ink, #22332b));
+  font-size: max(10px, calc(var(--ui-font-size, 16px) * .67));
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-tree-row > .file-tree-type[data-file-type-tone="pdf"] { --file-type-hue: #d44842; }
+.file-tree-row > .file-tree-type[data-file-type-tone="image"] { --file-type-hue: #9562d4; }
+.file-tree-row > .file-tree-type[data-file-type-tone="document"] { --file-type-hue: #428bd1; }
+.file-tree-row > .file-tree-type[data-file-type-tone="data"] { --file-type-hue: #269a68; }
+.file-tree-row > .file-tree-type[data-file-type-tone="media"] { --file-type-hue: #cd5d9f; }
+.file-tree-row > .file-tree-type[data-file-type-tone="archive"] { --file-type-hue: #c58c26; }
+.file-tree-row > .file-tree-type[data-file-type-tone="code"] { --file-type-hue: #289aa4; }
+@media (forced-colors: active) {
+  .file-tree-row > .file-tree-type { color: CanvasText; background: Canvas; border-color: CanvasText; }
+}

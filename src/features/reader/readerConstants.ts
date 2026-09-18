@@ -37,6 +37,7 @@ export function annotationColorInputValue(color: string) {
 
 export const annotationTools: Array<{ id: ReaderTool; label: string }> = [
   { id: 'cursor',    label: zh.reader.cursor    },
+  { id: 'hand',      label: '手形拖动'           },
   { id: 'highlight', label: zh.reader.highlight },
   { id: 'underline', label: zh.reader.underline },
   { id: 'text',      label: zh.reader.textBox   },
@@ -49,6 +50,7 @@ export const annotationTools: Array<{ id: ReaderTool; label: string }> = [
 /** 每个标注工具的默认颜色（互相独立，用户操作时各自记忆） */
 export const defaultToolColors: Record<ReaderTool, AnnotationColor> = {
   cursor:    'yellow',
+  hand:      'yellow',
   highlight: 'yellow',
   underline: 'blue',
   comment:   'yellow',

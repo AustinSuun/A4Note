@@ -22,8 +22,10 @@ export function UpdateSettings({ currentVersion }: { currentVersion?: string }) 
     {state.phase === 'downloading' && <div role="status"><p>正在下载并校验：{bytes(state.received)}{state.total ? ` / ${bytes(state.total)}` : ''}</p><progress aria-label="更新下载进度" max={state.total || undefined} value={state.total ? state.received : undefined} /></div>}
     {state.downloaded && <>
       <p role="status">更新包已下载并通过签名校验。安装会关闭当前软件。</p>
-      <label className="settings-check"><input type="checkbox" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />我已备份重要资料，并同意保存笔记后退出软件安装更新。</label>
-      <Button variant="primary" disabled={!confirmed || busy} onClick={() => { setConfirmed(false); void installUpdate(); }}>{state.phase === 'installing' ? '正在保存并启动安装…' : '保存并安装更新'}</Button>
+      <p>安装前自动备份资料库数据库和库内附件；不含外部 Markdown 笔记文件夹，请自行备份。备份失败将停止安装。</p>
+      {state.backupPath && <p style={{ overflowWrap: 'anywhere' }}>本次资料库备份：{state.backupPath}</p>}
+      <label className="settings-check"><input type="checkbox" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />我了解备份范围，同意自动备份资料库后退出安装。</label>
+      <Button variant="primary" disabled={!confirmed || busy} onClick={() => { setConfirmed(false); void installUpdate(); }}>{state.phase === 'installing' ? state.installStep === 'backing-up' ? '正在备份资料库…' : state.installStep === 'saving' ? '正在保存…' : '正在启动安装…' : '备份并安装更新'}</Button>
     </>}
     {(state.error || linkError) && <p role="alert">{state.error || linkError}</p>}
     <p className="settings-muted">仅支持 Windows x64 更新；不会后台自动下载或强制重启。浏览器插件在弹窗底部“插件设置与更新”中检查新版、下载并按指引重新加载，也可从官方发布页获取。旧版首次升级到支持更新的版本仍需手动安装一次。</p>

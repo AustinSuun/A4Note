@@ -1,4 +1,5 @@
 import type { ReaderTool } from '../../core/types';
+import { dockIconPaths } from '../../shared/dockIconPaths';
 
 function Icon({ path }: { path: string }) {
   return (
@@ -10,15 +11,16 @@ function Icon({ path }: { path: string }) {
 
 export function AnnotationToolIcon({ id }: { id: ReaderTool }) {
   if (id === 'cursor') return <Icon path="M6 4.5 16.5 15H11l-2 4-3-11.5Z" />;
-  if (id === 'comment') return <Icon path="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v6A2.5 2.5 0 0 1 17.5 15H11l-4.5 4v-4A2.5 2.5 0 0 1 4 12.5v-6Z" />;
-  if (id === 'underline') return <Icon path="M7 5v5a5 5 0 0 0 10 0V5M6 19h12" />;
+  if (id === 'hand') return <Icon path="M8 13V6a2 2 0 0 1 4 0v6M12 11V4a2 2 0 0 1 4 0v8M16 11V7a2 2 0 0 1 4 0v8c0 4-2.5 6-6 6h-1c-2 0-3.5-1-4.5-2.5L4 12a2 2 0 0 1 3-2l1 3Z" />;
+  if (id === 'comment') return <Icon path={dockIconPaths.comment} />;
+  if (id === 'underline') return <Icon path={dockIconPaths.underline} />;
   if (id === 'text') return <Icon path="M5 6h14M12 6v12M8 18h8" />;
   if (id === 'ink') return <Icon path="M4 17c3-6 5 3 8-3s4-5 8-2M14 4l6 6M16 4l4 4" />;
   if (id === 'eraser') return <Icon path="M5 15 14 6a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3l-7 7H7l-2-3Zm7 3h8" />;
   if (id === 'rect') return <Icon path="M5 6h14v12H5z" />;
   if (id === 'arrow') return <Icon path="M5 19 19 5M11 5h8v8" />;
   if (id === 'area') return <Icon path="M7 7h10v10H7zM4 10h2M18 10h2M10 4v2M10 18v2" />;
-  return <Icon path="M5 14.5 11.5 8 14 10.5 19 5.5 17.5 4 14 7.5 11.5 5 5 11.5Z" />;
+  return <Icon path={dockIconPaths.highlight} />;
 }
 
 export function NotesIcon() {
@@ -30,7 +32,7 @@ export function AnnotationsIcon() {
 }
 
 export function ChatIcon() {
-  return <Icon path="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v6A2.5 2.5 0 0 1 17.5 15H11l-4.5 4v-4A2.5 2.5 0 0 1 4 12.5v-6Z" />;
+  return <Icon path={dockIconPaths.comment} />;
 }
 
 export function RelationsIcon() {

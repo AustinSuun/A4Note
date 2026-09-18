@@ -1,0 +1,15 @@
+.pdf-reader-surface { position: relative; }
+.pdf-find-trigger { position: absolute; top: 6px; right: 12px; z-index: 35; }
+.pdf-find-bar { position: absolute; top: 6px; right: 8px; z-index: 40; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: calc(100% - 16px); box-sizing: border-box; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); box-shadow: 0 4px 16px #0002; font: 13px var(--font-ui, sans-serif); }
+.pdf-find-bar input { min-width: 80px; width: 170px; max-width: 100%; font: inherit; }
+.pdf-find-bar button, .pdf-find-trigger, .reader-save-feedback button { min-height: 28px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 5px; }
+.pdf-find-bar button:focus-visible, .pdf-find-trigger:focus-visible, .reader-save-feedback button:focus-visible { outline: 2px solid var(--accent-strong); }
+.pdf-text-layer [data-pdf-find="match"] { background: #ffd54f77; }
+.pdf-text-layer [data-pdf-find="current"] { background: #ff980099; outline: 2px solid #a34c00; }
+.reader-save-queue { position: absolute; z-index: 42; top: 52px; left: 12px; max-width: min(520px, calc(100% - 24px)); max-height: 35%; overflow: auto; }
+.reader-save-queue:empty { display: none; }
+.reader-save-feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: 13px var(--font-ui, sans-serif); overflow-wrap: anywhere; }
+.reader-save-feedback span { flex: 1 1 180px; }
+.comment-save-error { color: #b42318; font-size: 13px; overflow-wrap: anywhere; }
+
+.reader-global-save-error { position: absolute; z-index: 44; bottom: 80px; left: 12px; max-width: min(600px, calc(100% - 24px)); box-sizing: border-box; }

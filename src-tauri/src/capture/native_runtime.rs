@@ -8,6 +8,14 @@ pub(super) fn status()->Value{
     match current_native(){Ok(n)=>json!({"enabled":n.allowed(),"error":START_ERROR.lock().ok().and_then(|e|e.clone()),"transport":"native_messaging","enrichMetadata":n.service.enrich_metadata.load(Ordering::Acquire),"inbox":n.service.store.list().unwrap_or(json!({"tasks":[]}))}),Err(e)=>json!({"enabled":false,"transport":"native_messaging","error":e,"inbox":{"tasks":[]}})}
 }
 pub fn start_native(app:&AppHandle){
+    // An isolated debug window must never contend for the installed app's
+    // per-user capture pipe. Release builds retain the normal startup path.
+    if isolated_live_dev(&app.config().identifier) {
+        if let Ok(mut error) = START_ERROR.lock() {
+            *error = Some("独立开发实例已停用浏览器采集连接".into());
+        }
+        return;
+    }
     #[cfg(windows)] {
         let app=app.clone();
         tauri::async_runtime::spawn(async move{
@@ -33,4 +41,22 @@ async fn initialize(app:AppHandle)->Result<(),String>{
     let expected=std::env::current_exe().map_err(|_|"desktop_path_unavailable")?.parent().ok_or("desktop_path_unavailable")?.join("native-host").join("a4note-native-host.exe");
     let result=super::native_server::serve(native.clone(),super::native_windows::pipe_name()?,expected).await;
     if result.is_err(){native.service.enabled.store(false,Ordering::Release);}result
+}
+
+fn isolated_live_dev(identifier: &str) -> bool {
+    cfg!(debug_assertions)
+        && identifier.strip_prefix("app.aster.research.dev.").is_some_and(|suffix| !suffix.is_empty())
+}
+
+#[cfg(test)]
+mod live_dev_tests {
+    use super::isolated_live_dev;
+
+    #[test]
+    fn capture_skip_is_limited_to_isolated_debug_identity() {
+        assert!(!isolated_live_dev("app.aster.research"));
+        assert!(!isolated_live_dev("app.aster.research.dev."));
+        assert!(!isolated_live_dev("unrelated.dev.integration"));
+        assert_eq!(isolated_live_dev("app.aster.research.dev.integration.w123"), cfg!(debug_assertions));
+    }
 }

@@ -1,11 +1,12 @@
 import { check, type Update } from '@tauri-apps/plugin-updater';
 import { getVersion } from '@tauri-apps/api/app';
 import { flushPendingSaves } from '../pendingSaves';
+import { createLibraryBackup } from '../nativeApi';
 import { openExternalUrl, isTauriRuntime } from '../projects';
 
 export const releasePage = 'https://github.com/AustinSuun/A4Note/releases/latest';
 type Phase = 'idle' | 'checking' | 'available' | 'latest' | 'downloading' | 'downloaded' | 'installing' | 'error';
-interface Snapshot { phase: Phase; current: string; version?: string; notes?: string; received: number; total?: number; downloaded: boolean; error?: string; }
+interface Snapshot { phase: Phase; current: string; version?: string; notes?: string; received: number; total?: number; downloaded: boolean; error?: string; installStep?: 'saving' | 'backing-up' | 'launching'; backupPath?: string; }
 let snapshot: Snapshot = { phase: 'idle', current: '', received: 0, downloaded: false };
 let candidate: Update | null = null;
 let busy = false;
@@ -17,7 +18,7 @@ export const openReleases = () => openExternalUrl(releasePage);
 export async function checkForUpdates() {
   if (busy) return;
   busy = true;
-  publish({ phase: 'checking', error: undefined, version: undefined, notes: undefined, downloaded: false, received: 0, total: undefined });
+  publish({ phase: 'checking', error: undefined, version: undefined, notes: undefined, downloaded: false, received: 0, total: undefined, installStep: undefined, backupPath: undefined });
   try {
     if (!isTauriRuntime()) throw new Error('请在已安装的桌面软件中检查更新');
     if (candidate) { const old = candidate; candidate = null; await old.close(); }
@@ -43,13 +44,22 @@ export async function downloadUpdate() {
 }
 export async function installUpdate() {
   if (busy || !candidate || !snapshot.downloaded) return;
-  busy = true; publish({ phase: 'installing', error: undefined });
+  busy = true; publish({ phase: 'installing', installStep: 'saving', backupPath: undefined, error: undefined });
+  let stage = '保存当前内容';
   const wasInert = document.body.inert;
   document.body.inert = true; // Do not allow new editor input between flush and exit.
   try {
     await flushPendingSaves(); // Any unresolved save/conflict cancels installation.
+    stage = '自动备份资料库';
+    publish({ installStep: 'backing-up' });
+    // Reuse the native maintenance-gated SQLite snapshot + managed attachment backup.
+    // External Markdown folders are explicitly outside this backup's scope.
+    const backup = await createLibraryBackup();
+    if (!backup.backup_path?.trim()) throw new Error('备份未返回有效目录，已停止安装');
+    publish({ backupPath: backup.backup_path, installStep: 'launching' });
+    stage = '启动安装程序';
     await candidate.install(); // Windows updater exits the app and invokes signed NSIS.
     publish({ phase: 'downloaded', error: '安装程序已启动；如软件未退出，请按安装程序提示操作。' });
-  } catch (error) { publish({ phase: 'error', error: `未完成安装：${String(error)}。请先处理保存问题再重试。` }); }
-  finally { document.body.inert = wasInert; busy = false; }
+  } catch (error) { publish({ phase: 'error', error: `${stage}失败，未完成安装：${String(error)}。请处理问题后重试；备份失败不会继续安装。` }); }
+  finally { document.body.inert = wasInert; busy = false; publish({ installStep: undefined }); }
 }

@@ -92,7 +92,7 @@ export function ReaderToolbar({
       setToolSettingsOpenFor(null);
     }
     onSelectAnnotationTool(tool);
-    if (tool !== 'cursor' && tool !== 'eraser') {
+    if (tool !== 'cursor' && tool !== 'hand' && tool !== 'eraser') {
       onSelectAnnotationColor(toolColors[tool]);
     }
   };
@@ -132,11 +132,11 @@ export function ReaderToolbar({
 
   return (
     <>
-    <ReaderToolbarPortal>
+    <ReaderToolbarPortal compactLabel={`${fileMode === 'parallel' ? zh.reader.parallelPdf : fileMode === 'translated' ? zh.reader.translatedPdf : zh.reader.sourcePdf} · ${Math.round(zoom * 100)}%`}>
     <header
       className="reader-toolbar"
       data-reader-layer="toolbar"
-      aria-label="阅读工具栏（空间不足时可横向滚动）"
+      aria-label="阅读工具栏"
       tabIndex={0}
     >
       <div className="reader-toolbar-primary">
@@ -247,14 +247,14 @@ export function ReaderToolbar({
                     className={`annotation-tool-btn ${isActive ? 'active' : ''} ${isContextual ? 'contextual' : ''}`.trim()}
                     type="button"
                     onClick={() => handleSelectTool(tool.id)}
-                    title={toolHasSettings(tool.id) ? `${tool.label}（再次点击打开设置）` : tool.label}
+                    title={tool.id === 'hand' ? '手形拖动：按住左键移动；空格＋左键可临时拖动' : toolHasSettings(tool.id) ? `${tool.label}（再次点击打开设置）` : tool.label}
                     aria-label={tool.label}
                     aria-pressed={isActive}
                     aria-haspopup={toolHasSettings(tool.id) ? 'dialog' : undefined}
                     aria-expanded={toolHasSettings(tool.id) ? optionsTool === tool.id : undefined}
                   >
                     <AnnotationToolIcon id={tool.id} />
-                    {tool.id !== 'cursor' && tool.id !== 'eraser' && (
+                    {tool.id !== 'cursor' && tool.id !== 'hand' && tool.id !== 'eraser' && (
                       <span className="annotation-tool-color-dot" style={{ background: toolColorToCss(toolColor) }} />
                     )}
                   </button>

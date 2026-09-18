@@ -1,3 +1,5 @@
+import { markdownCaretComfort } from './markdownCaretComfort';
+import { markdownSingleSelection } from './markdownSelectionPolicy';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { basicSetup } from 'codemirror';
 import { markdown as markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
@@ -5,14 +7,20 @@ import { languages as codeLanguages } from '@codemirror/language-data';
 import { calloutLabel, isKnownCalloutType } from '../../shared/markdown';
 import { defaultKeymap, indentWithTab, historyKeymap, isolateHistory, undo, redo } from '@codemirror/commands';
 import { Annotation, Compartment, Facet, EditorState, StateEffect, StateField, type Range, type Transaction } from '@codemirror/state';
-import { codeFolding, defaultHighlightStyle, foldedRanges, foldEffect, HighlightStyle, syntaxHighlighting, syntaxTree, unfoldEffect } from '@codemirror/language';
-import { tags } from '@lezer/highlight';
+import { codeFolding, defaultHighlightStyle, foldedRanges, foldEffect, HighlightStyle, highlightingFor, syntaxHighlighting, syntaxTree, unfoldEffect } from '@codemirror/language';
+import { tags, highlightTree } from '@lezer/highlight';
+import { previewBlockAttributes, previewLayoutStability, requestPreviewLayoutMeasure, type MeasurementDecorations } from './previewLayoutStability';
+import './preview-layout-stability.css';
+import './markdown-selection.css';
 import { Decoration, EditorView, WidgetType, keymap, placeholder } from '@codemirror/view';
 import katex from 'katex';
+import { mathAttributes, mathBlockSize, mathLayoutStability, mathLineHeight, mathSizesChanged } from './mathLayoutStability';
 import 'katex/dist/katex.min.css';
 import { isTauriRuntime, openExternalUrl } from '../../platform/projects';
 import { changeTableStructure, type TableAction } from './tableStructure';
 import './markdown-authoring.css';
+import './image-tools-panel.css';
+import '../../shared/markdown/image-controls.css';
 import { canPreviewNoteImage, directNoteImage } from './noteImageSource';
 import { loadNoteImage } from './noteImageLoader';
 import { imageSourceTitle, readImageTitle, withImageLayout, type ImageLayout } from '../../shared/markdown/imageLayout';
@@ -264,17 +272,26 @@ function renderLatexHtml(source: string, display: boolean): string {
   }
 }
 
+function createMathElement(source: string, display: boolean) {
+  const element = document.createElement('span');
+  element.className = display ? 'cm-md-math cm-md-math-display' : 'cm-md-math';
+  // A wide formula scrolls inside its own block, not by widening .cm-content.
+  if (display) { element.style.contain = 'inline-size'; element.style.minWidth = '0'; }
+  const content = document.createElement('span');
+  content.className = 'cm-md-math-content';
+  content.innerHTML = renderLatexHtml(source, display);
+  element.append(content);
+  element.setAttribute('aria-label', `LaTeX ${source}`);
+  return element;
+}
+
 class LatexWidget extends WidgetType {
-  constructor(private readonly source: string, private readonly display: boolean, private readonly from: number, private readonly to: number, private readonly cursorOffset = 1) { super(); }
-  eq(other: LatexWidget) { return other.source === this.source && other.display === this.display && other.from === this.from && other.to === this.to && other.cursorOffset === this.cursorOffset; }
+  constructor(private readonly source: string, private readonly display: boolean, private readonly from: number, private readonly to: number, private readonly cursorOffset = 1, private readonly minHeight = 0) { super(); }
+  eq(other: LatexWidget) { return other.source === this.source && other.display === this.display && other.from === this.from && other.to === this.to && other.cursorOffset === this.cursorOffset && other.minHeight === this.minHeight; }
   toDOM(view: EditorView) {
-    const element = document.createElement('span');
-    element.className = this.display ? 'cm-md-math cm-md-math-display' : 'cm-md-math';
-    const content = document.createElement('span');
-    content.className = 'cm-md-math-content';
-    content.innerHTML = renderLatexHtml(this.source, this.display);
-    element.append(content);
-    element.setAttribute('aria-label', `LaTeX ${this.source}`);
+    const element = createMathElement(this.source, this.display);
+    for (const [name, value] of Object.entries(mathAttributes(this.from, this.to, this.display))) element.setAttribute(name, value);
+    if (this.minHeight) element.style.minHeight = `${this.minHeight}px`;
     // Replaced widgets do not contain an editable text node. Clicking the
     // rendered formula must still place the cursor in its original source so
     // live preview can reveal the syntax for editing.
@@ -322,8 +339,7 @@ class ImageWidget extends WidgetType {
   updateDOM(dom: HTMLElement, view: EditorView) {
     const previous = imageWidgetOwners.get(dom);
     if (!previous || previous.source !== this.source || previous.alt !== this.alt
-      || previous.documentPath !== this.documentPath || previous.sourceFrom !== this.sourceFrom
-      || previous.sourceVisible !== this.sourceVisible) return false;
+      || previous.documentPath !== this.documentPath || previous.sourceFrom !== this.sourceFrom) return false;
     // Keep the decoded image and its geometry through layout-only Markdown edits.
     this.toDOM(view, dom);
     return true;
@@ -348,7 +364,11 @@ class ImageWidget extends WidgetType {
     image.alt = this.alt;
     image.title = caption || '';
     image.loading = 'lazy';
-    if (!existing) image.addEventListener('load', () => { if (wrapper.isConnected) view.requestMeasure(); });
+    if (!existing) {
+      const layoutChanged = () => { if (wrapper.isConnected) requestPreviewLayoutMeasure(view); };
+      image.addEventListener('load', layoutChanged);
+      image.addEventListener('error', layoutChanged);
+    }
     wrapper.append(image);
     if (!existing && !directNoteImage(this.source)) {
       let disposed = false;
@@ -362,18 +382,18 @@ class ImageWidget extends WidgetType {
         if (disposed) return;
         image.src = url;
         status.remove();
-        if (wrapper.isConnected) view.requestMeasure();
+        if (wrapper.isConnected) requestPreviewLayoutMeasure(view);
       }).catch(() => {
         if (disposed) return;
         status.textContent = '图片加载失败，请检查相对路径或文件是否存在';
-        if (wrapper.isConnected) view.requestMeasure();
+        if (wrapper.isConnected) requestPreviewLayoutMeasure(view);
       });
     }
     const sourceFrom = this.sourceFrom;
     const sourceTo = this.sourceTo;
-    if (this.sourceVisible && !existing) {
+    if (!existing) {
       wrapper.addEventListener('mousedown', (event) => {
-        if ((event.target as HTMLElement).closest('.cm-md-image-tools')) return;
+        if (!imageWidgetOwners.get(wrapper)?.sourceVisible || (event.target as HTMLElement).closest('.cm-md-image-tools')) return;
         event.preventDefault();
         event.stopPropagation();
         const current = imageWidgetOwners.get(wrapper);
@@ -387,7 +407,8 @@ class ImageWidget extends WidgetType {
       tools.setAttribute('aria-label', '图片样式');
       const toggle = document.createElement('button');
       toggle.type = 'button';
-      toggle.className = 'cm-md-image-tools-toggle';
+      toggle.className = 'cm-md-image-tools-toggle markdown-image-corner-action';
+      toggle.dataset.imageAction = 'toggle';
       toggle.append(imageControlIcon('settings'));
       toggle.title = '调整图片大小与对齐';
       toggle.setAttribute('aria-label', toggle.title);
@@ -409,8 +430,15 @@ class ImageWidget extends WidgetType {
           panel.style.right = `${edge - left - panel.offsetWidth}px`;
         });
       };
-      toggle.addEventListener('click', () => setOpen(panel.hidden !== false));
-      tools.addEventListener('mousedown', event => event.stopPropagation());
+      toggle.addEventListener('click', () => {
+        const opening = panel.hidden !== false;
+        if (!opening) commitWidth('toggle', false);
+        setOpen(opening);
+      });
+      tools.addEventListener('mousedown', event => {
+        event.stopPropagation();
+        if (document.activeElement === widthInput && (event.target as HTMLElement).closest('button')) event.preventDefault();
+      });
       tools.addEventListener('click', event => event.stopPropagation());
       tools.addEventListener('keydown', event => {
         event.stopPropagation();
@@ -423,44 +451,103 @@ class ImageWidget extends WidgetType {
         if (event.relatedTarget && !tools.contains(event.relatedTarget as Node)) setOpen(false);
       });
       wrapper.onmouseleave = () => { if (!tools.contains(document.activeElement)) setOpen(false); };
+      const widthInput = document.createElement('input');
       const currentLayout = (): ImageLayout => {
-        const containerWidth = wrapper.closest('.cm-line')?.getBoundingClientRect().width || image.getBoundingClientRect().width || 1;
-        return layout ?? { width: Math.max(10, Math.min(100, Math.round(image.getBoundingClientRect().width / containerWidth * 100))), align: 'left' };
+        const containerWidth = wrapper.closest('.cm-line')?.getBoundingClientRect().width || view.contentDOM?.getBoundingClientRect().width || image.getBoundingClientRect().width || 1;
+        const current = layout ?? { width: Math.max(10, Math.min(100, Math.round(image.getBoundingClientRect().width / containerWidth * 100))), align: 'left' };
+        const typed = widthInput.valueAsNumber;
+        return Number.isFinite(typed) ? { ...current, width: Math.max(10, Math.min(100, Math.round(typed))) } : current;
       };
-      const apply = (next: ImageLayout | null, action: string) => {
+      let applyingLayout = false;
+      const apply = (next: ImageLayout | null, action: string, restoreFocus = true, keepOpen = true) => {
         if (view.state.readOnly || sourceTo > view.state.doc.length || view.state.doc.sliceString(sourceFrom, sourceTo) !== this.rawSource) return;
         const insert = withImageLayout(this.rawSource, next);
         if (!insert || insert === this.rawSource) return;
-        openImageTools.set(view, sourceFrom);
-        view.dispatch({ changes: { from: sourceFrom, to: sourceTo, insert }, userEvent: 'input.image-layout', annotations: isolateHistory.of('full') });
+        if (keepOpen) openImageTools.set(view, sourceFrom);
+        else openImageTools.delete(view);
+        applyingLayout = true;
+        try {
+          view.dispatch({ changes: { from: sourceFrom, to: sourceTo, insert }, userEvent: 'input.image-layout', annotations: isolateHistory.of('full') });
+        } finally { applyingLayout = false; }
         view.requestMeasure();
         // Rebuilt widgets must keep keyboard focus and the panel open for repeat clicks.
         const replacement = view.dom.querySelector<HTMLElement>(`[data-image-from="${sourceFrom}"]`);
-        replacement?.querySelector<HTMLButtonElement>(`[data-image-action="${action}"]`)?.focus({ preventScroll: true });
+        if (restoreFocus) replacement?.querySelector<HTMLElement>(`[data-image-action="${action}"]`)?.focus({ preventScroll: true });
       };
-      const addButton = (action: string, text: string, label: string, getNext: () => ImageLayout | null) => {
+      const addButton = (action: string, text: string, label: string, getNext: () => ImageLayout | null, target: HTMLElement = panel) => {
         const button = document.createElement('button');
         button.type = 'button'; button.append(imageControlIcon(action)); button.title = label;
-        if (action === 'reset') { const copy = document.createElement('span'); copy.textContent = text; button.append(copy); }
+        if (['reset', 'left', 'center', 'right'].includes(action)) { const copy = document.createElement('span'); copy.textContent = text; button.append(copy); }
         button.dataset.imageAction = action; button.setAttribute('aria-label', label);
         if (['left', 'center', 'right'].includes(action)) button.setAttribute('aria-pressed', String((layout?.align ?? 'left') === action));
         button.addEventListener('click', () => apply(getNext(), action));
-        panel.append(button);
+        target.append(button);
       };
-      addButton('smaller', '−', '缩小图片（正文宽度的10%）', () => ({ ...currentLayout(), width: Math.max(10, currentLayout().width - 10) }));
-      const size = document.createElement('span');
-      size.title = '相对于正文宽度';
-      size.textContent = layout ? `${layout.width}%` : '自动'; size.className = 'cm-md-image-size';
-      panel.append(size);
-      addButton('larger', '＋', '放大图片（正文宽度的10%）', () => ({ ...currentLayout(), width: Math.min(100, currentLayout().width + 10) }));
+      const widthLabel = document.createElement('span');
+      widthLabel.className = 'cm-md-image-width-label'; widthLabel.textContent = '图片宽度 · 相对于正文'; panel.append(widthLabel);
+      const widthRow = document.createElement('span'); widthRow.className = 'cm-md-image-width-row'; panel.append(widthRow);
+      addButton('smaller', '−', '宽度减少10个百分点', () => ({ ...currentLayout(), width: Math.max(10, currentLayout().width - 10) }), widthRow);
+      const size = document.createElement('span'); size.className = 'cm-md-image-size';
+      widthInput.type = 'number'; widthInput.min = '10'; widthInput.max = '100'; widthInput.step = '1'; widthInput.inputMode = 'decimal';
+      widthInput.value = layout ? String(layout.width) : ''; widthInput.placeholder = '原图';
+      widthInput.dataset.imageAction = 'width'; widthInput.setAttribute('aria-label', '图片宽度百分比');
+      widthInput.title = '输入10–100，按正文宽度的百分比设置，保持图片长宽比；Enter或离开输入框应用';
+      widthInput.setAttribute('aria-description', widthInput.title);
+      const unit = document.createElement('span'); unit.textContent = '%'; unit.setAttribute('aria-hidden', 'true'); unit.hidden = !layout;
+      const restoreValue = () => { widthInput.value = layout ? String(layout.width) : ''; unit.hidden = !layout; };
+      let committing = false;
+      const commitWidth = (focusAction?: string, keepOpen = true) => {
+        if (committing) return;
+        if (!widthInput.value.trim() || !Number.isFinite(widthInput.valueAsNumber)) { restoreValue(); return; }
+        const next = currentLayout(); widthInput.value = String(next.width);
+        if (next.width === layout?.width) return;
+        committing = true;
+        try { apply(next, focusAction ?? 'width', Boolean(focusAction), keepOpen); } finally { committing = false; }
+      };
+      widthInput.addEventListener('input', () => { unit.hidden = !widthInput.value; });
+      widthInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); commitWidth('width'); }
+        // Cancel the draft before Escape or the existing editor undo handler
+        // moves focus; blur must not accidentally save the cancelled value.
+        if (event.key === 'Escape' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z')) restoreValue();
+      });
+      widthInput.addEventListener('blur', event => {
+        if (committing || applyingLayout || !widthInput.isConnected) return;
+        const target = event.relatedTarget instanceof HTMLElement ? event.relatedTarget : null;
+        const insideTools = Boolean(target && tools.contains(target));
+        commitWidth(insideTools ? target?.dataset.imageAction : undefined, insideTools);
+        if (!insideTools) setOpen(false);
+      });
+      size.append(widthInput, unit); widthRow.append(size);
+      addButton('larger', '＋', '宽度增加10个百分点', () => ({ ...currentLayout(), width: Math.min(100, currentLayout().width + 10) }), widthRow);
+      const alignLabel = document.createElement('span'); alignLabel.className = 'cm-md-image-width-label'; alignLabel.textContent = '对齐方式'; panel.append(alignLabel);
+      const alignRow = document.createElement('span'); alignRow.className = 'cm-md-image-align-row';
+      alignRow.setAttribute('role', 'group'); alignRow.setAttribute('aria-label', '图片对齐方式'); panel.append(alignRow);
       for (const [align, label] of [['left', '居左'], ['center', '居中'], ['right', '居右']] as const) {
-        addButton(align, label, `图片${label}`, () => ({ ...currentLayout(), align }));
+        addButton(align, label, `图片${label}`, () => ({ ...currentLayout(), align }), alignRow);
       }
-      addButton('reset', '重置', '恢复自动大小与默认对齐', () => null);
+      const help = document.createElement('span'); help.className = 'cm-md-image-size-help';
+      help.textContent = layout?.width === 100 ? '已铺满正文；缩小宽度后可看出对齐变化。' : layout ? '宽度 10–100%，始终保持图片长宽比。' : '按原图尺寸显示，过宽时缩小到正文范围内。';
+      panel.append(help);
+      addButton('reset', '铺满正文', '设为正文宽度100%，保留当前对齐', () => ({ ...currentLayout(), width: 100 }));
       tools.append(toggle, panel); wrapper.append(tools);
       setOpen(openImageTools.get(view) === sourceFrom);
     }
     return wrapper;
+  }
+  measurementDOM(view: EditorView) {
+    const existing = view.contentDOM.querySelector<HTMLElement>(`[data-image-from="${this.sourceFrom}"]`);
+    if (!existing) return view.dom.ownerDocument.createElement('span');
+    const clone = existing.cloneNode(true) as HTMLElement;
+    clone.querySelector('.cm-md-image-tools')?.remove();
+    const image = existing.querySelector<HTMLImageElement>('img.cm-md-image');
+    const copy = clone.querySelector<HTMLImageElement>('img.cm-md-image');
+    if (image && copy) {
+      const bounds = image.getBoundingClientRect();
+      copy.removeAttribute('src'); copy.removeAttribute('srcset'); copy.alt = '';
+      copy.style.width = `${bounds.width}px`; copy.style.height = `${bounds.height}px`;
+    }
+    return clone;
   }
   destroy(dom: HTMLElement) { imageDisposers.get(dom)?.(); imageDisposers.delete(dom); imageWidgetOwners.delete(dom); }
   ignoreEvent() { return true; }
@@ -952,7 +1039,13 @@ class TableWidget extends WidgetType {
     });
     table.append(head, body);
     wrap.dataset.from = String(this.region.from);
-    wrap.appendChild(table);
+    const tableScroll = document.createElement('div');
+    tableScroll.className = 'cm-md-table-scroll';
+    tableScroll.tabIndex = 0;
+    tableScroll.setAttribute('role', 'region');
+    tableScroll.setAttribute('aria-label', '表格横向滚动');
+    tableScroll.appendChild(table);
+    wrap.appendChild(tableScroll);
     const addControl = (action: TableAction, label: string, title: string) => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -995,7 +1088,10 @@ class TableWidget extends WidgetType {
     addControl('delete-row', '−', '删除当前数据行');
     addControl('delete-column', '−', '删除当前列');
     refreshControls();
-    return wrap;
+    const reservation = document.createElement('div'); reservation.className = 'cm-md-table-reservation';
+    for (const [name, value] of Object.entries(previewBlockAttributes(this.region.from, this.region.to))) reservation.setAttribute(name, value);
+    reservation.append(wrap);
+    return reservation;
   }
   ignoreEvent() { return true; }
 }
@@ -1072,7 +1168,7 @@ function collectMarkdownHeadings(state: EditorState): MarkdownHeading[] {
   return headings;
 }
 
-function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
+function buildLiveDecorations(state: EditorState, sourceMode: boolean, measuring?: 'source' | 'rendered' | 'table-idle' | number) {
   const documentPath = state.facet(noteDocumentPath);
   const decorations: Range<Decoration>[] = [];
   // Tint parsed Markdown delimiters, never the prose or fenced-code tokens.
@@ -1082,12 +1178,14 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
     }
   } });
   const headings = collectMarkdownHeadings(state);
-  const activePos = state.selection.main.head;
-  const activeLine = state.doc.lineAt(activePos).number;
+  const isMeasuring = measuring !== undefined;
+  const activePos = typeof measuring === 'number' ? measuring : state.selection.main.head;
+  const activeLine = typeof measuring === 'string' ? -1 : state.doc.lineAt(activePos).number;
   // Keep source markers scoped to the line (or block) under the cursor. A
   // one-character global allowance makes a cursor at the end of the previous
   // line accidentally reveal the syntax at the start of the next line.
   const cursorNear = (from: number, to: number) => {
+    if (typeof measuring === 'string') return measuring === 'source';
     const boundedFrom = Math.max(0, Math.min(from, state.doc.length));
     const boundedTo = Math.max(boundedFrom, Math.min(to, state.doc.length));
     const firstLine = state.doc.lineAt(boundedFrom).number;
@@ -1131,14 +1229,19 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
     for (const block of mathBlocks) {
       const firstLine = state.doc.lineAt(block.from).number;
       const lastLine = state.doc.lineAt(block.to).number;
+      const size = isMeasuring ? undefined : mathBlockSize(state, block.from);
+      const wholeLines = block.from === state.doc.line(firstLine).from && block.to === state.doc.line(lastLine).to;
       if (cursorNear(block.from, block.to) || activeLine === firstLine - 1 || activeLine === lastLine + 1) {
-        decorations.push(Decoration.mark({ class: 'cm-md-math-source cm-md-math-display-source' }).range(block.from, block.to));
+        decorations.push(Decoration.mark({ class: 'cm-md-math-source cm-md-math-display-source', attributes: mathAttributes(block.from, block.to, true) }).range(block.from, block.to));
+        if (wholeLines && size && size.height > size.sourceHeight) {
+          decorations.push(Decoration.line({ attributes: { style: `padding-bottom: ${size.height - size.sourceHeight}px` } }).range(state.doc.line(lastLine).from));
+        }
         for (const token of state.doc.sliceString(block.from, block.to).matchAll(/\\[a-zA-Z]+|\\[\[\]]|[$^_{}&]/g)) {
           const start = block.from + (token.index ?? 0);
           decorations.push(Decoration.mark({ class: 'cm-md-source-marker' }).range(start, start + token[0].length));
         }
       } else {
-        decorations.push(Decoration.replace({ widget: new LatexWidget(block.source, true, block.from, block.to, 2), inclusive: false, block: true }).range(block.from, block.to));
+        decorations.push(Decoration.replace({ widget: new LatexWidget(block.source, true, block.from, block.to, 2, size?.height), inclusive: wholeLines, block: true }).range(block.from, block.to));
       }
     }
   }
@@ -1157,11 +1260,21 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       if (fence) fenced = !fenced;
     }
     for (const region of findTableRegions(state, fencedLines)) {
-      if (cursorNear(region.from, region.to)
-        || activeLine === region.firstLine - 1
-        || activeLine === region.lastLine + 1) continue;
       if ([...mathBlockLines].some((line) => line >= region.firstLine && line <= region.lastLine)) continue;
-      decorations.push(Decoration.replace({ widget: new TableWidget(region), inclusive: false, block: true }).range(region.from, region.to));
+      const source = measuring === 'table-idle' || cursorNear(region.from, region.to)
+        || activeLine === region.firstLine - 1 || activeLine === region.lastLine + 1;
+      if (source) {
+        for (let n = region.firstLine; n <= region.lastLine; n++) {
+          decorations.push(Decoration.line({ attributes: {
+            ...(n === region.firstLine ? previewBlockAttributes(region.from, region.to) : {}),
+            'data-preview-table-start': String(region.from),
+            'data-preview-table-index': String(n - region.firstLine),
+            'data-preview-table-source': 'true',
+          } }).range(state.doc.line(n).from));
+        }
+        continue;
+      }
+      decorations.push(Decoration.replace({ widget: new TableWidget(region), inclusive: true, block: true }).range(region.from, region.to));
       for (let line = region.firstLine; line <= region.lastLine; line += 1) tableWidgetLines.add(line);
     }
   }
@@ -1169,7 +1282,7 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
   for (let lineNumber = 1; lineNumber <= state.doc.lines; lineNumber += 1) {
     const line = state.doc.line(lineNumber);
     const text = line.text;
-    const isActiveLine = lineNumber === activeLine;
+    const isActiveLine = typeof measuring === 'string' ? measuring === 'source' : lineNumber === activeLine;
     const fenceMatch = text.match(/^\s{0,3}(`{3,}|~{3,})/);
     const insideFence = inFence;
     if (fenceMatch) inFence = !inFence;
@@ -1190,6 +1303,9 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
         }
       }
     };
+    if (!isMeasuring && text && (!insideFence || fenceMatch) && !tableRowPattern.test(text) && /[`*_[\]~!<#$=>|+\-]/.test(text)) {
+      decorations.push(Decoration.line({ attributes: { 'data-preview-line': String(line.from) } }).range(line.from));
+    }
     if (fenceMatch) {
       // The fence regexp only captures the backtick run, so the info string has
       // to come from the line itself — reading it off the match is why the
@@ -1219,6 +1335,16 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       decorations.push(Decoration.line({ class: 'cm-md-code-line' }).range(line.from));
       mark(line.from, line.to, 'cm-md-code-content');
       continue;
+    }
+    // Blank source separators should be paragraph gaps, not a full text row.
+    // Source mode, fenced code, math and table widgets have already continued.
+    // Retain leading/trailing rows and indented-code/list continuation spacing.
+    if (text.trim().length === 0 && lineNumber > 1 && lineNumber < state.doc.lines) {
+      const previousText = state.doc.line(lineNumber - 1).text;
+      const nextText = state.doc.line(lineNumber + 1).text;
+      if (!/^(?: {4}|\t)/.test(previousText) && !/^(?: {4}|\t)/.test(nextText)) {
+        decorations.push(Decoration.line({ class: 'cm-md-paragraph-gap' }).range(line.from));
+      }
     }
     let imageWidgetAdded = false;
 
@@ -1421,11 +1547,13 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
       calloutType = null;
     }
 
+    const formulaLineHeight = isMeasuring ? 0 : mathLineHeight(state, line.from);
+    if (formulaLineHeight) decorations.push(Decoration.line({ attributes: { style: `min-height: ${formulaLineHeight}px; box-sizing: border-box` } }).range(line.from));
     for (const match of text.matchAll(/(?<!\$)\$([^$\n]+)\$(?!\$)|\\\(([^\n]*?)\\\)/g)) {
       const from = line.from + (match.index ?? 0);
       const full = match[0];
       const source = match[1] ?? match[2] ?? '';
-      if (isActiveLine && cursorNear(from, from + full.length)) mark(from, from + full.length, 'cm-md-math-source');
+      if (isActiveLine && cursorNear(from, from + full.length)) decorations.push(Decoration.mark({ class: 'cm-md-math-source', attributes: mathAttributes(from, from + full.length, false) }).range(from, from + full.length));
       else {
         const openingLength = full.startsWith('$') ? 1 : 2;
         decorations.push(Decoration.replace({ widget: new LatexWidget(source, false, from, from + full.length, openingLength), inclusive: false }).range(from, from + full.length));
@@ -1574,11 +1702,27 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean) {
   return Decoration.set(decorations, true);
 }
 
+function createMeasurementDecorations(view: EditorView): MeasurementDecorations {
+  const highlights: Range<Decoration>[] = [];
+  highlightTree(syntaxTree(view.state), { style: tags => highlightingFor(view.state, tags) }, (from, to, classes) => {
+    highlights.push(Decoration.mark({ class: classes, previewMeasureHighlight: true }).range(from, to));
+  });
+  const build = (mode: 'source' | 'rendered' | 'table-idle' | number) => {
+    const ranges: Range<Decoration>[] = [...highlights];
+    for (const cursor = buildLiveDecorations(view.state, false, mode).iter(); cursor.value; cursor.next()) ranges.push(cursor.value.range(cursor.from, cursor.to));
+    return Decoration.set(ranges, true);
+  };
+  return {
+    rendered: build('rendered'), source: build('source'), tableIdle: build('table-idle'), at: build,
+    widgetDOM: widget => widget instanceof ImageWidget ? widget.measurementDOM(view) : widget.toDOM(view),
+  };
+}
+
 function createDecorationsField(sourceMode: () => boolean) {
   return StateField.define<ReturnType<typeof Decoration.set>>({
     create: (state) => buildLiveDecorations(state, sourceMode()),
     update: (decorations, transaction: Transaction) => {
-      if (transaction.docChanged || transaction.selection || transaction.reconfigured || transaction.effects.some((effect) => effect.is(modeChanged) || effect.is(foldEffect) || effect.is(unfoldEffect))) {
+      if (transaction.docChanged || transaction.selection || transaction.reconfigured || transaction.effects.some((effect) => effect.is(modeChanged) || effect.is(mathSizesChanged) || effect.is(foldEffect) || effect.is(unfoldEffect))) {
         return buildLiveDecorations(transaction.state, sourceMode());
       }
       return decorations.map(transaction.changes);
@@ -1649,6 +1793,7 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
         extensions: [
           imagePathCompartment.current.of(noteDocumentPath.of(documentPath)),
           basicSetup,
+          markdownSingleSelection,
           markdownLanguage({ codeLanguages }),
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           // Let the heading highlighter override CodeMirror's generic
@@ -1666,17 +1811,19 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
             },
           }),
           EditorView.lineWrapping,
+          markdownCaretComfort,
           placeholder(emptyPlaceholder),
+          mathLayoutStability(createMathElement),
+          previewLayoutStability(createMeasurementDecorations),
           decorations,
           keymap.of([...defaultKeymap, ...historyKeymap, ...markdownKeymap, indentWithTab]),
           EditorView.theme({
             '&': { height: '100%', backgroundColor: 'transparent', color: 'var(--ink)' },
             '.cm-scroller': { overflow: 'auto', fontFamily: 'var(--font-document)', fontSize: 'var(--document-font-size)', lineHeight: 'var(--document-line-height)' },
-            '.cm-content': { minHeight: '100%', padding: '0 8px 48px' },
+            '.cm-content': { minHeight: '100%', padding: '0 8px var(--markdown-end-space, 40vh)' },
             '.cm-line': { padding: '0' },
             '.cm-placeholder': { color: 'var(--muted)', opacity: '0.72' },
             '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent-strong)' },
-            '.cm-selectionBackground, ::selection': { backgroundColor: 'rgba(82,123,104,.2)' },
             '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'transparent' },
           }),
           EditorView.updateListener.of((update) => {

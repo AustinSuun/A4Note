@@ -1,10 +1,12 @@
 {
   "name": "a4note",
   "private": true,
-  "version": "0.1.8",
+  "version": "0.1.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:live": "node scripts/dev-live.mjs",
+    "test:dev-live": "node scripts/verify-dev-live.mjs",
     "build": "tsc -b && vite build",
     "verify": "node scripts/verify-all.mjs",
     "status": "node scripts/show-agent-status.mjs",

@@ -17,6 +17,9 @@
   --font-sans: "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   --font-document: "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   --font-code: "FiraCode Nerd Font Mono", "Fira Code", ui-monospace, SFMono-Regular, Consolas, monospace;
+  /* Named Latin code faces only. Markdown adds its document font for CJK
+     before a generic monospace family can choose an unrelated Chinese face. */
+  --font-code-latin: "FiraCode Nerd Font Mono", "Fira Code", "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono";
   /* UI chrome can be tuned independently from Markdown. */
   --ui-font-size: 18px;
   /* Fixed-size UI labels keep their existing hierarchy while following the interface font setting. */
@@ -31,15 +34,16 @@
   --ui-micro-font-size: calc(var(--ui-font-size) * .583333);
   --ui-titlebar-name-size: calc(var(--ui-font-size) * 1.055556);
   --ui-titlebar-accent-size: calc(var(--ui-font-size) * 1.111111);
-  /* Reading and Markdown body text. 20px is the standard document size. */
-  --document-font-size: 20px;
+  /* Reading and Markdown body text. 16px is the standard document size. */
+  --document-font-size: 16px;
   /* Property controls follow the document scale while staying denser than body copy. */
   --property-font-size: calc(var(--document-font-size) * .8);
   --property-heading-size: calc(var(--document-font-size) * .9);
   --property-caption-size: calc(var(--document-font-size) * .62);
   /* Collapse controls track Markdown text instead of using a fixed pixel size. */
   --markdown-collapse-control-size: clamp(24px, calc(var(--document-font-size) * 1.4), 34px);
-  --document-line-height: 1.72;
+  --document-line-height: 1.65;
+  --md-paragraph-gap: calc(var(--document-font-size) * .625);
   font-family: var(--font-sans);
   font-size: var(--ui-font-size);
 }
@@ -66,6 +70,7 @@
 
 :root[data-code-font="systemMono"] {
   --font-code: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  --font-code-latin: "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono";
 }
 
 :root[data-theme="paper"] {

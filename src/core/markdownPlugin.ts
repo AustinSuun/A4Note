@@ -48,18 +48,17 @@ export function createMarkdownPlugin(scene: SceneContribution = defaultMarkdownS
         description: '两种显示方式使用相同功能；图标保留中文悬停提示。', sceneId: 'markdown',
       });
       context.settings.register({
-        id: 'markdown.dockGlass', title: '悬浮栏玻璃效果', defaultValue: false,
+        id: 'markdown.dockGlass', title: '悬浮栏玻璃效果', defaultValue: true,
         description: '同时应用于笔记编辑悬浮栏和 PDF 标注悬浮栏；关闭使用实色，不支持模糊的环境自动回退。', sceneId: 'markdown',
       });
       context.settings.register({
         id: 'markdown.documentLayout',
         title: '正文宽度',
-        defaultValue: 'fluid',
+        defaultValue: 'narrow',
         options: [
-          { value: 'fluid', label: '自适应宽度（全宽）' },
           { value: 'narrow', label: '居中阅读栏（约 760px）' },
         ],
-        description: '控制 Markdown 编辑和阅读时的正文最大宽度。',
+        description: 'Markdown 编辑和阅读统一使用约 760px 的居中固定阅读栏；窄窗口自动收缩。',
         sceneId: 'markdown',
       });
       context.settings.register({
@@ -77,8 +76,8 @@ export function createMarkdownPlugin(scene: SceneContribution = defaultMarkdownS
       context.settings.register({
         id: 'markdown.documentFontSize',
         title: 'Markdown 正文字号',
-        defaultValue: 20,
-        description: '设置 Markdown 编辑器、预览和笔记属性使用的基准字号（像素）。',
+        defaultValue: 16,
+        description: '设置 Markdown 编辑器、预览和笔记属性使用的基准字号（像素），默认 16；常用 14 / 16 / 18 / 20。',
         sceneId: 'markdown',
       });
       context.settings.register({

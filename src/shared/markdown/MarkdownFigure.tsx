@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ZoomIn } from 'lucide-react';
 import { readImageTitle } from './imageLayout';
+import './image-controls.css';
 
 /**
  * Image with an optional caption and click-to-zoom.
@@ -57,7 +58,7 @@ export function MarkdownFigure({ src, alt, title }: { src?: string; alt?: string
       onClick={() => setZoomed(true)}
     >
       <img src={src} alt={alt ?? ''} loading="lazy" />
-      <span className="markdown-image-zoom-hint" aria-hidden="true"><ZoomIn size={15} /></span>
+      <span className="markdown-image-zoom-hint markdown-image-corner-action" aria-hidden="true"><ZoomIn size={15} /></span>
     </button>
   );
 

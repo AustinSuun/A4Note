@@ -1,0 +1,8 @@
+/* The extra reserved height belongs below the table, not inside its cells or
+   around its structure controls. Wide tables still scroll in their own wrap. */
+.markdown-live-codemirror .cm-md-table-reservation {
+  display: block;
+  box-sizing: border-box;
+  contain: inline-size;
+  min-width: 0;
+}

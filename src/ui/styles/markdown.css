@@ -10,6 +10,7 @@
 */
 .md-body,
 .markdown-live-codemirror {
+  --font-code: var(--font-code-latin), var(--font-document);
   --md-heading: #263d32;
   --md-heading-muted: #52675b;
   --md-code-bg: color-mix(in srgb, var(--ink) 11%, var(--surface));
@@ -28,6 +29,12 @@
   --md-quote: #5f7869;
 }
 .md-body { color: var(--ink); overflow-wrap: anywhere; }
+/* Quote prose follows document typography; nested code still uses the mixed
+   Latin-monospace/document-CJK stack above. No source-text splitting needed. */
+.md-body blockquote,
+.md-body .markdown-callout,
+.markdown-live-codemirror .cm-md-quote-line,
+.markdown-live-codemirror .cm-md-callout-line { font-family: var(--font-document); }
 
 /* ---- headings ---- */
 .md-body h1,
@@ -48,14 +55,14 @@
 .md-body h4::before, .md-body h4::after,
 .md-body h5::before, .md-body h5::after,
 .md-body h6::before, .md-body h6::after { border-bottom: 0 !important; text-decoration: none !important; }
-.md-body h1 { margin: 0 0 24px; font-size: calc(var(--document-font-size) * 2); font-weight: 780; line-height: 1.2; }
-.md-body h2 { margin: 26px 0 10px; color: color-mix(in srgb, var(--md-heading) 92%, var(--accent-strong)); font-size: calc(var(--document-font-size) * 1.45); font-weight: 740; line-height: 1.3; }
-.md-body h3 { margin: 20px 0 8px; color: color-mix(in srgb, var(--md-heading) 84%, var(--accent-strong)); font-size: calc(var(--document-font-size) * 1.2); font-weight: 720; line-height: 1.35; }
-.md-body h4 { margin: 16px 0 7px; color: var(--md-heading-muted); font-size: calc(var(--document-font-size) * 1.05); font-weight: 700; }
+.md-body h1 { margin: 0 0 12px; font-size: calc(var(--document-font-size) * 1.75); font-weight: 780; line-height: 1.2; }
+.md-body h2 { margin: 24px 0 12px; color: color-mix(in srgb, var(--md-heading) 92%, var(--accent-strong)); font-size: calc(var(--document-font-size) * 1.4375); font-weight: 740; line-height: 1.3; }
+.md-body h3 { margin: 20px 0 8px; color: color-mix(in srgb, var(--md-heading) 84%, var(--accent-strong)); font-size: calc(var(--document-font-size) * 1.25); font-weight: 720; line-height: 1.35; }
+.md-body h4 { margin: 16px 0 7px; color: var(--md-heading-muted); font-size: calc(var(--document-font-size) * 1.125); font-weight: 700; }
 .md-body h5,
 .md-body h6 { margin: 14px 0 6px; color: var(--md-heading-muted); font-size: var(--document-font-size); font-weight: 680; }
 /* ---- inline text ---- */
-.md-body p { margin: 0 0 .82em; }
+.md-body p { margin: 0 0 var(--md-paragraph-gap); }
 /* Chinese typography: paragraph indent (controlled by markdown.paragraphIndent setting) */
 [data-markdown-paragraph-indent="true"] .md-body p,
 [data-markdown-paragraph-indent="true"] .markdown-live-codemirror .cm-line.cm-md-paragraph-line {
@@ -173,7 +180,7 @@
   --callout-header-bg: rgba(43,119,116,.105);
   position: relative;
   overflow: hidden;
-  margin: 20px 0 24px;
+  margin: 12px 0;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--callout-color) 28%, var(--line));
   border-radius: 9px;
@@ -194,8 +201,8 @@
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  min-height: 42px;
-  padding: 7px 14px 7px 17px;
+  min-height: 36px;
+  padding: 5px 14px 5px 17px;
   border-bottom: 1px solid color-mix(in srgb, var(--callout-color) 22%, transparent);
   background: var(--callout-header-bg);
   color: var(--callout-color);
@@ -243,7 +250,7 @@
   white-space: nowrap;
 }
 .md-body .markdown-callout-content {
-  padding: 11px 17px 5px 21px;
+  padding: 8px 17px 8px 21px;
   background: color-mix(in srgb, var(--surface) 92%, var(--callout-bg));
 }
 .md-body .markdown-callout-content > :first-child { margin-top: 0; }
@@ -327,12 +334,13 @@
 .md-body li.task-list-item:has(.markdown-task-checkbox.is-checked) { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 55%, transparent); }
 
 /* ---- rule ---- */
-.md-body hr {
+.md-body hr,
+.markdown-live-codemirror .cm-line.cm-md-horizontal-rule::after {
   height: 1px;
-  margin: 1.5em 0;
   border: 0;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, var(--line)), transparent);
 }
+.md-body hr { margin: 1.5em 0; }
 /* ---- tables ----
    The table carries its own frame so it looks finished without a wrapper.
    `.markdown-table-wrap` is the opt-in horizontal-scroll container; when a
@@ -369,6 +377,17 @@
 :where(.md-body, .markdown-live-codemirror) td[align="right"] { text-align: right; }
 :root[data-document-line-height="compact"] :where(.md-body, .markdown-live-codemirror) th,
 :root[data-document-line-height="compact"] :where(.md-body, .markdown-live-codemirror) td { padding: .4em .62em; }
+/* Reading tables: a real minimum row even when every cell is empty, with
+   less vertical padding than prose paragraphs. Long/multiline cells still grow.
+   Keep live-widget sizing/input geometry unchanged. */
+.md-body :is(th, td) { box-sizing: border-box; height: 2em; padding: .25em .7em; line-height: 1.5; }
+.md-body :is(th, td):empty::before { content: '\200b'; }
+:root[data-document-line-height="compact"] .md-body :is(th, td) { padding: .2em .62em; }
+/* An in-flow end spacer belongs after the final footnote, not at the bottom
+   of a viewport-height article whose contents may overflow. Both standalone
+   Markdown reading and the paper-note preview use these classes. */
+.md-body.markdown-preview::after,
+.md-body.markdown-reader-content::after { content: ''; display: block; height: var(--markdown-end-space, 40vh); clear: both; pointer-events: none; }
 /* The widget is a block replacement inside the editor. Vertical margins on it
    are invisible to CodeMirror's height measurement — that offset is what pushed
    the caret out of place for everything below the table — so spacing is padding,
@@ -530,36 +549,48 @@
   font-weight: 650;
   letter-spacing: .01em;
 }
-.md-body .footnote-ref a,
-.md-body .markdown-footnote-backref { color: var(--accent-strong); font-family: var(--font-code); font-size: .86em; text-decoration: none; }
+/* One superscript scale, comparable to math scripts; no nested sup/link shrink. */
+.md-body sup:has(> a.footnote-ref) { font-size: .8em; line-height: 0; }
+.md-body a.footnote-ref { color: var(--accent-strong); font-family: var(--font-document); font-size: inherit; font-weight: 650; text-decoration: none; padding: .12em .2em; border-radius: 3px; scroll-margin-block: 4em; }
+.md-body a.footnote-ref:is(:hover, :focus) { background: var(--accent-soft); }
 .md-body .markdown-footnote-backref {
   display: inline-flex;
   align-items: center;
-  margin-left: .3em;
-  opacity: .7;
-  transition: opacity .15s ease;
+  justify-content: center;
+  gap: 5px;
+  min-width: 32px;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  margin-left: .45em;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--accent-strong);
+  font-family: var(--font-ui, sans-serif);
+  font-size: var(--ui-control-font-size, 13px);
+  line-height: 1.2;
+  text-decoration: none;
+  vertical-align: middle;
 }
-.md-body .markdown-footnote-backref:hover { opacity: 1; }
-.md-body .markdown-footnote-preview {
+.md-body .markdown-footnote-backref svg { width: 20px; height: 20px; flex: 0 0 20px; }
+.md-body .markdown-footnote-backref:hover { background: var(--accent-soft); border-color: var(--accent-strong); }
+.md-body :is(a.footnote-ref, .markdown-footnote-backref):focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+/* The hover preview is portalled to body, outside the document article. */
+.markdown-footnote-preview {
   position: fixed;
   z-index: 999;
   max-width: 420px;
   padding: 10px 14px;
   border-radius: 8px;
-  background: var(--surface-raised);
+  /* This portal needs an opaque surface; --surface-raised is not defined. */
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #d8ded9);
   color: var(--ink);
   font-size: .92em;
   line-height: 1.52;
   box-shadow: 0 3px 14px rgba(26, 41, 33, .12), 0 1px 4px rgba(26, 41, 33, .08);
   pointer-events: none;
-  animation: markdown-footnote-preview-in .16s ease;
-}
-@keyframes markdown-footnote-preview-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@media (prefers-reduced-motion) {
-  .md-body .markdown-footnote-preview { animation: none; }
 }
 
 /* ---- math ---- */
@@ -779,5 +810,23 @@
   --md-link: #8fc4a8;
   --md-highlight: rgba(206,177,66,.26);
   --md-quote: #8fa898;
+}
+
+/* Compact document scale, shared by reading and live code/table widgets. */
+.md-body table,
+.markdown-live-codemirror .markdown-table-wrap table { font-size: calc(var(--document-font-size) * .9375); }
+.md-body pre,
+.md-body :not(pre) > code,
+.markdown-live-codemirror .cm-line.cm-md-code-line,
+.markdown-live-codemirror .cm-md-inline-code,
+.markdown-live-codemirror .cm-md-inline-code-source { font-size: calc(var(--document-font-size) * .9375); }
+/* These are actual source separator lines, not extra paragraph margins.
+   Keep them editable and stable when focused; never hide or delete newlines. */
+.markdown-live-codemirror .cm-line.cm-md-paragraph-gap {
+  font-size: var(--md-paragraph-gap);
+  line-height: 1;
+  min-height: var(--md-paragraph-gap);
+  padding-top: 0;
+  padding-bottom: 0;
 }
 

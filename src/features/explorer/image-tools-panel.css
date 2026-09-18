@@ -1,0 +1,16 @@
+/* Independent width controls and equal-width alignment choices. */
+.cm-md-image-tools .cm-md-image-tools-panel { box-sizing: border-box; width: 240px; max-width: calc(100vw - 24px); grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px; font: 13px/1.4 var(--font-ui, sans-serif); }
+.cm-md-image-tools-panel .cm-md-image-width-label { font-size: 12px; font-weight: 500; }
+.cm-md-image-width-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 6px; }
+.cm-md-image-align-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 9px; background: var(--surface-soft); }
+.cm-md-image-tools-panel .cm-md-image-width-row > button,
+.cm-md-image-tools-panel .cm-md-image-align-row > button { min-width: 0; height: 32px; padding: 4px; gap: 3px; color: var(--ink); white-space: nowrap; }
+.cm-md-image-tools-panel .cm-md-image-width-row > button { background: var(--surface-soft); }
+.cm-md-image-tools-panel .cm-md-image-align-row > button svg { width: 14px; height: 14px; }
+.cm-md-image-tools-panel .cm-md-image-align-row > button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-strong) 20%, transparent); }
+.cm-md-image-tools-panel .cm-md-image-size { font-size: 13px; gap: 4px; }
+.cm-md-image-tools-panel .cm-md-image-size input { height: 32px; background: var(--surface); }
+.cm-md-image-tools-panel .cm-md-image-size-help { font-size: 12px; line-height: 1.5; }
+.cm-md-image-tools .cm-md-image-tools-panel [data-image-action="reset"] { height: 32px; min-height: 32px; padding: 5px 8px; margin: 0; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--ink); font-size: 13px; }
+.cm-md-image-tools-panel .cm-md-image-width-row > button:hover,
+.cm-md-image-tools .cm-md-image-tools-panel [data-image-action="reset"]:hover { background: var(--accent-soft); color: var(--accent-strong); }

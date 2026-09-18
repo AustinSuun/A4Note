@@ -1,3 +1,5 @@
+import { fileTreePresentation } from './fileTreeDisplayName';
+import './file-tree-types.css';
 import { ArrowDownAZ, ArrowDownZA, ChevronsDownUp, ChevronsUpDown, ChevronRight, FilePlus, FileText, FolderOpen, FolderPlus, LocateFixed, Pencil, Trash2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
@@ -514,6 +516,7 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
       <ul className="file-tree-list">
         {draftRow && <li key="folder-draft">{draftRow}</li>}
         {sortEntries(node.entries, sortMode).map((entry) => {
+          const presentation = fileTreePresentation(entry);
           const isExpanded = expandedPaths.some((candidate) => normalizePath(candidate) === normalizePath(entry.path));
           const isActive = !entry.is_directory && Boolean(activePath) && normalizePath(entry.path) === normalizePath(activePath ?? '');
           const isContextSelected = contextMenu?.entry.path === entry.path;
@@ -601,7 +604,8 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
                     ) : (
                       <span className="file-tree-caret-spacer" aria-hidden="true" />
                     )}
-                    <span className="file-tree-name">{entry.name}</span>
+                    <span className="file-tree-name">{presentation.name}</span>
+                    {presentation.badge && <span className="file-tree-type" data-file-type-tone={presentation.badge.tone} title={presentation.badge.extension ? `文件类型：${presentation.badge.extension}` : '无扩展名文件'} aria-label={`文件类型：${presentation.badge.label}`}>{presentation.badge.label}</span>}
                   </button>
                 )}
               </div>

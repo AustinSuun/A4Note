@@ -1,0 +1,59 @@
+/* Opt back into base.css scrollbars: Chromium's non-auto scrollbar-width
+   overrides the shared rounded ::-webkit-scrollbar skin. Both label modes. */
+:root .markdown-authoring-dock .markdown-authoring-actions {
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+.markdown-authoring-dock .markdown-authoring-actions::-webkit-scrollbar {
+  background: transparent;
+  border-radius: 999px;
+}
+.markdown-authoring-dock .markdown-authoring-actions::-webkit-scrollbar-track:horizontal {
+  margin-inline: 12px;
+  border-radius: 999px;
+}
+/* Thumb size, color, hover/active and hidden arrow buttons come from base.css. */
+:root .markdown-authoring-dock {
+  max-width: min(760px, calc(100% - 56px));
+}
+
+/* Both modes share row-major order and matched columns; menus retain their own sizing. */
+:root .markdown-authoring-dock .markdown-authoring-actions {
+  display: grid;
+  grid-template-columns: repeat(11, max-content);
+  grid-auto-flow: row;
+  gap: 0 1px;
+  padding: 2px 3px;
+  border-radius: 10px;
+  /* Very narrow split panes can still scroll; never clip an action. */
+  overflow-x: auto;
+}
+:root:not([data-markdown-dock-labels="icons"]) .markdown-authoring-actions > .markdown-dock-divider {
+  display: none;
+}
+:root .markdown-authoring-dock .markdown-authoring-actions > button {
+  height: 24px;
+  min-height: 24px !important;
+  min-width: 28px;
+  padding: 1px 3px;
+  gap: 2px;
+  font-size: calc(var(--ui-control-font-size, 13px) - 1px);
+  border-radius: 7px;
+}
+
+:root[data-markdown-dock-labels="icons"] .markdown-authoring-dock .markdown-authoring-actions {
+  grid-template-columns: repeat(11, 28px);
+  gap: 1px;
+}
+:root[data-markdown-dock-labels="icons"] .markdown-authoring-dock .markdown-authoring-actions > button {
+  width: 28px;
+  min-width: 28px;
+  height: 26px;
+  min-height: 26px !important;
+  padding: 0;
+}
+:root[data-markdown-dock-labels="icons"] .markdown-authoring-dock .markdown-dock-icon {
+  width: 18px;
+  height: 18px;
+  flex-basis: 18px;
+}

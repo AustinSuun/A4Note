@@ -1,3 +1,4 @@
+import { ReaderSaveErrorNotice } from './ReaderSaveErrorNotice';
 import { ReaderPageControl } from './ReaderPageControl';
 import { ReaderNoteActivity, ReaderNoteRequests } from './ReaderNoteActivity';
 import { BookOpenText, ChevronLeft } from 'lucide-react';
@@ -188,9 +189,10 @@ export function ReaderScene({
             <span className="reader-note-reopen-label">继续笔记</span>
             <ChevronLeft size={12} className="reader-note-reopen-chevron" aria-hidden="true" />
           </button>}
+          <ReaderSaveErrorNotice paperId={paper.paperId} />
           <ReaderNoteActivity.Provider value={!mainHidden}><ReaderNoteRequests.Provider value={!(sidePanelOpen && sidePanelTab === 'notes')}>
           <div className="reader-main-workspace" inert={mainHidden} aria-hidden={mainHidden}>
-            <ReaderToolbar
+        <ReaderToolbar
               paper={paper}
               contentMode={contentMode}
               fileMode={fileMode}
