@@ -1,4 +1,4 @@
-//! Explicit, local designation of one newly-created note; legacy summary files are untouched.
+//! Local designation of one summary note; shared by explicit and automatic creation.
 use rusqlite::{Connection, OptionalExtension, params};
 use std::path::Path;
 use tauri::AppHandle;
@@ -24,16 +24,27 @@ pub(crate) fn read_bound(root: &Path, paper_id: &str) -> Result<Option<SummaryFi
 #[tauri::command]
 pub fn create_paper_summary_note(app: AppHandle, paper_id: String, content: String) -> Result<SummaryFile, String> {
     let _access = crate::library_access::operation()?;
-    if content.len() > 2 * 1024 * 1024 || content.contains('\0') { return Err("总结内容超过限制".into()); }
+    validate_content(&content)?;
     let root = app_data_root(&app)?;
     let _lock = crate::library_summaries::mutation()?;
     let mut c = Connection::open(root.join("aster.db")).map_err(|e| e.to_string())?;
     let tx = c.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(|e| e.to_string())?;
     if let Some(existing) = bound(&tx, &paper_id)? { return Ok(existing); }
-    tx.execute_batch("CREATE TABLE IF NOT EXISTS paper_summary_notes (paper_id TEXT PRIMARY KEY NOT NULL REFERENCES papers(id) ON DELETE CASCADE, note_id TEXT UNIQUE NOT NULL REFERENCES notes(id) ON DELETE CASCADE);").map_err(|e| e.to_string())?;
-    let id = upsert_note_in_transaction(&tx, UpsertNoteRequest { paper_id: paper_id.clone(), note_id: None, expected: None, title: "总结笔记".into(), content }, true)?;
-    tx.execute("INSERT INTO paper_summary_notes(paper_id,note_id) VALUES (?1,?2)", params![paper_id,id]).map_err(|e| e.to_string())?;
-    let result = bound(&tx, &paper_id)?.ok_or("总结绑定创建失败")?;
+    let result = insert_summary_note(&tx, &paper_id, &content)?;
     tx.commit().map_err(|e| e.to_string())?;
     Ok(result)
+}
+
+pub(crate) fn validate_content(content: &str) -> Result<(), String> {
+    if content.len() > 2 * 1024 * 1024 || content.contains('\0') { return Err("总结内容超过限制".into()); }
+    Ok(())
+}
+
+/// Caller owns the Immediate transaction; note, binding and outbox commit together.
+pub(crate) fn insert_summary_note(tx: &rusqlite::Transaction<'_>, paper_id: &str, content: &str) -> Result<SummaryFile, String> {
+    validate_content(content)?;
+    tx.execute_batch("CREATE TABLE IF NOT EXISTS paper_summary_notes (paper_id TEXT PRIMARY KEY NOT NULL REFERENCES papers(id) ON DELETE CASCADE, note_id TEXT UNIQUE NOT NULL REFERENCES notes(id) ON DELETE CASCADE);").map_err(|e| e.to_string())?;
+    let id = upsert_note_in_transaction(tx, UpsertNoteRequest { paper_id: paper_id.into(), note_id: None, expected: None, title: "总结笔记".into(), content: content.into() }, true)?;
+    tx.execute("INSERT INTO paper_summary_notes(paper_id,note_id) VALUES (?1,?2)", params![paper_id,id]).map_err(|e| e.to_string())?;
+    bound(tx, paper_id)?.ok_or("总结绑定创建失败".into())
 }

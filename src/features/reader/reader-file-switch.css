@@ -30,3 +30,11 @@
 @media (prefers-reduced-motion: reduce) {
   .reader-toolbar .reader-file-switch[data-file-mode]::before { transition: none; }
 }
+
+/* Match note Edit/Read controls, overriding the compact titlebar rule. */
+.reader-toolbar .reader-file-switch[data-file-mode] button,
+.reader-titlebar-tools .reader-toolbar .reader-file-switch[data-file-mode] button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 30px; padding: 0 10px; border: 0; border-radius: 6px;
+  font-family: inherit; font-size: var(--ui-control-font-size); line-height: normal;
+}

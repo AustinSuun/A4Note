@@ -1,4 +1,6 @@
+import { ReaderPageControl } from './ReaderPageControl';
 import { ReaderNoteActivity, ReaderNoteRequests } from './ReaderNoteActivity';
+import { BookOpenText, ChevronLeft } from 'lucide-react';
 import { useReaderLayoutPosition } from './useReaderLayoutPosition';
 import { useReaderWritingShortcuts } from './useReaderWritingShortcuts';
 import { useReaderDrawerLayout } from './useReaderDrawerLayout';
@@ -181,7 +183,11 @@ export function ReaderScene({
               event.preventDefault(); drawer.setExpanded(false);
             }
           }}>
-          {!sidePanelOpen && <button type="button" className="reader-note-reopen" aria-label="展开笔记侧栏" aria-keyshortcuts="Control+Alt+N" title="继续笔记（Ctrl+Alt+N）" onClick={openNotes}>继续笔记 ‹</button>}
+          {!sidePanelOpen && <button type="button" className="reader-note-reopen" aria-label="继续笔记，展开笔记侧栏" aria-expanded={false} aria-keyshortcuts="Control+Alt+N" title="继续笔记（Ctrl+Alt+N）" onClick={openNotes}>
+            <BookOpenText size={15} aria-hidden="true" />
+            <span className="reader-note-reopen-label">继续笔记</span>
+            <ChevronLeft size={12} className="reader-note-reopen-chevron" aria-hidden="true" />
+          </button>}
           <ReaderNoteActivity.Provider value={!mainHidden}><ReaderNoteRequests.Provider value={!(sidePanelOpen && sidePanelTab === 'notes')}>
           <div className="reader-main-workspace" inert={mainHidden} aria-hidden={mainHidden}>
             <ReaderToolbar
@@ -199,8 +205,6 @@ export function ReaderScene({
               contextAnnotationColor={(contextAnnotation?.color as AnnotationColor | undefined) ?? null}
               contextToolSettings={contextToolSettings}
               zoom={zoom}
-              readerPageState={readerPageState}
-              sidePanelOpen={sidePanelOpen}
               onFileModeChange={onFileModeChange}
               onContentModeChange={onContentModeChange}
               onTranslatedFileIdChange={onTranslatedFileIdChange}
@@ -214,10 +218,9 @@ export function ReaderScene({
               onClearContextAnnotation={() => onFocusAnnotation(null)}
               onZoomChange={onZoomChange}
               onFitWidth={onFitWidth}
-              onJumpToPage={onJumpToPage}
-              onSidePanelOpenChange={onSidePanelOpenChange}
             />
             <div className="reader-layout">
+              {contentMode === 'pdf' && <ReaderPageControl paperId={paper.paperId} readerPageState={readerPageState} onJumpToPage={onJumpToPage} />}
               <ReaderDocumentPane
                 paper={paper}
                 contentMode={contentMode}

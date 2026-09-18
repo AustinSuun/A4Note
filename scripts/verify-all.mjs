@@ -43,6 +43,7 @@ const steps = [
   ['npm', ['run', 'test:library-export']],
   ['npm', ['run', 'test:library-behavior']],
   ['npm', ['run', 'test:library-summary']],
+  ['node', ['scripts/verify-summary-provision.mjs']],
   ['npm', ['run', 'test:startup-safety']],
   ['npm', ['run', 'test:reliability']],
   ['npm', ['run', 'test:error-boundary']],

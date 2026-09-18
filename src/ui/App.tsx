@@ -1,4 +1,5 @@
 import { useNoteFolderWorkspaces } from '../features/markdown';
+import { BrandUpdateNotice } from '../features/updates';
 import { DocumentToolbarProvider } from '../workbench/DocumentToolbar';
 import { onSummaryNoteSaved } from '../platform/library/summaryNotes';
 import { useCaptureLibraryUpdates } from '../features/library';
@@ -565,7 +566,8 @@ export default function App() {
     [],
   );
   const workbenchPanelViewRegistryRef = useRef<ReturnType<typeof createWorkbenchPanelViewRegistry> | null>(null);
-  const [libraryStatus, setLibraryStatus] = useState(isTauriRuntime() ? zh.app.initializing : zh.app.browserPreview);
+  // Keep legacy operation callbacks compatible; status text is not titlebar content.
+  const [, setLibraryStatus] = useState(isTauriRuntime() ? zh.app.initializing : zh.app.browserPreview);
   const [asterPaths, setAsterPaths] = useState<AsterPaths | null>(null);
   const [appDiagnostics, setAppDiagnostics] = useState<AppDiagnostics | null>(null);
   const currentWorkspaceLayouts = useMemo(
@@ -602,6 +604,8 @@ export default function App() {
     } else {
       delete document.documentElement.dataset.markdownParagraphIndent;
     }
+    document.documentElement.dataset.markdownDockLabels = pluginSettingValues['markdown.dockLabels'] === 'icons' ? 'icons' : 'chinese';
+    document.documentElement.dataset.dockGlass = pluginSettingValues['markdown.dockGlass'] === true ? 'true' : 'false';
     saveAppSettings(settings);
   }, [pluginSettingValues, settings]);
 
@@ -995,7 +999,7 @@ export default function App() {
     }
     const baseWidth = currentWidth / readerZoom;
     const availableWidth = Math.max(scroller.clientWidth - 56, 320);
-    const nextZoom = clampNumber(Number((availableWidth / baseWidth).toFixed(2)), 0.7, 2.2);
+    const nextZoom = clampNumber(Number((availableWidth / baseWidth).toFixed(2)), 0.2, 5);
     changeReaderZoom(nextZoom);
   };
 
@@ -1536,12 +1540,12 @@ export default function App() {
       if (activeScene === 'reader' && readerContentMode === 'pdf') {
         if (readerKey === '=' || readerKey === '+') {
           event.preventDefault();
-          changeReaderZoom(Math.min(2.2, Number((readerZoom + 0.1).toFixed(2))));
+          changeReaderZoom(Math.min(5, Number((readerZoom + 0.1).toFixed(2))));
           return;
         }
         if (readerKey === '-' || readerKey === '_') {
           event.preventDefault();
-          changeReaderZoom(Math.max(0.7, Number((readerZoom - 0.1).toFixed(2))));
+          changeReaderZoom(Math.max(0.2, Number((readerZoom - 0.1).toFixed(2))));
           return;
         }
         if (readerKey === '0') {
@@ -2914,6 +2918,7 @@ export default function App() {
   return (
     <DocumentToolbarProvider enabled={(activeScene === 'markdown' || activeScene === 'reader' || activeScene === 'library') && !settingsOpen}>
     <WorkbenchShell
+      brandAccessory={<BrandUpdateNotice />}
       sidebar={
         <ProjectSidebar
           labels={zh.workbench}
@@ -2978,7 +2983,6 @@ export default function App() {
           providers={agentProviders}
           providersLoading={agentProvidersLoading}
           workspaceBreadcrumb={noteFolderWorkspaces.breadcrumb}
-          status={libraryStatus && !/^已加载\s*\d+\s*篇本地文献[。.]?$/.test(libraryStatus) && activeScene !== 'library' ? <span className="workbench-status-text">{libraryStatus}</span> : null}
           onToggleFileTree={toggleFileTree}
           onOpenInVSCode={() => folderProjectPath && void openPathInVSCode(folderProjectPath)}
           onRevealFolder={() => folderProjectPath && void revealPath(folderProjectPath)}

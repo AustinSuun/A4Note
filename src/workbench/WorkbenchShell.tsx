@@ -17,6 +17,7 @@ export interface WorkbenchShellProps {
   sidebarCollapsed?: boolean;
   onToggleSidebar?: () => void;
   leadingAction?: ReactNode;
+  brandAccessory?: ReactNode;
   sidebarWidth?: number;
   onSidebarWidthChange?: (width: number) => void;
 }
@@ -25,7 +26,7 @@ export interface WorkbenchShellProps {
  * Owns the workbench grid and nothing else. `App.tsx` fills the slots so the
  * shell stays free of store and platform calls.
  */
-export function WorkbenchShell({ sidebar, topBar, explorer, content, overlay, dialogs, sidebarCollapsed = false, onToggleSidebar, leadingAction, sidebarWidth = WORKBENCH_SIDEBAR_MIN_WIDTH, onSidebarWidthChange }: WorkbenchShellProps) {
+export function WorkbenchShell({ sidebar, topBar, explorer, content, overlay, dialogs, sidebarCollapsed = false, onToggleSidebar, leadingAction, brandAccessory, sidebarWidth = WORKBENCH_SIDEBAR_MIN_WIDTH, onSidebarWidthChange }: WorkbenchShellProps) {
   const [resizingSidebar, setResizingSidebar] = useState(false);
   const resizingRef = useRef(false);
   const resizeStartRef = useRef({ x: 0, width: sidebarWidth });
@@ -74,7 +75,7 @@ export function WorkbenchShell({ sidebar, topBar, explorer, content, overlay, di
 
   return (
     <div ref={frameRef} className="app-window" style={shellStyle}>
-      <WindowTitleBar sidebarCollapsed={sidebarCollapsed} onToggleSidebar={onToggleSidebar ?? (() => undefined)} topBar={topBar} leadingAction={leadingAction} />
+      <WindowTitleBar sidebarCollapsed={sidebarCollapsed} onToggleSidebar={onToggleSidebar ?? (() => undefined)} topBar={topBar} leadingAction={leadingAction} brandAccessory={brandAccessory} />
       <div className={explorer ? 'workbench-shell with-explorer' : 'workbench-shell'} data-sidebar-collapsed={sidebarCollapsed || undefined}>
         {sidebar}
         {!sidebarCollapsed && (

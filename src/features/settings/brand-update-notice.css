@@ -1,0 +1,22 @@
+.brand-update-badge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; padding: 3px 5px; border: 0; border-radius: 5px; color: var(--accent-strong); background: var(--accent-soft); font: inherit; font-size: var(--ui-micro-font-size); white-space: nowrap; cursor: pointer; -webkit-app-region: no-drag; }
+.brand-update-badge:hover,.brand-update-badge:focus-visible { outline: none; box-shadow: 0 1px 5px #0002; }
+.window-titlebar-leading:has(.brand-update-badge) { gap: 5px; }
+.window-titlebar-leading:has(.brand-update-badge) .window-titlebar-drag-zone.left { min-width: 0; }
+.brand-update-menu { position: fixed; box-sizing: border-box; margin: 0; padding: 16px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font-family: var(--font-sans); font-size: var(--ui-body-small-font-size); white-space: normal; -webkit-app-region: no-drag; }
+.brand-update-menu::backdrop { background: transparent; }
+.brand-update-menu header,.brand-update-version { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.brand-update-menu header strong { font-size: var(--ui-control-font-size); }
+.brand-update-menu button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 6px; padding: 8px 10px; background: var(--surface-soft); color: var(--ink); font: inherit; cursor: pointer; }
+.brand-update-menu button:focus-visible,.brand-update-menu input:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+.brand-update-menu button:disabled { opacity: .55; cursor: default; }
+.brand-update-menu .brand-update-close { padding: 4px; background: transparent; }
+.brand-update-version { justify-content: flex-start; margin: 12px 0; color: var(--muted); }
+.brand-update-version strong { color: var(--accent-strong); overflow-wrap: anywhere; }
+.brand-update-notes { max-height: 140px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; color: var(--muted); }
+.brand-update-menu .brand-update-primary { width: 100%; color: var(--accent-strong); background: var(--accent-soft); font-weight: 600; }
+.brand-update-menu .brand-update-release { width: 100%; margin-top: 8px; }
+.brand-update-consent { display: flex; align-items: flex-start; gap: 6px; margin: 10px 0; line-height: 1.5; }
+.brand-update-progress { display: grid; gap: 4px; margin-top: 8px; }
+.brand-update-progress progress { width: 100%; }
+.brand-update-menu small { display: block; margin-top: 12px; color: var(--muted); }
+.brand-update-menu .brand-update-error { color: #b04436; overflow-wrap: anywhere; }

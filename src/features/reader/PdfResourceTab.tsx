@@ -158,7 +158,7 @@ export function PdfResourceTab({ path, name, resourceId, initialZoom = 1, initia
             {zh.reader.pageStatus(readerState.currentPage, readerState.totalPages)}
           </span>
           <div className="zoom-controls" aria-label={zh.reader.zoomControls}>
-            <button type="button" onClick={() => changeZoom(Math.max(0.7, Number((zoom - 0.1).toFixed(2))))} title={zh.reader.zoomOut}>
+            <button type="button" onClick={() => changeZoom(Math.max(0.2, Number((zoom - 0.1).toFixed(2))))} title={zh.reader.zoomOut}>
               <ZoomOutIcon />
             </button>
             <button type="button" className="zoom-pct-btn" onClick={() => changeZoom(1)} title={zh.reader.zoomReset}>
@@ -167,7 +167,7 @@ export function PdfResourceTab({ path, name, resourceId, initialZoom = 1, initia
             <button type="button" onClick={() => changeZoom(1.35)} title={zh.reader.fitWidth}>
               <FitWidthIcon />
             </button>
-            <button type="button" onClick={() => changeZoom(Math.min(2.2, Number((zoom + 0.1).toFixed(2))))} title={zh.reader.zoomIn}>
+            <button type="button" onClick={() => changeZoom(Math.min(5, Number((zoom + 0.1).toFixed(2))))} title={zh.reader.zoomIn}>
               <ZoomInIcon />
             </button>
           </div>

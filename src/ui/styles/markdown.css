@@ -439,14 +439,22 @@
 }
 
 /* ---- code ---- */
-.md-body :not(pre) > code {
-  padding: .12em .4em;
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
-  border-radius: 5px;
-  background: var(--md-code-bg);
-  color: color-mix(in srgb, var(--accent-strong) 88%, var(--ink));
+/* A single quiet surface in both modes; editable backticks add no outer box. */
+.md-body :not(pre) > code,
+.markdown-live-codemirror .cm-content .cm-md-inline-code {
+  display: inline; padding: .06em .22em;
+  border: 0; border-radius: 3px; box-shadow: none;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  color: color-mix(in srgb, var(--ink) 90%, var(--accent-strong));
   font-family: var(--font-code);
   font-size: .9em;
+  line-height: inherit; text-decoration: none;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
+.markdown-live-codemirror .cm-content .cm-md-inline-code-source {
+  display: inline; margin: 0; padding: 0; border: 0; border-radius: 0;
+  background: transparent; box-shadow: none; text-decoration: none;
+  font-family: var(--font-code); font-size: inherit; line-height: inherit;
 }
 .md-body .markdown-code-block,
 .md-body pre {
@@ -556,9 +564,7 @@
 
 /* ---- math ---- */
 .md-body .katex { font-size: 1.05em; }
-/* Block formulas use the same card as quotes, callouts and fenced code: left
-   accent bar, tinted panel, one soft shadow. The live editor renders block math
-   this way too, so switching modes does not change the shape. */
+/* Formula-only presentation, without a surrounding card. */
 .md-body .katex-display {
   display: flex;
   max-width: 100%;
@@ -566,17 +572,34 @@
   align-items: center;
   justify-content: flex-start;
   margin: 1em 0;
-  padding: 13px 18px;
+  padding: 8px 0;
   overflow-x: auto;
   overflow-y: hidden;
-  border-left: 3px solid color-mix(in srgb, var(--accent) 72%, var(--line));
-  border-radius: 0 8px 8px 0;
-  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface));
-  box-shadow: 0 5px 16px rgba(30,45,38,.07);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 /* Auto margins center short formulas, but collapse for overflow so the left
    edge of a long formula remains reachable by horizontal scrolling. */
 .md-body .katex-display > .katex { min-width: max-content; flex: 0 0 auto; margin-inline: auto; }
+
+.markdown-live-codemirror .cm-content .cm-md-math-display {
+  padding: 8px 0; border: 0; border-radius: 0; background: transparent; box-shadow: none;
+  justify-content: flex-start;
+}
+.markdown-live-codemirror .cm-md-math-display .cm-md-math-content { margin-inline: auto; }
+.markdown-live-codemirror .cm-content .cm-md-math-source,
+.markdown-live-codemirror .cm-content .cm-md-math-display-source {
+  display: inline; margin: 0; padding: 0; border: 0; border-radius: 0;
+  background: transparent; box-shadow: none; color: var(--ink);
+  font-family: var(--font-document); font-size: inherit; font-style: normal;
+  font-weight: 400; line-height: inherit; text-align: start;
+}
+.markdown-live-codemirror .cm-content .cm-md-source-marker {
+  color: color-mix(in srgb, var(--accent-strong) 65%, var(--muted));
+  font-weight: 400; font-style: normal; text-decoration: none;
+}
 
 /* ---- inline elements from the allow-list (see remarkAsterInline) ---- */
 .md-body kbd {

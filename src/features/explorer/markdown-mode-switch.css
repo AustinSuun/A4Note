@@ -27,3 +27,15 @@
 @media (prefers-reduced-motion: reduce) {
   .markdown-resource-mode-switch[data-mode]::before { transition: none; }
 }
+
+/* Note titlebar: keep the mode switch by the workspace name, and TOC/Open/Save on the right. */
+.workbench-topbar:has(> .workbench-document-controls > .markdown-resource-mode-switch[data-mode]) > .workbench-breadcrumb {
+  flex: 0 1 auto;
+  max-width: 282px;
+}
+.workbench-topbar > .workbench-document-controls:has(> .markdown-resource-mode-switch[data-mode]) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.workbench-document-controls > .markdown-resource-mode-switch[data-mode] { flex-shrink: 0; }
+.workbench-document-controls:has(> .markdown-resource-mode-switch[data-mode]) > .markdown-toc-toggle { margin-left: auto; }

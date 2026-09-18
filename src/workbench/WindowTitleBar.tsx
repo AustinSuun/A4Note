@@ -1,7 +1,8 @@
-import { useState, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { Copy, Minus, PanelLeftClose, PanelLeftOpen, Square, X } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauriRuntime } from '../platform/nativeApi';
+import { bindWindowTitlebarGestures } from './windowTitlebarGestures';
 
 export interface WindowTitleBarProps {
   sidebarCollapsed: boolean;
@@ -9,15 +10,18 @@ export interface WindowTitleBarProps {
   topBar: ReactNode;
   /** Optional scene-owned action shown beside the A4 Note brand. */
   leadingAction?: ReactNode;
+  /** App-owned badge beside the brand; the shell has no update-service dependency. */
+  brandAccessory?: ReactNode;
 }
 
 type WindowCommand = 'minimize' | 'toggle_maximize' | 'close' | 'start_dragging';
 
 /** Frameless-window controls backed by native commands, not webview permissions. */
-export function WindowTitleBar({ sidebarCollapsed, onToggleSidebar, topBar, leadingAction }: WindowTitleBarProps) {
+export function WindowTitleBar({ sidebarCollapsed, onToggleSidebar, topBar, leadingAction, brandAccessory }: WindowTitleBarProps) {
   const [maximized, setMaximized] = useState(false);
+  const titlebarRef = useRef<HTMLElement>(null);
 
-  const runWindowCommand = async (command: WindowCommand) => {
+  const runWindowCommand = useCallback(async (command: WindowCommand) => {
     if (!isTauriRuntime()) return;
     try {
       const isMaximized = await invoke<boolean>('perform_window_command', { command });
@@ -25,35 +29,13 @@ export function WindowTitleBar({ sidebarCollapsed, onToggleSidebar, topBar, lead
     } catch {
       // A close command can finish before the webview receives its response.
     }
-  };
+  }, []);
 
-  const startWindowDrag = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !isTauriRuntime()) return;
-    event.preventDefault();
-    event.stopPropagation();
-    void runWindowCommand('start_dragging');
-  };
-
-  const isInteractiveTarget = (target: EventTarget | null) => {
-    return target instanceof HTMLElement
-      && Boolean(target.closest('button, input, select, textarea, a, [role="button"], [contenteditable="true"]'));
-  };
-
-  const handleTitlebarMouseDown = (event: MouseEvent<HTMLElement>) => {
-    if (isInteractiveTarget(event.target)) return;
-    startWindowDrag(event as unknown as MouseEvent<HTMLDivElement>);
-  };
-
-  const handleTitlebarDoubleClick = (event: MouseEvent<HTMLElement>) => {
-    if (isInteractiveTarget(event.target)) return;
-    toggleWindowMaximize(event as unknown as MouseEvent<HTMLDivElement>);
-  };
-
-  const toggleWindowMaximize = (event: MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void runWindowCommand('toggle_maximize');
-  };
+  useEffect(() => {
+    const titlebar = titlebarRef.current;
+    if (!titlebar || !isTauriRuntime()) return;
+    return bindWindowTitlebarGestures(titlebar, command => { void runWindowCommand(command); });
+  }, [runWindowCommand]);
 
   const stopWindowDrag = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -62,8 +44,7 @@ export function WindowTitleBar({ sidebarCollapsed, onToggleSidebar, topBar, lead
   return (
     <header
       className={sidebarCollapsed ? 'window-titlebar sidebar-collapsed' : 'window-titlebar'}
-      onMouseDown={handleTitlebarMouseDown}
-      onDoubleClick={handleTitlebarDoubleClick}
+      ref={titlebarRef}
     >
       <div className="window-titlebar-leading">
         <button
@@ -80,6 +61,7 @@ export function WindowTitleBar({ sidebarCollapsed, onToggleSidebar, topBar, lead
           <span className="window-titlebar-name-accent">A4</span>
           <span className="window-titlebar-name-note">Note</span>
         </span>
+        {brandAccessory}
         <div className="window-titlebar-drag-zone left" aria-hidden="true" />
         {!sidebarCollapsed && leadingAction && <div className="window-titlebar-leading-action">{leadingAction}</div>}
       </div>

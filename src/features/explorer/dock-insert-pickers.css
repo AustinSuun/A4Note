@@ -1,0 +1,38 @@
+/* These are controls, not document text. Keep sizing independent of note/UI zoom tokens. */
+.markdown-authoring-dock .markdown-insert-options:has(.dock-table-picker),
+.markdown-authoring-dock .markdown-insert-options:has(.dock-code-picker) { width: min(304px, calc(100vw - 32px)); font-size: 13px; }
+.markdown-authoring-dock .markdown-insert-options:has(.dock-code-picker) .markdown-template-heading strong,
+.markdown-authoring-dock .markdown-insert-options:has(.dock-table-picker) .markdown-template-heading strong,
+.markdown-authoring-dock .markdown-insert-options:has(.dock-code-picker) .markdown-insert-confirm { font-size: 13px; }
+.dock-table-picker { display: grid; gap: 8px; min-width: 0; }
+.dock-table-size { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.dock-table-size strong { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dock-table-size span { font-size: 11px; color: var(--muted); }
+.dock-table-scroll { max-height: min(228px, max(44px, calc(65vh - 126px))); min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.dock-table-grid { display: grid; gap: 3px; padding: 2px; touch-action: none; user-select: none; }
+.dock-table-grid-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; }
+.markdown-authoring-dock .markdown-insert-options .dock-table-cell {
+  display: block; width: 100%; aspect-ratio: 1; min-width: 0; min-height: 0; height: auto; padding: 0;
+  border: 1px solid var(--line); border-radius: 3px; background: var(--surface-soft); box-shadow: none;
+}
+.markdown-authoring-dock .markdown-insert-options .dock-table-cell.is-selected,
+.markdown-authoring-dock .markdown-insert-options .dock-table-cell:hover {
+  background: var(--accent-soft); border-color: var(--accent-strong);
+}
+.markdown-authoring-dock .markdown-insert-options .dock-table-cell:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -3px; }
+.dock-table-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.markdown-authoring-dock .markdown-insert-options .dock-table-more { padding: 2px 0; background: none; color: var(--accent-strong); font-size: 11px; }
+.dock-code-picker { display: grid; gap: 4px; min-width: 0; }
+.markdown-authoring-dock .markdown-insert-options .dock-code-trigger {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 32px;
+  padding: 5px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-soft);
+  color: var(--ink); font-size: 12px; line-height: 20px; text-align: left;
+}
+.markdown-authoring-dock .markdown-insert-options .dock-code-trigger[aria-expanded="true"] { border-color: var(--accent-strong); }
+.dock-code-trigger svg { flex-shrink: 0; color: var(--muted); }
+.dock-code-list { max-height: min(188px, max(40px, calc(65vh - 154px))); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 4px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); box-shadow: 0 3px 12px #0000000d; }
+.dock-code-list .dock-code-option { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 4px 8px; box-sizing: border-box; border-radius: 4px; color: var(--ink); cursor: pointer; font-size: 12px; line-height: 20px; }
+.dock-code-option.is-active { background: var(--surface-soft); }
+.dock-code-option[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-strong); }
+.dock-code-option.is-active[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--accent-strong); }
+.dock-code-check { width: 14px; flex-shrink: 0; text-align: center; font-size: 12px; }

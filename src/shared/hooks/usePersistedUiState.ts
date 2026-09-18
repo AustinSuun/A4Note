@@ -169,7 +169,7 @@ function loadUiState(settings: AppSettings, knownWorkbenchPanelIds: readonly Wor
         parsed.readerAnnotationColor === 'purple'
           ? parsed.readerAnnotationColor
           : fallback.readerAnnotationColor,
-      readerZoom: typeof parsed.readerZoom === 'number' && Number.isFinite(parsed.readerZoom) ? clampNumber(parsed.readerZoom, 0.7, 2.2) : fallback.readerZoom,
+      readerZoom: typeof parsed.readerZoom === 'number' && Number.isFinite(parsed.readerZoom) ? clampNumber(parsed.readerZoom, 0.2, 5) : fallback.readerZoom,
       readerSidePanelOpen,
       readerSidePanelTab,
       workspaceLayouts,

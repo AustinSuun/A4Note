@@ -18,7 +18,26 @@
 
 .reader-retained-note { height: 100%; min-height: 0; min-width: 0; }
 .reader-retained-note[hidden], .reader-workspace-drawer[hidden] { display: none !important; }
-.reader-note-reopen { position: absolute; right: 4px; top: 58px; z-index: 25; border: 1px solid var(--line); border-radius: 8px 0 0 8px; background: var(--surface); color: var(--accent-strong); padding: 9px 6px; box-shadow: 0 2px 8px #0001; writing-mode: vertical-rl; cursor: pointer; }
+.reader-note-reopen {
+  position: absolute; right: 0; top: 58px; z-index: 25;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  box-sizing: border-box; width: 32px; padding: 9px 6px 7px;
+  border: 1px solid var(--line); border-right: 0; border-radius: 8px 0 0 8px;
+  background: var(--surface); background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--muted); box-shadow: 0 1px 4px rgba(26,41,33,.06);
+  font-size: var(--ui-control-font-size, 13px); font-weight: 560; line-height: 1.2;
+  writing-mode: horizontal-tb; cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.reader-note-reopen-label { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 1px; }
+.reader-note-reopen svg { flex: 0 0 auto; }
+.reader-note-reopen-chevron { opacity: .65; }
+.reader-note-reopen:hover, .reader-note-reopen:focus-visible {
+  background: var(--accent-soft); color: var(--accent-strong);
+  box-shadow: 0 2px 6px rgba(26,41,33,.09);
+}
+.reader-note-reopen:hover .reader-note-reopen-chevron { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .reader-note-reopen { transition: none; } }
 .reader-note-reopen:focus-visible, .reader-writing-expand:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .reader-workspace-shell .reader-workspace-drawer { container-type: inline-size; }
 @container (max-width: 440px) {

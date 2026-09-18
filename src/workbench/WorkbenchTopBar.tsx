@@ -29,7 +29,6 @@ export interface WorkbenchTopBarProps {
   onActivateWorkspace: (workspaceId: string) => void;
   onCreateWorkspace: (projectId: string) => void;
   onRemoveWorkspace: (workspaceId: string) => void;
-  status?: ReactNode;
   workspaceBreadcrumb?: ReactNode;
 }
 
@@ -51,7 +50,6 @@ export function WorkbenchTopBar({
   onActivateWorkspace,
   onCreateWorkspace,
   onRemoveWorkspace,
-  status,
   workspaceBreadcrumb,
 }: WorkbenchTopBarProps) {
   const documentToolbar = useDocumentToolbar();
@@ -150,7 +148,6 @@ export function WorkbenchTopBar({
         </div>
         </>}
       </div>
-      {status && <div className="workbench-topbar-status" role="status">{status}</div>}
       {documentToolbar?.enabled && <div className="workbench-document-controls" ref={documentToolbar.setControlsHost} />}
       <div className="workbench-topbar-actions">
         <div className="workbench-open-menu" ref={openMenuRef}>

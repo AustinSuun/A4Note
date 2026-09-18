@@ -62,7 +62,6 @@ export function useNoteFolderWorkspaces({ workbench, activeScene, onEnterWorkspa
   const openButton = <button type="button" disabled={pending} onClick={() => void openFolder()}><FolderOpen size={16} aria-hidden="true" />{pending ? '正在打开…' : '打开文件夹'}</button>;
   const navigation = enabled ? <section className="note-folder-workspaces" aria-label="笔记工作区">
     <header><strong>笔记工作区</strong>{openButton}</header>
-    <p className="note-folder-scope-hint"><span>独立笔记</span>非文献库目录</p>
     {error && <p role="alert" className="note-folder-error">{error}</p>}
     {folders.length ? <ul>{folders.map(folder => <li key={folder.key}><button type="button" disabled={pending} className={folder.key === activeKey ? 'active' : ''} aria-current={folder.key === activeKey ? 'page' : undefined} title={folder.path} onClick={() => activate(folder.key)} onDoubleClick={() => activate(folder.key, true)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); activate(folder.key, true); } }}><FolderOpen size={16} aria-hidden="true" /><span>{folder.name}</span></button></li>)}</ul>
       : <NoteWorkspaceEmpty pending={pending} onOpen={openFolder} onCreate={newLibrary} />}

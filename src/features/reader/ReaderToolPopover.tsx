@@ -23,6 +23,7 @@ export function ReaderToolPopover({ children, onClose }: { children: ReactNode; 
       if (!node.contains(event.target as Node) && !slot.contains(event.target as Node)) close.current();
     };
     place();
+    node.querySelector<HTMLElement>('input,button,select')?.focus({ preventScroll: true });
     const observer = new ResizeObserver(place); observer.observe(node);
     window.addEventListener('resize', place);
     window.addEventListener('scroll', place, true);
@@ -33,6 +34,7 @@ export function ReaderToolPopover({ children, onClose }: { children: ReactNode; 
     style={{ left: position.left, top: position.top, visibility: position.ready ? 'visible' : 'hidden' }}
     onPointerDown={event => event.stopPropagation()} onMouseDown={event => event.stopPropagation()} onDoubleClick={event => event.stopPropagation()}
     onKeyDown={event => { if (event.key === 'Escape' && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); anchor.current?.parentElement?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true }); close.current(); } }}>
+    <div className="reader-tool-popover-heading"><strong>标注设置</strong><button type="button" aria-label="关闭标注设置" onClick={() => { anchor.current?.parentElement?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true }); close.current(); }}>×</button></div>
     {children}
   </div>, document.body)}</>;
 }

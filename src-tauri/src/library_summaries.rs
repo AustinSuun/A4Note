@@ -42,6 +42,10 @@ fn paper_dir(root: &Path, id: &str) -> Result<PathBuf, String> {
     safe_child(&managed_root(root)?, id)
 }
 fn summary_path(root: &Path, id: &str) -> Result<PathBuf, String> { safe_child(&paper_dir(root, id)?, "总结.md") }
+/// Preserve the old active summary source; validation failures never justify replacing it.
+pub(crate) fn legacy_summary_exists(root: &Path, id: &str) -> Result<bool, String> {
+    read(&summary_path(root, id)?).map(|file| file.exists)
+}
 fn read(path: &Path) -> Result<SummaryFile, String> {
     let content = match fs::metadata(path) {
         Ok(meta) => {

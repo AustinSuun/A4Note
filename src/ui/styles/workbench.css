@@ -805,9 +805,6 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
 .workbench-workspace-remove:hover { background: rgba(190,84,71,.1); color: #a2463b; }
 .workbench-workspace-create { width: 100%; justify-content: flex-start; gap: 7px; margin-top: 4px; padding: 7px 9px; border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; color: var(--accent-strong); font: inherit; font-size: var(--ui-body-small-font-size); }
 .workbench-workspace-create:hover { background: var(--accent-soft); }
-.workbench-topbar-status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.window-titlebar-projectbar .workbench-topbar-status { flex: 0 1 300px; max-width: 30%; }
-.workbench-status-text { color: var(--accent-strong); font-size: var(--ui-body-small-font-size); }
 .workbench-topbar-actions { display: flex; flex: 0 1 auto; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }
 /* Active document controls share the title bar; save state follows Open. */
 .workbench-document-controls { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
