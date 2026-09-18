@@ -758,7 +758,8 @@ assert.match(markdownCalloutSource, /blocks\.findIndex\(\(block\) => isValidElem
 assert.doesNotMatch(markdownCalloutSource, /const firstBlock = blocks\[0\]/);
 assert.match(workbenchStylesSource, /\.cm-md-block-syntax-hidden \{/);
 assert.match(markdownStylesSource, /:where\(\.md-body, \.markdown-live-codemirror\) table \{/);
-assert.match(markdownStylesSource, /\.md-body :not\(pre\) > code \{/);
+// Reading and live editing share the same inline-code rule rather than duplicate it.
+assert.match(markdownStylesSource, /\.md-body :not\(pre\) > code,\s*\.markdown-live-codemirror \.cm-content \.cm-md-inline-code \{/);
 assert.match(markdownStylesSource, /\.md-body \.footnotes \{/);
 assert.doesNotMatch(workbenchStylesSource, /\.markdown-resource-preview (?:blockquote|table|th|td|ul|ol|li|hr|img|pre|code|a|em|del|strong|mark)[ ,{]/);
 assert.doesNotMatch(readerStylesSource, /\.markdown-(?:preview|reader-content) (?:blockquote|table|th|td|ul|ol|li|hr|img|pre|code|a|em|del|strong|mark|h1|h2|h3|h4|h5|h6|p)[ ,{]/);
@@ -853,8 +854,9 @@ assert.match(markdownLivePreviewEditorSource, /class CodeCopyWidget extends Widg
 assert.doesNotMatch(workbenchStylesSource, /\.cm-md-quote-line:has\(\+ \.cm-line/);
 assert.doesNotMatch(workbenchStylesSource, /\.cm-md-code-line \+ \.cm-line\.cm-md-code-fence/);
 assert.match(workbenchStylesSource, /\.cm-md-code-copy \{/);
-// Both surfaces render block math as the same card.
-assert.match(markdownStylesSource, /\.md-body \.katex-display \{[\s\S]*?box-shadow/);
+// Both surfaces retain formula-only presentation without surrounding cards.
+assert.match(markdownStylesSource, /\.md-body \.katex-display \{[^}]*background: transparent;[^}]*box-shadow: none;/);
+assert.match(markdownStylesSource, /\.markdown-live-codemirror \.cm-content \.cm-md-math-display \{[^}]*background: transparent;[^}]*box-shadow: none;/);
 // Tables render as one design on both surfaces: the editor swaps the source rows
 // for a real table through TableWidget and reuses markdown.css's table rules.
 assert.match(markdownLivePreviewEditorSource, /class TableWidget extends WidgetType/);
