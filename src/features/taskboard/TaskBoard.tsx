@@ -111,6 +111,7 @@ export function TaskBoard({
       priority: 'normal',
     }),
     [feedback, setFeedback] = useState(''),
+    [feedbackOpen, setFeedbackOpen] = useState(false),
     [purpose, setPurpose] = useState('reference'),
     [caption, setCaption] = useState('');
   const stageSession = useTaskStageSession(snapshot?.project.id ?? '');
@@ -224,7 +225,7 @@ export function TaskBoard({
     selectedRef.current = null;
     ++detailRequest.current;
     setSelected(null); setDetail(null); setReviewDetail(null);
-    setEditing(false); setFeedback(''); setCaption(''); setShowCreate(false);
+    setEditing(false); setFeedback(''); setFeedbackOpen(false); setCaption(''); setShowCreate(false);
   };
   const changeStage = (next: TaskStage) => {
     if (next === filter || !mayLeave()) return;
@@ -325,6 +326,7 @@ export function TaskBoard({
     setDetail(null);
     setEditing(false);
     setFeedback('');
+    setFeedbackOpen(false);
     setPurpose('reference');
     setCaption('');
     if (client) void run(() => loadDetail(id, client));
@@ -338,6 +340,16 @@ export function TaskBoard({
         ...extra,
       });
       if (clientRef.current === client && selectedRef.current === d.id) setDetail(d);
+      await refresh(client);
+    });
+  /** Feedback is cleared only after the service accepted the return; a failed request keeps the draft. */
+  const requestChanges = () =>
+    run(async () => {
+      if (!client || !detail) return;
+      const d = await client.update(detail.id, { action: 'request_changes', revision: detail.revision, feedback });
+      if (clientRef.current === client && selectedRef.current === d.id) setDetail(d);
+      setFeedback('');
+      setFeedbackOpen(false);
       await refresh(client);
     });
   const addFiles = (files: File[]) =>
@@ -384,6 +396,7 @@ export function TaskBoard({
     setDetail(null);
     setEditing(false);
     setFeedback('');
+    setFeedbackOpen(false);
     setCaption('');
   };
   const loadAcceptance = async (id: string, c: TaskClient) => {
@@ -677,32 +690,45 @@ export function TaskBoard({
               <TaskDetailDialog key={selected} title={'任务详情 · ' + (detail?.title ?? '加载中…')}
                 subtitle={detail ? `${snapshot?.project.name ?? '项目'} · ${taskColumns.find(c => c[0] === detail.status)?.[1] ?? detail.status} · ${owner(detail.owner)?.alias ?? '尚无执行Agent'} · 需求 v${detail.spec_revision} · 提交记录 ${detail.events.filter(e => e.kind === 'task.submit').at(-1)?.seq ?? '未记录'}（非构建版本）` : undefined}
                 navigation={detail && <TaskDetailNavigation value={detailSection} onChange={changeDetailSection} />}
-                busy={busy} onClose={closeDetail} error={error} onDismissError={() => setError('')} footer={detail && (<>
+                busy={busy} onClose={closeDetail} error={error} onDismissError={() => setError('')} footer={detail && detail.status !== 'archived' && (
+                  <div className={'tb-detail-actions' + (detail.status === 'review' ? ' is-review' : '')}>
                     {detail.status === 'review' && (
                       <div className="tb-review-actions">
-                        <h3>检查效果</h3>
-                        <p>Agent 已提交。确认实际效果后再归档。</p>
-                        <textarea
-                          aria-label="调整意见"
-                          placeholder="需要调整时，可在这里补一句，也可以回原来的对话沟通。"
-                          value={feedback}
-                          onChange={(e) => setFeedback(e.target.value)}
-                        />
-                        <div>
-                          <button
-                            disabled={busy}
-                            onClick={() =>
-                              void action('request_changes', { feedback })
-                            }
-                          >
+                        {feedbackOpen ? (
+                          <div className="tb-feedback-panel" role="group" aria-label="调整意见">
+                            <label htmlFor="tb-feedback-input">需要调整的地方</label>
+                            <textarea
+                              id="tb-feedback-input"
+                              autoFocus
+                              placeholder="写明需要调整的位置或问题；也可以回原来的对话沟通。"
+                              value={feedback}
+                              onChange={(e) => setFeedback(e.target.value)}
+                            />
+                            <div className="tb-feedback-buttons">
+                              <button type="button" disabled={busy} onClick={() => setFeedbackOpen(false)}>
+                                收起{feedback.trim() ? '（保留已写内容）' : ''}
+                              </button>
+                              <button type="button" className="tb-primary" disabled={busy} onClick={() => void requestChanges()}>
+                                提交调整意见并退回
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="tb-review-hint">
+                            <strong>检查效果</strong>
+                            Agent 已提交，确认实际效果后再归档；不满意可退回调整。
+                          </p>
+                        )}
+                        <div className="tb-review-buttons">
+                          <button type="button" disabled={busy} aria-expanded={feedbackOpen} aria-controls="tb-feedback-input"
+                            onClick={() => setFeedbackOpen((v) => !v)}>
                             需要调整
                           </button>
                           <button
-                            className="tb-primary"
-                            disabled={
-                              busy ||
-                              detail.claimed_spec !== detail.spec_revision
-                            }
+                            type="button"
+                            className="tb-primary tb-archive"
+                            disabled={busy || detail.claimed_spec !== detail.spec_revision}
+                            title={detail.claimed_spec !== detail.spec_revision ? '执行 Agent 尚未确认最新需求版本，暂不能归档' : undefined}
                             onClick={() => void action('archive')}
                           >
                             效果满意，归档
@@ -710,20 +736,23 @@ export function TaskBoard({
                         </div>
                       </div>
                     )}
-                    <div className="tb-user-actions">
-                      {detail.status !== 'archived' && (
+                    <details className="tb-more-actions">
+                      <summary>更多操作</summary>
+                      <div className="tb-danger-zone" role="group" aria-label="危险操作">
+                        <p>删除会移除任务及其附件记录，且不可恢复；与验收归档无关。</p>
                         <button type="button" className="tb-danger" disabled={busy || (detail.status === 'in_progress' && !!detail.owner)}
+                          title={detail.status === 'in_progress' && detail.owner ? '执行中且有负责人的任务不能删除' : undefined}
                           onClick={() => void run(async () => {
                             if (!client || !detail) return;
                             if (!window.confirm('确定删除该任务？其附件记录将一并删除，操作不可恢复。')) return;
                             await client.update(detail.id, { action: 'delete', revision: detail.revision });
                             selectedRef.current = null;
-                            setSelected(null); setDetail(null); setEditing(false); setFeedback(''); setPurpose('reference'); setCaption('');
+                            setSelected(null); setDetail(null); setEditing(false); setFeedback(''); setFeedbackOpen(false); setPurpose('reference'); setCaption('');
                             await refresh(client);
                           })}>删除任务</button>
-                      )}
-                    </div>
-                  </>)}>
+                      </div>
+                    </details>
+                  </div>)}>
               <aside
                 className="tb-detail"
                 aria-label="任务详情"
@@ -847,7 +876,7 @@ export function TaskBoard({
                     <TaskEventTimeline task={detail} agents={snapshot?.agents ?? []} />
                     </section>
                     <section hidden={detailSection !== 'evidence'} aria-label="验收与证据工作区">
-                    <TaskReviewSummary key={`${snapshot?.project.id}:${detail.id}`} task={detail} client={client} agents={snapshot?.agents ?? []}/>
+                    <TaskReviewSummary key={`${snapshot?.project.id}:${detail.id}`} task={detail} client={client} agents={snapshot?.agents ?? []} variant="dialog"/>
                     <TaskAcceptancePanel key={`${snapshot?.project.id}:${detail.id}:${detail.revision}`} task={detail}
                       state={acceptance} enabled={snapshot?.capabilities?.acceptance === true} busy={busy} onAction={acceptanceAction} />
                     <details><summary>管理任务附件（粘贴、上传与替代）</summary>

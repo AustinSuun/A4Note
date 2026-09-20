@@ -31,12 +31,10 @@
 .tb-detail-footer { max-height: 44vh; overflow: auto; padding: 10px 18px; border-top: 1px solid var(--tb-line); background: var(--tb-card); }
 .tb-detail-footer .tb-review-actions { margin: 0; padding: 0; border: 0; }
 .tb-detail-footer .tb-review-actions textarea { margin: 8px 0; height: 76px; }
-.tb-detail-dialog .tb-files { grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); }
-.tb-compare-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.taskboard .tb-image-thumbnail { display: block; width: 100%; padding: 0; min-height: 110px; border: 0; border-radius: 0; }
-.tb-image-thumbnail span { display: block; padding: 16px; overflow-wrap: anywhere; }
-.taskboard .tb-compare-choice { display: flex; align-items: center; gap: 6px; padding: 6px 8px; margin: 0; overflow-wrap: anywhere; }
-.tb-compare-choice input { flex: 0 0 auto; }
+.tb-compare-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 10px; color: var(--tb-muted); font-size: 13px; }
+.tb-compare-toolbar > :first-child { margin-right: auto; color: var(--tb-ink); }
+.tb-compare-toolbar > span:first-child { color: var(--tb-muted); }
+.tb-compare-toolbar button { min-height: 34px; padding: 6px 12px; font-size: 13px; }
 .tb-image-dialog { width: calc(100vw - 24px); max-width: none; height: calc(100vh - 24px); }
 .tb-image-panes { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; overflow: hidden; }
 .tb-image-panes.is-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -58,8 +56,33 @@
 }
 .tb-dialog-error { flex: 1 0 100%; padding: 8px 10px; border-radius: 6px; background: #fff1ef; color: #93443e; display: flex; gap: 12px; justify-content: space-between; align-items: center; overflow-wrap: anywhere; }
 
-.tb-user-actions{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:10px 2px 2px;}
-.tb-user-actions .tb-danger{color:#b42318;}
+/* Attachment gallery: the picture is the card. Applies wherever TaskAttachments renders (dialog and stage panel). */
+.taskboard .tb-attachment-gallery .tb-files { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 14px; align-items: start; margin: 0; }
+.taskboard .tb-attachment-gallery .tb-files-empty { margin: 0; color: var(--tb-muted); font-size: 13px; }
+.taskboard .tb-attachment-gallery .tb-file { display: flex; flex-direction: column; gap: 6px; padding: 0 0 10px; border: 1px solid var(--tb-line); border-radius: 10px; background: var(--tb-card); overflow: hidden; }
+.taskboard .tb-attachment-gallery .tb-file.is-chosen { border-color: var(--tb-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tb-accent, #32735a) 25%, transparent); }
+.taskboard .tb-attachment-gallery .tb-image-thumbnail { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; max-height: 420px; min-height: 0; margin: 0; padding: 0; border: 0; border-bottom: 1px solid var(--tb-line); border-radius: 0; background: var(--surface-soft, #f1f4f2); cursor: zoom-in; }
+.taskboard .tb-attachment-gallery .tb-image-thumbnail img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: transparent; }
+.taskboard .tb-attachment-gallery .tb-image-thumbnail > span { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; color: var(--tb-muted); font-size: 13px; overflow-wrap: anywhere; }
+.taskboard .tb-attachment-gallery .tb-image-thumbnail em { position: absolute; right: 8px; bottom: 8px; padding: 3px 9px; border-radius: 999px; background: #14251dcc; color: #fff; font-size: 12px; font-style: normal; line-height: 18px; opacity: 0; transition: opacity 120ms; pointer-events: none; }
+.taskboard .tb-attachment-gallery .tb-image-thumbnail:hover em, .taskboard .tb-attachment-gallery .tb-image-thumbnail:focus-visible em { opacity: 1; }
+.taskboard .tb-attachment-gallery .tb-image-thumbnail:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: -2px; }
+.taskboard .tb-attachment-gallery .tb-file-placeholder { display: grid; place-items: center; height: 96px; margin: 0; color: var(--tb-muted); font-size: 13px; background: var(--surface-soft, #f1f4f2); }
+.taskboard .tb-attachment-gallery .tb-file-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 4px 12px 0; }
+.taskboard .tb-attachment-gallery .tb-file strong { display: block; margin: 0; font-size: 14px; font-weight: 650; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.taskboard .tb-attachment-gallery .tb-file small { display: block; margin: 0; color: var(--tb-muted); font-size: 12px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+.taskboard .tb-attachment-gallery .tb-file-caption { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin: 0; padding: 0 12px; overflow: hidden; color: var(--tb-ink); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.taskboard .tb-attachment-gallery .tb-file p[role=alert] { margin: 0; padding: 0 12px; color: #93443e; font-size: 13px; }
+.taskboard .tb-attachment-gallery .tb-file-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 12px 0; }
+.taskboard .tb-attachment-gallery .tb-file-actions button { min-height: 32px; padding: 5px 11px; font-size: 13px; }
+.taskboard .tb-attachment-gallery .tb-file-actions .tb-danger { margin-left: auto; color: #a13c38 !important; background: transparent !important; border-color: transparent !important; }
+.taskboard .tb-attachment-gallery .tb-file-actions .tb-danger:hover { background: #b423180c !important; border-color: #b4231833 !important; }
+.taskboard .tb-attachment-gallery .tb-compare-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; margin: 0; padding: 0 10px 0 8px; border: 1px solid var(--tb-line); border-radius: 999px; background: var(--tb-card); font-size: 13px; line-height: 1; cursor: pointer; user-select: none; }
+.taskboard .tb-attachment-gallery .tb-compare-chip:hover { border-color: var(--tb-accent); }
+.taskboard .tb-attachment-gallery .tb-compare-chip.is-checked { border-color: var(--tb-accent); background: color-mix(in srgb, var(--tb-accent, #32735a) 12%, var(--tb-card, #fff)); color: var(--tb-accent); font-weight: 600; }
+.taskboard .tb-attachment-gallery .tb-compare-chip:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.taskboard .tb-attachment-gallery .tb-compare-chip:has(input:focus-visible) { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+.taskboard .tb-attachment-gallery .tb-compare-chip input { appearance: auto; flex: 0 0 16px; width: 16px; min-width: 16px; height: 16px; margin: 0; padding: 0; border: 0; border-radius: 3px; background: transparent; box-shadow: none; accent-color: var(--tb-accent); cursor: inherit; }
 
 /* Review-first hierarchy. These rules are modal-local, not board-wide. */
 .taskboard .tb-detail-dialog {
@@ -74,10 +97,10 @@
   max-width: none;
   max-height: calc(100% - 16px);
 }
-.taskboard .tb-detail-dialog .tb-dialog-header { padding: 18px 24px; gap: 8px 16px; }
+.taskboard .tb-detail-dialog .tb-dialog-header { padding: 14px 24px; gap: 6px 16px; }
 .taskboard .tb-detail-dialog .tb-dialog-header h2 { margin: 0; font-size: 21px; line-height: 1.4; }
 .taskboard .tb-detail-dialog .tb-dialog-subtitle { font-size: 13px; line-height: 1.6; color: var(--tb-muted, #64756b); }
-.taskboard .tb-detail-dialog :is(.tb-dialog-controls, .tb-detail-tabs, .tb-review-actions, .tb-user-actions) button {
+.taskboard .tb-detail-dialog :is(.tb-dialog-controls, .tb-detail-tabs) button {
   box-sizing: border-box;
   min-height: 36px;
   padding: 7px 12px;
@@ -86,7 +109,7 @@
   font-weight: 600;
   border-radius: 8px;
 }
-.taskboard .tb-detail-dialog .tb-detail-tabs { gap: 8px; padding: 10px 24px; }
+.taskboard .tb-detail-dialog .tb-detail-tabs { gap: 8px; padding: 8px 24px; }
 .taskboard .tb-detail-dialog .tb-detail-tabs button[aria-pressed=true] {
   background: color-mix(in srgb, var(--tb-accent, #32735a) 12%, var(--tb-card, #fff));
   color: var(--tb-accent, #32735a);
@@ -94,38 +117,66 @@
   text-decoration: none;
   font-weight: 600;
 }
-.taskboard .tb-detail-dialog .tb-dialog-body { padding: 20px 24px 28px; }
+.taskboard .tb-detail-dialog .tb-dialog-body { padding: 16px 24px 28px; }
 .taskboard .tb-detail-dialog .tb-detail h3 { font-size: 17px; line-height: 1.5; margin: 0 0 10px; }
 .taskboard .tb-detail-dialog .tb-detail h4 { font-size: 15px; line-height: 1.5; margin: 20px 0 8px; }
 .taskboard .tb-detail-dialog .tb-detail :is(.tb-prose, .tb-review-excerpt) { font-size: 15px; line-height: 1.75; }
+.taskboard .tb-detail-dialog .tb-detail-title { margin: 0 0 14px; }
+.taskboard .tb-detail-dialog .tb-detail-title:empty { display: none; }
+.taskboard .tb-detail-dialog .tb-detail :is(.tb-assignee, .tb-notice) { margin: 0 0 16px; font-size: 14px; }
+.taskboard .tb-detail-dialog .tb-event-timeline p { color: var(--tb-muted); font-size: 13px; }
+.taskboard .tb-detail-dialog .tb-event-timeline li { padding: 10px 0; border-bottom: 1px solid var(--tb-line); }
+.taskboard .tb-detail-dialog .tb-event-timeline summary { color: var(--tb-muted); font-size: 13px; cursor: pointer; }
 .taskboard .tb-detail-dialog .tb-review-summary {
   margin: 0 0 24px;
-  padding: 20px 22px;
+  padding: 14px 20px 10px;
   border: 1px solid color-mix(in srgb, var(--tb-accent, #32735a) 25%, var(--tb-line, #dce4df));
   border-left: 4px solid var(--tb-accent, #32735a);
   border-radius: 12px;
   background: color-mix(in srgb, var(--tb-accent, #32735a) 3%, var(--tb-card, #fff));
 }
-.taskboard .tb-detail-dialog .tb-review-summary::before {
-  content: '交付成果与实际效果';
-  display: block;
-  margin-bottom: 10px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--tb-accent, #32735a);
-}
-.taskboard .tb-detail-dialog .tb-review-summary > p { margin: 6px 0; font-size: 13px; }
-.taskboard .tb-detail-dialog .tb-review-summary .tb-review-excerpt { padding: 14px 16px; background: var(--tb-card, #fff); border-radius: 8px; }
+.taskboard .tb-detail-dialog .tb-review-summary header h3 { flex: 0 1 auto; font-size: 15px; font-weight: 700; color: var(--tb-accent, #32735a); margin: 0; }
+.taskboard .tb-detail-dialog .tb-review-summary header .tb-review-meta { flex: 1 1 260px; margin: 0; text-align: right; }
+.taskboard .tb-detail-dialog .tb-review-summary .tb-review-heading { margin: 0; font-size: 16px; }
+.taskboard .tb-detail-dialog .tb-review-summary .tb-compare-toolbar { margin: 12px 0 8px; }
+.taskboard .tb-detail-dialog .tb-review-summary h4.tb-review-heading:not(.tb-compare-toolbar *) { margin-top: 18px; }
+.taskboard .tb-detail-dialog .tb-review-summary .tb-review-excerpt { margin: 0; padding: 14px 16px; background: var(--tb-card, #fff); border: 1px solid var(--tb-line, #dce4df); border-radius: 8px; }
 .taskboard .tb-detail-dialog .tb-review-caution { font-size: 13px; line-height: 1.6; }
-.taskboard .tb-detail-dialog .tb-detail-footer { padding: 12px 24px; }
-.taskboard .tb-detail-dialog .tb-review-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; }
-.taskboard .tb-detail-dialog .tb-review-actions h3 { margin: 0; font-size: 16px; line-height: 24px; }
-.taskboard .tb-detail-dialog .tb-review-actions p { grid-column: 1; margin: 4px 0; font-size: 13px; line-height: 20px; }
-.taskboard .tb-detail-dialog .tb-review-actions textarea { grid-column: 1; height: 56px; min-height: 56px; margin: 4px 0 0; font-size: 14px; }
-.taskboard .tb-detail-dialog .tb-review-actions > div { grid-column: 2; grid-row: 1 / 4; display: flex; flex-wrap: wrap; align-content: center; gap: 10px; }
-.taskboard .tb-detail-dialog .tb-user-actions { justify-content: flex-start; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--tb-line, #dce4df); }
-.taskboard .tb-detail-dialog .tb-user-actions .tb-danger { background: transparent !important; color: #a13c38 !important; border-color: transparent !important; }
-.taskboard .tb-detail-dialog .tb-user-actions .tb-danger:hover { background: #b423180c !important; border-color: #b4231833 !important; }
+.taskboard .tb-detail-dialog .tb-acceptance { margin-top: 8px; }
+.taskboard .tb-detail-dialog .tb-detail > section > details > summary { min-height: 36px; padding: 8px 0; font-weight: 600; cursor: pointer; }
+
+/* Footer: primary review actions on the right, destructive action collapsed on the left. */
+.taskboard .tb-detail-dialog .tb-detail-footer { padding: 12px 24px; max-height: 52vh; }
+.taskboard .tb-detail-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'more review'; align-items: center; gap: 12px 28px; }
+.taskboard .tb-detail-actions .tb-review-actions { grid-area: review; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 24px; margin: 0; padding: 0; border: 0; }
+.taskboard .tb-detail-actions .tb-review-hint { margin: 0; color: var(--tb-muted); font-size: 14px; line-height: 1.5; }
+.taskboard .tb-detail-actions .tb-review-hint strong { display: block; color: var(--tb-ink); font-size: 15px; }
+.taskboard .tb-detail-actions .tb-review-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; }
+.taskboard .tb-detail-actions .tb-review-buttons button { box-sizing: border-box; min-height: 44px; padding: 10px 20px; border-radius: 10px; font-size: 15px; font-weight: 600; line-height: 22px; }
+.taskboard .tb-detail-actions .tb-review-buttons .tb-archive { min-width: 176px; font-size: 16px; font-weight: 700; box-shadow: 0 2px 8px color-mix(in srgb, var(--tb-accent, #32735a) 30%, transparent); }
+.taskboard .tb-detail-actions .tb-review-buttons button[aria-expanded=true] { border-color: var(--tb-accent); background: color-mix(in srgb, var(--tb-accent, #32735a) 10%, var(--tb-card, #fff)); }
+.taskboard .tb-detail-actions .tb-feedback-panel { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; gap: 8px; padding: 12px 14px; border: 1px solid var(--tb-line); border-radius: 10px; background: var(--surface-soft, #f4f6f5); }
+.taskboard .tb-detail-actions .tb-feedback-panel label { display: block; margin: 0; font-size: 14px; font-weight: 600; }
+.taskboard .tb-detail-actions .tb-feedback-panel textarea { width: 100%; min-height: 72px; height: 88px; margin: 0; font-size: 14px; line-height: 1.5; }
+.taskboard .tb-detail-actions .tb-feedback-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.taskboard .tb-detail-actions .tb-feedback-buttons button { min-height: 40px; padding: 8px 16px; font-size: 14px; font-weight: 600; border-radius: 8px; }
+.taskboard .tb-detail-actions .tb-more-actions { grid-area: more; align-self: center; min-width: 0; }
+.taskboard .tb-detail-actions .tb-more-actions summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 12px; border: 1px solid transparent; border-radius: 8px; color: var(--tb-muted); font-size: 14px; cursor: pointer; }
+.taskboard .tb-detail-actions .tb-more-actions summary::-webkit-details-marker { display: none; }
+.taskboard .tb-detail-actions .tb-more-actions summary::before { content: '···'; font-weight: 700; letter-spacing: 1px; }
+.taskboard .tb-detail-actions .tb-more-actions summary:hover, .taskboard .tb-detail-actions .tb-more-actions[open] summary { border-color: var(--tb-line); background: var(--surface-soft, #f4f6f5); color: var(--tb-ink); }
+.taskboard .tb-detail-actions .tb-more-actions summary:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+.taskboard .tb-detail-actions .tb-danger-zone { display: grid; gap: 8px; justify-items: start; max-width: 380px; margin-top: 8px; padding: 12px 14px; border: 1px solid #e6c9c6; border-radius: 10px; background: #fff7f6; }
+.taskboard .tb-detail-actions .tb-danger-zone p { margin: 0; color: #7a3b37; font-size: 13px; line-height: 1.5; }
+.taskboard .tb-detail-actions .tb-danger-zone .tb-danger { min-height: 40px; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; color: #a13c38 !important; background: var(--tb-card, #fff) !important; border-color: #d7b3b0 !important; }
+.taskboard .tb-detail-actions .tb-danger-zone .tb-danger:hover { background: #fdeceb !important; border-color: #b42318 !important; }
+@media (max-width: 900px) {
+  .taskboard .tb-detail-actions { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'review' 'more'; gap: 10px; }
+  .taskboard .tb-detail-actions .tb-review-actions { grid-template-columns: minmax(0, 1fr); }
+  .taskboard .tb-detail-actions .tb-review-buttons { justify-content: stretch; }
+  .taskboard .tb-detail-actions .tb-review-buttons button { flex: 1 1 160px; }
+  .taskboard .tb-detail-actions .tb-more-actions { padding-top: 10px; border-top: 1px dashed var(--tb-line); }
+}
 @media (max-width: 800px) {
   .taskboard .tb-detail-dialog .tb-dialog-header { padding: 12px 16px; }
   .taskboard .tb-detail-dialog .tb-dialog-header h2 { font-size: 18px; }
@@ -133,6 +184,4 @@
   .taskboard .tb-detail-dialog .tb-detail-tabs { padding: 8px 16px; }
   .taskboard .tb-detail-dialog .tb-detail-footer { padding: 10px 16px; }
   .taskboard .tb-detail-dialog .tb-review-summary { padding: 16px; }
-  .taskboard .tb-detail-dialog .tb-review-actions { grid-template-columns: minmax(0, 1fr); }
-  .taskboard .tb-detail-dialog .tb-review-actions > div { grid-column: 1; grid-row: auto; margin-top: 8px; justify-content: flex-end; }
 }
