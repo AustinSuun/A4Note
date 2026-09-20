@@ -46,7 +46,8 @@
   无图任务显示缺失说明；退回调整写入服务；归档后底栏消失；无未捕获页面错误。
 - 浏览器基线（before，导入提交 bba40b2）：同一脚本复现上表“修改前”数据（不断言）。
 - `node scripts/verify-task-detail-modal.mjs`：37 项通过。隔离 `tsc --noEmit` 退出 0；MCP 诊断 0。
-- 完整 PowerShell `npm run verify`：见下方结果。
+- 完整 PowerShell `npm run verify`：退出 0（日志 .tmp/arena-dispatch/detail2-verify.txt，末尾 A4Note verification passed）。
+- 源码提交：23db5a6e691ce5c89d4eb8ee7a24f7ad35b69ced（8 个显式文件；生成的 src-tauri/gen/schemas 未纳入）。
 
 截图（.tmp/detail-review-ui/{before,after}/）：evidence-1366x768-normal/max、evidence-1568x1005-normal/max、
 feedback-open-1366x768、more-actions-open-1366x768、narrow-880x700-more-open、tab-任务要求/执行记录/完整历史、
