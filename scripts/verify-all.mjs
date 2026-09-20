@@ -39,6 +39,7 @@ const steps = [
   ['npm', ['run', 'test:reader']],
   ['npm', ['run', 'test:markdown-safety']],
   ['npm', ['run', 'test:reader-helpers']],
+  ['npm', ['run', 'test:pdf-text-annotation']],
   ['npm', ['run', 'test:ai-toolbar']],
   ['npm', ['run', 'test:ui-state']],
   ['npm', ['run', 'test:architecture']],

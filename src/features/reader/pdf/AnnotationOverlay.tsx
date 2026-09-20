@@ -1,5 +1,3 @@
-import { useInlineTextAutoSize } from './useInlineTextAutoSize';
-import './pdf-inline-text-layout.css';
 import { PdfHighlightLayer } from './PdfHighlightLayer';
 import type { MouseEvent } from 'react';
 import type { AnnotationColor, PaperDocument, PositionJson, ReaderTool } from '../../../core/types';
@@ -12,7 +10,7 @@ import {
 import { normalizeBox } from './pdfGeometry';
 import { arrowPositionFromDrag } from './pdfInteraction';
 import { AnnotationMark } from './AnnotationMark';
-import type { AnnotationMarkModel, AnnotationResizeHandle, DraftAnnotationPreview, DragDraft, InlineTextEditor, InkDraft, ReaderToolSettings } from './types';
+import type { AnnotationMarkModel, AnnotationResizeHandle, DraftAnnotationPreview, DragDraft, InkDraft, InlineTextEditorState, ReaderToolSettings, TextAnnotationStylePatch } from './types';
 
 export function AnnotationOverlay({
   annotations,
@@ -29,12 +27,12 @@ export function AnnotationOverlay({
   onUpdateAnnotationColor,
   onDeleteAnnotation,
   onAppendAnnotationToNote,
-  focusedAnnotationId,
+  onUpdateTextStyle,
   inlineTextEditor,
-  onInlineTextChange,
-  onInlineTextResize,
   onCommitInlineText,
-  onCancelInlineText,
+  onInlineEditorReady,
+  onInlineEditorLayout,
+  focusedAnnotationId,
 }: {
   annotations: PaperDocument['annotations'];
   drafts: DraftAnnotationPreview[];
@@ -50,14 +48,14 @@ export function AnnotationOverlay({
   onUpdateAnnotationColor: (annotationId: string, color: AnnotationColor) => void | Promise<void>;
   onDeleteAnnotation: (annotationId: string) => void | Promise<void>;
   onAppendAnnotationToNote: (annotationId: string) => void;
+  onUpdateTextStyle?: (annotationId: string, patch: TextAnnotationStylePatch) => void | Promise<void>;
+  /** Inline text editing session for this page, if any. */
+  inlineTextEditor?: InlineTextEditorState | null;
+  onCommitInlineText?: (text: string, element: HTMLDivElement) => void;
+  onInlineEditorReady?: (element: HTMLDivElement | null) => void;
+  onInlineEditorLayout?: (element: HTMLDivElement) => void;
   focusedAnnotationId: string | null;
-  inlineTextEditor: InlineTextEditor | null;
-  onInlineTextChange: (text: string) => void;
-  onInlineTextResize: (height: number) => void;
-  onCommitInlineText: () => void | Promise<void>;
-  onCancelInlineText: () => void;
 }) {
-  const { ref: overlayRef, measure: resizeTextIfOverflow } = useInlineTextAutoSize(inlineTextEditor, onInlineTextResize);
   const dragPosition = dragDraft && activeTool !== 'cursor' && activeTool !== 'comment' && activeTool !== 'text' && activeTool !== 'ink' && activeTool !== 'eraser' && activeTool !== 'arrow' && activeTool !== 'rect' ? normalizeBox(dragDraft) : null;
   const arrowPreview = dragDraft && activeTool === 'arrow'
     ? {
@@ -105,12 +103,11 @@ export function AnnotationOverlay({
         },
       }
     : null;
-  const inlineTextDraft = inlineTextEditor && !inlineTextEditor.annotationId
+  const newTextPreview: AnnotationMarkModel | null = inlineTextEditor && !inlineTextEditor.annotationId
     ? {
-        id: 'inline-text-draft',
         page: inlineTextEditor.page,
-        type: 'text' as const,
-        color: activeAnnotationColor,
+        type: 'text',
+        color: inlineTextEditor.color,
         comment: '',
         quote: '',
         positionJson: inlineTextEditor.positionJson,
@@ -124,12 +121,11 @@ export function AnnotationOverlay({
   return (
     <>
     <PdfHighlightLayer annotations={highlightAnnotations} />
-    <div ref={overlayRef} className="annotation-overlay" data-reader-layer="annotations" aria-label="PDF annotation layer">
+    <div className="annotation-overlay" data-reader-layer="annotations" aria-label="PDF annotation layer">
       {annotations.map((annotation) => (
         <AnnotationMark
           key={annotation.id}
-          annotation={inlineTextEditor?.annotationId === annotation.id
-            ? { ...annotation, positionJson: inlineTextEditor.positionJson } : annotation}
+          annotation={annotation}
           onSelectAnnotation={onSelectAnnotation}
           onBeginStickyDrag={onBeginStickyDrag}
           onBeginAnnotationResize={onBeginAnnotationResize}
@@ -137,33 +133,32 @@ export function AnnotationOverlay({
           onUpdateAnnotationColor={onUpdateAnnotationColor}
           onDeleteAnnotation={onDeleteAnnotation}
           onAppendAnnotationToNote={onAppendAnnotationToNote}
+          onUpdateTextStyle={onUpdateTextStyle}
+          inlineEditor={inlineTextEditor?.annotationId === annotation.id ? inlineTextEditor : null}
+          onCommitInlineText={onCommitInlineText}
+          onInlineEditorReady={onInlineEditorReady}
+          onInlineEditorLayout={onInlineEditorLayout}
           focused={focusedAnnotationId === annotation.id}
           eraserActive={activeTool === 'eraser'}
-          editing={inlineTextEditor?.annotationId === annotation.id}
-          editText={inlineTextEditor?.annotationId === annotation.id ? inlineTextEditor.text : undefined}
-          onInlineTextChange={onInlineTextChange}
-          onInlineTextResize={resizeTextIfOverflow}
-          onCommitInlineText={onCommitInlineText}
-          onCancelInlineText={onCancelInlineText}
         />
       ))}
+      {newTextPreview && (
+        <AnnotationMark
+          key="inline-text-draft"
+          annotation={newTextPreview}
+          draft
+          inlineEditor={inlineTextEditor}
+          onCommitInlineText={onCommitInlineText}
+          onInlineEditorReady={onInlineEditorReady}
+          onInlineEditorLayout={onInlineEditorLayout}
+        />
+      )}
       {drafts.map((annotation) => (
         <AnnotationMark key={annotation.id} annotation={annotation} draft />
       ))}
       {inkPreview && <AnnotationMark annotation={inkPreview} draft />}
       {arrowPreview && <AnnotationMark annotation={arrowPreview} draft />}
       {shapePreview && <AnnotationMark annotation={shapePreview} draft />}
-      {inlineTextDraft && (
-        <AnnotationMark
-          annotation={inlineTextDraft}
-          editing
-          editText={inlineTextEditor?.text ?? ''}
-          onInlineTextChange={onInlineTextChange}
-          onInlineTextResize={resizeTextIfOverflow}
-          onCommitInlineText={onCommitInlineText}
-          onCancelInlineText={onCancelInlineText}
-        />
-      )}
       {dragPosition && activeTool !== 'cursor' && activeTool !== 'hand' && activeTool !== 'comment' && activeTool !== 'text' && activeTool !== 'ink' && activeTool !== 'eraser' && activeTool !== 'rect' && (
         <div
           className={`annotation-mark ${activeTool} ${annotationColor(activeTool)} draft drag-preview`}

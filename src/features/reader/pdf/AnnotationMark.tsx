@@ -1,4 +1,4 @@
-import { memo, useState, type ComponentProps, type CSSProperties, type FormEvent, type MouseEvent } from 'react';
+import { memo, useState, type ComponentProps, type CSSProperties, type MouseEvent } from 'react';
 import type { AnnotationColor, PositionJson } from '../../../core/types';
 import { zh } from '../../../ui/zh';
 import { annotationColorInputValue, toolColorPresets } from '../readerConstants';
@@ -10,7 +10,10 @@ import {
   underlinePositionStyle,
 } from './pdfAnnotationHelpers';
 import { numberValue } from './pdfGeometry';
-import type { AnnotationMarkModel, AnnotationResizeHandle } from './types';
+import { InlineTextEditor } from './InlineTextEditor';
+import { TEXT_FONT_SIZE_OPTIONS, textAnnotationLayout, textBoxStyle, textTypographyStyle } from './pdfTextAnnotation';
+import type { AnnotationMarkModel, AnnotationResizeHandle, InlineTextEditorState, TextAnnotationStylePatch } from './types';
+import './pdf-text-annotation.css';
 
 const resizeHandles: AnnotationResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
@@ -24,14 +27,13 @@ function AnnotationMarkView({
   onUpdateAnnotationColor,
   onDeleteAnnotation,
   onAppendAnnotationToNote,
+  onUpdateTextStyle,
+  inlineEditor,
+  onCommitInlineText,
+  onInlineEditorReady,
+  onInlineEditorLayout,
   focused,
   eraserActive,
-  editing = false,
-  editText = '',
-  onInlineTextChange,
-  onInlineTextResize,
-  onCommitInlineText,
-  onCancelInlineText,
 }: {
   annotation: AnnotationMarkModel;
   draft?: boolean;
@@ -42,39 +44,32 @@ function AnnotationMarkView({
   onUpdateAnnotationColor?: (annotationId: string, color: AnnotationColor) => void | Promise<void>;
   onDeleteAnnotation?: (annotationId: string) => void | Promise<void>;
   onAppendAnnotationToNote?: (annotationId: string) => void;
+  /** Text annotations: compact style entry (size, weight, slant, ink colour) opened on demand from the selection actions. */
+  onUpdateTextStyle?: (annotationId: string, patch: TextAnnotationStylePatch) => void | Promise<void>;
+  /** Present while this text annotation is being edited in place. */
+  inlineEditor?: InlineTextEditorState | null;
+  onCommitInlineText?: (text: string, element: HTMLDivElement) => void;
+  onInlineEditorReady?: (element: HTMLDivElement | null) => void;
+  onInlineEditorLayout?: (element: HTMLDivElement) => void;
   focused?: boolean;
   eraserActive?: boolean;
-  editing?: boolean;
-  editText?: string;
-  onInlineTextChange?: (text: string) => void;
-  onInlineTextResize?: (height: number) => void;
-  onCommitInlineText?: () => void;
-  onCancelInlineText?: () => void;
 }) {
   const [colorPaletteOpen, setColorPaletteOpen] = useState(false);
+  const [textStyleOpen, setTextStyleOpen] = useState(false);
   const segments = annotationSegments(annotation.positionJson);
   const annotationId = annotation.id;
   const isTextBox = annotation.type === 'comment' || annotation.type === 'text';
-  const isInlineEditing = editing && annotation.type === 'text';
   const isMovable = isTextBox || annotation.type === 'rect';
   const isResizable = annotation.type === 'rect' || annotation.type === 'text';
   const customColorStyle = annotation.color.startsWith('#') ? annotationCustomColorStyle(annotation.type, annotation.color) : undefined;
-
-  const handleInlineTextInput = (event: FormEvent<HTMLTextAreaElement>) => {
-    onInlineTextChange?.(event.currentTarget.value);
-    const pageElement = event.currentTarget.closest<HTMLElement>('.pdf-page');
-    const pageHeight = pageElement?.getBoundingClientRect().height ?? 0;
-    if (pageHeight > 0) {
-      const minimumHeight = numberValue(annotation.positionJson.height, 7);
-      const contentHeight = ((event.currentTarget.scrollHeight + 2) / pageHeight) * 100;
-      onInlineTextResize?.(Math.max(minimumHeight, contentHeight));
-    }
-  };
+  const textLayout = annotation.type === 'text' ? textAnnotationLayout(annotation.positionJson) : null;
+  const editing = Boolean(inlineEditor && annotation.type === 'text' && (draft ? !inlineEditor.annotationId : inlineEditor.annotationId === annotation.id));
 
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
     if (!annotation.id || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
+    if (editing) return;
     if (isMovable && !eraserActive) {
       onBeginStickyDrag?.(annotation.id, annotation.page, event);
     }
@@ -92,6 +87,7 @@ function AnnotationMarkView({
     if (!annotation.id) return;
     event.preventDefault();
     event.stopPropagation();
+    if (editing) return;
     if (eraserActive) {
       if (annotation.type !== 'ink') return;
       void onDeleteAnnotation?.(annotation.id);
@@ -101,14 +97,14 @@ function AnnotationMarkView({
   };
 
   const handleDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (!annotation.id || !isTextBox || draft || eraserActive) return;
+    if (!annotation.id || !isTextBox || draft || eraserActive || editing) return;
     event.preventDefault();
     event.stopPropagation();
     onEditStickyAnnotation?.(annotation, event);
   };
 
   const inlineActions =
-    focused && annotationId && !draft ? (
+    focused && annotationId && !draft && !editing ? (
       <div className="annotation-inline-actions">
         {isTextBox && (
           <button
@@ -121,6 +117,23 @@ function AnnotationMarkView({
             }}
           >
             <EditIcon />
+          </button>
+        )}
+        {textLayout && onUpdateTextStyle && (
+          <button
+            type="button"
+            className="annotation-text-style-toggle"
+            title="文字样式"
+            aria-label="文字样式"
+            aria-expanded={textStyleOpen}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setColorPaletteOpen(false);
+              setTextStyleOpen((current) => !current);
+            }}
+          >
+            <span aria-hidden="true">Aa</span>
           </button>
         )}
         <button
@@ -155,11 +168,34 @@ function AnnotationMarkView({
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
+            setTextStyleOpen(false);
             setColorPaletteOpen((current) => !current);
           }}
         >
           <ColorSwatchIcon color={colorToCss(annotation.color)} />
         </button>
+        {textStyleOpen && textLayout && onUpdateTextStyle && (
+          <div className="annotation-text-style-panel" role="group" aria-label="文字样式" onClick={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
+            <label>
+              <span>字号</span>
+              <select
+                value={TEXT_FONT_SIZE_OPTIONS.includes(textLayout.fontSize) ? textLayout.fontSize : ''}
+                onChange={(event) => { const size = Number(event.target.value); if (size > 0) void onUpdateTextStyle(annotationId, { fontSize: size }); }}
+              >
+                {!TEXT_FONT_SIZE_OPTIONS.includes(textLayout.fontSize) && <option value="">{textLayout.fontSize}</option>}
+                {TEXT_FONT_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </label>
+            <button type="button" className={textLayout.bold ? 'active' : ''} aria-pressed={textLayout.bold} title="粗体" onClick={() => void onUpdateTextStyle(annotationId, { bold: !textLayout.bold })}>B</button>
+            <button type="button" className={textLayout.italic ? 'active' : ''} aria-pressed={textLayout.italic} title="斜体" onClick={() => void onUpdateTextStyle(annotationId, { italic: !textLayout.italic })}>I</button>
+            <label title="文字颜色">
+              <span>颜色</span>
+              <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(textLayout.textColor) ? textLayout.textColor : '#202822'} onChange={(event) => void onUpdateTextStyle(annotationId, { textColor: event.target.value })} />
+            </label>
+          </div>
+        )}
         {colorPaletteOpen && (
           <div className="annotation-color-palette" onClick={(event) => event.stopPropagation()}>
             <span className="annotation-color-palette-label">标注颜色</span>
@@ -198,7 +234,7 @@ function AnnotationMarkView({
     ) : null;
 
   const resizeControls =
-    focused && annotationId && !draft && !eraserActive && isResizable ? (
+    focused && annotationId && !draft && !eraserActive && isResizable && !editing ? (
       <div className="annotation-resize-controls" aria-label="调整标注大小">
         {resizeHandles.map((handle) => (
           <button
@@ -293,7 +329,7 @@ function AnnotationMarkView({
       {segments.map((segment, index) => (
         <div
           key={`${annotation.id ?? annotation.quote}-${index}`}
-          className={`annotation-mark ${annotation.type} ${annotation.color} ${annotation.type === 'rect' ? `${shapeKindFromPosition(annotation.positionJson)} ${Boolean(annotation.positionJson.fillEnabled) ? 'filled' : 'outline'}` : ''} ${draft ? 'draft' : ''} ${focused ? 'focused' : ''} ${isInlineEditing ? 'editing' : ''}`.trim()}
+          className={`annotation-mark ${annotation.type} ${annotation.color} ${annotation.type === 'rect' ? `${shapeKindFromPosition(annotation.positionJson)} ${Boolean(annotation.positionJson.fillEnabled) ? 'filled' : 'outline'}` : ''} ${textLayout ? `text-inline ${textLayout.autoWidth ? 'auto-width' : 'fixed-width'}` : ''} ${editing ? 'editing' : ''} ${draft ? 'draft' : ''} ${focused ? 'focused' : ''}`.trim()}
           title={annotation.comment || annotation.quote}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
@@ -306,60 +342,42 @@ function AnnotationMarkView({
                 ? { ...highlightPositionStyle(segment), ...customColorStyle }
                 : annotation.type === 'rect'
                   ? { ...positionStyle(segment), ...shapeVisualStyle(annotation.positionJson, annotation.color) }
-                  : annotation.type === 'text'
-                    ? { ...positionStyle(segment), ...textAnnotationVisualStyle(annotation.positionJson) }
+                  : textLayout
+                    ? textBoxStyle(segment, textLayout)
                     : { ...positionStyle(segment), ...customColorStyle }
           }
+          data-annotation-id={annotation.id}
+          data-text-layout={textLayout ? (textLayout.autoWidth ? 'auto' : 'fixed') : undefined}
+          data-editing={editing ? 'true' : undefined}
         >
-          {isTextBox && (
-            isInlineEditing ? (
-              <textarea
-                className="inline-text-editor"
-                aria-label="文本框内容"
-                autoFocus
-                value={editText}
-                placeholder={zh.reader.textLabel}
-                spellCheck={false}
-                style={{
-                  fontSize: `${numberValue(annotation.positionJson.fontSize, 13)}px`,
-                  fontWeight: Boolean(annotation.positionJson.bold) ? 700 : 500,
-                  fontStyle: Boolean(annotation.positionJson.italic) ? 'italic' : 'normal',
-                  color: String(annotation.positionJson.textColor ?? '#202822'),
-                }}
-                onInput={handleInlineTextInput}
-                onBlur={() => onCommitInlineText?.()}
-                onKeyDown={(event) => {
-                  // Let the IME finish/cancel its composition before acting on
-                  // annotation shortcuts (229 covers legacy WebView IME events).
-                  if (event.nativeEvent.isComposing || event.keyCode === 229) return;
-                  if (event.key === 'Escape') {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onCancelInlineText?.();
-                  } else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onCommitInlineText?.();
-                  }
-                }}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={(event) => event.stopPropagation()}
-                onDoubleClick={(event) => event.stopPropagation()}
-              />
-            ) : (
-              <div
-                className="sticky-note-content"
-                style={{
-                  fontSize: `${numberValue(annotation.positionJson.fontSize, 13)}px`,
-                  fontWeight: Boolean(annotation.positionJson.bold) ? 700 : 500,
-                  fontStyle: Boolean(annotation.positionJson.italic) ? 'italic' : 'normal',
-                  color: String(annotation.positionJson.textColor ?? '#202822'),
-                }}
-              >
-                {annotation.comment || annotation.quote || (annotation.type === 'text' ? zh.reader.textLabel : zh.reader.commentAnnotation)}
-              </div>
-            )
-          )}
+          {textLayout && editing && inlineEditor ? (
+            <InlineTextEditor
+              key={inlineEditor.annotationId ?? 'new'}
+              initialText={inlineEditor.text}
+              placeholder={zh.reader.textLabel}
+              ariaLabel="文字标注内容"
+              style={textTypographyStyle(textLayout)}
+              onCommit={(text, element) => onCommitInlineText?.(text, element)}
+              onReady={onInlineEditorReady}
+              onLayout={onInlineEditorLayout}
+            />
+          ) : textLayout ? (
+            <div className="sticky-note-content text-annotation-content" style={textTypographyStyle(textLayout)}>
+              {annotation.comment || annotation.quote || zh.reader.textLabel}
+            </div>
+          ) : isTextBox ? (
+            <div
+              className="sticky-note-content"
+              style={{
+                fontSize: `${numberValue(annotation.positionJson.fontSize, 13)}px`,
+                fontWeight: Boolean(annotation.positionJson.bold) ? 700 : 500,
+                fontStyle: Boolean(annotation.positionJson.italic) ? 'italic' : 'normal',
+                color: String(annotation.positionJson.textColor ?? '#202822'),
+              }}
+            >
+              {annotation.comment || annotation.quote || zh.reader.commentAnnotation}
+            </div>
+          ) : null}
           {index === 0 ? resizeControls : null}
           {index === 0 ? inlineActions : null}
         </div>
@@ -368,10 +386,8 @@ function AnnotationMarkView({
   );
 }
 
-// React's shallow comparison includes controlled editing props AND callbacks.
-// Ignoring changed handlers retains closures from an earlier edit/document.
-// Stable props still skip rendering; do not suppress updates by comparing only
-// the persisted annotation object.
+// Shallow prop comparison (as on main): editing callbacks must never be served from a stale closure,
+// so changed handlers re-render the mark while unchanged props still skip the render.
 const MemoAnnotationMark = memo(AnnotationMarkView);
 
 export function AnnotationMark(props: ComponentProps<typeof AnnotationMarkView>) {
@@ -453,15 +469,6 @@ function shapeVisualStyle(position: PositionJson, color: string): CSSProperties 
   return {
     outline: `${strokeWidth}px solid ${stroke}`,
     background: fillEnabled ? colorWithAlpha(stroke, 0.18) : 'transparent',
-  };
-}
-
-function textAnnotationVisualStyle(position: PositionJson): CSSProperties {
-  const borderColor = String(position.borderColor ?? '#ffffff');
-  const backgroundColor = String(position.backgroundColor ?? 'transparent');
-  return {
-    outline: `1.5px solid ${borderColor === 'transparent' ? 'rgba(255,255,255,.01)' : borderColor}`,
-    background: backgroundColor === 'transparent' ? 'transparent' : backgroundColor,
   };
 }
 
