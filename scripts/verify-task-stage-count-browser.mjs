@@ -38,6 +38,18 @@ try{
  }
  if(width===1440&&zoom===1&&theme==='light'||width===360&&zoom===1.25&&theme==='dark')fs.writeFileSync(path.join(evidence,`${width}-${theme}.png`),Buffer.from((await rpc('Page.captureScreenshot',{format:'png'})).data,'base64'));
  }
+ // Narrow host: no visible scrollbar, yet keyboard navigation keeps the active stage inside the strip.
+ await rpc('Emulation.setDeviceMetricsOverride',{width:360,height:500,deviceScaleFactor:1,mobile:false});await evaluate("document.documentElement.dataset.theme='dark';document.documentElement.style.zoom=1.25");
+ await evaluate("document.querySelectorAll('.tb-stage-switch button')[0].click()");await frame();
+ const narrow=await evaluate(`(()=>{const n=document.querySelector('.tb-stage-nav');return {overflowing:n.scrollWidth>n.clientWidth,scrollbarThickness:n.offsetHeight-n.clientHeight,scrollbarWidth:getComputedStyle(n).scrollbarWidth}})()`);
+ assert.ok(narrow.overflowing&&narrow.scrollbarThickness===0&&narrow.scrollbarWidth==='none','narrow strip must overflow without a visible scrollbar '+JSON.stringify(narrow));
+ await evaluate("document.querySelectorAll('.tb-stage-switch button')[0].focus()");
+ for(const key of ['End','Home','ArrowLeft']){await rpc('Input.dispatchKeyEvent',{type:'keyDown',key});await rpc('Input.dispatchKeyEvent',{type:'keyUp',key});await frame();
+  const reach=await evaluate(`(()=>{const n=document.querySelector('.tb-stage-nav').getBoundingClientRect(),b=document.querySelector('.tb-stage-switch button[aria-pressed=true]').getBoundingClientRect();return {label:document.querySelector('.tb-stage-switch button[aria-pressed=true]').textContent,inside:b.left>=n.left-1&&b.right<=n.right+1}})()`);
+  assert.ok(reach.inside,'active stage must be scrolled into the strip after '+key+' '+JSON.stringify(reach));}
+ fs.writeFileSync(path.join(evidence,'360-dark-keyboard-end.png'),Buffer.from((await rpc('Page.captureScreenshot',{format:'png'})).data,'base64'));
+ await rpc('Emulation.setDeviceMetricsOverride',{width:1440,height:500,deviceScaleFactor:1,mobile:false});await evaluate("document.documentElement.dataset.theme='light';document.documentElement.style.zoom=1");
+ await evaluate("document.querySelectorAll('.tb-stage-switch button')[0].click()");await frame();
  await evaluate("document.querySelectorAll('.tb-stage-switch button')[0].focus()");
  for(const [key,expected] of [['End','archived'],['Home','all'],['ArrowRight','queued'],['ArrowLeft','all']]){await rpc('Input.dispatchKeyEvent',{type:'keyDown',key});await rpc('Input.dispatchKeyEvent',{type:'keyUp',key});await frame();assert.equal(await evaluate('document.querySelector("#selected").textContent'),expected);assert.ok(await evaluate("document.activeElement.getAttribute('aria-pressed')==='true'"));}
  await evaluate('window.fixture.setDisabled(true)');await frame();await evaluate("document.querySelectorAll('.tb-stage-switch button')[4].click()");await frame();assert.equal(await evaluate('document.querySelector("#selected").textContent'),'all');assert.equal(await evaluate("[...document.querySelectorAll('.tb-stage-switch button')].filter(b=>b.disabled).length"),5);
