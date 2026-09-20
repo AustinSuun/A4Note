@@ -11,7 +11,7 @@ export function TaskStageSwitcher({ value, disabled = false, onChange }: {
 }) {
   return <nav className="tb-stage-nav" aria-label="任务流程视图" data-window-no-drag>
     <div className="tb-stage-switch" data-stage={value}
-      style={{ '--tb-stage-index': taskStages.findIndex(s => s.id === value) } as CSSProperties}
+      style={{ '--tb-stage-columns': taskStages.length, '--tb-stage-index': taskStages.findIndex(s => s.id === value) } as CSSProperties}
       onKeyDown={e => {
         if (disabled || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
         e.preventDefault();
