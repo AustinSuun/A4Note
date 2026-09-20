@@ -1,4 +1,4 @@
-﻿import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent } from 'react';
 import { useLayoutEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
@@ -25,6 +25,7 @@ import {
   numberValue,
 } from './pdfGeometry';
 import { arrowPositionFromDrag, createDragDraft, currentVisiblePage, pointFromEvent, resizePositionFromDrag, scrollAnchorFromContainer, scrollPageIntoViewIfNeeded, scrollTopFromAnchor, stickyPositionFromDrag, updateDragDraftPoint } from './pdfInteraction';
+import { TEXT_EDGE_MARGIN_PERCENT, TEXT_FONT_UNIT_PAGE, clampTextBoxToPage, percentBoxOf, placeNewTextBox, roundPercent, textAnnotationLayout } from './pdfTextAnnotation';
 import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
 import { boundingBox, mergeRectsIntoLineSegments, textItemSelectionsFromRange, textSelectionFromDrag, textSelectionRectsFromOffsets } from './pdfSelection';
@@ -33,9 +34,10 @@ import type {
   AnnotationResize,
   AnnotationResizeHandle,
   CommentPopover,
+  InlineTextEditorState,
+  TextAnnotationStylePatch,
   DraftAnnotationPreview,
   DragDraft,
-  InlineTextEditor,
   InkDraft,
   PageMeta,
   PdfScrollAnchor,
@@ -119,11 +121,10 @@ export default function PdfReader({
   const inkPointerIdRef = useRef<number | null>(null);
   const inkPointerTargetRef = useRef<HTMLDivElement | null>(null);
   const [commentPopover, setCommentPopover] = useState<CommentPopover | null>(null);
-  const [inlineTextEditor, setInlineTextEditor] = useState<InlineTextEditor | null>(null);
-  const inlineTextSavingRef = useRef(false);
-  // Escape removes the controlled textarea before the browser's trailing blur;
-  // block that blur from committing the text the user explicitly cancelled.
-  const inlineTextCommitBlockedRef = useRef(false);
+  // Text annotations edit in place (task 540986ab); the settings popover is only used by sticky comments now.
+  const [inlineText, setInlineText] = useState<InlineTextEditorState | null>(null);
+  const inlineTextRef = useRef<InlineTextEditorState | null>(null); inlineTextRef.current = inlineText;
+  const inlineEditorRef = useRef<HTMLDivElement | null>(null);
   const [stickyDrag, setStickyDrag] = useState<StickyDrag | null>(null);
   const [annotationResize, setAnnotationResize] = useState<AnnotationResize | null>(null);
   const [stickyDragPreview, setStickyDragPreview] = useState<StickyDragPreview | null>(null);
@@ -288,9 +289,8 @@ export default function PdfReader({
     inkDraftRef.current = null;
     setInkDraft(null);
     setCommentPopover(null);
-    setInlineTextEditor(null);
-    inlineTextSavingRef.current = false;
-    inlineTextCommitBlockedRef.current = false;
+    setInlineText(null);
+    inlineEditorRef.current = null;
     commentSavingRef.current = false; setCommentSaving(false); setCommentSaveError('');
     setStickyDrag(null);
     setAnnotationResize(null);
@@ -610,16 +610,23 @@ export default function PdfReader({
     if (!point) return;
     setFocusedAnnotationId(annotationId);
     setAnnotationResize(null);
+    // Auto-sized text boxes are laid out by the browser; take their real size so drag limits and the saved
+    // width/height match what is on screen instead of a stale stored value.
+    const measured = annotation.type === 'text' ? measuredPercentBox(event.currentTarget, pageLayer) : null;
+    const basePosition = measured
+      ? { ...annotation.positionJson, width: roundPercent(measured.width), height: roundPercent(measured.height) }
+      : annotation.positionJson;
     setStickyDrag({
       annotationId,
       page: pageNumber,
-      offsetX: point.x - numberValue(annotation.positionJson.x, point.x),
-      offsetY: point.y - numberValue(annotation.positionJson.y, point.y),
+      offsetX: point.x - numberValue(basePosition.x, point.x),
+      offsetY: point.y - numberValue(basePosition.y, point.y),
+      positionJson: basePosition,
     });
     setStickyDragPreview({
       annotationId,
       page: pageNumber,
-      positionJson: annotation.positionJson,
+      positionJson: basePosition,
     });
   };
 
@@ -635,23 +642,38 @@ export default function PdfReader({
     event.stopPropagation();
     setFocusedAnnotationId(annotationId);
     setStickyDrag(null);
+    const pageLayer = event.currentTarget.closest<HTMLElement>('.pdf-render-layer');
+    const measured = annotation.type === 'text' && pageLayer ? measuredPercentBox(event.currentTarget, pageLayer) : null;
+    // A manual resize turns an auto-sized text box into a fixed-width box; the height stays a minimum so text never clips.
+    const basePosition = annotation.type === 'text'
+      ? {
+          ...annotation.positionJson,
+          autoWidth: false,
+          ...(measured ? { width: roundPercent(measured.width), height: roundPercent(measured.height) } : {}),
+        }
+      : annotation.positionJson;
+    const textLayout = annotation.type === 'text' ? textAnnotationLayout(annotation.positionJson) : null;
+    const minTextWidth = textLayout && pageLayer && pageLayer.getBoundingClientRect().width > 0
+      ? Math.max(((textLayout.fontSize * (textLayout.fontUnit === 'page' ? displayZoom : 1) * 2) / pageLayer.getBoundingClientRect().width) * 100, 1)
+      : 8;
     setAnnotationResize({
       annotationId,
       page: pageNumber,
       handle,
       origin: {
-        x: numberValue(annotation.positionJson.x, 0),
-        y: numberValue(annotation.positionJson.y, 0),
-        width: numberValue(annotation.positionJson.width, annotation.type === 'text' ? 22 : 8),
-        height: numberValue(annotation.positionJson.height, annotation.type === 'text' ? 7 : 5),
+        x: numberValue(basePosition.x, 0),
+        y: numberValue(basePosition.y, 0),
+        width: numberValue(basePosition.width, annotation.type === 'text' ? 22 : 8),
+        height: numberValue(basePosition.height, annotation.type === 'text' ? 7 : 5),
       },
-      minWidth: annotation.type === 'text' ? 8 : 2,
-      minHeight: annotation.type === 'text' ? 3.5 : 2,
+      minWidth: annotation.type === 'text' ? minTextWidth : 2,
+      minHeight: annotation.type === 'text' ? 0.5 : 2,
+      positionJson: basePosition,
     });
     setStickyDragPreview({
       annotationId,
       page: pageNumber,
-      positionJson: annotation.positionJson,
+      positionJson: basePosition,
     });
   };
 
@@ -664,7 +686,7 @@ export default function PdfReader({
       setStickyDragPreview({
         annotationId: annotationResize.annotationId,
         page: pageNumber,
-        positionJson: resizePositionFromDrag(annotation.positionJson, annotationResize, point),
+        positionJson: resizePositionFromDrag(annotationResize.positionJson ?? annotation.positionJson, annotationResize, point),
       });
       return;
     }
@@ -673,7 +695,7 @@ export default function PdfReader({
     if (!annotation) return;
     const point = pointFromEvent(event);
     if (!point) return;
-    const nextPosition = stickyPositionFromDrag(annotation.positionJson, stickyDrag, point);
+    const nextPosition = stickyPositionFromDrag(stickyDrag.positionJson ?? annotation.positionJson, stickyDrag, point);
     setStickyDragPreview({
       annotationId: stickyDrag.annotationId,
       page: pageNumber,
@@ -683,12 +705,18 @@ export default function PdfReader({
 
   const finishStickyDrag = () => {
     const preview = stickyDragPreview;
+    const base = annotationResize?.positionJson ?? stickyDrag?.positionJson ?? null;
     setStickyDrag(null);
     setAnnotationResize(null);
     setStickyDragPreview(null);
-    if (preview) {
-      void saves.run('移动标注', async () => onUpdateAnnotationPosition(preview.annotationId, preview.positionJson), undefined, preview.annotationId);
-    }
+    if (!preview) return;
+    // A plain click on a box or a handle is not a move: persisting it would only add history noise and,
+    // for auto-sized text boxes, silently freeze their width.
+    const moved = !base || (['x', 'y', 'width', 'height'] as const).some(
+      (key) => Math.abs(numberValue(preview.positionJson[key], 0) - numberValue(base[key], 0)) > 0.02,
+    );
+    if (!moved) return;
+    void saves.run('移动标注', async () => onUpdateAnnotationPosition(preview.annotationId, preview.positionJson), undefined, preview.annotationId);
   };
 
   const finishTextSelection = async (pageNumber: number, container: HTMLElement, overrideTool?: ReaderTool) => {
@@ -838,19 +866,31 @@ export default function PdfReader({
     const point = pointFromEvent(event);
     if (!point) return;
     const rect = pdfCoordinateLayer(event.currentTarget).getBoundingClientRect();
-    const annotationType = activeTool === 'text' ? 'text' : 'comment';
-    if (annotationType === 'text') {
+    if (activeTool === 'text') {
+      // No settings popover: open a compact one-line box right where the user clicked and type into it.
+      const placed = placeNewTextBox({
+        x: point.x,
+        y: point.y,
+        pageWidthPx: rect.width,
+        pageHeightPx: rect.height,
+        fontPx: toolSettings.textFontSize * displayZoom,
+      });
       setCommentPopover(null);
-      inlineTextCommitBlockedRef.current = false;
-      setInlineTextEditor({
+      setFocusedAnnotationId(null);
+      onFocusAnnotation?.(null);
+      setInlineText({
         page: pageNumber,
         text: '',
+        color: activeAnnotationColor,
         positionJson: {
-          x: point.x,
-          y: point.y,
-          width: 22,
-          height: 7,
+          x: roundPercent(placed.x),
+          y: roundPercent(placed.y),
+          width: 0,
+          height: 0,
+          maxWidth: roundPercent(placed.maxWidth),
+          autoWidth: true,
           fontSize: toolSettings.textFontSize,
+          fontUnit: TEXT_FONT_UNIT_PAGE,
           bold: toolSettings.textBold,
           italic: toolSettings.textItalic,
           textColor: toolSettings.textColor,
@@ -861,8 +901,9 @@ export default function PdfReader({
       onCompleteOneShotTool?.();
       return;
     }
+    // Sticky comments keep the small note popover; only text annotations moved to in-place editing.
     setCommentPopover({
-      annotationType,
+      annotationType: 'comment',
       page: pageNumber,
       x: point.x,
       y: point.y,
@@ -882,21 +923,24 @@ export default function PdfReader({
     if (!annotation.id || (annotation.type !== 'comment' && annotation.type !== 'text')) return;
     event.preventDefault();
     event.stopPropagation();
+    if (annotation.type === 'text') {
+      // Edit in place: the box keeps its position, font and width; only the content becomes editable.
+      setFocusedAnnotationId(annotation.id);
+      onFocusAnnotation?.(annotation.id);
+      setCommentPopover(null);
+      setInlineText({
+        annotationId: annotation.id,
+        page: annotation.page,
+        text: annotation.comment || '',
+        positionJson: annotation.positionJson,
+        color: annotation.color as AnnotationColor,
+      });
+      return;
+    }
     const layer = event.currentTarget.closest<HTMLElement>('.pdf-render-layer');
     const rect = layer?.getBoundingClientRect();
     setFocusedAnnotationId(annotation.id);
     onFocusAnnotation?.(annotation.id);
-    if (annotation.type === 'text') {
-      setCommentPopover(null);
-      inlineTextCommitBlockedRef.current = false;
-      setInlineTextEditor({
-        annotationId: annotation.id,
-        page: annotation.page,
-        text: annotation.comment || annotation.quote || '',
-        positionJson: clonePositionJson(annotation.positionJson),
-      });
-      return;
-    }
     setCommentPopover({
       annotationType: annotation.type,
       annotationId: annotation.id,
@@ -914,6 +958,113 @@ export default function PdfReader({
       backgroundColor: String(annotation.positionJson.backgroundColor ?? '#fff4b8'),
       positionJson: clonePositionJson(annotation.positionJson),
     });
+  };
+
+  /**
+   * Finish an inline text session. New boxes are persisted once with their measured size; edits write the
+   * text and the measured size only when something changed; an emptied box is removed instead of leaving
+   * an invisible annotation. Failures reopen the editor with the typed text so nothing is lost.
+   */
+  const commitInlineText = (text: string, element: HTMLDivElement) => {
+    const session = inlineTextRef.current;
+    if (!session) return;
+    inlineTextRef.current = null;
+    inlineEditorRef.current = null;
+    setInlineText(null);
+    const layer = element.closest<HTMLElement>('.pdf-render-layer');
+    const mark = element.closest<HTMLElement>('.annotation-mark') ?? element;
+    const measured = layer ? percentBoxOf(mark, layer) : null;
+    const key = source.key;
+    const reopen = () => { if (sourceKeyRef.current === key) setInlineText({ ...session, text }); };
+    if (!session.annotationId) {
+      if (!text.trim()) return;
+      const box = clampTextBoxToPage({
+        x: numberValue(session.positionJson.x, 0),
+        y: numberValue(session.positionJson.y, 0),
+        width: measured?.width ?? 20,
+        height: measured?.height ?? 4,
+      });
+      const positionJson: PositionJson = {
+        ...session.positionJson,
+        x: roundPercent(box.x),
+        y: roundPercent(box.y),
+        width: roundPercent(box.width),
+        height: roundPercent(box.height),
+      };
+      void saves.run('保存文字标注', async () => {
+        const id = await onCreateAnnotation({
+          ...buildAnnotationDraft('text', positionJson, session.color),
+          page: session.page,
+          comment: text,
+        });
+        if (sourceKeyRef.current === key && typeof id === 'string') {
+          setFocusedAnnotationId(id);
+          onFocusAnnotation?.(id);
+        }
+      }, reopen);
+      return;
+    }
+    const annotation = currentFileAnnotations.find((item) => item.id === session.annotationId);
+    if (!annotation) return;
+    if (!text.trim()) {
+      void saves.run('删除标注', async () => onDeleteAnnotation(annotation.id), reopen, annotation.id);
+      return;
+    }
+    const nextPosition: PositionJson = { ...annotation.positionJson };
+    let positionChanged = false;
+    if (measured) {
+      const layout = textAnnotationLayout(annotation.positionJson);
+      const storedHeight = numberValue(annotation.positionJson.height, 0);
+      // Auto boxes follow their content in both directions; fixed boxes keep the user's width and only
+      // record a taller height when the text needs it, so a sub-pixel re-measure never rewrites them.
+      const box = clampTextBoxToPage({
+        x: numberValue(nextPosition.x, 0),
+        y: numberValue(nextPosition.y, 0),
+        width: layout.autoWidth ? measured.width : numberValue(annotation.positionJson.width, measured.width),
+        height: layout.autoWidth ? measured.height : Math.max(measured.height, storedHeight),
+      });
+      const assign = (key: 'x' | 'y' | 'width' | 'height', value: number) => {
+        if (Math.abs(numberValue(annotation.positionJson[key], Number.NaN) - value) > 0.02) {
+          nextPosition[key] = roundPercent(value);
+          positionChanged = true;
+        }
+      };
+      assign('x', box.x);
+      assign('y', box.y);
+      if (layout.autoWidth) assign('width', box.width);
+      assign('height', box.height);
+    }
+    const textChanged = text !== (annotation.comment || '');
+    if (!textChanged && !positionChanged) return;
+    void saves.run('保存文字标注', async () => {
+      if (positionChanged) await onUpdateAnnotationPosition(annotation.id, nextPosition);
+      if (textChanged) await onUpdateAnnotationComment(annotation.id, text);
+    }, reopen, annotation.id);
+  };
+
+  /** While a new box grows past the bottom margin, move it up instead of letting it hang off the page. */
+  const keepInlineTextOnPage = (element: HTMLDivElement) => {
+    const session = inlineTextRef.current;
+    if (!session || session.annotationId) return;
+    const layer = element.closest<HTMLElement>('.pdf-render-layer');
+    const mark = element.closest<HTMLElement>('.annotation-mark');
+    if (!layer || !mark) return;
+    const box = percentBoxOf(mark, layer);
+    if (!box) return;
+    const limit = 100 - TEXT_EDGE_MARGIN_PERCENT;
+    if (box.y + box.height <= limit + 0.05) return;
+    const nextY = roundPercent(Math.max(0, limit - box.height));
+    if (Math.abs(nextY - numberValue(session.positionJson.y, 0)) < 0.01) return;
+    const next = { ...session, positionJson: { ...session.positionJson, y: nextY } };
+    inlineTextRef.current = next;
+    setInlineText(next);
+  };
+
+  const updateTextStyle = (annotationId: string, patch: TextAnnotationStylePatch) => {
+    const annotation = currentFileAnnotations.find((item) => item.id === annotationId);
+    if (!annotation || annotation.type !== 'text') return;
+    const nextPosition: PositionJson = { ...annotation.positionJson, ...patch };
+    void saves.run('修改文字样式', async () => onUpdateAnnotationPosition(annotationId, nextPosition), undefined, annotationId);
   };
 
   const saveComment = async () => {
@@ -946,35 +1097,6 @@ export default function PdfReader({
       if (sourceKeyRef.current === key) setCommentSaveError(`保存失败，内容已保留，请重试：${error instanceof Error ? error.message : String(error)}`);
     } finally {
       if (sourceKeyRef.current === key) { commentSavingRef.current = false; setCommentSaving(false); }
-    }
-  };
-
-  const saveInlineText = async () => {
-    if (!inlineTextEditor || inlineTextSavingRef.current || inlineTextCommitBlockedRef.current) return;
-    const snapshot = inlineTextEditor;
-    const key = source.key;
-    const position = { ...snapshot.positionJson };
-    const text = snapshot.text.trim() || zh.reader.textLabel;
-    inlineTextSavingRef.current = true;
-    try {
-      const saved = await saves.run('保存文本框', async () => {
-        if (snapshot.annotationId) {
-          await onUpdateAnnotationPosition(snapshot.annotationId, position);
-          await onUpdateAnnotationComment(snapshot.annotationId, text);
-        } else {
-          await onCreateAnnotation({
-            ...buildAnnotationDraft('text', position, activeAnnotationColor),
-            page: snapshot.page,
-            comment: text,
-          });
-        }
-      }, undefined, snapshot.annotationId);
-      if (saved && sourceKeyRef.current === key) {
-        inlineTextCommitBlockedRef.current = true;
-        setInlineTextEditor((current) => current === snapshot ? null : current);
-      }
-    } finally {
-      inlineTextSavingRef.current = false;
     }
   };
 
@@ -1131,17 +1253,12 @@ export default function PdfReader({
                   onUpdateAnnotationColor={(id, color) => { void saves.run('修改标注颜色', async () => onUpdateAnnotationColor(id, color), undefined, id); }}
                   onDeleteAnnotation={id => { void saves.run('删除标注', async () => onDeleteAnnotation(id), undefined, id); }}
                   onAppendAnnotationToNote={onAppendAnnotationToNote}
+                  onUpdateTextStyle={updateTextStyle}
+                  inlineTextEditor={inlineText?.page === page.pageNumber ? inlineText : null}
+                  onCommitInlineText={commitInlineText}
+                  onInlineEditorReady={(element) => { inlineEditorRef.current = element; }}
+                  onInlineEditorLayout={keepInlineTextOnPage}
                   focusedAnnotationId={focusedAnnotationId}
-                  inlineTextEditor={inlineTextEditor?.page === page.pageNumber ? inlineTextEditor : null}
-                  onInlineTextChange={(text) => setInlineTextEditor((current) => current ? { ...current, text } : current)}
-                  onInlineTextResize={(height) => setInlineTextEditor((current) => current ? { ...current, positionJson: { ...current.positionJson, height: Math.max(Number(current.positionJson.height ?? 0), height) } } : current)}
-                  onCommitInlineText={saveInlineText}
-                  onCancelInlineText={() => {
-                    if (!inlineTextSavingRef.current) {
-                      inlineTextCommitBlockedRef.current = true;
-                      setInlineTextEditor(null);
-                    }
-                  }}
                 />
               }
             />
@@ -1165,6 +1282,11 @@ export default function PdfReader({
       </div>
     </div>
   );
+}
+
+function measuredPercentBox(target: HTMLElement, layer: HTMLElement) {
+  const mark = target.closest<HTMLElement>('.annotation-mark');
+  return mark ? percentBoxOf(mark, layer) : null;
 }
 
 function inkPositionFromPoints(points: InkDraft['points']): PositionJson {

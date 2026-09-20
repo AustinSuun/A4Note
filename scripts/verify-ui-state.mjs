@@ -367,7 +367,9 @@ assert.match(readerSceneSource, /focusedEditableAnnotation && activeAnnotationTo
 assert.match(readerSceneSource, /onSelectAnnotationTool\('cursor'\)/);
 assert.match(readerSceneSource, /positionFromSettings\(annotation, settings\)/);
 assert.match(readerToolbarSource, /toolSettingsOpenFor/);
-assert.match(readerToolbarSource, /const optionsTool = contextAnnotationTool \?\? toolSettingsOpenFor/);
+// 540986ab: the contextual settings panel no longer opens by itself when an annotation is selected; the lit tool button toggles it.
+assert.match(readerToolbarSource, /const optionsTool = toolSettingsOpenFor && \(toolSettingsOpenFor === contextAnnotationTool \|\| toolSettingsOpenFor === activeAnnotationTool\) \? toolSettingsOpenFor : null/);
+assert.doesNotMatch(readerToolbarSource, /contextAnnotationTool \?\? toolSettingsOpenFor/);
 assert.match(readerToolbarSource, /isContextual \? 'contextual' : ''/);
 assert.match(readerToolbarSource, /onUpdateContextAnnotationSettings/);
 assert.match(readerToolbarSource, /onClearContextAnnotation/);

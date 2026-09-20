@@ -1,4 +1,4 @@
-import { type MouseEvent, type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, type MouseEvent, type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { zh } from '../../../ui/zh';
 import { outputScaleForViewport } from './pdfGeometry';
@@ -200,7 +200,7 @@ export function PdfPageView({
       {renderError && <div className="pdf-render-error" role="alert" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
         <span>{renderError}</span><button type="button" onClick={() => setRetryRevision((current) => current + 1)}>重新渲染本页</button>
       </div>}
-      <div className="pdf-render-layer" style={{ width: pageMeta.baseWidth * displayZoom, height: pageMeta.baseHeight * displayZoom }}>
+      <div className="pdf-render-layer" style={{ width: pageMeta.baseWidth * displayZoom, height: pageMeta.baseHeight * displayZoom, '--pdf-display-zoom': displayZoom } as CSSProperties}>
         <canvas ref={canvasRef} className="pdf-canvas-page ready" />
         <PdfTextLayer textItems={pageMeta.textItems} zoom={displayZoom} selectable={selectableText} />
         {annotationLayer}
