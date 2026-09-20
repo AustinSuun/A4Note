@@ -61,6 +61,13 @@ pub(crate) struct CreateAnnotationResult {
     pub(crate) id: String,
 }
 
+/// Additive create response: legacy callers may continue reading only `id`.
+#[derive(Debug, Serialize)]
+pub(crate) struct CreatedAnnotation {
+    pub(crate) id: String,
+    pub(crate) created_at: i64,
+}
+
 #[derive(Debug, Deserialize)]
 pub(crate) struct UpdateAnnotationCommentRequest {
     pub(crate) annotation_id: String,
@@ -88,11 +95,10 @@ pub(crate) struct DeleteAnnotationRequest {
 pub fn create_annotation(
     app: AppHandle,
     request: CreateAnnotationRequest,
-) -> Result<CreateAnnotationResult, String> {
+) -> Result<CreatedAnnotation, String> {
     let _access = crate::library_access::operation()?;
     let root = app_data_root(&app)?;
-    let id = insert_annotation(&root.join("aster.db"), &request)?;
-    Ok(CreateAnnotationResult { id })
+    insert_annotation_with_timestamp(&root.join("aster.db"), &request)
 }
 
 #[tauri::command]
@@ -164,6 +170,13 @@ pub(crate) fn insert_annotation(
     database_path: &Path,
     request: &CreateAnnotationRequest,
 ) -> Result<String, String> {
+    insert_annotation_with_timestamp(database_path, request).map(|created| created.id)
+}
+
+fn insert_annotation_with_timestamp(
+    database_path: &Path,
+    request: &CreateAnnotationRequest,
+) -> Result<CreatedAnnotation, String> {
     initialize_database(database_path)?;
     let connection = Connection::open(database_path).map_err(|error| error.to_string())?;
     let now = current_timestamp_ms();
@@ -175,7 +188,7 @@ pub(crate) fn insert_annotation(
             params![id, request.paper_id, request.file_id, request.page, request.annotation_type, request.quote, request.comment, request.color, request.position_json, now, now],
         )
         .map_err(|error| error.to_string())?;
-    Ok(id)
+    Ok(CreatedAnnotation { id, created_at: now })
 }
 
 pub(crate) fn restore_annotation_in_database(
@@ -322,4 +335,47 @@ pub(crate) fn list_annotations_for_paper(
         annotations.push(row.map_err(|error| error.to_string())?);
     }
     Ok(annotations)
+}
+
+#[cfg(test)]
+mod timestamp_tests {
+    use super::*;
+
+    #[test]
+    fn create_response_matches_database_and_restore_for_all_tools() {
+        let root = std::env::temp_dir().join(format!("a4note-created-time-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let db = root.join("test.sqlite");
+        initialize_database(&db).unwrap();
+        let seed = Connection::open(&db).unwrap();
+        seed.execute("INSERT INTO papers(id,title,created_at,updated_at) VALUES ('synthetic-paper','Synthetic timestamp test',1,1)", []).unwrap();
+        seed.execute("INSERT INTO paper_files(id,paper_id,type,path,created_at) VALUES ('synthetic-file','synthetic-paper','source_pdf','/synthetic/test.pdf',1)", []).unwrap();
+        drop(seed);
+        for kind in ["highlight", "underline", "text", "rect", "arrow", "ink"] {
+            let request = CreateAnnotationRequest {
+                paper_id: "synthetic-paper".into(), file_id: "synthetic-file".into(),
+                page: 1, annotation_type: kind.into(), quote: "timestamp fixture".into(),
+                comment: "synthetic only".into(), color: "blue".into(), position_json: "{}".into(),
+            };
+            let created = insert_annotation_with_timestamp(&db, &request).unwrap();
+            let connection = Connection::open(&db).unwrap();
+            let stored: i64 = connection.query_row("SELECT created_at FROM annotations WHERE id=?1", [&created.id], |r| r.get(0)).unwrap();
+            assert_eq!(created.created_at, stored);
+            let payload = serde_json::to_value(&created).unwrap();
+            assert_eq!(payload["id"], created.id);
+            assert_eq!(payload["created_at"], stored);
+            for _ in 0..3 {
+                delete_annotation_in_database(&db, &DeleteAnnotationRequest { annotation_id: created.id.clone() }).unwrap();
+                restore_annotation_in_database(&db, &RestoreAnnotationRequest {
+                    annotation_id: created.id.clone(), paper_id: request.paper_id.clone(), file_id: request.file_id.clone(),
+                    page: 1, annotation_type: kind.into(), quote: request.quote.clone(), comment: request.comment.clone(),
+                    color: request.color.clone(), position_json: request.position_json.clone(), created_at: created.created_at,
+                }).unwrap();
+                let restored: i64 = connection.query_row("SELECT created_at FROM annotations WHERE id=?1", [&created.id], |r| r.get(0)).unwrap();
+                assert_eq!(restored, stored);
+            }
+            assert!(insert_annotation_with_timestamp(&root, &request).is_err());
+        }
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }

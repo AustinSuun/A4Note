@@ -171,7 +171,7 @@ export function useAnnotationHistory({
         createdId = created.id;
         paper = requirePaper(owner);
         if (!paper.annotations.some(item => item.id === created.id)) {
-          paper.annotations = [...paper.annotations, { id: created.id, paperId: owner.paperId, fileId, ...draft, createdAt: new Date().toISOString() }]
+          paper.annotations = [...paper.annotations, { id: created.id, paperId: owner.paperId, fileId, ...draft, createdAt: new Date(created.created_at).toISOString() }]
             .sort((a, b) => a.page - b.page || (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
         }
       } else {

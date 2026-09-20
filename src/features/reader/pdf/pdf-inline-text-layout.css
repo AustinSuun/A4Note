@@ -1,0 +1,13 @@
+/* A textarea's scrollHeight includes its own padding, not its parent's padding.
+ * Keep the old total text inset (5+4, 7+6), but move it inside the measured box.
+ * Edit and display must share width, wrapping, font metrics, and box sizing. */
+.annotation-overlay .annotation-mark.text { padding: 0; }
+.annotation-overlay .annotation-mark.text > .inline-text-editor,
+.annotation-overlay .annotation-mark.text > .sticky-note-content {
+  box-sizing: border-box;
+  padding: 9px 13px;
+  line-height: 1.25;
+}
+/* Legacy or deliberately manually shortened rectangles retain their geometry;
+ * make overflow accessible rather than silently cutting off saved text. */
+.annotation-overlay .annotation-mark.text > .sticky-note-content { overflow: auto; }

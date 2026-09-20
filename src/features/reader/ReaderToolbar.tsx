@@ -1,3 +1,4 @@
+import { HighlightAppearanceControl } from './HighlightAppearanceControl';
 import { useEffect, useState, type CSSProperties, type WheelEvent as ReactWheelEvent } from 'react';
 import { ReaderToolbarPortal } from './ReaderToolbarPortal';
 import { ReaderAnnotationDock } from './ReaderAnnotationDock';
@@ -316,6 +317,8 @@ function ToolOptionsBar({
         />
       )}
 
+      {tool === 'highlight' && <HighlightAppearanceControl />}
+
       {tool === 'ink' && (
         <>
           <ThicknessOption
@@ -389,7 +392,7 @@ function ToolOptionsBar({
             value={toolSettings.arrowStrokeWidth}
             min={ARROW_STROKE_MIN}
             max={ARROW_STROKE_MAX}
-            step={0.2}
+            step={0.1}
             onChange={(arrowStrokeWidth) => onToolSettingsChange({ ...toolSettings, arrowStrokeWidth })}
           />
           <div className="tool-option-block">

@@ -848,9 +848,9 @@ export function TaskBoard({
                     <TaskEventTimeline task={detail} agents={snapshot?.agents ?? []} />
                     </section>
                     <section hidden={detailSection !== 'evidence'} aria-label="验收与证据工作区">
+                    <TaskReviewSummary key={`${snapshot?.project.id}:${detail.id}`} task={detail} client={client} agents={snapshot?.agents ?? []}/>
                     <TaskAcceptancePanel key={`${snapshot?.project.id}:${detail.id}:${detail.revision}`} task={detail}
                       state={acceptance} enabled={snapshot?.capabilities?.acceptance === true} busy={busy} onAction={acceptanceAction} />
-                    <TaskReviewSummary key={`${snapshot?.project.id}:${detail.id}`} task={detail} client={client} agents={snapshot?.agents ?? []}/>
                     <details><summary>管理任务附件（粘贴、上传与替代）</summary>
                     <div className="tb-section-title">
                       <h3>

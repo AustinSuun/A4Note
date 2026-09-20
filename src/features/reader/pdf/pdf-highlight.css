@@ -1,0 +1,21 @@
+/* Keep blending on the PDF bitmap, not on the isolated hit-target container. */
+.pdf-render-layer { isolation: isolate; }
+.pdf-highlight-paint { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; overflow: hidden; }
+.annotation-overlay .annotation-mark.highlight {
+  /* Custom-color inline fills remain in legacy marks; only this paint layer owns fill. */
+  background: transparent !important;
+  mix-blend-mode: normal !important;
+  opacity: 1;
+  outline: none;
+}
+.annotation-overlay .annotation-mark.highlight:hover { box-shadow: 0 0 0 1px var(--accent, #4d836b); }
+.annotation-overlay .annotation-mark.highlight.focused { box-shadow: 0 0 0 2px var(--accent, #4d836b); }
+.highlight-appearance-control { display: grid; gap: 8px; min-width: 0; }
+.highlight-appearance-control label { display: grid; gap: 5px; }
+.highlight-appearance-control input[type="range"], .highlight-appearance-control select { width: 100%; min-width: 0; }
+.highlight-appearance-control small { white-space: normal; line-height: 1.5; color: var(--muted); }
+@supports not (mix-blend-mode: multiply) { .pdf-highlight-paint { mix-blend-mode: normal !important; } }
+@media (forced-colors: active) {
+  .pdf-highlight-paint { opacity: 1 !important; mix-blend-mode: normal !important; }
+  .pdf-highlight-paint rect { fill: none !important; stroke: Highlight; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+}

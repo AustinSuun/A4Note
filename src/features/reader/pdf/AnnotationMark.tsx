@@ -1,4 +1,4 @@
-import { memo, useState, type ComponentProps, type CSSProperties, type MouseEvent } from 'react';
+import { memo, useState, type ComponentProps, type CSSProperties, type FormEvent, type MouseEvent } from 'react';
 import type { AnnotationColor, PositionJson } from '../../../core/types';
 import { zh } from '../../../ui/zh';
 import { annotationColorInputValue, toolColorPresets } from '../readerConstants';
@@ -26,6 +26,12 @@ function AnnotationMarkView({
   onAppendAnnotationToNote,
   focused,
   eraserActive,
+  editing = false,
+  editText = '',
+  onInlineTextChange,
+  onInlineTextResize,
+  onCommitInlineText,
+  onCancelInlineText,
 }: {
   annotation: AnnotationMarkModel;
   draft?: boolean;
@@ -38,17 +44,35 @@ function AnnotationMarkView({
   onAppendAnnotationToNote?: (annotationId: string) => void;
   focused?: boolean;
   eraserActive?: boolean;
+  editing?: boolean;
+  editText?: string;
+  onInlineTextChange?: (text: string) => void;
+  onInlineTextResize?: (height: number) => void;
+  onCommitInlineText?: () => void;
+  onCancelInlineText?: () => void;
 }) {
   const [colorPaletteOpen, setColorPaletteOpen] = useState(false);
   const segments = annotationSegments(annotation.positionJson);
   const annotationId = annotation.id;
   const isTextBox = annotation.type === 'comment' || annotation.type === 'text';
+  const isInlineEditing = editing && annotation.type === 'text';
   const isMovable = isTextBox || annotation.type === 'rect';
   const isResizable = annotation.type === 'rect' || annotation.type === 'text';
   const customColorStyle = annotation.color.startsWith('#') ? annotationCustomColorStyle(annotation.type, annotation.color) : undefined;
 
+  const handleInlineTextInput = (event: FormEvent<HTMLTextAreaElement>) => {
+    onInlineTextChange?.(event.currentTarget.value);
+    const pageElement = event.currentTarget.closest<HTMLElement>('.pdf-page');
+    const pageHeight = pageElement?.getBoundingClientRect().height ?? 0;
+    if (pageHeight > 0) {
+      const minimumHeight = numberValue(annotation.positionJson.height, 7);
+      const contentHeight = ((event.currentTarget.scrollHeight + 2) / pageHeight) * 100;
+      onInlineTextResize?.(Math.max(minimumHeight, contentHeight));
+    }
+  };
+
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
-    if (!annotation.id) return;
+    if (!annotation.id || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     if (isMovable && !eraserActive) {
@@ -57,7 +81,7 @@ function AnnotationMarkView({
   };
 
   const handleMouseUp = (event: MouseEvent<HTMLDivElement>) => {
-    if (!annotation.id) return;
+    if (!annotation.id || event.button !== 0) return;
     event.preventDefault();
     if (!isMovable) {
       event.stopPropagation();
@@ -183,6 +207,7 @@ function AnnotationMarkView({
             className={`annotation-resize-handle ${handle}`}
             aria-label={`从${handle}方向调整大小`}
             onMouseDown={(event) => {
+              if (event.button !== 0) return;
               event.preventDefault();
               event.stopPropagation();
               onBeginAnnotationResize?.(annotationId, annotation.page, handle, event);
@@ -268,7 +293,7 @@ function AnnotationMarkView({
       {segments.map((segment, index) => (
         <div
           key={`${annotation.id ?? annotation.quote}-${index}`}
-          className={`annotation-mark ${annotation.type} ${annotation.color} ${annotation.type === 'rect' ? `${shapeKindFromPosition(annotation.positionJson)} ${Boolean(annotation.positionJson.fillEnabled) ? 'filled' : 'outline'}` : ''} ${draft ? 'draft' : ''} ${focused ? 'focused' : ''}`.trim()}
+          className={`annotation-mark ${annotation.type} ${annotation.color} ${annotation.type === 'rect' ? `${shapeKindFromPosition(annotation.positionJson)} ${Boolean(annotation.positionJson.fillEnabled) ? 'filled' : 'outline'}` : ''} ${draft ? 'draft' : ''} ${focused ? 'focused' : ''} ${isInlineEditing ? 'editing' : ''}`.trim()}
           title={annotation.comment || annotation.quote}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
@@ -287,17 +312,53 @@ function AnnotationMarkView({
           }
         >
           {isTextBox && (
-            <div
-              className="sticky-note-content"
-              style={{
-                fontSize: `${numberValue(annotation.positionJson.fontSize, 13)}px`,
-                fontWeight: Boolean(annotation.positionJson.bold) ? 700 : 500,
-                fontStyle: Boolean(annotation.positionJson.italic) ? 'italic' : 'normal',
-                color: String(annotation.positionJson.textColor ?? '#202822'),
-              }}
-            >
-              {annotation.comment || annotation.quote || (annotation.type === 'text' ? zh.reader.textLabel : zh.reader.commentAnnotation)}
-            </div>
+            isInlineEditing ? (
+              <textarea
+                className="inline-text-editor"
+                aria-label="文本框内容"
+                autoFocus
+                value={editText}
+                placeholder={zh.reader.textLabel}
+                spellCheck={false}
+                style={{
+                  fontSize: `${numberValue(annotation.positionJson.fontSize, 13)}px`,
+                  fontWeight: Boolean(annotation.positionJson.bold) ? 700 : 500,
+                  fontStyle: Boolean(annotation.positionJson.italic) ? 'italic' : 'normal',
+                  color: String(annotation.positionJson.textColor ?? '#202822'),
+                }}
+                onInput={handleInlineTextInput}
+                onBlur={() => onCommitInlineText?.()}
+                onKeyDown={(event) => {
+                  // Let the IME finish/cancel its composition before acting on
+                  // annotation shortcuts (229 covers legacy WebView IME events).
+                  if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onCancelInlineText?.();
+                  } else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onCommitInlineText?.();
+                  }
+                }}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+                onDoubleClick={(event) => event.stopPropagation()}
+              />
+            ) : (
+              <div
+                className="sticky-note-content"
+                style={{
+                  fontSize: `${numberValue(annotation.positionJson.fontSize, 13)}px`,
+                  fontWeight: Boolean(annotation.positionJson.bold) ? 700 : 500,
+                  fontStyle: Boolean(annotation.positionJson.italic) ? 'italic' : 'normal',
+                  color: String(annotation.positionJson.textColor ?? '#202822'),
+                }}
+              >
+                {annotation.comment || annotation.quote || (annotation.type === 'text' ? zh.reader.textLabel : zh.reader.commentAnnotation)}
+              </div>
+            )
           )}
           {index === 0 ? resizeControls : null}
           {index === 0 ? inlineActions : null}
@@ -307,10 +368,11 @@ function AnnotationMarkView({
   );
 }
 
-const MemoAnnotationMark = memo(AnnotationMarkView, (previous, next) => previous.annotation === next.annotation
-  && previous.draft === next.draft
-  && previous.focused === next.focused
-  && previous.eraserActive === next.eraserActive);
+// React's shallow comparison includes controlled editing props AND callbacks.
+// Ignoring changed handlers retains closures from an earlier edit/document.
+// Stable props still skip rendering; do not suppress updates by comparing only
+// the persisted annotation object.
+const MemoAnnotationMark = memo(AnnotationMarkView);
 
 export function AnnotationMark(props: ComponentProps<typeof AnnotationMarkView>) {
   return <MemoAnnotationMark {...props} />;

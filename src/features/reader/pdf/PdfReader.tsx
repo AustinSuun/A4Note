@@ -35,6 +35,7 @@ import type {
   CommentPopover,
   DraftAnnotationPreview,
   DragDraft,
+  InlineTextEditor,
   InkDraft,
   PageMeta,
   PdfScrollAnchor,
@@ -118,6 +119,11 @@ export default function PdfReader({
   const inkPointerIdRef = useRef<number | null>(null);
   const inkPointerTargetRef = useRef<HTMLDivElement | null>(null);
   const [commentPopover, setCommentPopover] = useState<CommentPopover | null>(null);
+  const [inlineTextEditor, setInlineTextEditor] = useState<InlineTextEditor | null>(null);
+  const inlineTextSavingRef = useRef(false);
+  // Escape removes the controlled textarea before the browser's trailing blur;
+  // block that blur from committing the text the user explicitly cancelled.
+  const inlineTextCommitBlockedRef = useRef(false);
   const [stickyDrag, setStickyDrag] = useState<StickyDrag | null>(null);
   const [annotationResize, setAnnotationResize] = useState<AnnotationResize | null>(null);
   const [stickyDragPreview, setStickyDragPreview] = useState<StickyDragPreview | null>(null);
@@ -282,6 +288,9 @@ export default function PdfReader({
     inkDraftRef.current = null;
     setInkDraft(null);
     setCommentPopover(null);
+    setInlineTextEditor(null);
+    inlineTextSavingRef.current = false;
+    inlineTextCommitBlockedRef.current = false;
     commentSavingRef.current = false; setCommentSaving(false); setCommentSaveError('');
     setStickyDrag(null);
     setAnnotationResize(null);
@@ -830,6 +839,28 @@ export default function PdfReader({
     if (!point) return;
     const rect = pdfCoordinateLayer(event.currentTarget).getBoundingClientRect();
     const annotationType = activeTool === 'text' ? 'text' : 'comment';
+    if (annotationType === 'text') {
+      setCommentPopover(null);
+      inlineTextCommitBlockedRef.current = false;
+      setInlineTextEditor({
+        page: pageNumber,
+        text: '',
+        positionJson: {
+          x: point.x,
+          y: point.y,
+          width: 22,
+          height: 7,
+          fontSize: toolSettings.textFontSize,
+          bold: toolSettings.textBold,
+          italic: toolSettings.textItalic,
+          textColor: toolSettings.textColor,
+          borderColor: toolSettings.textBorderColor,
+          backgroundColor: toolSettings.textBackgroundColor,
+        },
+      });
+      onCompleteOneShotTool?.();
+      return;
+    }
     setCommentPopover({
       annotationType,
       page: pageNumber,
@@ -837,15 +868,14 @@ export default function PdfReader({
       y: point.y,
       leftPx: event.clientX - rect.left,
       topPx: event.clientY - rect.top,
-      text: annotationType === 'text' ? zh.reader.textLabel : '',
-      fontSize: annotationType === 'text' ? toolSettings.textFontSize : 13,
-      bold: annotationType === 'text' ? toolSettings.textBold : false,
-      italic: annotationType === 'text' ? toolSettings.textItalic : false,
-      textColor: annotationType === 'text' ? toolSettings.textColor : '#202822',
-      borderColor: annotationType === 'text' ? toolSettings.textBorderColor : '#ffffff',
-      backgroundColor: annotationType === 'text' ? toolSettings.textBackgroundColor : '#fff4b8',
+      text: '',
+      fontSize: 13,
+      bold: false,
+      italic: false,
+      textColor: '#202822',
+      borderColor: '#ffffff',
+      backgroundColor: '#fff4b8',
     });
-    if (annotationType === 'text') onCompleteOneShotTool?.();
   };
 
   const editStickyAnnotation = (annotation: AnnotationMarkModel, event: MouseEvent<HTMLElement>) => {
@@ -856,6 +886,17 @@ export default function PdfReader({
     const rect = layer?.getBoundingClientRect();
     setFocusedAnnotationId(annotation.id);
     onFocusAnnotation?.(annotation.id);
+    if (annotation.type === 'text') {
+      setCommentPopover(null);
+      inlineTextCommitBlockedRef.current = false;
+      setInlineTextEditor({
+        annotationId: annotation.id,
+        page: annotation.page,
+        text: annotation.comment || annotation.quote || '',
+        positionJson: clonePositionJson(annotation.positionJson),
+      });
+      return;
+    }
     setCommentPopover({
       annotationType: annotation.type,
       annotationId: annotation.id,
@@ -870,7 +911,7 @@ export default function PdfReader({
       italic: Boolean(annotation.positionJson.italic),
       textColor: String(annotation.positionJson.textColor ?? '#202822'),
       borderColor: String(annotation.positionJson.borderColor ?? '#ffffff'),
-      backgroundColor: String(annotation.positionJson.backgroundColor ?? (annotation.type === 'text' ? 'transparent' : '#fff4b8')),
+      backgroundColor: String(annotation.positionJson.backgroundColor ?? '#fff4b8'),
       positionJson: clonePositionJson(annotation.positionJson),
     });
   };
@@ -905,6 +946,35 @@ export default function PdfReader({
       if (sourceKeyRef.current === key) setCommentSaveError(`保存失败，内容已保留，请重试：${error instanceof Error ? error.message : String(error)}`);
     } finally {
       if (sourceKeyRef.current === key) { commentSavingRef.current = false; setCommentSaving(false); }
+    }
+  };
+
+  const saveInlineText = async () => {
+    if (!inlineTextEditor || inlineTextSavingRef.current || inlineTextCommitBlockedRef.current) return;
+    const snapshot = inlineTextEditor;
+    const key = source.key;
+    const position = { ...snapshot.positionJson };
+    const text = snapshot.text.trim() || zh.reader.textLabel;
+    inlineTextSavingRef.current = true;
+    try {
+      const saved = await saves.run('保存文本框', async () => {
+        if (snapshot.annotationId) {
+          await onUpdateAnnotationPosition(snapshot.annotationId, position);
+          await onUpdateAnnotationComment(snapshot.annotationId, text);
+        } else {
+          await onCreateAnnotation({
+            ...buildAnnotationDraft('text', position, activeAnnotationColor),
+            page: snapshot.page,
+            comment: text,
+          });
+        }
+      }, undefined, snapshot.annotationId);
+      if (saved && sourceKeyRef.current === key) {
+        inlineTextCommitBlockedRef.current = true;
+        setInlineTextEditor((current) => current === snapshot ? null : current);
+      }
+    } finally {
+      inlineTextSavingRef.current = false;
     }
   };
 
@@ -1062,6 +1132,16 @@ export default function PdfReader({
                   onDeleteAnnotation={id => { void saves.run('删除标注', async () => onDeleteAnnotation(id), undefined, id); }}
                   onAppendAnnotationToNote={onAppendAnnotationToNote}
                   focusedAnnotationId={focusedAnnotationId}
+                  inlineTextEditor={inlineTextEditor?.page === page.pageNumber ? inlineTextEditor : null}
+                  onInlineTextChange={(text) => setInlineTextEditor((current) => current ? { ...current, text } : current)}
+                  onInlineTextResize={(height) => setInlineTextEditor((current) => current ? { ...current, positionJson: { ...current.positionJson, height: Math.max(Number(current.positionJson.height ?? 0), height) } } : current)}
+                  onCommitInlineText={saveInlineText}
+                  onCancelInlineText={() => {
+                    if (!inlineTextSavingRef.current) {
+                      inlineTextCommitBlockedRef.current = true;
+                      setInlineTextEditor(null);
+                    }
+                  }}
                 />
               }
             />

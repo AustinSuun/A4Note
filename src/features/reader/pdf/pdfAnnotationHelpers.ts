@@ -20,14 +20,17 @@ export function highlightPositionStyle(position: PositionJson) {
   const x = numberValue(position.x, 18);
   const y = numberValue(position.y, 28);
   const width = numberValue(position.width, 42);
-  const height = Math.max(numberValue(position.height, 5), 0.85);
-  const inset = Math.min(Math.max(height * 0.1, 0.08), 0.28);
-  const bottomBleed = Math.min(Math.max(height * 0.08 + 0.1, 0.18), 0.32);
+  // Selection rectangles already carry the PDF text run's real height. Keep
+  // the correction proportional so small captions do not get a fixed-height
+  // highlight while large display text still has a little breathing room.
+  const height = Math.max(numberValue(position.height, 5), 0.2);
+  const inset = Math.min(Math.max(height * 0.04, 0.015), 0.12);
+  const bottomBleed = Math.min(Math.max(height * 0.04, 0.02), 0.14);
   return {
     left: `${x}%`,
     top: `${y + inset}%`,
     width: `${width}%`,
-    height: `${Math.max(height - inset + bottomBleed, 0.68)}%`,
+    height: `${Math.max(height - inset + bottomBleed, height * 0.96)}%`,
   };
 }
 
@@ -35,9 +38,9 @@ export function underlinePositionStyle(position: PositionJson) {
   const x = numberValue(position.x, 18);
   const y = numberValue(position.y, 28);
   const width = numberValue(position.width, 42);
-  const height = Math.max(numberValue(position.height, 5), 0.7);
-  const lineHeight = Math.min(Math.max(height * 0.14, 0.32), 0.72);
-  const baselineGap = Math.min(Math.max(height * 0.1, 0.12), 0.24);
+  const height = Math.max(numberValue(position.height, 5), 0.2);
+  const lineHeight = Math.min(Math.max(height * 0.1, 0.04), 0.5);
+  const baselineGap = Math.min(Math.max(height * 0.06, 0.03), 0.16);
   const baselineTop = y + height + baselineGap;
   return {
     left: `${x}%`,
@@ -51,6 +54,9 @@ export function annotationCustomColorStyle(type: AnnotationType, color: string) 
   if (type === 'underline' || type === 'ink' || type === 'arrow') {
     return { background: color };
   }
+  if (type === 'highlight') {
+    return { background: `${color}73`, mixBlendMode: 'multiply' as const };
+  }
   if (type === 'area' || type === 'rect' || type === 'text') {
     return { outlineColor: color, background: `${color}2a` };
   }
@@ -63,7 +69,7 @@ export function annotationCustomColorStyle(type: AnnotationType, color: string) 
 export function buildAnnotationDraft(type: AnnotationType, position: PositionJson, color: AnnotationColor = annotationColor(type)): AnnotationDraft {
   const finalPosition =
     type === 'underline'
-      ? { ...position, height: Math.max(numberValue(position.height, 0), 0.9) }
+      ? { ...position, height: Math.max(numberValue(position.height, 0), 0.2) }
       : type === 'comment' || type === 'text'
         ? { ...position, width: numberValue(position.width, 18), height: numberValue(position.height, 8) }
         : position;

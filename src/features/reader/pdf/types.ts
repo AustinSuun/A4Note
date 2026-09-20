@@ -129,6 +129,13 @@ export type CommentPopover = {
   positionJson?: PositionJson;
 };
 
+export type InlineTextEditor = {
+  annotationId?: string;
+  page: number;
+  text: string;
+  positionJson: PositionJson;
+};
+
 export type StickyDrag = {
   annotationId: string;
   page: number;
