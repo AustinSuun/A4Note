@@ -196,7 +196,7 @@ export function ProjectSidebar({
           aria-hidden={!workspaceSidebarVisible}
         >
           <div className="workbench-sidebar-file-tree">
-            {contextualSidebar ?? <p className="workbench-sidebar-hint">{labels.fileTreeNeedsFolder}</p>}
+            {workspaceSidebarVisible && (contextualSidebar ?? <p className="workbench-sidebar-hint">{labels.fileTreeNeedsFolder}</p>)}
           </div>
         </section>
         <div className="workbench-sidebar-view workbench-sidebar-navigator" aria-hidden={workspaceSidebarVisible}>
@@ -293,7 +293,7 @@ export function ProjectSidebar({
           })}
         </ul>
       </section>
-      {contextualSidebar && (
+      {!workspaceSidebarVisible && contextualSidebar && (
         <section className="workbench-sidebar-section workbench-sidebar-context" aria-label={contextualSidebarLabel ?? '当前场景'}>
           <header className="workbench-sidebar-context-header">
             <strong>{contextualSidebarLabel ?? '当前场景'}</strong>

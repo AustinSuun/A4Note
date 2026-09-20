@@ -49,6 +49,7 @@ try {
   await patchRelativeImports(join(outDir, 'core/aiPlugin.js'));
   await patchRelativeImports(join(outDir, 'core/libraryPlugin.js'));
   await patchRelativeImports(join(outDir, 'core/markdownPlugin.js'));
+  await patchRelativeImports(join(outDir, 'core/taskBoardPlugin.js'));
   await patchRelativeImports(join(outDir, 'core/aiProviders.js'));
   await patchRelativeImports(join(outDir, 'core/relations.js'));
   await patchRelativeImports(join(outDir, 'platform/nativeApi.js'));
@@ -84,19 +85,19 @@ try {
 
   assert.deepEqual(
     aster.scenes.list().map((scene) => scene.id),
-    ['overview', 'library', 'reader', 'aiChat', 'markdown'],
+    ['overview', 'library', 'reader', 'aiChat', 'markdown', 'tasks'],
   );
-  for (const pluginId of ['overview.core', 'library.core', 'reader.core', 'ai.core', 'markdown.core']) {
+  for (const pluginId of ['overview.core', 'library.core', 'reader.core', 'ai.core', 'markdown.core', 'tasks.core']) {
     assert.ok(aster.plugins.has(pluginId), `built-in scene plugin missing: ${pluginId}`);
   }
   assert.deepEqual(
     aster.sceneViews.list().map((view) => view.id),
-    ['ai.core.view', 'library.core.view', 'markdown.core.view', 'overview.core.view', 'reader.core.view'],
+    ['ai.core.view', 'library.core.view', 'markdown.core.view', 'overview.core.view', 'reader.core.view', 'tasks.core.view'],
     'every built-in scene must expose a live view contribution',
   );
   assert.deepEqual(
     aster.sceneSidebars.list().map((sidebar) => sidebar.id),
-    ['ai.sessions', 'library.documents', 'markdown.files', 'reader.documents'],
+    ['ai.sessions', 'library.documents', 'markdown.files', 'reader.documents', 'tasks.projects'],
     'every contextual scene must expose its live sidebar contribution',
   );
   assert.equal(aster.setPluginEnabled('overview.core', false), true);
@@ -108,16 +109,21 @@ try {
     assert.match(scene.source, /^plugin:/, `scene ${scene.id} must be registered through a plugin`);
   }
   assert.equal(aster.scenes.list().find((scene) => scene.id === 'reader').supportsOpenItems, true);
-  for (const sceneId of ['library', 'reader', 'aiChat', 'markdown']) {
+  for (const sceneId of ['library', 'reader', 'aiChat', 'markdown', 'tasks']) {
     assert.equal(aster.scenes.list().find((scene) => scene.id === sceneId).sidebarMode, 'workspace');
   }
   const emptySeedCore = core.createAsterCore([], [], repository);
-  assert.deepEqual(emptySeedCore.scenes.list().map((scene) => scene.id), ['overview', 'library', 'reader', 'aiChat', 'markdown']);
+  assert.deepEqual(emptySeedCore.scenes.list().map((scene) => scene.id), ['overview', 'library', 'reader', 'aiChat', 'markdown', 'tasks']);
   assert.equal(aster.setPluginEnabled('reader.core', false), true);
   assert.equal(aster.scenes.list().some((scene) => scene.id === 'reader'), false);
   assert.equal(aster.setPluginEnabled('reader.core', true), true);
   assert.equal(aster.scenes.list().some((scene) => scene.id === 'reader'), true);
   assert.ok(aster.plugins.has('markdown.core'));
+  assert.equal(aster.setPluginEnabled('tasks.core', false), true);
+  assert.equal(aster.sceneViews.list().some((view) => view.sceneId === 'tasks'), false);
+  assert.equal(aster.setPluginEnabled('tasks.core', true), true);
+  assert.equal(aster.sceneViews.list().some((view) => view.id === 'tasks.core.view'), true);
+  assert.equal(aster.scenes.list().find((scene) => scene.id === 'tasks').label, '任务');
   assert.ok(aster.commands.list().some((command) => command.id === 'document.importFromDraft'));
   assert.ok(aster.metadataSources.has('crossref'));
   assert.ok(aster.metadataSources.has('arxiv'));

@@ -1,0 +1,9 @@
+.tb-review-summary { min-width: 0; font-size: var(--ui-control-font-size, 14px); line-height: 1.6; }
+.tb-review-summary header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tb-review-summary h3 { margin: 0; flex: 1; font-size: 18px; }
+.tb-review-summary h4 { margin: 16px 0 8px; font-size: 15px; }
+.tb-review-summary pre, .tb-review-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.tb-review-summary details { margin: 12px 0; }
+.tb-review-summary summary { cursor: pointer; font-weight: 600; }
+.tb-review-summary button { color: inherit; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+.tb-review-caution { color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; margin: 10px 0; }

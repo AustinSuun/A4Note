@@ -4,7 +4,6 @@
 //! Command bodies belong to their domain modules. `agent_cli` has no Tauri;
 //! `agent_bridge` joins the two but never accesses SQLite. Agent history
 //! commands remain on the database side in `state_commands` (CLI-4).
-
 mod agent_bridge;
 pub mod agent_cli;
 mod agent_history;
@@ -27,6 +26,7 @@ mod library_state;
 mod pdf_metadata;
 mod plugin_sandbox;
 mod project_commands;
+mod project_tasks;
 mod resource_annotations;
 mod state_commands;
 mod sync_commands;
@@ -40,7 +40,6 @@ mod library_tests;
 mod startup_tests;
 #[cfg(test)]
 mod integrity_tests;
-
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -61,6 +60,7 @@ pub fn run() {
             capture::capture_control,
             app_paths::reveal_aster_path,
             project_commands::describe_project_folder,
+            project_tasks::start_project_tasks,
             project_commands::list_directory_entries,
             project_commands::reveal_path,
             project_commands::open_path_external,

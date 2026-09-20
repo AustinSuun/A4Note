@@ -53,7 +53,21 @@
     },
     "resources": {
       "resources/native-host/a4note-native-host.exe": "native-host/a4note-native-host.exe",
-      "resources/native-host/host-manifest.json": "native-host/app.aster.research.capture.json"
+      "resources/native-host/host-manifest.json": "native-host/app.aster.research.capture.json",
+      "../apps/project-tasks/bootstrap.mjs": "project-tasks/bootstrap.mjs",
+      "../apps/project-tasks/gateway.mjs": "project-tasks/gateway.mjs",
+      "../apps/project-tasks/gateway-bootstrap.mjs": "project-tasks/gateway-bootstrap.mjs",
+      "../apps/project-tasks/lib/acceptance-policy.mjs": "project-tasks/lib/acceptance-policy.mjs",
+      "../apps/project-tasks/lib/acceptance-store.mjs": "project-tasks/lib/acceptance-store.mjs",
+      "../apps/project-tasks/lib/data-dir.mjs": "project-tasks/lib/data-dir.mjs",
+      "../apps/project-tasks/lib/acceptance-fixtures-cli.mjs": "project-tasks/lib/acceptance-fixtures-cli.mjs",
+      "../apps/project-tasks/lib/acceptance-fixtures.mjs": "project-tasks/lib/acceptance-fixtures.mjs",
+      "../apps/project-tasks/lib/project-onboarding.mjs": "project-tasks/lib/project-onboarding.mjs",
+      "../apps/project-tasks/server.mjs": "project-tasks/server.mjs",
+      "../apps/project-tasks/lib/store.mjs": "project-tasks/lib/store.mjs",
+      "../apps/project-tasks/lib/agent-client.mjs": "project-tasks/lib/agent-client.mjs",
+      "../apps/project-tasks/cli.mjs": "project-tasks/cli.mjs",
+      "../apps/project-tasks/mcp.mjs": "project-tasks/mcp.mjs"
     },
     "createUpdaterArtifacts": true
   },

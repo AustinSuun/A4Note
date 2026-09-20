@@ -1,0 +1,26 @@
+.tb-titlebar-actions { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; width: 100%; overflow: hidden; }
+/* Only the real controls opt out of the titlebar drag region; the blank strip between
+   them must stay draggable so the window can still be moved. */
+.tb-titlebar-actions button, .tb-titlebar-actions .tb-stage-nav { -webkit-app-region: no-drag; }
+.workbench-topbar:has(.tb-titlebar-actions) > .workbench-breadcrumb { flex: 0 1 auto; }
+.workbench-topbar > .workbench-document-controls:has(.tb-titlebar-actions) { flex: 1 1 auto; min-width: 0; }
+.tb-titlebar-actions > .tb-stage-nav { margin-right: auto; }
+@media (max-width: 1050px) { .tb-titlebar-actions > .tb-titlebar-project { display: none; } }
+.tb-titlebar-actions button { flex: 0 0 auto; min-height: 30px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--surface); font: inherit; font-size: var(--ui-control-font-size, 14px); white-space: nowrap; cursor: pointer; }
+.tb-titlebar-actions button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+.tb-titlebar-actions button:disabled { opacity: .55; cursor: default; }
+.tb-titlebar-actions .tb-primary { background: var(--accent-strong); color: #fff; border-color: var(--accent-strong); }
+.tb-titlebar-actions .tb-connection { font-size: var(--ui-control-font-size, 14px); white-space: nowrap; }
+.tb-titlebar-actions .tb-connection.online { color: var(--accent-strong); }
+
+.tb-titlebar-project { color: var(--text); max-width: 14em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ui-control-font-size, 14px); }
+/* Keep the in-page fallback in non-shell previews. Hide redundant heading only when the portal succeeded. */
+.taskboard--connected:not(:has(.tb-header .tb-titlebar-actions)) .tb-header { display: none; }
+.taskboard:has(.tb-header .tb-titlebar-actions) .tb-stage-sidebar-toggle { display: none; }
+.taskboard .tb-stage-workspace[data-stage="all"] > .tb-stage-heading { display: none; }
+.taskboard .tb-stage-heading { padding: 6px 20px; }
+.taskboard .tb-stage-heading p { font-size: 14px; }
+/* 顶栏只保留流程切换与主操作：切换居左，主按钮靠右。 */
+.tb-titlebar-actions > .tb-primary { margin-left: auto; }
+/* 任务场景没有文档/工作区面包屑；不保留空占位，让流程切换贴近左侧。 */
+body:has(.taskboard--connected) .workbench-breadcrumb { display: none; }

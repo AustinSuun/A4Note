@@ -22,6 +22,7 @@ const steps = [
   ...(isWindows ? [['node', ['scripts/prepare-native-host.mjs', '--debug']]] : []),
   ['npm', ['run', 'build']],
   ['npm', ['run', 'test:core']],
+  ['npm', ['run', 'test:project-tasks']],
   ['npm', ['run', 'test:capture']],
   ['npm', ['run', 'test:extension-updates']],
   ['npm', ['run', 'test:capture-native']],

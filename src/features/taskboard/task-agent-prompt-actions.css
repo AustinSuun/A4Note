@@ -1,0 +1,57 @@
+.tb-agent-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.tb-agent-prompt-actions > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-color: var(--line);
+  background: var(--surface-soft, var(--surface));
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tb-agent-prompt-actions > button:hover {
+  color: var(--accent-strong);
+}
+
+.tb-agent-prompt-actions > button.is-copied {
+  border-color: var(--accent-strong);
+  background: var(--accent-soft, #edf6f0);
+  color: var(--accent-strong);
+}
+
+.tb-agent-prompt-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.tb-agent-prompt-error {
+  max-width: 12em;
+  overflow: hidden;
+  color: #b13c36;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1120px) {
+  .tb-agent-prompt-actions {
+    gap: 4px;
+  }
+
+  .tb-agent-prompt-actions > button {
+    padding-inline: 6px;
+  }
+
+  .tb-agent-prompt-icon {
+    display: none;
+  }
+}

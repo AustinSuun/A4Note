@@ -1,0 +1,103 @@
+/* 任务场景 · 非总览界面观感优化（覆盖层，不改动既有样式值）
+   1) 阶段视图收进圆角面板，与软件外框留出边距；
+   2) 任务行在白底面板上抬升为“卡片”：描边 + 双层投影 + 左侧阶段色轨 + 悬停轻抬；
+   3) 待验收右栏、空态、迁移提示同步成一套卡片语言；
+   4) 断连页收进卡片。总览（data-stage="all"）刻意不受影响。 */
+.taskboard .tb-stage-workspace:not([data-stage="all"]) {
+  margin: 10px 14px 14px;
+  background: #eef1ec;
+  border: 1px solid #e2e7e1;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px #19292008, 0 16px 34px -28px #16301f66;
+  overflow: hidden;
+}
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-heading {
+  padding: 12px 18px;
+  background: #fff;
+  border-bottom: 1px solid #e7ebe5;
+  border-radius: 16px 16px 0 0;
+}
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-heading > span {
+  background: #f4f6f2;
+  border: 1px solid #e2e7e1;
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-query {
+  margin: 10px 18px 0;
+}
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-layout {
+  padding: 14px 16px 16px;
+}
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-list {
+  gap: 12px;
+  align-content: start;
+}
+/* 任务行卡片：白面浮在浅槽上，辨识度靠描边/投影/色轨 */
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-row {
+  background: #fff;
+  border: 1px solid #dfe5e0;
+  border-left: 4px solid #a6afb7;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px #19292012, 0 10px 22px -16px #16301f55;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.taskboard .tb-stage-workspace[data-stage="backlog"] .tb-stage-row { border-left-color: #a6afb7; }
+.taskboard .tb-stage-workspace[data-stage="queued"] .tb-stage-row { border-left-color: #6f9479; }
+.taskboard .tb-stage-workspace[data-stage="in_progress"] .tb-stage-row { border-left-color: #5c89ca; }
+.taskboard .tb-stage-workspace[data-stage="review"] .tb-stage-row { border-left-color: #d7a64f; }
+.taskboard .tb-stage-workspace[data-stage="archived"] .tb-stage-row { border-left-color: #72a481; }
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-row:hover {
+  transform: translateY(-1px);
+  border-color: #cfd8d1;
+  box-shadow: 0 2px 4px #19292018, 0 14px 26px -16px #16301f88;
+}
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-row.is-selected {
+  outline: 2px solid var(--tb-accent, #32735a);
+  outline-offset: -2px;
+  box-shadow: 0 0 0 1px var(--tb-accent, #32735a), 0 12px 24px -16px #16301f88;
+}
+/* 待验收：右栏证据面板同样抬升，并跟随滚动 */
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-review {
+  background: #fff;
+  border: 1px solid #dfe5e0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px #19292012, 0 10px 22px -16px #16301f55;
+  position: sticky;
+  top: 0;
+}
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-empty {
+  background: #f6f8f4;
+  border: 1px dashed #cdd5cb;
+  border-radius: 12px;
+  margin: 14px 16px 16px;
+}
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-row footer > button,
+.taskboard .tb-stage-workspace:not([data-stage="all"]) .tb-stage-empty button {
+  border-radius: 8px;
+}
+.taskboard .tb-stage-moved {
+  margin: 10px 14px 0;
+  background: var(--accent-soft, #edf6f0);
+  border: 1px solid #d8e6da;
+  border-radius: 10px;
+}
+/* 断连页：整页轻底 + 卡片 */
+.taskboard:not(.taskboard--connected) {
+  background: #e9ede9;
+}
+.taskboard:not(.taskboard--connected) .tb-connect {
+  background: var(--tb-card, #fff);
+  border: 1px solid var(--tb-line, #e4e9e6);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px #1929200a, 0 16px 38px -26px #16301f66;
+}
+/* 对话框类界面统一轻微投影（创建任务/项目管理弹窗） */
+.taskboard .tb-modal,
+.taskboard .tb-create-project-dialog {
+  box-shadow: 0 18px 60px #14251d33;
+}
+@media (max-width: 900px) {
+  .taskboard .tb-stage-workspace:not([data-stage="all"]) { margin: 8px; }
+  .taskboard .tb-stage-moved { margin: 8px 8px 0; }
+}

@@ -1,0 +1,18 @@
+.tb-shell-sidebar-host { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; height: 100%; }
+.tb-shell-sidebar-host .tb-project-sidebar { position: static; inset: auto; width: 100%; min-width: 0; max-width: none; flex: 1; border-right: 0; box-shadow: none; }
+.tb-shell-sidebar-host .tb-sidebar-collapse-btn { display: none; }
+.tb-shell-sidebar-host .tb-sidebar-footer { display: grid; gap: 8px; flex-shrink: 0; }
+.tb-project-item:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+.tb-project-context { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 0; font-size: 13px; color: var(--muted); }
+.tb-project-context > span { flex: 1; min-width: 160px; overflow-wrap: anywhere; }
+.tb-project-context button, .tb-project-entry-actions button { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); padding: 6px 10px; cursor: pointer; }
+.tb-project-empty { border: 1px solid var(--line); border-radius: 8px; padding: 12px; color: var(--muted); }
+.tb-project-empty p { margin: 6px 0 0; line-height: 1.6; }
+.tb-project-entry-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 12px 0; }
+.tb-project-location { overflow-wrap: anywhere; font-size: 13px; color: var(--muted); }
+.tb-create-project-dialog { color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px; width: min(500px, calc(100vw - 48px)); max-height: calc(100vh - 48px); overflow: auto; }
+.tb-create-project-dialog::backdrop { background: rgba(0,0,0,.35); }
+.tb-create-project-dialog form { display: grid; gap: 12px; }
+.tb-create-project-dialog h2, .tb-create-project-dialog p { margin: 0; }
+.tb-create-project-dialog label { display: grid; gap: 6px; }
+.tb-create-project-dialog input { min-width: 0; padding: 8px; color: inherit; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 6px; }

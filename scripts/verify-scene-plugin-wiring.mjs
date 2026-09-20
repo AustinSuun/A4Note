@@ -12,6 +12,7 @@ const contributions = {
   reader: await readFile('src/features/reader/contributions.tsx', 'utf8'),
   aiChat: await readFile('src/features/ai/contributions.tsx', 'utf8'),
   markdown: await readFile('src/features/markdown/contributions.tsx', 'utf8'),
+  tasks: await readFile('src/features/taskboard/contributions.tsx', 'utf8'),
 };
 
 for (const [sceneId, pluginId, viewId] of [
@@ -20,6 +21,7 @@ for (const [sceneId, pluginId, viewId] of [
   ['reader', 'reader.core', 'reader.core.view'],
   ['aiChat', 'ai.core', 'ai.core.view'],
   ['markdown', 'markdown.core', 'markdown.core.view'],
+  ['tasks', 'tasks.core', 'tasks.core.view'],
 ]) {
   assert.match(core, new RegExp(`id: '${sceneId}'`), `core must register ${sceneId}`);
   assert.match(scenes, new RegExp(pluginId.replace('.', '\\.') ), `scene plugin must exist: ${pluginId}`);
