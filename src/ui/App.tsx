@@ -2180,6 +2180,7 @@ export default function App() {
     .map((tab) => ({
       id: tab.id,
       title: tab.title,
+      fileType: tab.kind === 'pdf' || documents.some(paper => paper.paperId === paperIdFromReaderTabKey(tab.key) && (paper.sourcePdf || paper.translatedPdfs.length)) ? 'pdf' : 'unknown',
       hint: tab.kind === 'pdf' ? tabStateString(tab, 'path', tab.title) : tab.title,
       active: activeTab?.id === tab.id,
       paperId: paperIdFromReaderTabKey(tab.key) ?? undefined,

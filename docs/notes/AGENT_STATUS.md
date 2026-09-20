@@ -1,8 +1,10 @@
 # A4 Note Agent 状态
 
+- reader-list-qingfan：青帆 ebe8db12，独立分支基于 main 4b4f57a；阅读列表按钮34px与资源类型标签完成，浏览器22项、完整verify及最终build/状态/架构检查通过。按用户授权合并本地main，提交review由用户验收；无真实窗口、资料库、安装发布占用。详见 docs/mcp-reader-list-qingfan-2026-09-20.md。
+
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-17T12:49:30+08:00
+更新时间：2026-09-20T20:42:00+08:00
 
 - 用户明确选择发布GitHub 0.1.7，允许本次发布必需CI；本agent开始发布整理，请并行agent暂缓生产源码修改。通过受保护PR/Verify后才生成tag和签名Release，不绕过检查，不安装/关闭软件/修改真实资料。
 

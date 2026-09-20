@@ -7,6 +7,8 @@ export interface ReaderSidebarOpenItem {
   id: string;
   title: string;
   hint?: string;
+  /** Resource metadata supplied by the host; never inferred from display titles. */
+  fileType?: string;
   active?: boolean;
   paperId?: string;
   notes?: Note[];
@@ -35,11 +37,11 @@ export function ReaderSceneSidebar({ openItems = [], onSelectItem, onCloseItem, 
               <div className="reader-paper-row">
               {item.paperId && <button type="button" className="reader-paper-expand" aria-label={`展开或收起笔记：${item.title}`} aria-expanded={expanded.has(item.id)} onClick={() => setExpanded(previous => {
                 const next = new Set(previous); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next;
-              })}>{expanded.has(item.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>}
+              })}>{expanded.has(item.id) ? <ChevronDown size={18} aria-hidden="true" /> : <ChevronRight size={18} aria-hidden="true" />}</button>}
               <button type="button" className="scene-context-item" onClick={() => onSelectItem?.(item.id)} title={item.hint ?? item.title}>
-                <span><span className="scene-context-item-title">{item.title}</span>{item.paperId && <small className="reader-paper-note-count">{item.notes?.length ?? 0} 篇笔记</small>}</span>
+                <span><span className="scene-context-item-title">{item.title}</span><span className="reader-paper-metadata"><span className="reader-file-type">{item.fileType === 'pdf' ? 'PDF' : item.fileType === 'markdown' ? 'Markdown' : '未知类型'}</span>{item.paperId && <small className="reader-paper-note-count">{item.notes?.length ?? 0} 篇笔记</small>}</span></span>
               </button>
-              {onCloseItem && <button type="button" className="scene-context-item-close" title="关闭" aria-label={`关闭 ${item.title}`} onClick={() => onCloseItem(item.id)}><X size={13} aria-hidden="true" /></button>}
+              {onCloseItem && <button type="button" className="scene-context-item-close" title="关闭" aria-label={`关闭 ${item.title}`} onClick={() => onCloseItem(item.id)}><X size={18} aria-hidden="true" /></button>}
               </div>
               {item.paperId && expanded.has(item.id) && <PaperNoteList compact paperId={item.paperId} notes={item.notes ?? []} onOpen={onOpenNote} onCreate={onCreateNote} />}
             </li>
