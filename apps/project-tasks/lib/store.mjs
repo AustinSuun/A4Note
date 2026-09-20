@@ -22,6 +22,23 @@ const now = () => new Date().toISOString();
 // Keep legacy plan columns in old SQLite files for historical preservation,
 // but never expose them as part of the current task API.
 const taskColumns = 'id,title,description,acceptance,status,priority,owner,revision,spec_revision,claimed_spec,delivery_revision,acceptance_archive_run,progress,result,feedback,updated_at,created_at';
+export const AGENT_OFFLINE_AFTER_MS = 120000;
+export function agentPresence(lastSeen, at = Date.now()) {
+  const seen = Date.parse(lastSeen);
+  if (!Number.isFinite(seen) || seen > at) return 'unknown';
+  return at - seen > AGENT_OFFLINE_AFTER_MS ? 'offline' : 'online';
+}
+const handoffFields = ['completed', 'remaining', 'blockers', 'nextSteps', 'branch', 'worktree', 'commit', 'uncommittedChanges', 'resources', 'validation'];
+function validateHandoff(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail(400, '交接必须是结构化对象');
+  const result = {};
+  for (const [key, val] of Object.entries(value)) {
+    if (!handoffFields.includes(key)) fail(400, '未知交接字段：' + key);
+    result[key] = text(val, 2000);
+  }
+  if (!Object.values(result).some(v => v.trim())) fail(400, '交接内容不能为空');
+  return result;
+}
 export class Store {
   constructor(dir, project = 'A4 Note') {
     this.dir = dir;
@@ -143,7 +160,8 @@ export class Store {
   snapshot() {
     return {
       project: { id: this.access.projectId, name: this.access.project },
-      capabilities: {queue: true, acceptance: true},
+      capabilities: {queue: true, acceptance: true, offlineTakeover: true},
+      agentOfflineAfterMs: AGENT_OFFLINE_AFTER_MS,
       sequence: this.db
         .prepare('SELECT coalesce(max(seq),0) n FROM events')
         .get().n,
@@ -152,7 +170,7 @@ export class Store {
         .all(),
       agents: this.db
         .prepare('SELECT id,alias,role,last_seen FROM agents')
-        .all(),
+        .all().map(agent => ({...agent, presence: agentPresence(agent.last_seen)})),
     };
   }
   get(id) {
@@ -163,6 +181,10 @@ export class Store {
   detail(id) {
     return {
       ...this.get(id),
+      handoff: (() => {
+        const e = this.db.prepare("SELECT actor,payload,created_at FROM events WHERE task_id=? AND kind='task.handoff' ORDER BY seq DESC LIMIT 1").get(id);
+        return e ? {...JSON.parse(e.payload), author: e.actor, recordedAt: e.created_at} : null;
+      })(),
       attachments: this.db
         .prepare(
           'SELECT * FROM attachments WHERE task_id=? ORDER BY created_at',
@@ -238,6 +260,26 @@ export class Store {
             "UPDATE tasks SET status='in_progress',owner=?,claimed_spec=spec_revision,progress='已领取' WHERE id=?",
           )
           .run(actor.id, id);
+      } else if (action === 'takeover') {
+        if (actor.role !== 'worker') fail(403, '仅执行Agent可接管');
+        if (b.userAuthorized !== true) fail(403, '必须有用户明确授权，不得自动抢占离线任务');
+        const reason = text(b.reason ?? '', 2000).trim();
+        if (!reason) fail(400, '请记录用户授权说明');
+        if (b.workspaceChecked !== true) fail(400, '接管前须核验工作区写入隔离；离线不等于旧进程已停止');
+        if (t.status !== 'in_progress' || !t.owner || owner) fail(409, '仅可接管其他负责人的进行中任务');
+        const previous = this.db.prepare('SELECT alias,last_seen FROM agents WHERE id=?').get(t.owner);
+        if (agentPresence(previous?.last_seen) !== 'offline') fail(409, '原负责人在线或心跳状态不确定；不能接管');
+        this.db.prepare('UPDATE tasks SET owner=?,claimed_spec=NULL,progress=? WHERE id=?')
+          .run(actor.id, '用户授权接管，待读取确认要求：' + reason.slice(0, 800), id);
+        // Audit the user statement, not a claim of independent authentication.
+        this.event(id, actor.id, 'task.takeover_authorization', {
+          fromOwner: t.owner, toOwner: actor.id, fromAlias: previous.alias,
+          lastSeen: previous.last_seen, reason, authorizationSource: 'worker_relayed_user_statement',
+          workspaceChecked: true, previousRevision: t.revision,
+        });
+      } else if (action === 'handoff') {
+        if (!owner || t.status !== 'in_progress') fail(403, '仅当前执行者可记录交接');
+        this.event(id, actor.id, 'task.handoff', {handoff: validateHandoff(b.handoff)});
       } else if (action === 'acknowledge') {
         if (!owner || t.status !== 'in_progress')
           fail(403, '只能确认自己正在执行的任务');
@@ -324,7 +366,7 @@ export class Store {
       this.db
         .prepare('UPDATE tasks SET revision=revision+1,updated_at=? WHERE id=?')
         .run(now(), id);
-      this.event(id, actor.id, 'task.' + action, {
+      if (action !== 'handoff') this.event(id, actor.id, 'task.' + action, {
         before: t,
         after: this.get(id),
       });

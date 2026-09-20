@@ -101,3 +101,19 @@ node --test apps/project-tasks/test/service.test.mjs
 ```
 
 隔离工作区另行验证了剪贴板上传、SSE 领取、文件选择、返工和用户归档；这些测试使用临时合成数据，不替代 Windows 系统剪贴板或 Tauri WebView 的逐项验收。
+
+## 用户授权离线接管与中断交接
+
+仅 worker 会话可接管另一负责人的 in_progress 任务。用户明确说明即可由执行者转述并记录，无需旧负责人 release 或另开审批；这是一条可审计的用户授权声明，不是服务独立认证了聊天。无用户授权不能自动抢占。
+服务端在同一事务内检查 revision、负责人和最后心跳；超过120秒无心跳才算离线，时间缺失/无效/未来时间均为未知并拒绝。两个接管者只有一个成功。旧会话即使恢复心跳，也不能更新、上传结果、交还或提交该任务。
+
+```sh
+node apps/project-tasks/cli.mjs get TASK_ID --session PRIVATE_SESSION
+node apps/project-tasks/cli.mjs takeover TASK_ID --revision N --user-authorized --workspace-checked --text "用户要求我接替离线负责人；已核验独立worktree" --session PRIVATE_SESSION
+# 接管后必须再次get，读取要求、附件、handoff和历史，再以最新revision acknowledge。
+node apps/project-tasks/cli.mjs handoff TASK_ID --revision N --json handoff.json --session PRIVATE_SESSION
+```
+
+handoff.json 可包含 completed、remaining、blockers、nextSteps、branch、worktree、commit、uncommittedChanges、resources、validation 字符串字段。交接保留作者和时间；新负责人可补充，历史不会覆盖。没有交接时 detail.handoff=null，须只读盘点，不能假称已完成。
+MCP update_task 同步支持 takeover（userAuthorized、workspaceChecked、reason）及 handoff（handoff对象）。接管重置 claimed_spec，需要重读并 acknowledge 后才能提交。
+工作区核验不可省略：任务权限不能阻止旧进程继续写文件；先核验隔离worktree/文件归属，必要时请用户协调旧写入，不能凭离线擅自杀进程。新客户端连接不支持接管的旧服务时会明确失败，不降级为伪造交还。进行中列表展示服务提供的负责人状态与最后心跳，事件历史保留授权说明和交接。

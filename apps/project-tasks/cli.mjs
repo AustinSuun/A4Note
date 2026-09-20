@@ -171,7 +171,7 @@ async function main() {
     if (!manifest) throw Error('fixtures-verify --manifest <夹具清单.json> [--project-root <授权项目绝对路径>]');
     result = verifyFixtures({ config, json: manifest, projectRoot: option('project-root', null) });
   } else if (
-    ['claim', 'acknowledge', 'progress', 'submit', 'release', 'edit'].includes(
+    ['claim', 'takeover', 'handoff', 'acknowledge', 'progress', 'submit', 'release', 'edit'].includes(
       command,
     )
   ) {
@@ -179,6 +179,16 @@ async function main() {
     if (!Number.isInteger(revision))
       throw Error('必须先get任务，并指定 --revision N；不会自动按旧要求重试');
     const b = { action: command, revision };
+    if (command === 'takeover') {
+      b.userAuthorized = args.includes('--user-authorized');
+      b.workspaceChecked = args.includes('--workspace-checked');
+      b.reason = option('text', '');
+    }
+    if (command === 'handoff') {
+      const file = option('json', null);
+      if (!file) throw Error('handoff需要 --json <交接.json>');
+      b.handoff = JSON.parse(fs.readFileSync(file, 'utf8'));
+    }
     if (command === 'progress') b.progress = option('text', '');
     if (command === 'submit') {
       const f = option('file', null);
@@ -196,7 +206,7 @@ async function main() {
     result = await call('/tasks/' + args[0], 'PATCH', b);
   } else
     throw Error(
-      '命令：join, list, get, create, claim, acknowledge, progress, submit, upload, acceptance, release, heartbeat；任务发布后直接进入queued，claim由执行Agent原子领取，不需要方案审批；acceptance用于独立验收；fixtures/fixtures-verify管理验收夹具；access仅供用户看板连接',
+      '命令：join, list, get, create, claim, takeover, handoff, acknowledge, progress, submit, upload, acceptance, release, heartbeat；任务发布后直接进入queued，claim由执行Agent原子领取，不需要方案审批；acceptance用于独立验收；fixtures/fixtures-verify管理验收夹具；access仅供用户看板连接',
     );
   console.log(JSON.stringify(result, null, 2));
 }

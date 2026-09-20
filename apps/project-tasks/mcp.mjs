@@ -57,14 +57,14 @@ const tools = [
   {
     name: 'update_task',
     description:
-      '使用已读revision操作任务；冲突时必须重新读取。任务发布后直接进入queued，执行Agent可原子领取；submit直接进入review。不提供用户验收归档权限。',
+      '使用已读revision操作任务；冲突时必须重新读取。任务发布后直接进入queued，执行Agent可原子领取；submit直接进入review。takeover须用户明确授权说明、工作区隔离核验及原负责人超过2分钟无心跳；handoff记录结构化交接。接管后重新读取并acknowledge。不提供用户验收归档权限。',
     inputSchema: schema(
       {
         id: str,
         revision: num,
         action: {
           enum: [
-            'claim',
+            'claim', 'takeover', 'handoff',
             'acknowledge',
             'progress',
             'submit',
@@ -75,6 +75,9 @@ const tools = [
         progress: str,
         result: str,
         reason: str,
+        userAuthorized: { type: 'boolean' },
+        workspaceChecked: { type: 'boolean' },
+        handoff: schema(Object.fromEntries(['completed','remaining','blockers','nextSteps','branch','worktree','commit','uncommittedChanges','resources','validation'].map(k => [k, str]))),
         writesStopped: { type: 'boolean' },
         title: str,
         description: str,
@@ -208,7 +211,7 @@ async function request(m) {
           const { id, ...body } = b;
           if (
             ![
-            'claim',
+            'claim', 'takeover', 'handoff',
               'acknowledge',
               'progress',
               'submit',

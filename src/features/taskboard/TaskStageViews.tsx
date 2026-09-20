@@ -67,6 +67,10 @@ export function TaskStageWorkspace({ stage, tasks, agents, query,
         <time dateTime={task.updated_at}>更新 {dateLabel(task.updated_at)}</time></div>
       <h3><button type="button" className="tb-stage-task-title" onClick={() => onOpen(task)}>{task.title}</button></h3>
       <p className="tb-stage-owner">{task.owner ? `负责 Agent：${names.get(task.owner) ?? '未知代号'} · ${task.owner.slice(0, 8)}` : '尚无负责 Agent'} · 需求 v{task.spec_revision}</p>
+      {task.status === 'in_progress' && <p role="status">{(() => {
+        const agent = agents.find(a => a.id === task.owner);
+        return `负责人状态：${agent?.presence === 'offline' ? '离线（超过2分钟无心跳，用户说明后可由新Agent接管）' : agent?.presence === 'online' ? '在线' : '未知（服务未提供可靠状态）'}；最后心跳：${agent?.last_seen ? dateLabel(agent.last_seen) : '未记录'}。离线不代表旧进程停止写入。`;
+      })()}</p>}
       <dl>{stageTaskFacts(task).map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
       <footer><button type="button" onClick={() => onOpen(task)}>{stage === 'review' ? '检查实际效果' : stage === 'archived' ? '查看结果与历史' : '查看完整任务'}</button>
         {stage !== 'archived' && renderActions?.(task)}</footer>

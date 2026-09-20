@@ -23,6 +23,7 @@ export type Agent = {
   alias: string;
   role: string;
   last_seen: string;
+  presence?: 'online' | 'offline' | 'unknown';
 };
 export type Attachment = {
   id: string;
