@@ -1,3 +1,4 @@
+import {captureTaskDelivery, taskDelivery, taskIntegration, integrateAcceptedTask} from './task-delivery.mjs';
 import {migrateAcceptance, acceptanceState, acceptanceAction, bindAcceptanceEvidence} from './acceptance-store.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, randomBytes, createHash } from 'node:crypto';
@@ -22,9 +23,28 @@ const now = () => new Date().toISOString();
 // Keep legacy plan columns in old SQLite files for historical preservation,
 // but never expose them as part of the current task API.
 const taskColumns = 'id,title,description,acceptance,status,priority,owner,revision,spec_revision,claimed_spec,delivery_revision,acceptance_archive_run,progress,result,feedback,updated_at,created_at';
+export const AGENT_OFFLINE_AFTER_MS = 120000;
+export function agentPresence(lastSeen, at = Date.now()) {
+  const seen = Date.parse(lastSeen);
+  if (!Number.isFinite(seen) || seen > at) return 'unknown';
+  return at - seen > AGENT_OFFLINE_AFTER_MS ? 'offline' : 'online';
+}
+const handoffFields = ['completed', 'remaining', 'blockers', 'nextSteps', 'branch', 'worktree', 'commit', 'uncommittedChanges', 'resources', 'validation'];
+function validateHandoff(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail(400, '交接必须是结构化对象');
+  const result = {};
+  for (const [key, val] of Object.entries(value)) {
+    if (!handoffFields.includes(key)) fail(400, '未知交接字段：' + key);
+    result[key] = text(val, 2000);
+  }
+  if (!Object.values(result).some(v => v.trim())) fail(400, '交接内容不能为空');
+  return result;
+}
 export class Store {
-  constructor(dir, project = 'A4 Note') {
+  constructor(dir, project = 'A4 Note', options = {}) {
     this.dir = dir;
+    this.projectRoot = options.projectRoot ?? null;
+    this.gitVerifyArgv = options.gitVerifyArgv ?? null;
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     fs.mkdirSync(path.join(dir, 'attachments'), {
       recursive: true,
@@ -77,6 +97,7 @@ export class Store {
   }
   acceptance(id) { return acceptanceState(this,id); }
   acceptanceAction(actor,id,input) { return acceptanceAction(this,actor,id,input); }
+  integrateAcceptedTask(id, actor) { return integrateAcceptedTask(this, this.get(id), actor); }
   close() {
     this.db.close();
   }
@@ -143,16 +164,17 @@ export class Store {
   snapshot() {
     return {
       project: { id: this.access.projectId, name: this.access.project },
-      capabilities: {queue: true, acceptance: true},
+      capabilities: {queue: true, acceptance: true, offlineTakeover: true},
+      agentOfflineAfterMs: AGENT_OFFLINE_AFTER_MS,
       sequence: this.db
         .prepare('SELECT coalesce(max(seq),0) n FROM events')
         .get().n,
       tasks: this.db
         .prepare(`SELECT ${taskColumns} FROM tasks ORDER BY updated_at DESC`)
-        .all(),
+        .all().map(t => ({...t, delivery: taskDelivery(this,t), integration: taskIntegration(this,t)})),
       agents: this.db
         .prepare('SELECT id,alias,role,last_seen FROM agents')
-        .all(),
+        .all().map(agent => ({...agent, presence: agentPresence(agent.last_seen)})),
     };
   }
   get(id) {
@@ -163,6 +185,12 @@ export class Store {
   detail(id) {
     return {
       ...this.get(id),
+      delivery: taskDelivery(this,this.get(id)),
+      integration: taskIntegration(this,this.get(id)),
+      handoff: (() => {
+        const e = this.db.prepare("SELECT actor,payload,created_at FROM events WHERE task_id=? AND kind='task.handoff' ORDER BY seq DESC LIMIT 1").get(id);
+        return e ? {...JSON.parse(e.payload), author: e.actor, recordedAt: e.created_at} : null;
+      })(),
       attachments: this.db
         .prepare(
           'SELECT * FROM attachments WHERE task_id=? ORDER BY created_at',
@@ -238,6 +266,26 @@ export class Store {
             "UPDATE tasks SET status='in_progress',owner=?,claimed_spec=spec_revision,progress='已领取' WHERE id=?",
           )
           .run(actor.id, id);
+      } else if (action === 'takeover') {
+        if (actor.role !== 'worker') fail(403, '仅执行Agent可接管');
+        if (b.userAuthorized !== true) fail(403, '必须有用户明确授权，不得自动抢占离线任务');
+        const reason = text(b.reason ?? '', 2000).trim();
+        if (!reason) fail(400, '请记录用户授权说明');
+        if (b.workspaceChecked !== true) fail(400, '接管前须核验工作区写入隔离；离线不等于旧进程已停止');
+        if (t.status !== 'in_progress' || !t.owner || owner) fail(409, '仅可接管其他负责人的进行中任务');
+        const previous = this.db.prepare('SELECT alias,last_seen FROM agents WHERE id=?').get(t.owner);
+        if (agentPresence(previous?.last_seen) !== 'offline') fail(409, '原负责人在线或心跳状态不确定；不能接管');
+        this.db.prepare('UPDATE tasks SET owner=?,claimed_spec=NULL,progress=? WHERE id=?')
+          .run(actor.id, '用户授权接管，待读取确认要求：' + reason.slice(0, 800), id);
+        // Audit the user statement, not a claim of independent authentication.
+        this.event(id, actor.id, 'task.takeover_authorization', {
+          fromOwner: t.owner, toOwner: actor.id, fromAlias: previous.alias,
+          lastSeen: previous.last_seen, reason, authorizationSource: 'worker_relayed_user_statement',
+          workspaceChecked: true, previousRevision: t.revision,
+        });
+      } else if (action === 'handoff') {
+        if (!owner || t.status !== 'in_progress') fail(403, '仅当前执行者可记录交接');
+        this.event(id, actor.id, 'task.handoff', {handoff: validateHandoff(b.handoff)});
       } else if (action === 'acknowledge') {
         if (!owner || t.status !== 'in_progress')
           fail(403, '只能确认自己正在执行的任务');
@@ -255,6 +303,8 @@ export class Store {
           fail(403, '只能提交自己的进行中任务');
         if (t.claimed_spec !== t.spec_revision)
           fail(409, '需求已有修改，请读取并确认最新版要求');
+        let delivery;
+        try { delivery = captureTaskDelivery(this, t, b.delivery); } catch(e) { fail(400, e.message); }
         const result = text(b.result, 16000).trim();
         if (!result) fail(400, '需要结果与验证说明');
         this.db
@@ -262,6 +312,7 @@ export class Store {
             "UPDATE tasks SET status='review',result=?,delivery_revision=delivery_revision+1,progress='等待用户检查效果' WHERE id=?",
           )
           .run(result, id);
+        this.event(id, actor.id, 'task.delivery', delivery);
       } else if (action === 'request_changes') {
         if (actor.role !== 'human' || t.status !== 'review')
           fail(403, '仅用户可退回待验收任务');
@@ -275,9 +326,9 @@ export class Store {
           fail(403, '仅用户可验收归档');
         if (t.claimed_spec !== t.spec_revision)
           fail(409, '提交后需求已变化，请退回调整');
-        this.db
+        if (this.integrateAcceptedTask(id, actor.id)) this.db
           .prepare(
-            "UPDATE tasks SET status='archived',progress='用户验收通过' WHERE id=?",
+            "UPDATE tasks SET status='archived',progress='用户验收通过，交付处理状态见集成记录' WHERE id=?",
           )
           .run(id);
       } else if (action === 'release') {
@@ -324,7 +375,7 @@ export class Store {
       this.db
         .prepare('UPDATE tasks SET revision=revision+1,updated_at=? WHERE id=?')
         .run(now(), id);
-      this.event(id, actor.id, 'task.' + action, {
+      if (action !== 'handoff') this.event(id, actor.id, 'task.' + (action === 'archive' && this.get(id).status !== 'archived' ? 'acceptance_blocked' : action), {
         before: t,
         after: this.get(id),
       });

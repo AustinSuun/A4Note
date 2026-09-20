@@ -9,6 +9,7 @@ export function TaskDetailNavigation({ value, onChange }: { value: DetailSection
     <button type="button" key={id} aria-pressed={id === value} onClick={() => onChange(id)}>{title}</button>)}</nav>;
 }
 const labels: Record<string, string> = {
+  'task.takeover': '离线任务已接管', 'task.takeover_authorization': '用户接管说明与原负责人记录', 'task.handoff': '结构化中断交接',
   'task.created': '发布需求', 'task.edit': '修改要求', 'task.submit_plan': '提交方案',
   'task.approve_plan': '人工通过方案', 'task.reject_plan': '退回方案', 'task.claim': 'Agent领取',
   'task.progress': '更新执行进度', 'task.acknowledge': '确认要求版本', 'task.submit': '提交交付',

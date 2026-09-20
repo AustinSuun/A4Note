@@ -1,0 +1,43 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import {spawn} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {build} from 'vite';
+import react from '@vitejs/plugin-react';
+const root=process.cwd(), scratch=fs.mkdtempSync(path.join(os.tmpdir(),'offline-ui-'));
+const evidence=path.resolve('.tmp/task-offline-ui');fs.mkdirSync(evidence,{recursive:true});
+const pause=ms=>new Promise(r=>setTimeout(r,ms));let browser,ws,web,seq=0;const pending=new Map();
+const rpc=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;const timer=setTimeout(()=>reject(Error(method+' timeout')),10000);pending.set(id,m=>{clearTimeout(timer);m.error?reject(Error(JSON.stringify(m.error))):resolve(m.result);});ws.send(JSON.stringify({id,method,params}));});
+const evaluate=async expression=>{const x=await rpc('Runtime.evaluate',{expression,returnByValue:true});if(x.exceptionDetails)throw Error(JSON.stringify(x.exceptionDetails));return x.result.value;};
+try{
+ const entry=path.join(root,'.tmp/offline-ui-entry.tsx');
+ fs.writeFileSync(entry,`import React from 'react';import {createRoot} from 'react-dom/client';
+ import {TaskStageWorkspace} from '../src/features/taskboard/TaskStageViews';
+ import {TaskEventTimeline} from '../src/features/taskboard/TaskDetailSections';
+ const task={id:'one',title:'离线任务接管',status:'in_progress',priority:'high',owner:'new',revision:3,spec_revision:1,claimed_spec:null,progress:'用户授权接管',description:'',acceptance:'',result:'',feedback:'',created_at:'2026-09-20T00:00:00Z',updated_at:'2026-09-20T01:00:00Z'};
+ const agents=[{id:'new',alias:'新负责人',role:'worker',last_seen:'2026-09-20T00:00:00Z',presence:'offline'}];
+ createRoot(document.getElementById('root')!).render(<><TaskStageWorkspace stage="in_progress" tasks={[task] as any} agents={agents as any} query="" supportsQueue onOpen={()=>{document.getElementById('history')!.hidden=false}} onClearQuery={()=>{}} overview={null}/><div id="history" hidden><TaskEventTimeline task={{...task,attachments:[],events:[{seq:1,actor:'new',kind:'task.takeover_authorization',created_at:task.updated_at,payload:JSON.stringify({fromOwner:'old',toOwner:'new',reason:'用户授权说明',workspaceChecked:true})},{seq:2,actor:'new',kind:'task.handoff',created_at:task.updated_at,payload:JSON.stringify({handoff:{remaining:'补充验证',uncommittedChanges:'待盘点'}})}]} as any} agents={agents as any}/></div></>);`);
+ await build({root,configFile:false,logLevel:'warn',plugins:[react()],define:{'process.env.NODE_ENV':'"production"'},build:{outDir:scratch,emptyOutDir:false,minify:true,cssCodeSplit:false,lib:{entry,formats:['es'],fileName:()=> 'entry.js',cssFileName:'entry'}}});
+ web=http.createServer((req,res)=>{const p=new URL(req.url,'http://localhost').pathname;if(p==='/entry.js'||p==='/entry.css'){res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript':'text/css');res.end(fs.readFileSync(path.join(scratch,path.basename(p))));}else{res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<meta charset="utf-8"><link rel="stylesheet" href="/entry.css"><style>body{font:16px sans-serif;background:#fafafa;color:#222;padding:24px}</style><div id="root"></div><script type="module" src="/entry.js"></script>');}});
+ await new Promise(r=>web.listen(0,'127.0.0.1',r));
+ const exe=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(p=>fs.existsSync(p));assert.ok(exe);
+ const profile=path.join(scratch,'profile');browser=spawn(exe,['--headless=new','--no-first-run','--disable-extensions','--remote-debugging-port=0','--remote-debugging-address=127.0.0.1','--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});
+ const portFile=path.join(profile,'DevToolsActivePort');for(let i=0;i<150&&!fs.existsSync(portFile);i++)await pause(100);
+ const port=fs.readFileSync(portFile,'utf8').split('\n')[0];const target=(await(await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find(t=>t.type==='page');
+ ws=new WebSocket(target.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j;});ws.onmessage=e=>{const m=JSON.parse(e.data);pending.get(m.id)?.(m);pending.delete(m.id);};
+ await rpc('Page.enable');await rpc('Runtime.enable');await rpc('Emulation.setDeviceMetricsOverride',{width:1100,height:820,deviceScaleFactor:1,mobile:false});
+ await rpc('Page.navigate',{url:'http://127.0.0.1:'+web.address().port});
+ for(let i=0;i<100;i++){if(await evaluate('document.body.innerText.includes("最后心跳")'))break;await pause(100);}
+ assert.ok(await evaluate('document.body.innerText.includes("离线（超过2分钟无心跳")'));
+ assert.ok(await evaluate('document.body.innerText.includes("新负责人")'));
+ assert.ok(await evaluate('document.body.innerText.includes("离线不代表旧进程停止写入")'));
+ await evaluate('[...document.querySelectorAll("button")].find(b=>b.textContent==="查看完整任务").click()');
+ assert.ok(await evaluate('document.body.innerText.includes("用户接管说明与原负责人记录")'));
+ await evaluate('document.querySelectorAll("details").forEach(d=>d.open=true)');
+ assert.ok(await evaluate('document.body.innerText.includes("补充验证")'));
+ fs.writeFileSync(path.join(evidence,'offline-handoff.png'),Buffer.from((await rpc('Page.captureScreenshot',{format:'png'})).data,'base64'));
+ fs.writeFileSync(path.join(evidence,'result.json'),JSON.stringify({passed:true,checks:5,scope:'production components in isolated Chrome fixture; not native app'}));
+ console.log('5 browser checks passed; '+evidence);
+}finally{if(ws){try{await rpc('Browser.close');}catch{}ws.close();}if(browser&&browser.exitCode===null)browser.kill();if(web){web.closeAllConnections();await new Promise(r=>web.close(r));}}

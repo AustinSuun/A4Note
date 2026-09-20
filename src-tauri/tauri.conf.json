@@ -65,6 +65,7 @@
       "../apps/project-tasks/lib/project-onboarding.mjs": "project-tasks/lib/project-onboarding.mjs",
       "../apps/project-tasks/server.mjs": "project-tasks/server.mjs",
       "../apps/project-tasks/lib/store.mjs": "project-tasks/lib/store.mjs",
+      "../apps/project-tasks/lib/task-delivery.mjs": "project-tasks/lib/task-delivery.mjs",
       "../apps/project-tasks/lib/agent-client.mjs": "project-tasks/lib/agent-client.mjs",
       "../apps/project-tasks/cli.mjs": "project-tasks/cli.mjs",
       "../apps/project-tasks/mcp.mjs": "project-tasks/mcp.mjs"

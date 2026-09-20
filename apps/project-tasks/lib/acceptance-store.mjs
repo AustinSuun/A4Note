@@ -78,7 +78,7 @@ export function acceptanceAction(store,actor,id,input) {
       const out=completeAcceptance(actor,run,context(store,replayTask,state.config,run),input.runRevision,report,evidence);
       if(out.replay)return {task:store.detail(id),...state,replay:true};
       result={...out.run,report};
-      if(out.decision==='eligible_for_auto_archive')store.db.prepare("UPDATE tasks SET status='archived',acceptance_archive_run=?,progress='自动验收通过（用户可复核返工）' WHERE id=?").run(run.id,id);
+      if(out.decision==='eligible_for_auto_archive' && store.integrateAcceptedTask(id,actor.id))store.db.prepare("UPDATE tasks SET status='archived',acceptance_archive_run=?,progress='自动验收通过（用户可复核返工）' WHERE id=?").run(run.id,id);
     }
     saveRun(store,id,result);
   }

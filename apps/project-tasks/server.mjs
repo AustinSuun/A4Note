@@ -10,11 +10,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export function createTaskServer({
   dataDir,
   project = 'A4 Note',
+  projectRoot = null,
+  gitVerifyArgv = process.env.TASKS_GIT_VERIFY_ARGV ? JSON.parse(process.env.TASKS_GIT_VERIFY_ARGV) : null,
   origins = [],
   allowedHosts = ['127.0.0.1', 'localhost', '[::1]'],
   webRoot = path.join(here, 'web-assets'),
 } = {}) {
-  const store = new Store(dataDir, project),
+  const store = new Store(dataDir, project, {projectRoot, gitVerifyArgv}),
     clients = new Set();
   let seq = store.snapshot().sequence;
   const notify = () => {
@@ -247,6 +249,7 @@ if (
   const dataDir = process.env.TASKS_DATA_DIR ?? resolveDataDir(root);
   const app = createTaskServer({
     dataDir,
+    projectRoot: process.env.TASKS_PROJECT_ROOT ? root : null,
     project: process.env.TASKS_PROJECT_NAME ?? path.basename(root),
     origins: (
       process.env.TASKS_ALLOWED_ORIGINS ??
