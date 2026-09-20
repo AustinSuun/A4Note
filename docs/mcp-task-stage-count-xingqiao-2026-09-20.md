@@ -29,7 +29,9 @@
 | `scripts/verify-task-stage-views.mjs` | 74 断言通过，隔离 TypeScript 诊断 0 |
 | `scripts/verify-task-stage-integration.mjs` | 53 项通过 |
 | MCP 诊断（taskboard 目录） | 0 |
-| 完整 PowerShell `npm run verify` | 见任务提交文本中的最终退出码 |
+| 完整 PowerShell `npm run verify` | 退出 0（cmd_b45118a098f34c46122a3f6fb62b9c91124240e80b8814db，日志 .tmp/arena-dispatch/stage-verify-serial.txt，末尾 A4Note verification passed） |
+
+源码提交：560cc2c6e62d717685185b623fc4508dbcaca600（fix/task-stage-count，仅 4 个显式文件；生成的 src-tauri/gen/schemas 未纳入）。
 
 截图：`.tmp/stage-count/before/1440-light.png`、`.tmp/stage-count/after/1440-light.png`（已上传任务附件）。
 
