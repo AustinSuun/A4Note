@@ -59,3 +59,40 @@ compare-pair、no-images-1366x768、queued-footer-1366x768、archived-1366x768�
 - 深色主题、系统 DPI 与 1024 宽仅通过 880 宽窄窗口和 1.25 缩放间接覆盖，未逐一截图。
 - 未改变任务阶段、权限与归档语义：归档/退回/删除仍走原有接口；无自动归档。
 - 未合并 main、未推送、未安装发布、未重启现用服务；提交仅进入待检查，由用户验收。
+
+
+## 第二轮（用户退回：检查框固定在弹窗底部遮挡效果展示）
+
+用户反馈：结果截图下方的“检查效果”类操作框固定在弹窗上，遮挡了效果展示内容；要求把它放到界面内容的最下边，不固定在弹窗上。
+
+### 改动（提交 72d15a1）
+
+- `TaskBoard.tsx`：不再向 `TaskDetailDialog` 传 `footer`。“检查效果”说明、需要调整 / 效果满意归档、按需展开的反馈面板与收起的“更多操作”危险区，
+  改为 `<section class="tb-detail-actions-section">`，渲染在滚动正文 `.tb-detail` 的最后（四个页签共用，随内容滚动）；已归档任务仍不渲染。
+  反馈面板改为在按钮行下方展开（不再替换说明文字），展开时 `scrollIntoView({block:'nearest'})` 让面板完整进入可视区。
+- `taskboard-dialog.css`：新增操作区分隔样式（上边距 32px、分隔线），移除弹窗专用固定底栏规则；不使用 sticky/fixed。
+  `TaskDetailDialog` 组件本身保留可选 `footer` 插槽（无调用方传入时不渲染任何底栏）。
+- `scripts/verify-task-detail-review-ui-browser.mjs`（138 项）：每个视口/缩放/最大化组合断言 无固定底栏（`.tb-detail-footer` 不存在、操作区 `position: static` 且位于 `.tb-dialog-body` 内）、
+  操作区是正文最后一个节点且顶部 ≥ 当前页签内容底部、顶部滚动位置时不压住任何结果图；滚到末尾时归档按钮完整位于正文可视区且操作区位于全部证据卡片之下；
+  四个页签逐一检查同样成立；反馈面板在按钮下方展开、展开后完整可见、回滚到顶部时结果图无任何覆盖；非 review 任务的“更多操作”同样在正文流内；归档后既无底栏也无操作区。
+- `scripts/verify-task-detail-modal.mjs`（41 项）：新增源码级守卫——TaskBoard 不再传 footer、操作区位于最后一个内容 section 与 `</aside>` 之间、
+  反馈面板在按钮之后渲染、操作区样式含分隔线且无 sticky/fixed。
+
+### 前后对比（同一合成夹具，1366×768，未最大化）
+
+| 指标 | 第一轮（被退回） | 第二轮 |
+| --- | --- | --- |
+| 操作区位置 | 弹窗固定底栏，高 69px；反馈展开后 270px，覆盖正文下部 | 正文流末尾，随内容滚动；顶部滚动位置时操作区在结果图之下（top 2606px vs 图底 650px） |
+| 正文可视高度 | 弹窗高度 − 头部 − 页签 − 底栏 | 底栏归零，正文可视区相应增高约 69px |
+| 反馈面板 | 底栏内替换说明文字展开，把按钮推到最底 | 在按钮行下方展开，自动滚入可视区，按钮位置不动 |
+| 归档 / 需要调整按钮 | 176×44 / 44px | 不变（176×44 / 44px），滚到末尾完整可见 |
+| 更多操作 → 删除 | 收起在底栏左侧 | 收起在操作区左侧，展开在正文流内；窄窗口（880）分行、与归档间距 ≥32px |
+
+### 验证
+
+- 浏览器回归（after）：138 项通过；截图 `.tmp/detail-review-ui/after/`：evidence-1366x768-normal/max、evidence-1568x1005-normal/max、
+  actions-end-*（滚到末尾）、feedback-open-1366x768、feedback-open-scrolled-top-1366x768、more-actions-open-1366x768、narrow-880x700-more-open、
+  tab-任务要求/执行记录/完整历史、compare-pair、no-images、queued-footer、archived。第一轮截图保留在 `.tmp/detail-review-ui/round1/`。
+- `node scripts/verify-task-detail-modal.mjs`：41 项通过；`tsc --noEmit -p tsconfig.app.json` 退出 0。
+- 完整 `npm run verify`（scripts/verify-all.mjs，含 Rust 测试）：退出码 0，输出 `A4Note verification passed`（日志 `.tmp/verify-logs/verify-round2.log`）。
+- 未改变归档/退回/删除接口与语义；未合并 main、未推送、未安装发布、未重启现用服务。
