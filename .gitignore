@@ -68,3 +68,6 @@ CodexCont/
 *.sqlite3
 AsterData/
 A4CaptureData/
+
+# Generated isolated browser evidence (not product fixtures)
+.a4-tests/
