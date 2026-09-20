@@ -21,6 +21,6 @@
 
 初轮7项Git/Store专项6通过1失败：测试仓库继承Windows autocrlf使恢复夹具仍呈dirty；已在临时仓库显式设置core.autocrlf=false，生产保护未放宽。随后全部7项通过，服务全套82项81通过、1平台文件符号链接权限跳过。又补真实CLI/HTTP验收与分支移动用例，现已接入package.json固定回归入口：84项83通过、1平台权限跳过、0失败。
 独立Chrome生产组件夹具6检查通过，显示合并失败、SHA、未推送、错误及查看历史；截图在本工作区.tmp/task-merge-ui/merge-blocked.png。不是安装版或完整原生窗口验收。
-完整PowerShell verify正在运行，完成后补最终结果。
+完整PowerShell npm run verify最终退出0：cmd_db605a285028cb13157dabb71fc82f9794f8c9621f22ff63；日志为中央工作区.tmp/arena-dispatch/merge-verify-final.txt，末尾A4Note verification passed / VERIFY_EXIT=0。包含两项新增任务的84测回归、生产构建、架构、状态及Rust验证。MCP诊断0错误，git diff --check无空白错误。实现提交bf57c5bc94e018a109caf13b839e41a14d9ed5b6，依赖b8bbe585。
 
 部署前必须由用户配置TASKS_GIT_VERIFY_ARGV可信验证命令；缺配置会明确阻止合并。这次不擅自升级现用服务、推送、安装、批量合并历史卡或操作其他用户窗口。当前实现验证为同步串行（最多10分钟），会阻塞该服务请求；大项目应低干扰时段运行。崩溃锁不会自动抢占，需要用户确认旧PID停止后清理再重试。这是安全边界，不伪称已有后台异步队列。
