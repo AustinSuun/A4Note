@@ -16,3 +16,4 @@
 .tb-create-project-dialog h2, .tb-create-project-dialog p { margin: 0; }
 .tb-create-project-dialog label { display: grid; gap: 6px; }
 .tb-create-project-dialog input { min-width: 0; padding: 8px; color: inherit; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 6px; }
+

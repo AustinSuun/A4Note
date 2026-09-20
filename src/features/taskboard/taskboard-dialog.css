@@ -60,3 +60,79 @@
 
 .tb-user-actions{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:10px 2px 2px;}
 .tb-user-actions .tb-danger{color:#b42318;}
+
+/* Review-first hierarchy. These rules are modal-local, not board-wide. */
+.taskboard .tb-detail-dialog {
+  width: min(88vw, calc(100% - 24px));
+  max-width: 1600px;
+  height: min(90vh, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+}
+.taskboard .tb-detail-dialog.is-maximized {
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  max-width: none;
+  max-height: calc(100% - 16px);
+}
+.taskboard .tb-detail-dialog .tb-dialog-header { padding: 18px 24px; gap: 8px 16px; }
+.taskboard .tb-detail-dialog .tb-dialog-header h2 { margin: 0; font-size: 21px; line-height: 1.4; }
+.taskboard .tb-detail-dialog .tb-dialog-subtitle { font-size: 13px; line-height: 1.6; color: var(--tb-muted, #64756b); }
+.taskboard .tb-detail-dialog :is(.tb-dialog-controls, .tb-detail-tabs, .tb-review-actions, .tb-user-actions) button {
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 7px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+.taskboard .tb-detail-dialog .tb-detail-tabs { gap: 8px; padding: 10px 24px; }
+.taskboard .tb-detail-dialog .tb-detail-tabs button[aria-pressed=true] {
+  background: color-mix(in srgb, var(--tb-accent, #32735a) 12%, var(--tb-card, #fff));
+  color: var(--tb-accent, #32735a);
+  border-color: color-mix(in srgb, var(--tb-accent, #32735a) 28%, transparent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.taskboard .tb-detail-dialog .tb-dialog-body { padding: 20px 24px 28px; }
+.taskboard .tb-detail-dialog .tb-detail h3 { font-size: 17px; line-height: 1.5; margin: 0 0 10px; }
+.taskboard .tb-detail-dialog .tb-detail h4 { font-size: 15px; line-height: 1.5; margin: 20px 0 8px; }
+.taskboard .tb-detail-dialog .tb-detail :is(.tb-prose, .tb-review-excerpt) { font-size: 15px; line-height: 1.75; }
+.taskboard .tb-detail-dialog .tb-review-summary {
+  margin: 0 0 24px;
+  padding: 20px 22px;
+  border: 1px solid color-mix(in srgb, var(--tb-accent, #32735a) 25%, var(--tb-line, #dce4df));
+  border-left: 4px solid var(--tb-accent, #32735a);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tb-accent, #32735a) 3%, var(--tb-card, #fff));
+}
+.taskboard .tb-detail-dialog .tb-review-summary::before {
+  content: '交付成果与实际效果';
+  display: block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tb-accent, #32735a);
+}
+.taskboard .tb-detail-dialog .tb-review-summary > p { margin: 6px 0; font-size: 13px; }
+.taskboard .tb-detail-dialog .tb-review-summary .tb-review-excerpt { padding: 14px 16px; background: var(--tb-card, #fff); border-radius: 8px; }
+.taskboard .tb-detail-dialog .tb-review-caution { font-size: 13px; line-height: 1.6; }
+.taskboard .tb-detail-dialog .tb-detail-footer { padding: 12px 24px; }
+.taskboard .tb-detail-dialog .tb-review-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; }
+.taskboard .tb-detail-dialog .tb-review-actions h3 { margin: 0; font-size: 16px; line-height: 24px; }
+.taskboard .tb-detail-dialog .tb-review-actions p { grid-column: 1; margin: 4px 0; font-size: 13px; line-height: 20px; }
+.taskboard .tb-detail-dialog .tb-review-actions textarea { grid-column: 1; height: 56px; min-height: 56px; margin: 4px 0 0; font-size: 14px; }
+.taskboard .tb-detail-dialog .tb-review-actions > div { grid-column: 2; grid-row: 1 / 4; display: flex; flex-wrap: wrap; align-content: center; gap: 10px; }
+.taskboard .tb-detail-dialog .tb-user-actions { justify-content: flex-start; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--tb-line, #dce4df); }
+.taskboard .tb-detail-dialog .tb-user-actions .tb-danger { background: transparent !important; color: #a13c38 !important; border-color: transparent !important; }
+.taskboard .tb-detail-dialog .tb-user-actions .tb-danger:hover { background: #b423180c !important; border-color: #b4231833 !important; }
+@media (max-width: 800px) {
+  .taskboard .tb-detail-dialog .tb-dialog-header { padding: 12px 16px; }
+  .taskboard .tb-detail-dialog .tb-dialog-header h2 { font-size: 18px; }
+  .taskboard .tb-detail-dialog .tb-dialog-body { padding: 16px; }
+  .taskboard .tb-detail-dialog .tb-detail-tabs { padding: 8px 16px; }
+  .taskboard .tb-detail-dialog .tb-detail-footer { padding: 10px 16px; }
+  .taskboard .tb-detail-dialog .tb-review-summary { padding: 16px; }
+  .taskboard .tb-detail-dialog .tb-review-actions { grid-template-columns: minmax(0, 1fr); }
+  .taskboard .tb-detail-dialog .tb-review-actions > div { grid-column: 1; grid-row: auto; margin-top: 8px; justify-content: flex-end; }
+}
