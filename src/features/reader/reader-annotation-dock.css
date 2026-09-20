@@ -48,8 +48,8 @@
 
 /* Match note icon-mode controls; override legacy shared 40px minimums. */
 :root .reader-annotation-dock .annotation-toolbar { gap: 1px; padding: 2px 3px; border-radius: 10px; scrollbar-width: auto; scrollbar-color: auto; }
-:root .reader-annotation-dock .annotation-toolbar .annotation-tool-btn { width: 28px; min-width: 28px; height: 26px; min-height: 26px !important; padding: 0; border-radius: 7px; }
-:root .reader-annotation-dock .annotation-toolbar .annotation-tool-btn > svg { width: 18px; height: 18px; flex-basis: 18px; }
+:root .reader-annotation-dock .annotation-toolbar .annotation-tool-btn { width: 36px; min-width: 36px; height: 36px; min-height: 36px !important; padding: 0; border-radius: 9px; }
+:root .reader-annotation-dock .annotation-toolbar .annotation-tool-btn > svg { width: 24px; height: 24px; flex-basis: 24px; }
 :root .reader-annotation-dock .annotation-tool-color-dot { width: 5px; height: 5px; right: 1px; bottom: 1px; }
 :root .reader-annotation-dock .annotation-toolbar::-webkit-scrollbar { background: transparent; border-radius: 999px; }
 :root .reader-annotation-dock .annotation-toolbar::-webkit-scrollbar-track:horizontal { margin-inline: 10px; }

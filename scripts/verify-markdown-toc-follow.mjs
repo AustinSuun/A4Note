@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
+const source = fs.readFileSync('src/features/explorer/useMarkdownTocFollow.ts', 'utf8');
+const exports = {};
+vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, { exports, require: name => { assert.equal(name, 'react'); return {}; } });
+let checks = 0;
+const eq = (actual, expected) => { assert.equal(actual, expected); checks++; };
+const { headingAtLine, localScrollTop, tocScrollBehavior } = exports;
+const headings = [{ id: 'a', lineNumber: 3 }, { id: 'b', lineNumber: 15 }, { id: 'c', lineNumber: 90 }];
+for (const [line, expected] of [[null, 'title'], [0, 'title'], [3, 'a'], [14, 'a'], [15, 'b'], [89, 'b'], [90, 'c'], [10000, 'c']]) eq(headingAtLine(headings, line, 'title'), expected);
+eq(headingAtLine([], 100, null), null);
+for (const scale of [0.8, 1, 1.25, 1.5, 2]) {
+  const el = { scrollTop: 100, offsetHeight: 400, getBoundingClientRect: () => ({ top: 40, height: 400 * scale }) };
+  eq(localScrollTop(el, 40 + 200 * scale), 244);
+  eq(localScrollTop(el, 40 + 200 * scale, 20), 280);
+  eq(localScrollTop(el, 40 - 200 * scale), 0);
+}
+for (const reduced of [false, true]) eq(tocScrollBehavior({ matchMedia: query => { eq(query, '(prefers-reduced-motion: reduce)'); return { matches: reduced }; } }), reduced ? 'auto' : 'smooth');
+const resource = fs.readFileSync('src/features/explorer/MarkdownResourceTab.tsx', 'utf8');
+const editor = fs.readFileSync('src/features/explorer/MarkdownLivePreviewEditor.tsx', 'utf8');
+eq(resource.includes("aria-current={activeHeadingId === heading.id ? 'location' : undefined}"), true);
+eq(resource.includes("editSurface === 'live' ? previewHeadings : tocHeadings"), true);
+eq(resource.includes('Math.max(list.clientHeight, rows.at(-1)?.bottom ?? 0)'), true);
+eq(editor.includes('Math.max(0, y - view.documentTop)'), true);
+eq(editor.includes('view.lineBlockAtHeight'), true);
+eq(fs.readFileSync('src/features/explorer/file-tree-types.css', 'utf8').includes('border: 0;'), true);
+eq(fs.readFileSync('src/features/explorer/markdown-toc-follow.css', 'utf8').includes('height: var(--markdown-toc-end-space, 0px)'), true);
+console.log(`PASS ${checks} TOC mapping, zoom, reduced-motion and integration contracts (not browser E2E)`);

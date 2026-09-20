@@ -65,7 +65,8 @@ export function calloutLabel(type: string) {
   return calloutLabels[type] ?? type.toUpperCase();
 }
 
-const markerPattern = /^\s*\[!([A-Za-z]+)\]\s*([^\n]*)/;
+// Horizontal whitespace only: a title-less marker must not consume body text.
+const markerPattern = /^[ \t]*\[!([A-Za-z]+)\][ \t]*([^\n]*)/;
 
 /**
  * Drops the `[!TYPE] title` line from the callout's first block, keeping the
@@ -74,15 +75,23 @@ const markerPattern = /^\s*\[!([A-Za-z]+)\]\s*([^\n]*)/;
  * elements, so the search is by child rather than by assuming a lone string.
  */
 function stripMarkerLine(block: ReactElement): ReactNode {
-  const children = (block.props as { children?: ReactNode }).children;
-  const list: ReactNode[] = Array.isArray(children) ? [...children] : [children];
-  const index = list.findIndex((child) => typeof child === 'string' && markerPattern.test(child));
-  if (index === -1) return block;
-  const remainder = (list[index] as string).replace(/^\s*\[![A-Za-z]+\]\s*[^\n]*(?:\n|$)/, '').replace(/^[ \t]+/, '');
-  if (remainder) list[index] = remainder;
-  else list.splice(index, 1);
-  const kept = list.filter((child) => child !== null && child !== undefined && child !== '');
-  return kept.length > 0 ? cloneElement(block, {}, ...kept) : null;
+  let inHeader = true;
+  const strip = (node: ReactNode): ReactNode => {
+    if (!inHeader) return node;
+    if (typeof node === 'string') {
+      const newline = node.indexOf('\n');
+      if (newline < 0) return null;
+      inHeader = false;
+      return node.slice(newline + 1) || null;
+    }
+    if (isValidElement(node)) {
+      const kept = Children.toArray((node.props as { children?: ReactNode }).children)
+        .map(strip).filter((child) => child !== null && child !== undefined);
+      return kept.length ? cloneElement(node, {}, ...kept) : null;
+    }
+    return null;
+  };
+  return strip(block);
 }
 
 /** `blockquote` renderer: a callout when the first block carries a marker, a plain quote otherwise. */
@@ -99,16 +108,14 @@ export function MarkdownCallout({ children }: { children?: ReactNode }) {
   const type = marker[1].toLowerCase();
   const known = isKnownCalloutType(type);
   const label = calloutLabel(type);
-  const title = marker[2].trim() || label;
+  const title = marker[2].trim();
   return <blockquote className={`markdown-callout markdown-callout-${type}`} data-callout-type={type}>
     <div className="markdown-callout-heading">
-      <span className="markdown-callout-icon">{calloutIcon(type)}</span>
-      <div className="markdown-callout-heading-main">
-        {/* An unknown type has no localized label, and the badge on the right
-            already shows the raw name — printing it twice reads like a bug. */}
+      <span className="markdown-callout-badge">
+        <span className="markdown-callout-icon">{calloutIcon(type)}</span>
         {known && <span className="markdown-callout-label">{label}</span>}
-        <strong>{title}</strong>
-      </div>
+      </span>
+      {title && <strong>{title}</strong>}
       <span className="markdown-callout-kind">{type.toUpperCase()}</span>
     </div>
     <div className="markdown-callout-content">{stripMarkerLine(firstBlock)}{blocks.slice(firstIndex + 1)}</div>

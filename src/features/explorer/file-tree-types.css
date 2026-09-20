@@ -6,7 +6,7 @@
   box-sizing: border-box;
   max-width: min(40%, 10ch);
   padding: 1px 5px;
-  border: 1px solid color-mix(in srgb, var(--file-type-hue) 25%, transparent);
+  border: 0;
   border-radius: 5px;
   background: color-mix(in srgb, var(--file-type-hue) 12%, var(--surface, #fff));
   color: color-mix(in srgb, var(--file-type-hue) 55%, var(--ink, #22332b));

@@ -14,6 +14,8 @@ import { MarkdownDocumentTitle } from './MarkdownDocumentTitle';
 import { MarkdownAuthoringDock } from './MarkdownAuthoringDock';
 import { loadNoteImage } from './noteImageLoader';
 import './markdown-mode-switch.css';
+import './markdown-toc-follow.css';
+import { headingAtLine, localScrollTop, tocScrollBehavior, useMarkdownTocFollow } from './useMarkdownTocFollow';
 import { markdownTemplates, type MarkdownTemplate } from './markdownTemplates';
 import { useDocumentToolbar, useDocumentToolbarActive } from '../../workbench/DocumentToolbar';
 import { useTextDocument } from './useTextDocument';
@@ -383,6 +385,27 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
     setActiveHeadingId((current) => tocHeadings.some((heading) => heading.id === current) ? current : tocHeadings[0]?.id ?? null);
   }, [tocHeadings]);
 
+  const beginTocNavigation = useMarkdownTocFollow({
+    enabled: active && hostTabActive && tocOpen && tocHeadings.length > 0,
+    sessionKey: `${documentId}:${mode}:${editSurface}`,
+    scrollerRef: contentScrollerRef,
+    listRef: tocListRef,
+    onActive: setActiveHeadingId,
+    resolveActive: (anchorY) => {
+      const fallback = tocHeadings[0]?.id ?? null;
+      if (mode === 'read') {
+        let id = fallback;
+        for (const node of contentScrollerRef.current?.querySelectorAll<HTMLElement>('[data-markdown-heading-id]') ?? []) {
+          if (node.getBoundingClientRect().top > anchorY) break;
+          id = node.dataset.markdownHeadingId ?? id;
+        }
+        return id;
+      }
+      return headingAtLine(editSurface === 'live' ? previewHeadings : tocHeadings,
+        liveEditorRef.current?.getLineAtViewportY(anchorY) ?? null, fallback);
+    },
+  });
+
   const measureTocGuides = useMemo(() => () => {
     const list = tocListRef.current;
     const guides = tocGuidesRef.current;
@@ -472,7 +495,9 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
         endIndex: lastDescendantIndex,
       });
     }
-    const contentHeight = Math.max(list.scrollHeight, rows.at(-1)?.bottom ?? 0);
+    // Do not include the absolute guide layer or the scroll-past-end spacer:
+    // feeding scrollHeight back into this layer prevents it from shrinking.
+    const contentHeight = Math.max(list.clientHeight, rows.at(-1)?.bottom ?? 0);
     setTocGuideLayout({ contentHeight, rails });
     return true;
   }, [tocHeadings, tocHeadingMeta]);
@@ -915,17 +940,18 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
     return heading?.id;
   };
   const navigateToHeading = (heading: MarkdownHeading) => {
+    beginTocNavigation(heading.id);
     setActiveHeadingId(heading.id);
     if (mode === 'read') {
       window.requestAnimationFrame(() => {
-        contentScrollerRef.current
-          ?.querySelector<HTMLElement>(`[data-markdown-heading-id="${heading.id}"]`)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const scroller = contentScrollerRef.current;
+        const target = scroller?.querySelector<HTMLElement>(`[data-markdown-heading-id="${heading.id}"]`);
+        if (scroller && target) scroller.scrollTo({ top: localScrollTop(scroller, target.getBoundingClientRect().top), behavior: tocScrollBehavior(window) });
       });
       return;
     }
     if (editSurface === 'live' && title && heading.id === tocHeadings[0]?.id) {
-      titleInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      contentScrollerRef.current?.scrollTo({ top: 0, behavior: tocScrollBehavior(window) });
       return;
     }
     const previewHeading = previewHeadingById.get(heading.id);
@@ -1105,6 +1131,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
               ref={(node) => { if (node) tocRowRefs.current.set(heading.id, node); else tocRowRefs.current.delete(heading.id); }}
               className={`markdown-toc-item level-${heading.level}${activeHeadingId === heading.id ? ' active' : ''}`}
               onClick={() => navigateToHeading(heading)}
+              aria-current={activeHeadingId === heading.id ? 'location' : undefined}
               onMouseEnter={() => setHoveredHeadingId(heading.id)}
               onMouseLeave={() => setHoveredHeadingId(null)}
               title={heading.text}
