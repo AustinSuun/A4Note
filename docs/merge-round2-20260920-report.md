@@ -50,3 +50,12 @@ findbar/pan/zoom 脏区；provisionSummaryNotes；TaskServiceControls 接线。
   updaterSigned=true）；旧 latest 已按惯例归档到
   archive/0.1.23-20260920-213520-30116。
 - Exe SHA-256：621392B4773F7BC299E2D3170BB9D5BD51B3665CB282DEB3394783843DC93C573
+
+## 后续（同日）：41a28025 合入 + 0.1.24
+
+- 任务 41a28025「交还离线任务、退回队列」已归档（用户验收通过），交付 e99ffe8。
+- 其分支另含 review-ui 未归档工作（bba40b2/23db5a6/6f300bf），故只 cherry-pick
+  e99ffe8（232da61），排除 feedback 面板、requestChanges、tb-more-actions、
+  variant="dialog"；另补 JSX fragment 包裹（与删除按钮并列）。
+- tsc -b 0 错误；main 快进至 232da61；本地打包 0.1.24（signed=true，
+  Exe SHA-256：8589CFD8ADB5ECCB49568F400693F1CCCB91EE8EF2A37B19EB93EED6BF9E5B1BB）。
