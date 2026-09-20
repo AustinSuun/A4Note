@@ -41,9 +41,18 @@ try {
   check(html.includes('下载'),'Unsafe preview still allows authenticated download');
   html=renderToStaticMarkup(React.createElement(TaskDetailDialog,{title:'任务详情',busy:false,onClose:()=>{},children:'说明',footer:'验收操作',error:'请求冲突'}));
   check(html.startsWith('<dialog'),'Native modal semantics');
-  check(html.includes('tb-dialog-body')&&html.includes('tb-detail-footer'),'Separate body scrolling and fixed footer');
+  check(html.includes('tb-dialog-body')&&html.includes('tb-detail-footer'),'Body scrolls separately; the footer slot renders only when a caller supplies one');
   check(html.includes('role="alert"')&&html.includes('请求冲突'),'Errors remain visible in modal');
-  check(!renderToStaticMarkup(React.createElement(TaskDetailDialog,{title:'任务详情',busy:false,onClose:()=>{},children:'说明'})).includes('tb-detail-footer'),'Archived detail renders no empty footer bar');
+  check(!renderToStaticMarkup(React.createElement(TaskDetailDialog,{title:'任务详情',busy:false,onClose:()=>{},children:'说明'})).includes('tb-detail-footer'),'Without a footer prop no footer bar is rendered');
+  // Round 2 (user feedback): the board must not pin review actions to the dialog; they end the scrolling body instead.
+  const board=fs.readFileSync('src/features/taskboard/TaskBoard.tsx','utf8');
+  const dialogUse=board.slice(board.indexOf('<TaskDetailDialog'),board.indexOf('</TaskDetailDialog>'));
+  check(dialogUse.length>0&&!/\bfooter=\{/.test(dialogUse),'TaskBoard passes no fixed footer to the detail dialog');
+  const actionsAt=board.indexOf('tb-detail-actions-section');
+  check(actionsAt>board.indexOf('aria-label="任务历史原始记录"')&&actionsAt<board.indexOf('</aside>'),'Review actions render inside the scrolling body after the last content section');
+  check(/<div className="tb-review-buttons">[\s\S]*?\{feedbackOpen && \(/.test(dialogUse),'Feedback panel expands below the buttons instead of replacing the hint');
+  const css=fs.readFileSync('src/features/taskboard/taskboard-dialog.css','utf8');
+  check(/\.tb-detail-actions-section\s*\{[^}]*border-top/.test(css)&&!/\.tb-detail-actions(-section)?\s*\{[^}]*position:\s*(sticky|fixed)/.test(css),'Action block is separated by a rule, never sticky or fixed');
   const {TaskReviewSummary}=await load('TaskReviewSummary');
   const detail={id:'task',title:'长标题',owner:'agent',spec_revision:2,result:'结论 '.repeat(200),feedback:'',events:[{seq:9,kind:'task.submit',created_at:'2026-09-20T10:00:00Z'}],attachments:[sample,{...sample,id:'r1',name:'result.png',purpose:'result'}]};
   const summary=renderToStaticMarkup(React.createElement(TaskReviewSummary,{task:detail,client,agents:[{id:'agent',alias:'青澄'}],variant:'dialog'}));

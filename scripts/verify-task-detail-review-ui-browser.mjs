@@ -1,7 +1,8 @@
 // Real TaskBoard + isolated synthetic task service in headless Chrome.
 // Harness shape follows scripts/verify-task-modal-review-ui-browser.mjs (shared workspace, qingcheng);
 // scenarios and assertions here cover task ab3806ec: review-first detail dialog, compact compare chips,
-// collapsed feedback, 44px archive action and an isolated destructive zone.
+// collapsed feedback, 44px archive action and an isolated destructive zone. Round 2 (user feedback): the
+// review actions live at the end of the scrolling body instead of a fixed footer, so they never cover evidence.
 // Usage: MODAL_PHASE=before|after node scripts/verify-task-detail-review-ui-browser.mjs
 import fs from 'node:fs';
 import os from 'node:os';
@@ -224,7 +225,10 @@ window.__confirms=[];window.__confirmAnswer=true;window.confirm=m=>{window.__con
     const visible=el=>{if(!el)return false;const summary=el.closest('summary');for(let n=el.parentElement;n;n=n.parentElement){if(n.tagName==='DETAILS'&&!n.open&&!(summary&&summary.parentElement===n))return false;}return el.checkVisibility?el.checkVisibility({visibilityProperty:true,contentVisibilityAuto:true}):el.getClientRects().length>0;};
     const btn=t=>[...d.querySelectorAll('button')].find(e=>e.textContent.trim().startsWith(t));
     const archive=btn('效果满意'),adjust=btn('需要调整'),del=btn('删除任务'),more=d.querySelector('.tb-more-actions summary');
-    const textarea=d.querySelector('.tb-detail-footer textarea');
+    const actions=d.querySelector('.tb-detail-actions'),actionsSection=d.querySelector('.tb-detail-actions-section');
+    const textarea=d.querySelector('.tb-detail-actions textarea');
+    const section=d.querySelector('.tb-detail > section:not([hidden]):not(.tb-detail-actions-section)');
+    const contentBottom=section?[...section.querySelectorAll('*')].filter(visible).reduce((m,e)=>Math.max(m,e.getBoundingClientRect().bottom/z),rect(section).top):null;
     const thumb=d.querySelector('.tb-review-summary .tb-image-thumbnail'),img=thumb?.querySelector('img'),card=thumb?.closest('.tb-file'),chip=card?.querySelector('.tb-compare-chip input'),summary=d.querySelector('.tb-review-summary');
     const cardBlank=card?card.getBoundingClientRect().height/z-[...card.children].reduce((s,c)=>s+c.getBoundingClientRect().height/z,0):null;
     const bodyRect=rect(b);
@@ -236,8 +240,11 @@ window.__confirms=[];window.__confirmAnswer=true;window.confirm=m=>{window.__con
       summaryTop:summary&&rect(summary).top,bodyBottom:bodyRect&&bodyRect.bottom,bodyTop:bodyRect&&bodyRect.top,
       thumb:thumb&&rect(thumb),imgHeight:img?img.getBoundingClientRect().height/z:null,cardBlank,chip:chip&&{...rect(chip),checked:chip.checked},
       tabs:[...d.querySelectorAll('.tb-detail-tabs button')].map(e=>({label:e.textContent.trim(),height:e.getBoundingClientRect().height/z,pressed:e.getAttribute('aria-pressed')})),
-      buttons:[...d.querySelectorAll('.tb-dialog-controls button,.tb-detail-tabs button,.tb-detail-footer button')].filter(visible).map(e=>({label:e.textContent.trim(),height:e.getBoundingClientRect().height/z})),
-      footerHeight:d.querySelector('.tb-detail-footer')?.getBoundingClientRect().height/z??0,fontBody:getComputedStyle(b).fontSize,title:getComputedStyle(d.querySelector('.tb-dialog-header h2')).fontSize}})()`);
+      buttons:[...d.querySelectorAll('.tb-dialog-controls button,.tb-detail-tabs button,.tb-detail-actions button')].filter(visible).map(e=>({label:e.textContent.trim(),height:e.getBoundingClientRect().height/z})),
+      footerHeight:(d.querySelector('.tb-detail-footer')?.getBoundingClientRect().height??0)/z,
+      actions:actions&&{...rect(actions),inBody:b.contains(actions),lastInFlow:!!actionsSection&&actionsSection.parentElement.lastElementChild===actionsSection,position:getComputedStyle(actionsSection||actions).position,contentBottom},
+      scrollTop:b.scrollTop,scrollHeight:b.scrollHeight,
+      fontBody:getComputedStyle(b).fontSize,title:getComputedStyle(d.querySelector('.tb-dialog-header h2')).fontSize}})()`);
   const gap = (a, b) => ({ dx: Math.max(a.left - b.right, b.left - a.right), dy: Math.max(a.top - b.bottom, b.top - a.bottom) });
   const record = {};
 
@@ -264,36 +271,61 @@ window.__confirms=[];window.__confirmAnswer=true;window.confirm=m=>{window.__con
       compactChip: !!m.chip && m.chip.width <= 24 && m.chip.height <= 24,
       cardNoBlank: m.cardBlank !== null && m.cardBlank <= 40,
       allTargets: m.buttons.every(b => b.height >= 34),
-      footerBudget: m.footerHeight <= 120,
+      noFixedFooter: m.footerHeight === 0 && !!m.actions && m.actions.inBody && m.actions.position === 'static',
+      actionsLastInFlow: !!m.actions && m.actions.lastInFlow,
+      actionsBelowContent: !!m.actions && m.actions.contentBottom !== null && m.actions.top >= m.actions.contentBottom - 1,
+      nothingCoversEvidenceAtTop: !m.thumb || !m.actions || m.actions.top >= m.thumb.bottom - 1,
     };
     matrix.push({ ...cell, metrics: m });
     if (height >= 1000) cell.screenshotFullyVisible = !!m.thumb && m.thumb.bottom <= m.bodyBottom + 1;
-    for (const [k, v] of Object.entries(cell)) if (typeof v === 'boolean' && k !== 'maximized') ok(v, `matrix ${width}x${height} z${zoom} ${maximized ? 'max' : 'normal'}: ${k}`, { archive: m.archive, footer: m.footerHeight, thumb: m.thumb, img: m.imgHeight, blank: m.cardBlank, chip: m.chip });
+    for (const [k, v] of Object.entries(cell)) if (typeof v === 'boolean' && k !== 'maximized') ok(v, `matrix ${width}x${height} z${zoom} ${maximized ? 'max' : 'normal'}: ${k}`, { archive: m.archive, footer: m.footerHeight, actions: m.actions, thumb: m.thumb, img: m.imgHeight, blank: m.cardBlank, chip: m.chip });
     if (zoom === 1) await screenshot(`evidence-${width}x${height}-${maximized ? 'max' : 'normal'}`);
+    // Scrolled to the end: the actions are fully inside the body viewport and still below every piece of evidence.
+    await evaluate(`document.querySelector('.tb-dialog-body').scrollTop=1e6`); await frame();
+    const e = await metrics();
+    const lastEvidenceBottom = await evaluate(`(()=>{const z=parseFloat(document.documentElement.style.zoom||'1');return [...document.querySelectorAll('.tb-detail-dialog .tb-review-summary .tb-file')].reduce((m,el)=>Math.max(m,el.getBoundingClientRect().bottom/z),0)})()`);
+    ok(e.archive && e.archive.top >= e.bodyTop - 1 && e.archive.bottom <= e.bodyBottom + 1 && e.actions.top >= lastEvidenceBottom - 1, `matrix ${width}x${height} z${zoom} ${maximized ? 'max' : 'normal'}: scrolled end shows actions below all evidence`, { archive: e.archive, actions: e.actions, lastEvidenceBottom, body: [e.bodyTop, e.bodyBottom] });
+    if (zoom === 1) await screenshot(`actions-end-${width}x${height}-${maximized ? 'max' : 'normal'}`);
+    await evaluate(`document.querySelector('.tb-dialog-body').scrollTop=0`); await frame();
   }
   record.matrix = matrix;
   await setViewport(1366, 768); if (await evaluate(`document.querySelector('.tb-detail-dialog').classList.contains('is-maximized')`)) await click('还原');
 
-  // Other tabs at the reference size.
-  for (const tab of ['任务要求', '执行记录', '完整历史']) { await click(tab); await pause(150); await screenshot('tab-' + tab); }
+  // Other tabs at the reference size: the same in-flow action block ends every tab, never a fixed bar.
+  for (const tab of ['任务要求', '执行记录', '完整历史']) {
+    await click(tab); await pause(150); await screenshot('tab-' + tab);
+    const t = await metrics();
+    ok(t.footerHeight === 0 && t.actions && t.actions.inBody && t.actions.lastInFlow && t.actions.top >= t.actions.contentBottom - 1, `Tab ${tab}: actions follow the content in flow`, { actions: t.actions });
+  }
   await click('验收与证据'); await pause(150);
 
   // Feedback: hidden by default, expands on demand, collapse keeps the draft, nothing is sent until submit.
   if (phase === 'after') {
+    await evaluate(`document.querySelector('.tb-dialog-body').scrollTop=1e6`); await frame();
     await click('需要调整');
+    await pause(250);
     let m = await metrics();
     ok(m.textareaVisible && m.textareaFocused && m.adjust.expanded === 'true', 'Feedback panel opens and focuses the textarea', { m: m.adjust });
     ok(m.archive.visible && m.archive.height >= 44, 'Archive stays available while feedback is open');
+    const panelBox = await evaluate(`(()=>{const z=parseFloat(document.documentElement.style.zoom||'1'),p=document.querySelector('.tb-feedback-panel'),b=document.querySelector('.tb-dialog-body'),r=p.getBoundingClientRect(),br=b.getBoundingClientRect(),btn=document.querySelector('.tb-review-buttons').getBoundingClientRect();return {top:r.top/z,bottom:r.bottom/z,bodyTop:br.top/z,bodyBottom:br.bottom/z,buttonsBottom:btn.bottom/z,inBody:b.contains(p),position:getComputedStyle(p).position}})()`);
+    ok(panelBox.inBody && panelBox.position === 'static' && panelBox.top >= panelBox.buttonsBottom - 1, 'Feedback panel expands below the buttons inside the scrolling body', panelBox);
+    ok(panelBox.top >= panelBox.bodyTop - 1 && panelBox.bottom <= panelBox.bodyBottom + 1, 'Opening the panel scrolls it fully into view', panelBox);
     await rpc('Input.insertText', { text: '图片下方仍有空白，请再压缩。' });
     const layout = await evaluate(`(()=>{const p=document.querySelector('.tb-feedback-panel'),t=p.querySelector('textarea');return {panel:p.getBoundingClientRect().width,textarea:t.getBoundingClientRect().width}})()`);
     ok(layout.textarea >= layout.panel * 0.8, 'Feedback textarea uses the panel width', layout);
     await screenshot('feedback-open-1366x768');
+    // Scrolling back to the evidence: nothing fixed remains over the images while the panel is open.
+    await evaluate(`document.querySelector('.tb-dialog-body').scrollTop=0`); await frame();
+    const topView = await metrics();
+    ok(topView.footerHeight === 0 && topView.thumb && topView.thumb.top < topView.bodyBottom && (!topView.actions || topView.actions.top >= topView.thumb.bottom - 1), 'With feedback open, scrolling up shows evidence with nothing overlaid', { thumb: topView.thumb, actions: topView.actions });
+    await screenshot('feedback-open-scrolled-top-1366x768');
+    await evaluate(`document.querySelector('.tb-dialog-body').scrollTop=1e6`); await frame();
     await click('收起');
     m = await metrics();
     ok(!m.textareaVisible, 'Collapse hides the textarea');
     ok((await api('/tasks/' + richId)).status === 'review', 'Collapsing sends nothing');
     await click('需要调整');
-    ok((await evaluate(`document.querySelector('.tb-detail-footer textarea').value`)) === '图片下方仍有空白，请再压缩。', 'Draft feedback survives collapse');
+    ok((await evaluate(`document.querySelector('.tb-detail-actions textarea').value`)) === '图片下方仍有空白，请再压缩。', 'Draft feedback survives collapse');
     await click('收起');
     await evaluate(`window.__confirmAnswer=false`);
     await evaluate(`document.querySelector('.tb-detail-dialog [aria-label="关闭任务详情"]').click()`); await frame();
@@ -301,7 +333,9 @@ window.__confirms=[];window.__confirmAnswer=true;window.confirm=m=>{window.__con
     await evaluate(`window.__confirmAnswer=true`);
 
     // Destructive zone: collapsed by default, separated from the archive action, confirm guarded.
+    await evaluate(`document.querySelector('.tb-dialog-body').scrollTop=1e6`); await frame();
     await click('更多操作');
+    await evaluate(`document.querySelector('.tb-dialog-body').scrollTop=1e6`); await frame();
     m = await metrics();
     const separation = gap(m.del, m.archive);
     ok(m.del && m.del.visible && (separation.dx >= 160 || separation.dy >= 32), 'Delete is far from archive when revealed', { separation, del: m.del, archive: m.archive });
@@ -317,6 +351,7 @@ window.__confirms=[];window.__confirmAnswer=true;window.confirm=m=>{window.__con
     // Narrow window: the two action groups still live in separate rows.
     await setViewport(880, 700);
     await click('更多操作');
+    await evaluate(`document.querySelector('.tb-dialog-body').scrollTop=1e6`); await frame();
     m = await metrics();
     const narrowGap = gap(m.del, m.archive);
     ok(m.body.scroll <= m.body.client + 1, 'Narrow dialog has no horizontal overflow');
@@ -355,13 +390,14 @@ window.__confirms=[];window.__confirmAnswer=true;window.confirm=m=>{window.__con
     await pause(500);
     const returned = await api('/tasks/' + plainId);
     ok(returned.status !== 'review' && returned.feedback === '请补充界面截图。', 'Return-for-changes reaches the service with the feedback', { status: returned.status, feedback: returned.feedback });
-    ok(!(await evaluate(`!!document.querySelector('.tb-detail-footer textarea')`)) && !(await evaluate(`!!document.querySelector('.tb-detail-footer .tb-archive')`)), 'After the return, review actions disappear and the draft is cleared');
+    ok(!(await evaluate(`!!document.querySelector('.tb-detail-actions textarea')`)) && !(await evaluate(`!!document.querySelector('.tb-detail-actions .tb-archive')`)), 'After the return, review actions disappear and the draft is cleared');
     await closeDialog();
 
     // Queued task: only the collapsed destructive zone; confirm accepted deletes it.
     await cardSelector(queued.id);
     m = await metrics();
     ok(!m.archive && !m.adjust && m.more && !m.del?.visible, 'Non-review task shows only the collapsed more-actions entry');
+    ok(m.footerHeight === 0 && m.actions && m.actions.inBody && m.actions.lastInFlow, 'Non-review task keeps the more-actions entry in flow, not in a footer', { actions: m.actions });
     await screenshot('queued-footer-1366x768');
     await click('更多操作'); await click('删除任务'); await pause(500);
     ok((await evaluate('window.__confirms.at(-1)')).includes('删除'), 'Delete always asks for confirmation');
@@ -374,7 +410,7 @@ window.__confirms=[];window.__confirmAnswer=true;window.confirm=m=>{window.__con
     await click('效果满意');
     await pause(500);
     ok((await api('/tasks/' + richId)).status === 'archived', 'Primary action archives the reviewed task');
-    ok(!(await evaluate(`!!document.querySelector('.tb-detail-dialog .tb-detail-footer')`)), 'Archived task renders no footer bar');
+    ok(!(await evaluate(`!!document.querySelector('.tb-detail-dialog .tb-detail-footer') || !!document.querySelector('.tb-detail-dialog .tb-detail-actions')`)), 'Archived task renders neither a footer bar nor an action block');
     await screenshot('archived-1366x768');
     await closeDialog();
   } else {

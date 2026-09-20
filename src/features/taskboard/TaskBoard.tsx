@@ -112,6 +112,7 @@ export function TaskBoard({
     }),
     [feedback, setFeedback] = useState(''),
     [feedbackOpen, setFeedbackOpen] = useState(false),
+    feedbackPanelRef = useRef<HTMLDivElement>(null),
     [purpose, setPurpose] = useState('reference'),
     [caption, setCaption] = useState('');
   const stageSession = useTaskStageSession(snapshot?.project.id ?? '');
@@ -125,6 +126,14 @@ export function TaskBoard({
     if (area) { area.scrollTop = stageSession.view.top; area.scrollLeft = stageSession.view.left; }
   }, [snapshot?.project.id, filter]);
   const previewId = stageSession.view.selectedId;
+  /** The review actions live at the end of the scrolling body; reveal the feedback panel when it opens. */
+  useEffect(() => {
+    if (!feedbackOpen) return;
+    const panel = feedbackPanelRef.current;
+    if (!panel) return;
+    const frame = requestAnimationFrame(() => panel.scrollIntoView({ block: 'nearest' }));
+    return () => cancelAnimationFrame(frame);
+  }, [feedbackOpen]);
   const previewTask = snapshot?.tasks.find(task => task.id === previewId);
   useEffect(() => {
     setReviewDetail(null);
@@ -690,69 +699,7 @@ export function TaskBoard({
               <TaskDetailDialog key={selected} title={'任务详情 · ' + (detail?.title ?? '加载中…')}
                 subtitle={detail ? `${snapshot?.project.name ?? '项目'} · ${taskColumns.find(c => c[0] === detail.status)?.[1] ?? detail.status} · ${owner(detail.owner)?.alias ?? '尚无执行Agent'} · 需求 v${detail.spec_revision} · 提交记录 ${detail.events.filter(e => e.kind === 'task.submit').at(-1)?.seq ?? '未记录'}（非构建版本）` : undefined}
                 navigation={detail && <TaskDetailNavigation value={detailSection} onChange={changeDetailSection} />}
-                busy={busy} onClose={closeDetail} error={error} onDismissError={() => setError('')} footer={detail && detail.status !== 'archived' && (
-                  <div className={'tb-detail-actions' + (detail.status === 'review' ? ' is-review' : '')}>
-                    {detail.status === 'review' && (
-                      <div className="tb-review-actions">
-                        {feedbackOpen ? (
-                          <div className="tb-feedback-panel" role="group" aria-label="调整意见">
-                            <label htmlFor="tb-feedback-input">需要调整的地方</label>
-                            <textarea
-                              id="tb-feedback-input"
-                              autoFocus
-                              placeholder="写明需要调整的位置或问题；也可以回原来的对话沟通。"
-                              value={feedback}
-                              onChange={(e) => setFeedback(e.target.value)}
-                            />
-                            <div className="tb-feedback-buttons">
-                              <button type="button" disabled={busy} onClick={() => setFeedbackOpen(false)}>
-                                收起{feedback.trim() ? '（保留已写内容）' : ''}
-                              </button>
-                              <button type="button" className="tb-primary" disabled={busy} onClick={() => void requestChanges()}>
-                                提交调整意见并退回
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="tb-review-hint">
-                            <strong>检查效果</strong>
-                            Agent 已提交，确认实际效果后再归档；不满意可退回调整。
-                          </p>
-                        )}
-                        <div className="tb-review-buttons">
-                          <button type="button" disabled={busy} aria-expanded={feedbackOpen} aria-controls="tb-feedback-input"
-                            onClick={() => setFeedbackOpen((v) => !v)}>
-                            需要调整
-                          </button>
-                          <button
-                            type="button"
-                            className="tb-primary tb-archive"
-                            disabled={busy || detail.claimed_spec !== detail.spec_revision}
-                            title={detail.claimed_spec !== detail.spec_revision ? '执行 Agent 尚未确认最新需求版本，暂不能归档' : undefined}
-                            onClick={() => void action('archive')}
-                          >
-                            效果满意，归档
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <details className="tb-more-actions">
-                      <summary>更多操作</summary>
-                      <div className="tb-danger-zone" role="group" aria-label="危险操作">
-                        <p>删除会移除任务及其附件记录，且不可恢复；与验收归档无关。</p>
-                        <button type="button" className="tb-danger" disabled={busy || (detail.status === 'in_progress' && !!detail.owner)}
-                          title={detail.status === 'in_progress' && detail.owner ? '执行中且有负责人的任务不能删除' : undefined}
-                          onClick={() => void run(async () => {
-                            if (!client || !detail) return;
-                            if (!window.confirm('确定删除该任务？其附件记录将一并删除，操作不可恢复。')) return;
-                            await client.update(detail.id, { action: 'delete', revision: detail.revision });
-                            selectedRef.current = null;
-                            setSelected(null); setDetail(null); setEditing(false); setFeedback(''); setFeedbackOpen(false); setPurpose('reference'); setCaption('');
-                            await refresh(client);
-                          })}>删除任务</button>
-                      </div>
-                    </details>
-                  </div>)}>
+                busy={busy} onClose={closeDetail} error={error} onDismissError={() => setError('')}>
               <aside
                 className="tb-detail"
                 aria-label="任务详情"
@@ -960,6 +907,71 @@ export function TaskBoard({
                     <section hidden={detailSection !== 'history'} aria-label="任务历史原始记录">
                       <TaskEventTimeline task={detail} agents={snapshot?.agents ?? []} />
                     </section>
+                    {detail.status !== 'archived' && (
+                      <section className="tb-detail-actions-section" aria-label="验收与任务操作">
+                        <div className={'tb-detail-actions' + (detail.status === 'review' ? ' is-review' : '')}>
+                          {detail.status === 'review' && (
+                            <div className="tb-review-actions">
+                              <p className="tb-review-hint">
+                                <strong>检查效果</strong>
+                                Agent 已提交，确认实际效果后再归档；不满意可退回调整。
+                              </p>
+                              <div className="tb-review-buttons">
+                                <button type="button" disabled={busy} aria-expanded={feedbackOpen} aria-controls="tb-feedback-input"
+                                  onClick={() => setFeedbackOpen((v) => !v)}>
+                                  需要调整
+                                </button>
+                                <button
+                                  type="button"
+                                  className="tb-primary tb-archive"
+                                  disabled={busy || detail.claimed_spec !== detail.spec_revision}
+                                  title={detail.claimed_spec !== detail.spec_revision ? '执行 Agent 尚未确认最新需求版本，暂不能归档' : undefined}
+                                  onClick={() => void action('archive')}
+                                >
+                                  效果满意，归档
+                                </button>
+                              </div>
+                              {feedbackOpen && (
+                                <div className="tb-feedback-panel" role="group" aria-label="调整意见" ref={feedbackPanelRef}>
+                                  <label htmlFor="tb-feedback-input">需要调整的地方</label>
+                                  <textarea
+                                    id="tb-feedback-input"
+                                    autoFocus
+                                    placeholder="写明需要调整的位置或问题；也可以回原来的对话沟通。"
+                                    value={feedback}
+                                    onChange={(e) => setFeedback(e.target.value)}
+                                  />
+                                  <div className="tb-feedback-buttons">
+                                    <button type="button" disabled={busy} onClick={() => setFeedbackOpen(false)}>
+                                      收起{feedback.trim() ? '（保留已写内容）' : ''}
+                                    </button>
+                                    <button type="button" className="tb-primary" disabled={busy} onClick={() => void requestChanges()}>
+                                      提交调整意见并退回
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <details className="tb-more-actions">
+                            <summary>更多操作</summary>
+                            <div className="tb-danger-zone" role="group" aria-label="危险操作">
+                              <p>删除会移除任务及其附件记录，且不可恢复；与验收归档无关。</p>
+                              <button type="button" className="tb-danger" disabled={busy || (detail.status === 'in_progress' && !!detail.owner)}
+                                title={detail.status === 'in_progress' && detail.owner ? '执行中且有负责人的任务不能删除' : undefined}
+                                onClick={() => void run(async () => {
+                                  if (!client || !detail) return;
+                                  if (!window.confirm('确定删除该任务？其附件记录将一并删除，操作不可恢复。')) return;
+                                  await client.update(detail.id, { action: 'delete', revision: detail.revision });
+                                  selectedRef.current = null;
+                                  setSelected(null); setDetail(null); setEditing(false); setFeedback(''); setFeedbackOpen(false); setPurpose('reference'); setCaption('');
+                                  await refresh(client);
+                                })}>删除任务</button>
+                            </div>
+                          </details>
+                        </div>
+                      </section>
+                    )}
                   </>
                 )}
               </aside>

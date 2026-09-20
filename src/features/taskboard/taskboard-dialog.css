@@ -145,10 +145,11 @@
 .taskboard .tb-detail-dialog .tb-acceptance { margin-top: 8px; }
 .taskboard .tb-detail-dialog .tb-detail > section > details > summary { min-height: 36px; padding: 8px 0; font-weight: 600; cursor: pointer; }
 
-/* Footer: primary review actions on the right, destructive action collapsed on the left. */
-.taskboard .tb-detail-dialog .tb-detail-footer { padding: 12px 24px; max-height: 52vh; }
-.taskboard .tb-detail-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'more review'; align-items: center; gap: 12px 28px; }
-.taskboard .tb-detail-actions .tb-review-actions { grid-area: review; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 24px; margin: 0; padding: 0; border: 0; }
+/* Review actions: rendered at the end of the scrolling body, never as a fixed footer, so they cannot cover the evidence.
+   Primary review actions on the right, destructive action collapsed on the left; the feedback panel expands below the buttons. */
+.taskboard .tb-detail-dialog .tb-detail-actions-section { margin: 32px 0 0; padding: 18px 0 4px; border-top: 1px solid var(--tb-line); }
+.taskboard .tb-detail-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'more review'; align-items: start; gap: 12px 28px; }
+.taskboard .tb-detail-actions .tb-review-actions { grid-area: review; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 24px; margin: 0; padding: 0; border: 0; }
 .taskboard .tb-detail-actions .tb-review-hint { margin: 0; color: var(--tb-muted); font-size: 14px; line-height: 1.5; }
 .taskboard .tb-detail-actions .tb-review-hint strong { display: block; color: var(--tb-ink); font-size: 15px; }
 .taskboard .tb-detail-actions .tb-review-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; }
@@ -160,7 +161,7 @@
 .taskboard .tb-detail-actions .tb-feedback-panel textarea { width: 100%; min-height: 72px; height: 88px; margin: 0; font-size: 14px; line-height: 1.5; }
 .taskboard .tb-detail-actions .tb-feedback-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
 .taskboard .tb-detail-actions .tb-feedback-buttons button { min-height: 40px; padding: 8px 16px; font-size: 14px; font-weight: 600; border-radius: 8px; }
-.taskboard .tb-detail-actions .tb-more-actions { grid-area: more; align-self: center; min-width: 0; }
+.taskboard .tb-detail-actions .tb-more-actions { grid-area: more; align-self: start; min-width: 0; margin-top: 2px; }
 .taskboard .tb-detail-actions .tb-more-actions summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 12px; border: 1px solid transparent; border-radius: 8px; color: var(--tb-muted); font-size: 14px; cursor: pointer; }
 .taskboard .tb-detail-actions .tb-more-actions summary::-webkit-details-marker { display: none; }
 .taskboard .tb-detail-actions .tb-more-actions summary::before { content: '···'; font-weight: 700; letter-spacing: 1px; }
@@ -182,6 +183,6 @@
   .taskboard .tb-detail-dialog .tb-dialog-header h2 { font-size: 18px; }
   .taskboard .tb-detail-dialog .tb-dialog-body { padding: 16px; }
   .taskboard .tb-detail-dialog .tb-detail-tabs { padding: 8px 16px; }
-  .taskboard .tb-detail-dialog .tb-detail-footer { padding: 10px 16px; }
+  .taskboard .tb-detail-dialog .tb-detail-actions-section { margin-top: 24px; padding-top: 14px; }
   .taskboard .tb-detail-dialog .tb-review-summary { padding: 16px; }
 }
