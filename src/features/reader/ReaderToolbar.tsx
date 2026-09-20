@@ -259,7 +259,7 @@ export function ReaderToolbar({
                     )}
                   </button>
                   {optionsTool === tool.id && (
-                    <ReaderToolPopover onClose={() => { setToolSettingsOpenFor(null); if (contextAnnotationId) onClearContextAnnotation?.(); }}>
+                    <ReaderToolPopover title={annotationTools.find((candidate) => candidate.id === optionsTool)?.label ?? '标注'} onClose={() => { setToolSettingsOpenFor(null); if (contextAnnotationId) onClearContextAnnotation?.(); }}>
                     <ToolOptionsBar
                       tool={optionsTool}
                       toolSettings={currentToolSettings}
