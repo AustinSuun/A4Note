@@ -1,3 +1,4 @@
+import {captureTaskDelivery, taskDelivery, taskIntegration, integrateAcceptedTask} from './task-delivery.mjs';
 import {migrateAcceptance, acceptanceState, acceptanceAction, bindAcceptanceEvidence} from './acceptance-store.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, randomBytes, createHash } from 'node:crypto';
@@ -40,8 +41,10 @@ function validateHandoff(value) {
   return result;
 }
 export class Store {
-  constructor(dir, project = 'A4 Note') {
+  constructor(dir, project = 'A4 Note', options = {}) {
     this.dir = dir;
+    this.projectRoot = options.projectRoot ?? null;
+    this.gitVerifyArgv = options.gitVerifyArgv ?? null;
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     fs.mkdirSync(path.join(dir, 'attachments'), {
       recursive: true,
@@ -94,6 +97,7 @@ export class Store {
   }
   acceptance(id) { return acceptanceState(this,id); }
   acceptanceAction(actor,id,input) { return acceptanceAction(this,actor,id,input); }
+  integrateAcceptedTask(id, actor) { return integrateAcceptedTask(this, this.get(id), actor); }
   close() {
     this.db.close();
   }
@@ -167,7 +171,7 @@ export class Store {
         .get().n,
       tasks: this.db
         .prepare(`SELECT ${taskColumns} FROM tasks ORDER BY updated_at DESC`)
-        .all(),
+        .all().map(t => ({...t, delivery: taskDelivery(this,t), integration: taskIntegration(this,t)})),
       agents: this.db
         .prepare('SELECT id,alias,role,last_seen FROM agents')
         .all().map(agent => ({...agent, presence: agentPresence(agent.last_seen)})),
@@ -181,6 +185,8 @@ export class Store {
   detail(id) {
     return {
       ...this.get(id),
+      delivery: taskDelivery(this,this.get(id)),
+      integration: taskIntegration(this,this.get(id)),
       handoff: (() => {
         const e = this.db.prepare("SELECT actor,payload,created_at FROM events WHERE task_id=? AND kind='task.handoff' ORDER BY seq DESC LIMIT 1").get(id);
         return e ? {...JSON.parse(e.payload), author: e.actor, recordedAt: e.created_at} : null;
@@ -297,6 +303,8 @@ export class Store {
           fail(403, '只能提交自己的进行中任务');
         if (t.claimed_spec !== t.spec_revision)
           fail(409, '需求已有修改，请读取并确认最新版要求');
+        let delivery;
+        try { delivery = captureTaskDelivery(this, t, b.delivery); } catch(e) { fail(400, e.message); }
         const result = text(b.result, 16000).trim();
         if (!result) fail(400, '需要结果与验证说明');
         this.db
@@ -304,6 +312,7 @@ export class Store {
             "UPDATE tasks SET status='review',result=?,delivery_revision=delivery_revision+1,progress='等待用户检查效果' WHERE id=?",
           )
           .run(result, id);
+        this.event(id, actor.id, 'task.delivery', delivery);
       } else if (action === 'request_changes') {
         if (actor.role !== 'human' || t.status !== 'review')
           fail(403, '仅用户可退回待验收任务');
@@ -317,9 +326,9 @@ export class Store {
           fail(403, '仅用户可验收归档');
         if (t.claimed_spec !== t.spec_revision)
           fail(409, '提交后需求已变化，请退回调整');
-        this.db
+        if (this.integrateAcceptedTask(id, actor.id)) this.db
           .prepare(
-            "UPDATE tasks SET status='archived',progress='用户验收通过' WHERE id=?",
+            "UPDATE tasks SET status='archived',progress='用户验收通过，交付处理状态见集成记录' WHERE id=?",
           )
           .run(id);
       } else if (action === 'release') {
@@ -366,7 +375,7 @@ export class Store {
       this.db
         .prepare('UPDATE tasks SET revision=revision+1,updated_at=? WHERE id=?')
         .run(now(), id);
-      if (action !== 'handoff') this.event(id, actor.id, 'task.' + action, {
+      if (action !== 'handoff') this.event(id, actor.id, 'task.' + (action === 'archive' && this.get(id).status !== 'archived' ? 'acceptance_blocked' : action), {
         before: t,
         after: this.get(id),
       });

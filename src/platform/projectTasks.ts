@@ -12,6 +12,8 @@ export type Task = {
   claimed_spec: number | null;
   delivery_revision?: number;
   acceptance_archive_run?: string | null;
+  delivery?: {kind: 'code' | 'none' | 'unknown'; commit?: string; target?: string; reason?: string} | null;
+  integration?: {status: string; error?: string; after?: string; remote?: string; acceptedAt?: string} | null;
   progress: string;
   result: string;
   feedback: string;

@@ -680,6 +680,7 @@ export function TaskBoard({
                 busy={busy} onClose={closeDetail} error={error} onDismissError={() => setError('')} footer={detail && (<>
                     {detail.status === 'review' && (
                       <div className="tb-review-actions">
+                        <section aria-label="交付合并状态"><p>交付提交：{detail.delivery?.commit ?? (detail.delivery?.kind === 'none' ? '非代码交付' : '未记录')}</p><p>main：{detail.integration?.status ?? '尚未合并'} · {detail.integration?.after ?? '无合并提交'}</p>{detail.integration?.error && <p role="alert">{detail.integration.error}；验收已记录，处理后可重试下方验收归档。</p>}<p>本地合并不等于远端推送或发布。</p></section>
                         <h3>检查效果</h3>
                         <p>Agent 已提交。确认实际效果后再归档。</p>
                         <textarea

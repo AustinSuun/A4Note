@@ -117,3 +117,30 @@ node apps/project-tasks/cli.mjs handoff TASK_ID --revision N --json handoff.json
 handoff.json 可包含 completed、remaining、blockers、nextSteps、branch、worktree、commit、uncommittedChanges、resources、validation 字符串字段。交接保留作者和时间；新负责人可补充，历史不会覆盖。没有交接时 detail.handoff=null，须只读盘点，不能假称已完成。
 MCP update_task 同步支持 takeover（userAuthorized、workspaceChecked、reason）及 handoff（handoff对象）。接管重置 claimed_spec，需要重读并 acknowledge 后才能提交。
 工作区核验不可省略：任务权限不能阻止旧进程继续写文件；先核验隔离worktree/文件归属，必要时请用户协调旧写入，不能凭离线擅自杀进程。新客户端连接不支持接管的旧服务时会明确失败，不降级为伪造交还。进行中列表展示服务提供的负责人状态与最后心跳，事件历史保留授权说明和交接。
+
+## 验收与本地 main 集成
+
+新服务绑定项目根后，代码交付必须显式提交 delivery 清单，不再从共享 dirty HEAD 猜测成果。CLI submit 增加 `--delivery-json delivery.json`，MCP update_task.submit 增加 delivery 对象。
+
+```json
+{
+  "kind": "code",
+  "sourceRef": "refs/heads/feature/example",
+  "commit": "完整交付SHA",
+  "baseCommit": "完整基线SHA",
+  "paths": ["实际变化文件的完整清单"],
+  "validation": "真实执行的测试、结果、证据路径及未测范围"
+}
+```
+
+纯审计/验收等无代码任务提交 `{"kind":"none","reason":"无需合并的具体原因"}`。未提供声明的旧交付显示unknown，绑定仓库时阻止其静默归档；未绑定仓库的旧服务兼容归档，但明确显示not_configured，不能解释为已合并。
+
+人工归档和已授权的自动验收统一通过集成闸门：记录验收结论→取得仓库合并锁→隔离worktree生成候选→可信验证→检测main未变化且已检出的main无脏文件→更新本地main→确认提交包含关系→归档。冲突/验证失败/缺少配置保留review，记录错误与用户验收时间；处理原因后再次点“效果满意，归档”重试。已在main时只对账，不重复合并。Git成功但SQLite失败时下次以真实包含关系恢复。未推送任何远端，也不会安装/发布。
+
+### 可信验证命令（部署前配置）
+
+服务进程环境 `TASKS_GIT_VERIFY_ARGV` 是JSON字符串数组 `[可执行文件, 参数...]`。仅项目用户/部署负责人配置，任务负载无权提供执行命令。不配置就阻止代码合并，绝不跳过验证。该命令在隔离候选工作区执行，应负责独立依赖准备和项目验证，退出0才通过；不能依赖共享node_modules、真实数据或启动常驻进程。Windows应显式调用powershell.exe或node.exe，避免把.cmd误当可直接执行程序。不要将此配置写入任务附件或会话凭据。
+
+当前实现串行、同步执行验证（最长10分钟）；验证期间同一服务请求可能等待，因此在低干扰时段安排大项目集成。长任务后重新读取看板和心跳。服务若崩溃会保留Git公共目录下`a4note-task-integration.lock`；用户核实对应PID已停止、没有其他集成操作后才移除该锁，再重试。不会凭超时自动删锁或杀进程。
+
+代码任务失败保持review，不污染main；源分支后续新增提交不进入已验收SHA。修改交付内容必须退回并重新提交/验收。状态分别展示交付SHA、合并结果、合并SHA、错误及远端未推送；所有集成事件持久化，不自动追溯修改历史归档卡。

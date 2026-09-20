@@ -48,7 +48,7 @@ export function createTaskGateway({stateDir,projectsHome=path.join(os.homedir(),
       try {process.kill(prior.pid,0);throw Object.assign(Error('项目仍由另一共享服务持有，请先确认服务切换。'),{status:409});}
       catch(e){if(e.status||e.code==='EPERM')throw e;}
     }
-    const app=createTaskServer({dataDir:dir,project:path.basename(root),origins});
+    const app=createTaskServer({dataDir:dir,project:path.basename(root),projectRoot:root,origins});
     return {root,dir,id:app.store.access.projectId,app};
   };
   const activate=async root=>{

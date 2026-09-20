@@ -193,6 +193,8 @@ async function main() {
     if (command === 'submit') {
       const f = option('file', null);
       b.result = f ? fs.readFileSync(f, 'utf8') : option('text', '');
+      const deliveryFile = option('delivery-json', null);
+      if (deliveryFile) b.delivery = JSON.parse(fs.readFileSync(deliveryFile, 'utf8'));
     }
     if (command === 'release') {
       b.writesStopped = args.includes('--writes-stopped');

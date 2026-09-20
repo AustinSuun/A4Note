@@ -74,6 +74,7 @@ const tools = [
         },
         progress: str,
         result: str,
+        delivery: schema({kind:{enum:['code','none']},reason:str,commit:str,baseCommit:str,sourceRef:str,paths:{type:'array',items:str},validation:str},['kind']),
         reason: str,
         userAuthorized: { type: 'boolean' },
         workspaceChecked: { type: 'boolean' },
