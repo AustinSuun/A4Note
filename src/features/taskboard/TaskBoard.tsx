@@ -63,6 +63,8 @@ const time = (v: string) =>
     hour: '2-digit',
     minute: '2-digit',
   });
+const isAgentStale = (lastSeen?: string) =>
+  !!lastSeen && Date.now() - Date.parse(lastSeen) > 120000;
 export function TaskBoard({
   defaultServiceUrl = 'http://127.0.0.1:4319',
 }: {
@@ -111,6 +113,8 @@ export function TaskBoard({
       priority: 'normal',
     }),
     [feedback, setFeedback] = useState(''),
+    [releaseReason, setReleaseReason] = useState(''),
+    [releaseOpen, setReleaseOpen] = useState(false),
     [purpose, setPurpose] = useState('reference'),
     [caption, setCaption] = useState('');
   const stageSession = useTaskStageSession(snapshot?.project.id ?? '');
@@ -325,6 +329,8 @@ export function TaskBoard({
     setDetail(null);
     setEditing(false);
     setFeedback('');
+    setReleaseReason('');
+    setReleaseOpen(false);
     setPurpose('reference');
     setCaption('');
     if (client) void run(() => loadDetail(id, client));
@@ -338,6 +344,16 @@ export function TaskBoard({
         ...extra,
       });
       if (clientRef.current === client && selectedRef.current === d.id) setDetail(d);
+      await refresh(client);
+    });
+  const releaseStaleTask = () =>
+    run(async () => {
+      if (!client || !detail) return;
+      const reason = releaseReason.trim();
+      if (!reason) throw Error('请填写交还原因');
+      const d = await client.update(detail.id, { action: 'release_stale', revision: detail.revision, reason });
+      if (clientRef.current === client && selectedRef.current === d.id) setDetail(d);
+      setReleaseReason(''); setReleaseOpen(false);
       await refresh(client);
     });
   const addFiles = (files: File[]) =>
@@ -613,7 +629,7 @@ export function TaskBoard({
                           const a = owner(t.owner),
                             stale =
                               a &&
-                              Date.now() - Date.parse(a.last_seen) > 120000;
+                              isAgentStale(a.last_seen);
                           return (
                             <div className="tb-card-group" key={t.id}>
                             <button
@@ -713,6 +729,25 @@ export function TaskBoard({
                     )}
                     <div className="tb-user-actions">
                       {detail.status !== 'archived' && (
+                      <>
+                    {detail.status === 'in_progress' && detail.owner && isAgentStale(owner(detail.owner)?.last_seen) && (
+                      <div className="tb-release-stale" role="group" aria-label="交还离线任务">
+                        {releaseOpen ? <div className="tb-release-stale-panel">
+                          <strong>交还离线任务并退回队列</strong>
+                          <p>负责人将被清空，任务可重新领取；任务、附件和历史不会删除。</p>
+                          <label htmlFor="tb-release-stale-reason">交还原因
+                            <textarea id="tb-release-stale-reason" autoFocus required placeholder="请说明为何确认执行者已离线"
+                              value={releaseReason} onChange={(event) => setReleaseReason(event.target.value)} />
+                          </label>
+                          <div className="tb-release-stale-buttons">
+                            <button type="button" disabled={busy} onClick={() => setReleaseOpen(false)}>取消</button>
+                            <button type="button" className="tb-release-stale-confirm" disabled={busy || !releaseReason.trim()}
+                              onClick={() => void releaseStaleTask()}>确认交还并退回队列</button>
+                          </div>
+                        </div> : <button type="button" className="tb-release-stale-trigger" disabled={busy}
+                          onClick={() => setReleaseOpen(true)}>交还离线任务、退回队列</button>}
+                      </div>
+                    )}
                         <button type="button" className="tb-danger" disabled={busy || (detail.status === 'in_progress' && !!detail.owner)}
                           onClick={() => void run(async () => {
                             if (!client || !detail) return;
@@ -722,6 +757,7 @@ export function TaskBoard({
                             setSelected(null); setDetail(null); setEditing(false); setFeedback(''); setPurpose('reference'); setCaption('');
                             await refresh(client);
                           })}>删除任务</button>
+                      </>
                       )}
                     </div>
                   </>)}>

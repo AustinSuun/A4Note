@@ -114,6 +114,16 @@
   font-weight: 700;
   color: var(--tb-accent, #32735a);
 }
+.taskboard .tb-release-stale { grid-column: 1 / -1; display: grid; justify-items: start; }
+.taskboard .tb-release-stale-trigger { min-height: 40px; border-color: #c89033; color: #815600; background: #fff9e9; font-weight: 650; }
+.taskboard .tb-release-stale-trigger:hover { border-color: #9d6500; background: #fff3cf; }
+.taskboard .tb-release-stale-panel { display: grid; gap: 10px; width: min(100%, 520px); padding: 14px; border: 1px solid #d8b66e; border-radius: 10px; background: #fffaf0; }
+.taskboard .tb-release-stale-panel p { margin: 0; color: var(--tb-muted); }
+.taskboard .tb-release-stale-panel label { margin: 0; }
+.taskboard .tb-release-stale-panel textarea { width: 100%; min-height: 72px; }
+.taskboard .tb-release-stale-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.taskboard .tb-release-stale-buttons button { min-height: 40px; }
+.taskboard .tb-release-stale-confirm { border-color: #9d6500 !important; color: #fff !important; background: #9d6500 !important; font-weight: 650; }
 .taskboard .tb-detail-dialog .tb-review-summary > p { margin: 6px 0; font-size: 13px; }
 .taskboard .tb-detail-dialog .tb-review-summary .tb-review-excerpt { padding: 14px 16px; background: var(--tb-card, #fff); border-radius: 8px; }
 .taskboard .tb-detail-dialog .tb-review-caution { font-size: 13px; line-height: 1.6; }
