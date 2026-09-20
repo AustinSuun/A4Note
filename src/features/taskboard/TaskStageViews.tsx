@@ -1,4 +1,4 @@
-import { useId, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from 'react';
 import type { Agent, Task } from '../../platform/projectTasks';
 import { stageCounts, stageTaskFacts, taskStages, tasksForStage, type TaskStage } from './taskStageModel';
 import '../../shared/segmented-mode-switch.css';
@@ -9,9 +9,18 @@ export function TaskStageSwitcher({ value, disabled = false, onChange }: {
   value: TaskStage; tasks: readonly Task[]; supportsQueue: boolean; disabled?: boolean;
   onChange: (stage: TaskStage) => void;
 }) {
-  return <nav className="tb-stage-nav" aria-label="任务流程视图" data-window-no-drag>
+  const nav = useRef<HTMLElement>(null);
+  // Narrow hosts hide the scrollbar; keep the active stage reachable by scrolling only this strip, never the page.
+  useEffect(() => {
+    const strip = nav.current, button = strip?.querySelectorAll('button')[taskStages.findIndex(s => s.id === value)];
+    if (!strip || !button || strip.scrollWidth <= strip.clientWidth) return;
+    const box = strip.getBoundingClientRect(), target = button.getBoundingClientRect();
+    if (target.left < box.left) strip.scrollLeft -= box.left - target.left + 8;
+    else if (target.right > box.right) strip.scrollLeft += target.right - box.right + 8;
+  }, [value]);
+  return <nav className="tb-stage-nav" aria-label="任务流程视图" data-window-no-drag ref={nav}>
     <div className="tb-stage-switch" data-stage={value}
-      style={{ '--tb-stage-index': taskStages.findIndex(s => s.id === value) } as CSSProperties}
+      style={{ '--tb-stage-columns': taskStages.length, '--tb-stage-index': taskStages.findIndex(s => s.id === value) } as CSSProperties}
       onKeyDown={e => {
         if (disabled || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
         e.preventDefault();
