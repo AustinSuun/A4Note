@@ -37,6 +37,8 @@ pub fn capture_control(app:AppHandle,window:tauri::WebviewWindow,request:Control
         return Ok(json!({"ok":true}));
     }
     if matches!(request.action.as_str(),"paper_details"|"open_library_file"|"attach_pdf"){
+        // Library I/O: same gate as every library command (maintenance lock + dev isolation verdict).
+        let _access=crate::library_access::operation()?;
         let root=crate::app_paths::app_data_root(&app)?;let paper=request.paper_id.as_deref().ok_or("missing_paper_id")?;
         return match request.action.as_str(){
             "paper_details"=>library_api::details(&root,paper),

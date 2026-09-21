@@ -5,8 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { liveDevPlan, liveTauriConfig } from './dev-live-config.mjs';
+import { acquireDevLock, checkDevAdmission } from './dev-live-admission.mjs';
 
-const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
+// realpath: a junction/symlinked checkout must not produce a different identity hash than its target.
+const root = await fs.realpath(path.resolve(fileURLToPath(new URL('../', import.meta.url))));
 const { values } = parseArgs({ options: {
   instance: { type: 'string', default: 'integration' },
   port: { type: 'string', default: '1421' },
@@ -25,20 +27,18 @@ if (values.plan) {
   if (!nativeSource.includes('isolated_live_dev') || !nativeSource.includes('app.aster.research.dev.')) {
     throw new Error('Missing isolated debug capture guard; refusing to launch');
   }
+  // Admission before any directory is created: identity, data root and profile must be
+  // provably isolated, and the native side re-verifies the same values at runtime.
+  const devEnv = await checkDevAdmission(plan, process.env);
   for (const port of [plan.port, plan.cdpPort]) await checkPort(port);
   await fs.mkdir(plan.stateDir, { recursive: true });
   const lockPath = path.join(plan.stateDir, 'owner.lock.json');
-  let lock;
-  try { lock = await fs.open(lockPath, 'wx'); }
-  catch (error) {
-    if (error.code === 'EEXIST') throw new Error(`Instance has an owner lock: ${lockPath}. Check its PID/paths before manually clearing a stale lock; do not kill another session.`);
-    throw error;
-  }
+  const lock = await acquireDevLock(lockPath);
   let server;
   let child;
   let stopping = false;
   const sessionPath = path.join(plan.stateDir, 'session.json');
-  const record = { ...plan, ownerPid: process.pid, startedAt: new Date().toISOString(), status: 'starting', productionLibraryCopied: false };
+  const record = { ...plan, expected: devEnv, ownerPid: process.pid, startedAt: new Date().toISOString(), status: 'starting', productionLibraryCopied: false };
   const stop = () => {
     if (stopping) return;
     stopping = true;
@@ -55,29 +55,37 @@ if (values.plan) {
     await fs.mkdir(plan.profileDir, { recursive: true });
     await fs.writeFile(plan.probePath, ':root { --a4note-live-hmr-probe: baseline; }\n');
     const { createServer } = await import('vite');
+    const { default: react } = await import('@vitejs/plugin-react');
     const probeUrl = '/@fs/' + plan.probePath.replaceAll('\\', '/');
-    const badgeText = `DEV · ${plan.instance} · 独立测试库`;
     server = await createServer({
       root,
+      // vite.config.ts is bypassed on purpose: this server hands the launcher identity to the
+      // product's environment strip (src/platform/devEnvironmentStrip.ts) so the page can detect
+      // a mismatched backend; plain `npm run dev` keeps the generic 'preview' instance.
+      configFile: false,
+      define: {
+        'import.meta.env.VITE_A4NOTE_DEV_INSTANCE': JSON.stringify(plan.instance),
+        'import.meta.env.VITE_A4NOTE_DEV_IDENTIFIER': JSON.stringify(plan.identifier),
+      },
       server: {
         host: '127.0.0.1', port: plan.port, strictPort: true,
         watch: { ignored: ['**/.build/**', '**/.tmp/live-dev/**/webview/**'] },
       },
-      plugins: [{
-        name: 'a4note-isolated-dev-badge',
-        apply: 'serve',
-        transformIndexHtml() {
-          return [{ tag: 'script', attrs: { type: 'module' }, injectTo: 'body', children:
-            `import ${JSON.stringify(probeUrl)};\n` +
-            `document.documentElement.dataset.a4noteDevInstance=${JSON.stringify(plan.identifier)};\n` +
-            `const badge=document.createElement('div');badge.id='a4note-live-dev-badge';badge.textContent=${JSON.stringify(badgeText)};badge.style.cssText='position:fixed;bottom:6px;left:6px;z-index:2147483000;pointer-events:none;background:#153f37;color:white;border:1px solid #82c2ad;border-radius:5px;padding:4px 8px;font:12px/1.4 sans-serif';document.body.append(badge);`
-          }];
+      plugins: [
+        react(),
+        {
+          name: 'a4note-live-hmr-probe',
+          apply: 'serve',
+          transformIndexHtml() {
+            return [{ tag: 'script', attrs: { type: 'module' }, injectTo: 'body', children: `import ${JSON.stringify(probeUrl)};` }];
+          },
         },
-      }],
+      ],
     });
     await server.listen();
     const childEnv = {
       ...process.env,
+      ...devEnv,
       CARGO_TARGET_DIR: plan.cargoTargetDir,
       WEBVIEW2_USER_DATA_FOLDER: plan.profileDir,
       WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${plan.cdpPort} --remote-debugging-address=127.0.0.1`,
@@ -90,6 +98,7 @@ if (values.plan) {
     await fs.writeFile(sessionPath, JSON.stringify(record, null, 2) + '\n');
     console.log(`LIVE_DEV ${JSON.stringify(record)}`);
     console.log('No production data copied. Native capture is disabled for this debug identity. Do not open real notes in this test window.');
+    console.log(`Verify before trusting screenshots: the bottom strip must read "DEV ${plan.instance} · 独立测试库（原生已核验 …）"; a red strip means the native side refused the library. Static debug builds show the same strip once they are launched with ${Object.keys(devEnv).join('/')}.`);
     const code = await new Promise((resolve, reject) => {
       child.once('error', reject);
       child.once('exit', code => resolve(code ?? 1));

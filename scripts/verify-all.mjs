@@ -22,6 +22,8 @@ const steps = [
   ['node', ['scripts/verify-task-binding-guide.mjs']],
   ...(isWindows ? [['node', ['scripts/prepare-native-host.mjs', '--debug']]] : []),
   ['npm', ['run', 'build']],
+  ['npm', ['run', 'test:dev-live']],
+  ['npm', ['run', 'test:dev-admission']],
   ['npm', ['run', 'test:core']],
   ['npm', ['run', 'test:project-tasks']],
   ['npm', ['run', 'test:capture']],

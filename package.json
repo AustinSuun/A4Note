@@ -7,6 +7,8 @@
     "dev": "vite",
     "dev:live": "node scripts/dev-live.mjs",
     "test:dev-live": "node scripts/verify-dev-live.mjs",
+    "test:dev-admission": "node scripts/verify-dev-admission.mjs",
+    "test:dev-environment-browser": "node scripts/verify-dev-environment-browser.mjs",
     "build": "tsc -b && vite build",
     "verify": "node scripts/verify-all.mjs",
     "status": "node scripts/show-agent-status.mjs",

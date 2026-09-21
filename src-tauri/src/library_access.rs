@@ -37,10 +37,20 @@ impl Access {
     }
 }
 static ACCESS: Access = Access::new();
+/// Every command passes here, so an unproven debug identity is refused before any
+/// SQLite or file I/O (see `dev_environment`). Release builds never block.
+fn isolation_gate() -> Result<(), String> {
+    match crate::dev_environment::block_reason() {
+        Some(reason) => Err(reason),
+        None => Ok(()),
+    }
+}
 pub(crate) fn operation() -> Result<RwLockReadGuard<'static, ()>, String> {
+    isolation_gate()?;
     ACCESS.operation()
 }
 pub(crate) fn maintenance() -> Result<RwLockWriteGuard<'static, ()>, String> {
+    isolation_gate()?;
     ACCESS.maintenance()
 }
 pub(crate) fn require_restart() {

@@ -106,11 +106,19 @@ npm install
 
 ## 本地运行
 
-真实桌面开发模式：
+Agent / 测试用的独立桌面实例（推荐，资料库、WebView profile、Rust 产物都与正式安装隔离，窗口底部有经原生核验的 `DEV <instance> · 独立测试库` 状态条，详见 `docs/notes/ISOLATED_LIVE_DEV.md`）：
+
+```powershell
+npm run dev:live -- --instance <名称> --port <Vite端口> --cdp-port <调试端口>
+```
+
+开发者本人的真实桌面开发模式：
 
 ```powershell
 npm run tauri:dev
 ```
+
+注意：`tauri:dev` 是调试构建 + 正式身份，会指向正式资料库，因此**默认被阻止**（状态条为红色、所有资料库命令返回错误）。确需在调试构建中使用正式库时，在同一 shell 设置 `A4NOTE_ALLOW_PRODUCTION_LIBRARY=1` 后再启动；状态条会以橙色 `DEV·正式库` 明确标出，这样的窗口不能用于 Agent 测试或隔离验收。
 
 浏览器预览模式：
 
@@ -118,7 +126,7 @@ npm run tauri:dev
 npm run dev
 ```
 
-注意：浏览器预览不能完整调用桌面文件选择器、本地文件复制、打开资料库目录、读取内部 PDF 等 Tauri 能力。导入 PDF、阅读内部 PDF、配对译文 PDF、SQLite 持久化等功能请使用 `npm run tauri:dev`。
+注意：浏览器预览不能完整调用桌面文件选择器、本地文件复制、打开资料库目录、读取内部 PDF 等 Tauri 能力，状态条显示 `DEV preview · 浏览器预览 · 无原生资料库`。导入 PDF、阅读内部 PDF、配对译文 PDF、SQLite 持久化等功能请使用 `npm run dev:live`（隔离）或 `npm run tauri:dev`（正式库，需显式放行）。
 
 ## 构建 exe
 
