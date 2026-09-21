@@ -16,7 +16,7 @@ export const TEXT_MAX_WIDTH_PERCENT = 60;
 /** Distance kept from the right and bottom page edges, in percent of the page. */
 export const TEXT_EDGE_MARGIN_PERCENT = 1.5;
 /** Minimum width of an auto-sized box, expressed in multiples of the font size. */
-export const TEXT_MIN_WIDTH_EM = 3;
+export const TEXT_MIN_WIDTH_EM = 9;
 export const TEXT_ZOOM_VAR = '--pdf-display-zoom';
 
 export type TextAnnotationLayout = {
@@ -102,7 +102,7 @@ export type InlineTextPlacementInput = {
  * few characters fit before wrapping; the bottom is handled after measuring.
  */
 export function placeNewTextBox({ x, y, pageWidthPx, fontPx }: InlineTextPlacementInput) {
-  const minWidthPercent = pageWidthPx > 0 ? ((fontPx * TEXT_MIN_WIDTH_EM * 2) / pageWidthPx) * 100 : 8;
+  const minWidthPercent = pageWidthPx > 0 ? ((fontPx * TEXT_MIN_WIDTH_EM) / pageWidthPx) * 100 : 8;
   const rightLimit = 100 - TEXT_EDGE_MARGIN_PERCENT;
   let left = clampPercent(x, 0, rightLimit);
   if (rightLimit - left < minWidthPercent) left = Math.max(0, rightLimit - minWidthPercent);

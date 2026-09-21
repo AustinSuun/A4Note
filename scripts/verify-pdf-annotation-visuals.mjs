@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import { registerHooks } from 'node:module';
+import { extname } from 'node:path';
+const hooks = registerHooks({ resolve(specifier, context, next) { return next(specifier.startsWith('.') && !extname(specifier) ? specifier + '.ts' : specifier, context); } });
+const helpers = await import('../src/features/reader/pdf/pdfAnnotationHelpers.ts');
+const ink = await import('../src/features/reader/pdf/pdfInk.ts');
+const text = await import('../src/features/reader/pdf/pdfTextAnnotation.ts');
+hooks.deregister();
+let checks = 0;
+const ok = (condition, message) => { assert.ok(condition, message); checks += 1; };
+const eq = (actual, expected) => { assert.deepEqual(actual, expected); checks += 1; };
+for (const height of [0.35, 0.8, 2, 5]) {
+  const highlight = helpers.highlightPositionStyle({ x: 1, y: 2, width: 10, height });
+  const underline = helpers.underlinePositionStyle({ x: 1, y: 2, width: 10, height });
+  const top = Number.parseFloat(highlight.top), band = Number.parseFloat(highlight.height);
+  const ruleBottom = Number.parseFloat(underline.top), ruleHeight = Number.parseFloat(underline.height);
+  ok(top > 2, 'highlight upper edge must move down');
+  ok(top + band <= 2 + height + 1e-9, 'highlight must stay inside the glyph box');
+  ok(ruleBottom <= 2 + height + 1e-9, 'underline must not enter the next line');
+  ok(ruleHeight > 0 && ruleHeight <= 0.42, 'underline thickness must adapt and remain bounded');
+}
+eq(text.TEXT_DEFAULT_FONT_SIZE, 24);
+eq(text.TEXT_FONT_SIZE_OPTIONS, Array.from({ length: 32 }, (_, index) => 2 + index * 2));
+eq(text.TEXT_MIN_WIDTH_EM, 9);
+const placement = text.placeNewTextBox({ x: 50, y: 40, pageWidthPx: 1000, pageHeightPx: 1400, fontPx: 24 });
+ok(placement.maxWidth >= 21.6, 'new box must fit about nine 24px glyphs');
+const stroke = { x: 0, y: 0, width: 100, height: 20, points: [{ x: 0, y: 10 }, { x: 40, y: 10 }, { x: 60, y: 10 }, { x: 100, y: 10 }] };
+const split = ink.eraseInkPosition(stroke, { x: 50, y: 10 }, 5, 5, 'round');
+ok(split !== stroke && split !== null, 'sparse edge crossing must erase');
+ok(Array.isArray(split.points) && split.points.includes(null), 'middle erase must split the polyline');
+eq(ink.eraseInkPosition(stroke, { x: 50, y: 40 }, 5, 5, 'round'), stroke);
+ok(ink.segmentTouchesEraser({ x: -2, y: 0 }, { x: 2, y: 0 }, { x: 0, y: 0 }, 1, 1, 'square'), 'square eraser must hit crossing segments');
+eq(ink.eraseInkPosition({ x: 0, y: 0, width: 2, height: 2, points: [{ x: 0, y: 0 }, { x: 1, y: 1 }] }, { x: 0.5, y: 0.5 }, 2, 2, 'round'), null);
+console.log(`PDF annotation visuals: ${checks} assertions passed`);

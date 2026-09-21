@@ -14,7 +14,8 @@ import { ReaderProvider } from './ReaderContext';
 import { ReaderSideDrawer } from './ReaderSideDrawer';
 import { ReaderToolbar } from './ReaderToolbar';
 import { preferredTranslatedFileId } from './readerHelpers';
-import { defaultReaderToolSettings, type ReaderSceneProps, type ReaderToolSettings } from './types';
+import { type ReaderSceneProps, type ReaderToolSettings } from './types';
+import { loadReaderToolSettings, saveReaderToolSettings } from './pdf/readerToolSettingsStorage';
 
 export function ReaderScene({
   paper,
@@ -76,7 +77,8 @@ export function ReaderScene({
   const toggleNotes = () => { if (sidePanelOpen && sidePanelTab === 'notes') onSidePanelOpenChange(false); else openNotes(); };
   const toggleWriting = () => { if (!sidePanelOpen || sidePanelTab !== 'notes') { openNotes(); drawer.setExpanded(true); } else if (!drawer.compact) drawer.setExpanded(!drawer.expanded); };
   useReaderWritingShortcuts(drawer.containerRef, toggleNotes, toggleWriting);
-  const [toolSettings, setToolSettings] = useState<ReaderToolSettings>(defaultReaderToolSettings);
+  const [toolSettings, setToolSettings] = useState<ReaderToolSettings>(() => loadReaderToolSettings());
+  useEffect(() => { saveReaderToolSettings(toolSettings); }, [toolSettings]);
   const focusedAnnotation = paper.annotations.find((annotation) => annotation.id === focusedAnnotationId) ?? null;
   const focusedEditableAnnotation = focusedAnnotation && isEditableToolbarAnnotation(focusedAnnotation)
     ? focusedAnnotation

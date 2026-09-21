@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { registerHooks } from 'node:module';
+import { extname } from 'node:path';
+const hooks = registerHooks({ resolve(specifier, context, next) { return next(specifier.startsWith('.') && !extname(specifier) ? specifier + '.ts' : specifier, context); } });
+const settings = await import('../src/features/reader/pdf/readerToolSettingsStorage.ts');
+hooks.deregister();
+assert.equal(settings.normalizeStoredReaderToolSettings({ textFontSize: 13 }).textFontSize, 24);
+assert.equal(settings.normalizeStoredReaderToolSettings({ textFontSize: 18 }).textFontSize, 18);
+assert.equal(settings.normalizeStoredReaderToolSettings({ textFontSize: 1 }).textFontSize, 2);
+assert.equal(settings.normalizeStoredReaderToolSettings({ textFontSize: 65 }).textFontSize, 64);
+assert.equal(settings.normalizeStoredReaderToolSettings({ textFontSize: 15 }).textFontSize, 16);
+const memory = { value: '', getItem(){ return this.value; }, setItem(_key,value){ this.value=value; } };
+settings.saveReaderToolSettings(settings.normalizeStoredReaderToolSettings({ textFontSize: 20 }), memory);
+assert.equal(settings.loadReaderToolSettings(memory).textFontSize, 20);
+console.log('Reader tool settings: 6 assertions passed');

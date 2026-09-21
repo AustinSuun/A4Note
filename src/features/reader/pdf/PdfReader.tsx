@@ -9,6 +9,7 @@ import { pdfLoadErrorMessage } from './pdfLoadError';
 import { capturePdfCenterAnchor, restorePdfPageAnchor } from './pdfZoomAnchor';
 import { usePdfPan } from './usePdfPan';
 import { pdfCoordinateLayer } from './pdfCoordinates';
+import { eraseInkPosition } from './pdfInk';
 import type { Annotation, AnnotationColor, AnnotationDraft, AnnotationType, PositionJson, ReaderTool } from '../../../core/types';
 import { isTauriRuntime, loadPaperFileBytes } from '../../../platform/nativeApi';
 import { readFileBytes } from '../../../platform/projects';
@@ -1325,65 +1326,4 @@ function cursorColor(color: AnnotationColor) {
   if (color === 'blue') return '#5c8edb';
   if (color === 'purple') return '#9770db';
   return '#f2c94c';
-}
-
-function eraseInkPosition(
-  positionJson: PositionJson,
-  pointer: { x: number; y: number },
-  radiusX: number,
-  radiusY: number,
-  eraserShape: ReaderToolSettings['eraserShape'],
-): PositionJson | null {
-  const rawPoints = positionJson.points;
-  if (!Array.isArray(rawPoints)) return positionJson;
-  let changed = false;
-  const nextPoints = rawPoints.map((rawPoint) => {
-    const point = inkPointFromJson(rawPoint);
-    if (!point) return rawPoint;
-    if (!pointInsideEraser(point, pointer, radiusX, radiusY, eraserShape)) return rawPoint;
-    changed = true;
-    return null;
-  });
-  if (!changed) return positionJson;
-
-  const remainingPoints = nextPoints
-    .map((rawPoint) => inkPointFromJson(rawPoint))
-    .filter((point): point is { x: number; y: number } => Boolean(point));
-  if (remainingPoints.length < 2) return null;
-
-  const xs = remainingPoints.map((point) => point.x);
-  const ys = remainingPoints.map((point) => point.y);
-  const x = Math.min(...xs);
-  const y = Math.min(...ys);
-  return {
-    ...positionJson,
-    x,
-    y,
-    width: Math.max(Math.max(...xs) - x, 0.1),
-    height: Math.max(Math.max(...ys) - y, 0.1),
-    points: nextPoints,
-  };
-}
-
-function inkPointFromJson(point: unknown) {
-  if (!point || typeof point !== 'object' || Array.isArray(point)) return null;
-  const value = point as Record<string, unknown>;
-  const x = numberValue(value.x, Number.NaN);
-  const y = numberValue(value.y, Number.NaN);
-  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
-}
-
-function pointInsideEraser(
-  point: { x: number; y: number },
-  pointer: { x: number; y: number },
-  radiusX: number,
-  radiusY: number,
-  eraserShape: ReaderToolSettings['eraserShape'],
-) {
-  const dx = Math.abs(point.x - pointer.x);
-  const dy = Math.abs(point.y - pointer.y);
-  if (eraserShape === 'square') return dx <= radiusX && dy <= radiusY;
-  const nx = dx / Math.max(radiusX, 0.01);
-  const ny = dy / Math.max(radiusY, 0.01);
-  return nx * nx + ny * ny <= 1;
 }

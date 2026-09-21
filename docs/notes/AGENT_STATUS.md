@@ -1,4 +1,6 @@
-# A4 Note Agent 状态
+﻿# A4 Note Agent 状态
+
+- reader-pdf-annotation-qingyan：青砚完成 b6c1a566 PDF 标注修复：高亮/下划线按文字高度自适应，文本默认 24、2–64 步进 2、自定义下拉与单行初始框，工具设置持久化及旧 13→24 迁移，跨页间隙橡皮预览与分段擦除，色点/行内控件放大。定向 42+25+28+86+6 项、build、完整 npm run verify、隔离原生运行 21/21 通过；两份 PDF 在 100/150/200% 生成 9 张验收截图。详见 docs/mcp-reader-pdf-annotation-qingyan-2026-09-21.md。
 
 - agent-owned-merge：青帆已将新流程合入main c727762，完成独立Windows0.1.25包；完整verify/Rust201过5忽略，服务86过1跳过，包内7回归及18资源哈希通过。指定他人报告哈希不变；不安装、不重启、不发布。源码/打包资源释放，详见docs/mcp-task-workflow-windows-0.1.25-2026-09-21.md。
 
