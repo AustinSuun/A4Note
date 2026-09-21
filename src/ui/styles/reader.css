@@ -475,6 +475,15 @@
 .pdf-placeholder { min-height: 780px; padding: 34px; }
 .annotation-overlay { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .annotation-mark { position: absolute; border-radius: 4px; opacity: .78; pointer-events: auto; cursor: pointer; }
+/* While a text-selection annotation tool is active, existing range marks must
+   behave like paint rather than an input surface. This lets the browser begin
+   and extend a native selection through an existing highlight/underline. The
+   same marks remain interactive in cursor mode for selection, recolouring and
+   deletion. Text boxes and shapes deliberately keep their normal hit targets. */
+.pdf-document.highlight-mode .annotation-mark:is(.highlight, .underline),
+.pdf-document.underline-mode .annotation-mark:is(.highlight, .underline) {
+  pointer-events: none;
+}
 .annotation-mark:hover {
   opacity: .82;
   box-shadow: 0 0 0 1px rgba(77,131,107,.26);
