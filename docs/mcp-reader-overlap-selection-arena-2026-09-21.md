@@ -49,5 +49,5 @@
 
 ## 当前交付状态
 
-- 源码改动仍在本 worktree，最终只涉及 `AnnotationMark.tsx` 与 `AnnotationOverlay.tsx`；本报告和状态文件会随本轮提交。
-- 当前尚未生成本轮 commit，也尚未把本轮 commit 合并回本地 `main`；交付前会复核 `main` 仍以原基线为祖先、提交后重跑轻量回归并提交 `--delivery-json`。
+- 本轮最终源码只涉及 `AnnotationMark.tsx` 与 `AnnotationOverlay.tsx`；本报告和两个状态文件也已纳入提交。功能提交为 `e2d6e499c458b1fdf1e93ba665ebee5915b02859`，已以非快进方式合并到本地 `main`，合并提交为 `5a76df27af2c2ac26a441f1f4f06b2f99e4ea3b1`。
+- 交付前仍需在文档同步提交后复核 `main` 仍以 `498745a001e6ca9cdceae60f91ea848bb8d7ed` 为祖先，并提交 `--delivery-json`。
