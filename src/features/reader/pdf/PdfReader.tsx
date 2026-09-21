@@ -741,11 +741,14 @@ export default function PdfReader({
     const liveRects = clientRects
       .map((rect) => normalizeClientRect(rect, container))
       .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
-    const rects = clientRects.length ? liveRects : preciseRects;
-    if (!rects.length) return;
-    // Pages with /Rotate: merge along the column and keep the run direction on each segment so
-    // highlight/underline marks trim and underline along the glyph axis.
     const textOrientation = page ? dominantTextOrientation(page.textItems, textItemSelections) : 0;
+    // Pages with /Rotate lay their runs out with writing-mode/bidi tricks whose line boxes are
+    // fatter than the glyphs, so their geometry comes from the run boxes sliced by offsets (the
+    // same source the drag path uses); horizontal pages keep the browser's live rects.
+    const rects = textOrientation !== 0 && preciseRects.length ? preciseRects : clientRects.length ? liveRects : preciseRects;
+    if (!rects.length) return;
+    // Merge along the run direction and keep it on each segment so highlight/underline marks
+    // trim and underline along the glyph axis.
     const segments = withSegmentOrientation(mergeRectsIntoLineSegments(rects, textOrientation), textOrientation);
     const bounds = boundingBox(segments);
     if (!bounds.width || !bounds.height) return;

@@ -225,14 +225,15 @@ for (const rotate of [0, 90, 180, 270]) {
 // ---- the text layer must lay rotated runs out along their reading direction ----
 {
   const textLayerSource = await readFile(new URL('../src/features/reader/pdf/PdfTextLayer.tsx', import.meta.url), 'utf8');
-  assert.match(textLayerSource, /writingMode: 'vertical-rl'/);
-  assert.match(textLayerSource, /textOrientation: 'sideways'/);
+  assert.match(textLayerSource, /orientation === 90\) return \{ writingMode: 'vertical-rl', textOrientation: 'sideways' \}/);
+  assert.match(textLayerSource, /writingMode: 'sideways-lr'/);
+  assert.match(textLayerSource, /orientation === 180\) return \{ direction: 'rtl', unicodeBidi: 'bidi-override' \}/);
   assert.match(textLayerSource, /data-text-orientation=/);
   const readerCss = await readFile(new URL('../src/ui/styles/reader.css', import.meta.url), 'utf8');
   assert.match(readerCss, /\.annotation-mark\.underline\.vertical-rule \{[^}]*transform: none/);
   const markSource = await readFile(new URL('../src/features/reader/pdf/AnnotationMark.tsx', import.meta.url), 'utf8');
   assert.match(markSource, /segment\.orientation === 90 \|\| segment\.orientation === 270\) \? 'vertical-rule'/);
-  checks += 5;
+  checks += 6;
 }
 
 console.log(`PDF rotated text layer: ${checks} assertions passed${evidenceDir ? ` (evidence in ${evidenceDir})` : ''}`);
