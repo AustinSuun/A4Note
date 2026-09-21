@@ -17,8 +17,12 @@ const localUrl = value => typeof value === 'string' && /^http:\/\/127\.0\.0\.1:[
  * Control registration is local and authenticated with a private hub credential;
  * ordinary project credentials cannot register, enumerate, or select other stores.
  */
-export function createTaskGateway({stateDir,projectsHome=path.join(os.homedir(),'.a4note-project-tasks'), origins=['tauri://localhost','http://tauri.localhost','https://tauri.localhost']}={}) {
+export const GATEWAY_VERSION=4;
+const ACTIVE_AGENT_MS=5*60*1000;
+export function createTaskGateway({stateDir,projectsHome=path.join(os.homedir(),'.a4note-project-tasks'), origins=['tauri://localhost','http://tauri.localhost','https://tauri.localhost'],onShutdownRequest}={}) {
   fs.mkdirSync(stateDir,{recursive:true,mode:0o700});
+  const startedAt=new Date().toISOString();
+  const canShutdown=typeof onShutdownRequest==='function';
   const accessPath=path.join(stateDir,'gateway-access.json');
   let access=read(accessPath);
   if(!access){access={id:randomUUID(),token:randomBytes(32).toString('base64url')};fs.writeFileSync(accessPath,JSON.stringify(access),{flag:'wx',mode:0o600});}
@@ -28,6 +32,13 @@ export function createTaskGateway({stateDir,projectsHome=path.join(os.homedir(),
   if(!registry||Array.isArray(registry)||typeof registry!=='object'||Object.values(registry).some(p=>typeof p?.root!=='string'||!path.isAbsolute(p.root)))throw Error('项目注册表损坏，未覆盖');
   const loaded=new Map(), pending=new Map();
   let base='';
+  const hubAuthorized=req=>!req.headers.origin&&equal(String(req.headers.authorization??'').replace(/^Bearer /,''),access.token);
+  // Activity summary for exit prompts: recent agents and open event streams per loaded project.
+  const statusSummary=()=>({service:'a4note-task-gateway',id:access.id,pid:process.pid,startedAt,projects:[...loaded.values()].map(p=>{
+    if(!p.app)return {id:p.id,root:p.root,name:path.basename(p.root),legacy:true};
+    const snapshot=p.app.store.snapshot(),now=Date.now();
+    return {id:p.id,root:p.root,name:path.basename(p.root),streams:p.app.streams(),activeAgents:snapshot.agents.filter(a=>now-Date.parse(a.last_seen)<=ACTIVE_AGENT_MS).map(a=>({alias:a.alias,role:a.role,last_seen:a.last_seen}))};
+  })});
   const resolveProject=async (root) => {
     const dir=resolveDataDir(root,projectsHome),prior=read(path.join(dir,'connection.json')),credentials=read(path.join(dir,'access.json'));
     if(fs.existsSync(path.join(dir,'tasks.sqlite'))&&(!prior||!Number.isSafeInteger(prior.pid)||prior.pid<=0||typeof prior.url!=='string'||!credentials?.projectId||!credentials?.operatorToken))throw Object.assign(Error('已有项目缺少可核验连接身份；未打开或迁移数据库'),{status:409});
@@ -77,7 +88,23 @@ export function createTaskGateway({stateDir,projectsHome=path.join(os.homedir(),
       const hostname=new URL('http://'+req.headers.host).hostname;
       if(!['127.0.0.1','localhost','[::1]'].includes(hostname))return send({error:'Host未授权'},403);
       const p=new URL(req.url,'http://localhost').pathname;
-      if(p==='/api/gateway-health'&&req.method==='GET')return send({service:'a4note-task-gateway',version:3,id:access.id});
+      if(p==='/api/gateway-health'&&req.method==='GET')return send({service:'a4note-task-gateway',version:GATEWAY_VERSION,id:access.id,pid:process.pid,startedAt,capabilities:{shutdown:canShutdown,status:true}});
+      if(p==='/api/gateway/status'&&req.method==='GET'){
+        if(!hubAuthorized(req))return send({error:'共享服务管理凭据无效'},403);
+        return send(statusSummary());
+      }
+      if(p==='/api/gateway/shutdown'&&req.method==='POST'){
+        // Only the local launcher holding the private hub credential may stop the shared service.
+        if(req.headers.origin)return send({error:'停止仅允许本机启动桥'},403);
+        if(!hubAuthorized(req))return send({error:'共享服务管理凭据无效'},403);
+        let size=0,parts=[];for await(const c of req){size+=c.length;if(size>4096)return send({error:'请求过大'},413);parts.push(c);}
+        let body={};if(parts.length){try{body=JSON.parse(Buffer.concat(parts));}catch{return send({error:'JSON无效'},400);}}
+        if(!canShutdown)return send({error:'当前运行方式不支持远程停止'},409);
+        const reason=String(body?.reason??'').slice(0,200);
+        send({stopping:true,reason,...statusSummary()});
+        setImmediate(()=>{try{onShutdownRequest(reason);}catch{}});
+        return;
+      }
       if(p==='/api/gateway/register'&&req.method==='POST'){
         if(req.headers.origin)return send({error:'注册仅允许本机启动桥'},403);
         if(!equal(String(req.headers.authorization??'').replace(/^Bearer /,''),access.token))return send({error:'共享服务管理凭据无效'},403);
@@ -118,9 +145,20 @@ export function createTaskGateway({stateDir,projectsHome=path.join(os.homedir(),
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
   const stateDir=process.env.TASKS_GATEWAY_DIR;
   if(!stateDir)throw Error('必须由本机启动桥提供共享服务目录');
-  const app=createTaskGateway({stateDir,projectsHome:process.env.TASKS_PROJECTS_HOME});
+  const connectionPath=path.join(stateDir,'gateway-connection.json');
+  let stopping=false;
+  const stop=()=>{
+    if(stopping)return;stopping=true;
+    // A hung close must not leave a half-stopped listener behind; SQLite close still runs first in the normal path.
+    const watchdog=setTimeout(()=>process.exit(0),5000);watchdog.unref();
+    app.close().catch(()=>{}).finally(()=>{
+      let current=null;try{current=read(connectionPath);}catch{}
+      if(current?.pid===process.pid){try{fs.unlinkSync(connectionPath);}catch{}}
+      process.exit(0);
+    });
+  };
+  const app=createTaskGateway({stateDir,projectsHome:process.env.TASKS_PROJECTS_HOME,onShutdownRequest:stop});
   const url=await app.listen(Number(process.env.TASKS_PORT??4319));
-  write(path.join(stateDir,'gateway-connection.json'),{url,pid:process.pid,id:app.access.id});
-  let stopping=false;const stop=()=>{if(!stopping){stopping=true;app.close().then(()=>process.exit(0));}};
+  write(connectionPath,{url,pid:process.pid,id:app.access.id,startedAt:new Date().toISOString()});
   process.on('SIGINT',stop);process.on('SIGTERM',stop);
 }

@@ -7,7 +7,7 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const read=file=>{try{return JSON.parse(fs.readFileSync(file,'utf8'));}catch{return null;}};
 const validUrl=value=>typeof value==='string'&&/^http:\/\/127\.0\.0\.1:[0-9]+$/.test(value)&&Number(value.split(':').at(-1))>=1024&&Number(value.split(':').at(-1))<=65535;
-export const GATEWAY_PROTOCOL=3;
+export const GATEWAY_PROTOCOL=4;
 /** Stop only our own outdated helper gateway (same access id, older protocol).
  * Older builds cannot adopt repaired data directories, so keeping them alive
  * would silently strand a project on an empty directory. Legacy per-project

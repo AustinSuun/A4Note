@@ -16,8 +16,19 @@ assert.match(source('src/ui/App.tsx'),/withProjectTasksDefaultOff\(loadDisabledP
 assert.match(source('src-tauri/src/lib.rs'),/project_tasks::start_project_tasks/);
 assert.doesNotMatch(source('src-tauri/src/lib.rs').split('.invoke_handler')[0],/start_project_tasks\(/,'must not auto-launch during setup');
 const config=JSON.parse(source('src-tauri/tauri.conf.json'));
-for(const p of ['bootstrap.mjs','lib/project-onboarding.mjs','server.mjs','lib/store.mjs','lib/agent-client.mjs','cli.mjs','mcp.mjs']){assert.equal(config.bundle.resources['../apps/project-tasks/'+p],'project-tasks/'+p);assert.ok(existsSync('apps/project-tasks/'+p));}
+for(const p of ['bootstrap.mjs','lib/project-onboarding.mjs','server.mjs','lib/store.mjs','lib/agent-client.mjs','cli.mjs','mcp.mjs','gateway.mjs','gateway-bootstrap.mjs','gateway-lifecycle.mjs']){assert.equal(config.bundle.resources['../apps/project-tasks/'+p],'project-tasks/'+p);assert.ok(existsSync('apps/project-tasks/'+p));}
 assert.match(source('src-tauri/src/project_tasks.rs'),/resource_dir\.join\("project-tasks\/bootstrap.mjs"\)/);
+// Exit-time lifecycle: bounded, identity-checked stop wired through the close event and the final exit hook only.
+assert.match(source('src-tauri/src/project_tasks.rs'),/resource_dir\(\)[\s\S]*join\("project-tasks\/gateway-lifecycle.mjs"\)/);
+for(const command of ['inspect_project_tasks','stop_project_tasks','set_project_tasks_exit_policy','resolve_app_exit'])assert.match(source('src-tauri/src/lib.rs'),new RegExp('project_tasks::'+command));
+assert.match(source('src-tauri/src/lib.rs'),/\.on_window_event\(project_tasks::on_window_event\)/);
+assert.match(source('src-tauri/src/lib.rs'),/RunEvent::Exit\)[\s\S]*project_tasks::shutdown_on_exit\(app\)/);
+assert.doesNotMatch(source('src-tauri/src/lib.rs').split('.invoke_handler')[0],/stop_project_tasks\(|shutdown_on_exit\(/,'must not stop services during setup');
+const capability=JSON.parse(source('src-tauri/capabilities/default.json'));
+for(const permission of ['dialog:allow-ask','dialog:allow-message'])assert.ok(capability.permissions.includes(permission),'exit prompt needs '+permission);
+assert.match(source('src/platform/projectTaskLauncher.ts'),/await installTaskServiceExitHandler\(\)/,'exit listener must be installed before the native launch');
+assert.match(source('src/features/taskboard/TaskBoard.tsx'),/<TaskServiceControls connected=\{!!client\} \/>/);
+assert.match(source('apps/project-tasks/README.md'),/关闭软件时保留后台服务/);
 for (const [sourcePath, destination] of Object.entries(config.bundle.resources)) {
   if (!destination.startsWith('project-tasks/') || !sourcePath.endsWith('.mjs')) continue;
   const relative = path.posix.normalize(sourcePath.replace(/^\.\.\//, ''));

@@ -42,6 +42,7 @@ import { selectProjectFolder } from '../../platform/projectTaskLauncher';
 import {TaskDetailDialog} from './TaskDetailDialog';
 import {TaskAttachments} from './TaskImageViewer';
 import { TaskAcceptancePanel } from './TaskAcceptancePanel';
+import { TaskServiceControls } from './TaskServiceControls';
 import {
   savedLocalTaskPort,
   launchLocalTasks,
@@ -492,6 +493,7 @@ export function TaskBoard({
           </button>
         </div>
       )}
+      <TaskServiceControls connected={!!client} />
       {!client ? (
         <div className="tb-connect">
           <div className="tb-connect-icon">▦</div>
