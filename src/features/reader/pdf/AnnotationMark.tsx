@@ -34,6 +34,7 @@ function AnnotationMarkView({
   onInlineEditorLayout,
   focused,
   eraserActive,
+  rangeSelectionActive = false,
 }: {
   annotation: AnnotationMarkModel;
   draft?: boolean;
@@ -53,6 +54,8 @@ function AnnotationMarkView({
   onInlineEditorLayout?: (element: HTMLDivElement) => void;
   focused?: boolean;
   eraserActive?: boolean;
+  /** Range marks must not cancel native text selection while a range tool is active. */
+  rangeSelectionActive?: boolean;
 }) {
   const [colorPaletteOpen, setColorPaletteOpen] = useState(false);
   const [textStyleOpen, setTextStyleOpen] = useState(false);
@@ -64,9 +67,10 @@ function AnnotationMarkView({
   const customColorStyle = annotation.color.startsWith('#') ? annotationCustomColorStyle(annotation.type, annotation.color) : undefined;
   const textLayout = annotation.type === 'text' ? textAnnotationLayout(annotation.positionJson) : null;
   const editing = Boolean(inlineEditor && annotation.type === 'text' && (draft ? !inlineEditor.annotationId : inlineEditor.annotationId === annotation.id));
+  const rangeSelectionPassthrough = rangeSelectionActive && (annotation.type === 'highlight' || annotation.type === 'underline');
 
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
-    if (!annotation.id || event.button !== 0) return;
+    if (!annotation.id || event.button !== 0 || rangeSelectionPassthrough) return;
     event.preventDefault();
     event.stopPropagation();
     if (editing) return;
@@ -76,7 +80,7 @@ function AnnotationMarkView({
   };
 
   const handleMouseUp = (event: MouseEvent<HTMLDivElement>) => {
-    if (!annotation.id || event.button !== 0) return;
+    if (!annotation.id || event.button !== 0 || rangeSelectionPassthrough) return;
     event.preventDefault();
     if (!isMovable) {
       event.stopPropagation();
@@ -84,7 +88,7 @@ function AnnotationMarkView({
   };
 
   const handleClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (!annotation.id) return;
+    if (!annotation.id || rangeSelectionPassthrough) return;
     event.preventDefault();
     event.stopPropagation();
     if (editing) return;
@@ -97,7 +101,7 @@ function AnnotationMarkView({
   };
 
   const handleDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (!annotation.id || !isTextBox || draft || eraserActive || editing) return;
+    if (!annotation.id || !isTextBox || draft || eraserActive || editing || rangeSelectionPassthrough) return;
     event.preventDefault();
     event.stopPropagation();
     onEditStickyAnnotation?.(annotation, event);

@@ -113,6 +113,7 @@ export function AnnotationOverlay({
         positionJson: inlineTextEditor.positionJson,
       }
     : null;
+  const rangeSelectionActive = activeTool === 'highlight' || activeTool === 'underline';
   const highlightAnnotations: AnnotationMarkModel[] = [...annotations, ...drafts];
   if (dragPosition && dragDraft && activeTool === 'highlight') {
     highlightAnnotations.push({ id: 'highlight-drag-preview', page: dragDraft.page, type: 'highlight',
@@ -140,6 +141,7 @@ export function AnnotationOverlay({
           onInlineEditorLayout={onInlineEditorLayout}
           focused={focusedAnnotationId === annotation.id}
           eraserActive={activeTool === 'eraser'}
+          rangeSelectionActive={rangeSelectionActive}
         />
       ))}
       {newTextPreview && (
