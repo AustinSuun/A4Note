@@ -183,6 +183,8 @@ export interface Annotation {
   color: string;
   positionJson: PositionJson;
   createdAt?: string;
+  /** Annotation layer that holds this mark (fb5e3f2f); rows always belong to exactly one layer. */
+  layerId: string;
 }
 
 export interface AnnotationDraft {
@@ -191,6 +193,53 @@ export interface AnnotationDraft {
   comment: string;
   color: string;
   positionJson: PositionJson;
+}
+
+/** Owner of a set of annotation layers: literature (source + translated PDFs) or a generic resource. */
+export type AnnotationLayerOwnerKind = 'paper' | 'resource';
+
+export type AnnotationLayerKind = 'default' | 'layer' | 'attempt';
+
+export interface AnnotationLayer {
+  id: string;
+  ownerKind: AnnotationLayerOwnerKind;
+  ownerId: string;
+  name: string;
+  sortOrder: number;
+  kind: AnnotationLayerKind;
+  locked: boolean;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  annotationCount: number;
+}
+
+/** Which layer receives new marks and which layers are drawn; remembered per owner. */
+export interface AnnotationLayerView {
+  activeLayerId: string;
+  visibleLayerIds: string[];
+}
+
+export interface AnnotationLayerState {
+  ownerKind: AnnotationLayerOwnerKind;
+  ownerId: string;
+  layers: AnnotationLayer[];
+  view: AnnotationLayerView;
+}
+
+export interface AnnotationLayerDeletePreview {
+  layerId: string;
+  name: string;
+  annotationCount: number;
+  referencingNoteCount: number;
+  moveTargets: AnnotationLayer[];
+  deletable: boolean;
+  reason: string | null;
+}
+
+/** Deterministic id of an owner's default layer (mirrors the native migration). */
+export function defaultAnnotationLayerId(ownerId: string) {
+  return `layer-default-${ownerId}`;
 }
 
 export interface PaperDocument {

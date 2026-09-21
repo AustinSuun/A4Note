@@ -19,7 +19,7 @@ use crate::database::{
     collect_string_rows, current_timestamp_ms, initialize_database, normalized_tags, stable_tag_id,
 };
 use crate::library_ai::list_ai_threads_for_paper;
-use crate::library_annotations::{list_annotations_for_paper, AnnotationSummary};
+use crate::library_annotations::{list_visible_annotations_for_paper, AnnotationSummary};
 use crate::library_notes::{list_notes_for_paper, NoteSummary};
 
 #[derive(Debug, Serialize)]
@@ -279,6 +279,7 @@ pub(crate) fn delete_paper_in_root(root: &Path, paper_id: &str) -> Result<(), St
             params![paper_id],
         )
         .map_err(|error| error.to_string())?;
+    crate::annotation_layers::delete_owner_layers(&transaction, &crate::annotation_layers::LayerOwner::paper(paper_id)?)?;
     transaction
         .execute("DELETE FROM notes WHERE paper_id = ?1", params![paper_id])
         .map_err(|error| error.to_string())?;
@@ -355,7 +356,8 @@ pub(crate) fn list_papers_in_database(database_path: &Path) -> Result<Vec<PaperS
             list_translated_file_ids_for_paper(&connection, &paper.paper_id)?;
         paper.translated_pdfs = list_translated_pdfs_for_paper(&connection, &paper.paper_id)?;
         paper.notes = list_notes_for_paper(&connection, &paper.paper_id)?;
-        paper.annotations = list_annotations_for_paper(&connection, &paper.paper_id)?;
+        // Startup payload is bounded by the layers the user currently shows; hidden layers load on demand.
+        paper.annotations = list_visible_annotations_for_paper(&connection, &paper.paper_id)?;
         paper.ai_threads = list_ai_threads_for_paper(&connection, &paper.paper_id)?;
         papers.push(paper);
     }

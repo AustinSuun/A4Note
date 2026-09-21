@@ -19,7 +19,7 @@ pub(crate) fn schema_sql() -> &'static str {
 
 // Bump this when Rust-only migrations change; schema.sql changes invalidate
 // the key automatically. This caches only a build constant, never DB readiness.
-const MIGRATION_REVISION: &str = "startup-1";
+const MIGRATION_REVISION: &str = "startup-2-annotation-layers";
 fn schema_key() -> &'static str {
     static KEY: OnceLock<String> = OnceLock::new();
     KEY.get_or_init(|| {
@@ -71,6 +71,17 @@ pub(crate) fn initialize_database(database_path: &Path) -> Result<(), String> {
     ensure_column(&transaction, "paper_files", "content_hash", "TEXT")?;
     ensure_column(&transaction, "notes", "server_version", "INTEGER NOT NULL DEFAULT 0")?;
     ensure_column(&transaction, "notes", "deleted_at", "INTEGER")?;
+    // Annotation layers (fb5e3f2f): upgraded databases gain the column first, then the indexes that
+    // every layer/page query relies on, then a default layer per owner with all legacy rows in it.
+    ensure_column(&transaction, "annotations", "layer_id", "TEXT NOT NULL DEFAULT ''")?;
+    ensure_column(&transaction, "resource_annotations", "layer_id", "TEXT NOT NULL DEFAULT ''")?;
+    transaction
+        .execute_batch(
+            "CREATE INDEX IF NOT EXISTS annotations_by_layer_page ON annotations (paper_id, layer_id, file_id, page);
+             CREATE INDEX IF NOT EXISTS resource_annotations_by_layer_page ON resource_annotations (resource_id, layer_id, page);",
+        )
+        .map_err(|error| error.to_string())?;
+    crate::annotation_layers::backfill_layers(&transaction)?;
     // DDL, data repair and the completion mark commit together. A failed upgrade
     // leaves no success mark and retries cleanly on the next call.
     transaction.execute(
