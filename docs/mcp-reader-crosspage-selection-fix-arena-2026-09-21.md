@@ -3,7 +3,7 @@
 - 日期：2026-09-21；执行者：Arena（任务板 worker「Arena执行」）。
 - 任务卡：`8dba61be-7a0b-4a26-bbad-3399d3f75aa5`（high），来源审计 `docs/mcp-reader-annotation-audit-arena-2026-09-21.md` 问题 F3。
 - 分支：`fix/reader-crosspage-selection-arena`，基于 `main c01715c`（工作树 `.worktrees/fix-crosspage-arena`）。
-- 提交：`8d89134`（修复）、`a9fb934`（回归脚本 + verify-all 接入）、后续文档/状态提交见 §6。
+- 提交：`8d89134`（修复）、`a9fb934`（回归脚本 + verify-all 接入）、`d278b74`（报告/状态）、`b9b22c9`（合入 main bffe15b：保留 F2 的高亮/下划线 pointer-events 规则与本任务的 user-select 规则）。
 - 结论：60% 缩放两页同屏、从第 1 页末行拖到第 2 页首行时，高亮/下划线按页各生成 1 条记录（quote、几何各归本页）；文本框/便签正文非编辑态不可被文字选区选中，也不会进入 quote；单页、跨行选区行为不变。
 
 ## 1. 根因
@@ -61,6 +61,6 @@
 ## 7. 运行记录
 
 - `npm run test:pdf-crosspage-selection`：31 断言通过；隔离实例 arena-f3 驱动 22/22 通过（见 §4）。
-- `npm run verify`：在 `a9fb934`（含修复 `8d89134`）上全量通过（Rust 209 过 5 忽略；`.tmp/f3/verify.log`）。
-- `npm run test:agent-status`：通过（状态行提交后复跑）。
+- `npm run verify`：在 `a9fb934` 上全量通过（`.tmp/f3/verify.log`）；合入 main bffe15b（F2 41c5aaa、F6 61720e9）后在 `b9b22c9` 复跑再次全量通过（`.tmp/f3/verify2.log`），隔离实例驱动在合并后的构建上再次 22/22。
+- `npm run test:agent-status`：通过。
 - 上传到任务卡的结果附件：`03-cross-page-highlight.png`、`04-cross-page-underline.png`、`05-single-page.png`、`06-text-box-unselectable.png`、`summary.json`、驱动脚本。
