@@ -9,7 +9,9 @@ import { zh } from '../../ui/zh';
 import { SidebarIcon } from './ReaderIcons';
 import type { NoteDraftPatch, NoteSaveInput, ReaderSidePanelDefinition } from './types';
 
-const workspacePanelTabs: ReaderSidePanelTab[] = ['notes', 'chat', 'cite'];
+// Order matches the workbench panel contributions; annotations belongs here so the list
+// is reachable by the user, not only through programmatic setReaderSidePanelTab calls.
+const workspacePanelTabs: ReaderSidePanelTab[] = ['notes', 'annotations', 'chat', 'cite'];
 
 export function ReaderSideDrawer({
   open,
