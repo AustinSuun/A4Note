@@ -1,3 +1,4 @@
+import { withProjectTasksDefaultOff } from '../platform/projectTasksPreference';
 import { useNoteFolderWorkspaces } from '../features/markdown';
 import { capturePdfCenterAnchor, restorePdfPageAnchor, requestPdfFind } from '../features/reader';
 import { BrandUpdateNotice } from '../features/updates';
@@ -159,7 +160,7 @@ const syncCoordinator = createDesktopSyncCoordinator(syncApi);
 // scene, view and sidebar registries on one lifecycle snapshot and prevents a
 // transient "view not connected" state during startup.
 const persistedLocalPlugins = loadLocalPlugins();
-const persistedDisabledPluginIds = new Set(loadDisabledPluginIds());
+const persistedDisabledPluginIds = new Set(withProjectTasksDefaultOff(loadDisabledPluginIds()));
 for (const plugin of persistedLocalPlugins) {
   if (!plugin.payload || plugin.status === 'blocked') continue;
   try {
@@ -2179,6 +2180,7 @@ export default function App() {
     .map((tab) => ({
       id: tab.id,
       title: tab.title,
+      fileType: tab.kind === 'pdf' || documents.some(paper => paper.paperId === paperIdFromReaderTabKey(tab.key) && (paper.sourcePdf || paper.translatedPdfs.length)) ? 'pdf' : 'unknown',
       hint: tab.kind === 'pdf' ? tabStateString(tab, 'path', tab.title) : tab.title,
       active: activeTab?.id === tab.id,
       paperId: paperIdFromReaderTabKey(tab.key) ?? undefined,
@@ -2738,6 +2740,9 @@ export default function App() {
           if (!scene?.pluginId) return;
           try {
             toggleScenePlugin(scene.pluginId, enabled);
+            setVisibleSceneIds((current) => enabled
+              ? Array.from(new Set([...current, sceneId]))
+              : current.filter((id) => id !== sceneId));
           } catch (error) {
             console.error('Scene plugin state change failed', error);
             setLibraryStatus('场景插件状态切换失败');
@@ -2910,7 +2915,7 @@ export default function App() {
   const hostActiveTabId = activeFileTabId ?? activeTab?.id ?? null;
 
   return (
-    <DocumentToolbarProvider enabled={(activeScene === 'markdown' || activeScene === 'reader' || activeScene === 'library') && !settingsOpen}>
+    <DocumentToolbarProvider enabled={['markdown', 'reader', 'library', 'tasks'].includes(activeScene ?? '') && !settingsOpen}>
     <WorkbenchShell
       brandAccessory={<BrandUpdateNotice />}
       sidebar={

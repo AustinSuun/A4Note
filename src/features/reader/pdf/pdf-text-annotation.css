@@ -1,0 +1,120 @@
+/* PDF text annotations: in-place editing and content-sized boxes (task 540986ab).
+   Font and padding follow --pdf-display-zoom (set on .pdf-render-layer) so the label keeps its
+   proportion to the page at any zoom; legacy annotations without fontUnit keep fixed pixels. */
+.annotation-mark.text.text-inline {
+  box-sizing: border-box;
+  display: block;
+  padding: 0;
+  height: auto;
+  min-height: 0;
+  line-height: normal;
+  overflow: visible;
+}
+.annotation-mark.text.text-inline .text-annotation-content,
+.annotation-mark.text.text-inline .annotation-text-editor {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-align: left;
+  font-family: inherit;
+  letter-spacing: normal;
+  overflow: visible;
+}
+.annotation-mark.text.text-inline .annotation-text-editor {
+  outline: none;
+  cursor: text;
+  caret-color: currentColor;
+  user-select: text;
+  -webkit-user-select: text;
+  min-height: 1.3em;
+}
+.annotation-mark.text.text-inline .annotation-text-editor.is-empty::before {
+  content: attr(data-placeholder);
+  color: currentColor;
+  opacity: 0.38;
+  pointer-events: none;
+}
+.annotation-mark.text.text-inline.editing,
+.annotation-mark.text.text-inline.editing:active {
+  cursor: text !important;
+  opacity: 1;
+  outline-width: 1.5px;
+  box-shadow: 0 0 0 2px rgba(66, 146, 95, 0.35), 0 4px 14px rgba(20, 37, 29, 0.18);
+  z-index: 6;
+}
+.annotation-mark.text.text-inline.editing.draft {
+  opacity: 1;
+  pointer-events: auto;
+}
+.annotation-mark.text.text-inline.auto-width {
+  width: auto;
+}
+.annotation-text-style-toggle span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.annotation-text-style-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(20, 37, 29, 0.14);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(20, 37, 29, 0.18);
+  font-size: 12px;
+  line-height: 1.2;
+  color: #24302b;
+  white-space: nowrap;
+}
+.annotation-text-style-panel label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 12px;
+}
+.annotation-text-style-panel select {
+  min-width: 56px;
+  height: 28px;
+  padding: 0 4px;
+  border: 1px solid rgba(20, 37, 29, 0.18);
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+}
+.annotation-text-style-panel button {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid rgba(20, 37, 29, 0.18);
+  border-radius: 6px;
+  background: #fff;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+}
+.annotation-text-style-panel button.active {
+  background: rgba(66, 146, 95, 0.14);
+  border-color: rgba(66, 146, 95, 0.6);
+}
+.annotation-text-style-panel input[type='color'] {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(20, 37, 29, 0.18);
+  border-radius: 6px;
+  background: transparent;
+}

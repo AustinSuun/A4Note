@@ -50,7 +50,7 @@ function fixture() {
   };
   const native = {
     isTauriRuntime: () => nativeMode,
-    createNativeAnnotation: args => write('create', args, () => { const a = { ...copy(args), id: 'new-' + ++id }; disk.set(a.id, a); return a; }),
+    createNativeAnnotation: args => write('create', args, () => { const created_at = 1700000000123 + ++id; const a = { ...copy(args), id: 'new-' + id, createdAt: new Date(created_at).toISOString() }; disk.set(a.id, a); return { id: a.id, created_at }; }),
     restoreNativeAnnotation: a => write('restore', a, () => disk.set(a.id, copy(a))),
     deleteNativeAnnotation: annotationId => write('delete', annotationId, () => disk.delete(annotationId)),
     updateNativeAnnotationComment: args => write('comment', args, () => { disk.get(args.annotationId).comment = args.comment; }),
@@ -95,7 +95,7 @@ for (const kind of ['comment', 'color', 'position', 'create', 'delete']) {
   check([f.api.annotationUndoStack.length, f.api.annotationRedoStack.length], [0, 1], kind + ': failed redo keeps stacks');
   check(await f.api.redoAnnotationAction(), true, kind + ': redo retry succeeds'); f.render();
   check(f.papers.get('one').annotations, changed, kind + ': redo restores changed model');
-  check(f.papers.get('one').annotations.map(a => [a.id, a.comment ?? '', a.color, a.positionJson]), [...f.disk.values()].filter(a => a.paperId === 'one').map(a => [a.id, a.comment ?? '', a.color, a.positionJson]), kind + ': model matches mock disk');
+  check(f.papers.get('one').annotations.map(a => [a.id, a.comment ?? '', a.color, a.positionJson]), [...f.disk.values()].filter(a => a.paperId === 'one').sort((a, b) => a.page - b.page || (a.createdAt ?? '').localeCompare(b.createdAt ?? '')).map(a => [a.id, a.comment ?? '', a.color, a.positionJson]), kind + ': model matches mock disk');
   check(f.notices.length, 3, kind + ': each failure visible');
 }
 
@@ -178,4 +178,25 @@ for (const kind of ['comment', 'color', 'position', 'create', 'delete']) {
     check(f.annotation().color, '#ffff00', 'ignored promise failure retains saved model');
   } finally { process.off('unhandledRejection', receive); }
 }
+// Backend timestamp deliberately differs from the frontend clock. All six tools
+// must snapshot this value; failure/retry may not mint a replacement timestamp.
+for (const type of ['highlight', 'underline', 'text', 'rect', 'arrow', 'ink']) {
+  const f = fixture();
+  const draft = { type, page: 1, quote: 'timestamp', comment: 'test', color: 'blue', positionJson: { x: 1, y: 2 } };
+  f.fail(); await assert.rejects(f.api.createAnnotation(draft), /write denied/); checks++;
+  check(f.render().annotationUndoStack.length, 0, type + ': failed create leaves no history');
+  const id = await f.api.createAnnotation(draft); f.render();
+  const original = copy(f.disk.get(id));
+  check(f.papers.get('one').annotations.find(a => a.id === id).createdAt, original.createdAt, type + ': create uses persisted clock');
+  await f.api.deleteAnnotation(id); f.render();
+  f.fail(); check(await f.api.undoAnnotationAction(), false, type + ': failed restore stays retryable'); f.render();
+  check(f.disk.has(id), false, type + ': failed restore has not persisted');
+  await f.api.undoAnnotationAction(); f.render();
+  check(f.disk.get(id).createdAt, original.createdAt, type + ': delete undo preserves timestamp');
+  await f.api.redoAnnotationAction(); f.render(); await f.api.undoAnnotationAction(); f.render();
+  check(f.disk.get(id).createdAt, original.createdAt, type + ': repeated undo redo preserves timestamp');
+  await f.api.undoAnnotationAction(); f.render(); await f.api.redoAnnotationAction(); f.render();
+  check(f.disk.get(id).createdAt, original.createdAt, type + ': creation undo redo preserves timestamp');
+}
+
 console.log(`PASS ${checks} annotation history behavior assertions (mock native boundary, not desktop E2E).`);

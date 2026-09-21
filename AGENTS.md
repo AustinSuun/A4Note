@@ -18,3 +18,7 @@ git status --short
 `npm run test:agent-status`；涉及代码时按开发手册选择 `npm run build` 或 `npm run verify`。
 
 不要把实时进度复制到 Skill、README 或提示词中。Skill 只能承载不随单个任务变化的操作流程，状态文件才是跨 Agent、跨时间的项目事实来源。
+
+## 代码任务完成与合并
+
+代码任务由执行Agent完成验证并合并到本地main后再submit，结果中注明交付与合并commit；冲突、脏main或验证失败时报告阻塞，不强行覆盖。归档只确认验收，不触发合并；默认不推送、打包、安装或发布。

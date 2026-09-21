@@ -30,7 +30,7 @@ export function liveTauriConfig(base, plan) {
     identifier: plan.identifier,
     build: { beforeDevCommand: null, devUrl: plan.url },
     app: {
-      windows: [{ ...main, label: 'main', title: `A4 Note DEV · ${plan.instance} · 独立测试库`, dataDirectory: 'live-webview', devtools: true }],
+      windows: [{ ...main, label: 'main', title: `A4 Note DEV · ${plan.instance}`, dataDirectory: 'live-webview', devtools: true }],
     },
     // No automatic release check/download from an isolated development instance.
     plugins: { updater: { endpoints: [] } },

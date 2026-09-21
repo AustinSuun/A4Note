@@ -16,6 +16,7 @@ import {
   type MarkdownSceneContributionProps,
 } from '../features/markdown';
 import { createOverviewSceneContribution } from '../features/overview';
+import { createTaskBoardSceneContribution, createTaskBoardSidebarContribution } from '../features/taskboard';
 import {
   createReaderSceneContribution,
   createReaderPanelViewContributions,
@@ -275,12 +276,14 @@ export function createBuiltinSceneUiContributions(runtime: BuiltinSceneUiRuntime
       createReaderSceneContribution(runtime.reader, panelViews),
       ai.view,
       markdown.view,
+      createTaskBoardSceneContribution(),
     ],
     sidebars: [
       createLibrarySidebarContribution(runtime.librarySidebar),
       createReaderSidebarContribution(runtime.readerSidebar),
       ai.sidebar,
       markdown.sidebar,
+      createTaskBoardSidebarContribution(),
     ],
     panelViews,
     resourceViews,

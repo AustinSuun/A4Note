@@ -2,11 +2,11 @@
 :is(.reader-annotation-dock .annotation-toolbar, .markdown-authoring-dock .markdown-authoring-actions) { display: flex; box-sizing: border-box; align-items: center; gap: 3px; padding: 5px 6px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: 0 6px 20px rgba(30,45,38,.12); font-family: var(--font-ui, sans-serif); font-size: var(--ui-control-font-size, 13px); line-height: 1; }
 :is(.reader-annotation-dock .annotation-toolbar .annotation-tool-btn, .markdown-authoring-dock .markdown-authoring-actions > button) { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; box-sizing: border-box; height: 40px; min-height: 40px; min-width: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); font-family: var(--font-ui, sans-serif); font-size: var(--ui-control-font-size, 13px); line-height: 1; }
 :is(.reader-annotation-dock .annotation-toolbar .annotation-tool-btn, .markdown-authoring-dock .markdown-authoring-actions > button):is(:hover, .active, .contextual, [aria-pressed="true"], [aria-expanded="true"]) { background: var(--accent-soft); color: var(--accent-strong); }
-/* True backdrop blur with a light tint, not an opaque white overlay.
+/* True backdrop blur without a surface tint; retain opaque accessibility fallbacks.
    Keep background colors visible while softening glyphs; controls stay sharp. */
 @supports ((backdrop-filter: blur(18px)) or (-webkit-backdrop-filter: blur(18px))) {
   :root[data-dock-glass="true"] :is(.reader-annotation-dock .annotation-toolbar, .markdown-authoring-dock .markdown-authoring-actions) {
-    background: color-mix(in srgb, var(--surface) 6%, transparent);
+    background: transparent;
     /* Keep the standard declaration last: the production CSS minifier merges
        aliases in source order; Chromium WebView requires the unprefixed form. */
     -webkit-backdrop-filter: blur(18px) saturate(140%);
@@ -15,7 +15,7 @@
     box-shadow: 0 5px 18px rgba(20,35,28,.08), 0 1px 4px rgba(20,35,28,.03), inset 0 1px 0 rgba(255,255,255,.25);
   }
   :root[data-theme="midnight"][data-dock-glass="true"] :is(.reader-annotation-dock .annotation-toolbar, .markdown-authoring-dock .markdown-authoring-actions) {
-    background: color-mix(in srgb, var(--surface) 12%, transparent);
+    background: transparent;
     box-shadow: 0 5px 18px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.12);
   }
 }

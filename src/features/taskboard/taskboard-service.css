@@ -1,0 +1,35 @@
+.taskboard .tb-service-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--tb-border, #dfe6e2);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tb-accent, #32735a) 4%, var(--tb-card, #fff));
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tb-muted, #64756b);
+}
+.taskboard .tb-service-bar .tb-service-summary { color: var(--tb-text, #24302b); }
+.taskboard .tb-service-bar .tb-service-policy { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.taskboard .tb-service-bar button { min-height: 32px; padding: 4px 12px; font-size: 13px; }
+.taskboard .tb-service-bar .tb-service-notice { flex-basis: 100%; }
+
+/* Binding guide: makes "scene enabled -> usable board" a visible, checkable path. */
+.taskboard .tb-binding-guide { display: grid; gap: 10px; width: min(560px, 100%); margin: 0 auto 4px; padding: 14px 16px; text-align: left; background: var(--tb-card, #fff); border: 1px solid var(--tb-line, #dfe5e1); border-radius: 10px; }
+.taskboard .tb-guide-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.taskboard .tb-guide-head h3 { margin: 0; font-size: 14px; font-weight: 650; line-height: 1.4; }
+.taskboard .tb-guide-steps { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.taskboard .tb-guide-step { display: grid; grid-template-columns: 18px 1fr; gap: 2px 8px; font-size: 13px; line-height: 1.5; }
+.taskboard .tb-guide-mark { grid-row: span 2; font-weight: 700; }
+.taskboard .tb-guide-step.is-ok .tb-guide-mark { color: var(--tb-accent, #32735a); }
+.taskboard .tb-guide-step.is-warn .tb-guide-mark { color: #9a6b12; }
+.taskboard .tb-guide-step.is-error .tb-guide-mark { color: #b42318; }
+.taskboard .tb-guide-step.is-pending .tb-guide-mark { color: var(--tb-muted, #64756b); }
+.taskboard .tb-guide-detail { grid-column: 2; color: var(--tb-muted, #64756b); font-size: 12px; overflow-wrap: anywhere; }
+.taskboard .tb-guide-blockers { display: grid; gap: 4px; margin: 0; padding: 8px 10px 8px 26px; color: #93443e; font-size: 13px; background: #fff1ef; border-radius: 8px; }
+.taskboard .tb-binding-guide > p[role=alert] { margin: 0; color: #93443e; font-size: 13px; }
+.taskboard .tb-guide-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.taskboard .tb-binding-guide small { color: var(--tb-muted, #64756b); font-size: 12px; line-height: 1.6; }

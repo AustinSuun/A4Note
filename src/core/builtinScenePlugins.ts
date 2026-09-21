@@ -18,6 +18,7 @@ const builtinPluginIds: Record<string, string> = {
   reader: 'reader.core',
   aiChat: 'ai.core',
   markdown: 'markdown.core',
+  tasks: 'tasks.core',
 };
 
 const builtinPluginNames: Record<string, string> = {
@@ -26,6 +27,7 @@ const builtinPluginNames: Record<string, string> = {
   reader: 'A4 Note 阅读器',
   aiChat: 'A4 Note AI 对话',
   markdown: 'A4 Note Markdown',
+  tasks: 'A4 Note 项目任务',
 };
 
 export function builtinScenePluginId(sceneId: string) {

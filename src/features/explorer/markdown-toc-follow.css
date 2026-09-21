@@ -1,0 +1,8 @@
+/* Real scrollable space, measured from this directory's viewport, not the
+   browser window. It does not add blank headings or change the document. */
+.markdown-toc-list::after {
+  content: '';
+  display: block;
+  height: var(--markdown-toc-end-space, 0px);
+  pointer-events: none;
+}

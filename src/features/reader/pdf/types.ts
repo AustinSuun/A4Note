@@ -1,5 +1,5 @@
 import type * as pdfjsLib from 'pdfjs-dist';
-import type { AnnotationDraft, AnnotationType, PositionJson } from '../../../core/types';
+import type { AnnotationColor, AnnotationDraft, AnnotationType, PositionJson } from '../../../core/types';
 
 export type PdfStatus = 'loading' | 'ready' | 'placeholder' | 'error';
 
@@ -77,7 +77,7 @@ export const defaultReaderToolSettings: ReaderToolSettings = {
   arrowStrokeWidth: 3.4,
   textBold: false,
   textItalic: false,
-  textFontSize: 13,
+  textFontSize: 16,
   textColor: '#202822',
   textBorderColor: '#ffffff',
   textBackgroundColor: 'transparent',
@@ -111,6 +111,25 @@ export type InkDraft = {
   points: Array<{ x: number; y: number }>;
 };
 
+/** In-place editing session for a text annotation (task 540986ab): no settings popover, the page box itself is the input. */
+export type InlineTextEditorState = {
+  /** Undefined while creating; the new annotation is only persisted when the editor finishes with text. */
+  annotationId?: string;
+  page: number;
+  /** Text shown when the editor opens; the live value lives in the DOM until commit. */
+  text: string;
+  /** Percent geometry and style used for a new box; edits reuse the annotation's own positionJson. */
+  positionJson: PositionJson;
+  color: AnnotationColor;
+};
+
+export type TextAnnotationStylePatch = Partial<{
+  fontSize: number;
+  bold: boolean;
+  italic: boolean;
+  textColor: string;
+}>;
+
 export type CommentPopover = {
   annotationId?: string;
   annotationType?: 'comment' | 'text';
@@ -134,6 +153,8 @@ export type StickyDrag = {
   page: number;
   offsetX: number;
   offsetY: number;
+  /** Geometry the drag started from when it differs from the stored one (measured auto-sized text boxes). */
+  positionJson?: PositionJson;
 };
 
 export type StickyDragPreview = {
@@ -151,6 +172,8 @@ export type AnnotationResize = {
   origin: RectBox;
   minWidth: number;
   minHeight: number;
+  /** Base geometry/style for the resized result (text boxes become fixed-width here). */
+  positionJson?: PositionJson;
 };
 
 export type ReaderFlash = {

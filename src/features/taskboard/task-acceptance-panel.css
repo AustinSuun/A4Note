@@ -1,0 +1,53 @@
+.tb-acceptance { display: flex; min-width: 0; flex-direction: column; gap: 12px; margin: 0; }
+.tb-acceptance h3 { margin: 8px 0 0; font-size: 16px; line-height: 1.35; }
+.tb-acceptance h4 { margin: 4px 0 0; font-size: 14px; line-height: 1.4; }
+.tb-acceptance-note,
+.tb-acceptance p { margin: 0; color: var(--tb-muted, #4b5563); font-size: 13px; line-height: 1.6; }
+.tb-acceptance-alert { border: 1px solid #f0b429; background: #fff8e6; border-radius: 8px; padding: 8px 10px; color: #7a4d00; font-size: 13px; line-height: 1.5; }
+.tb-acceptance-mode { display: grid; gap: 8px; margin-top: 2px; }
+.tb-acceptance-mode label { display: flex; align-items: flex-start; gap: 10px; min-width: 0; margin: 0; padding: 10px 12px; border: 1px solid var(--tb-line, #e5e7eb); border-radius: 8px; background: var(--surface-soft, #f4f6f5); font-size: 13px; line-height: 1.5; cursor: pointer; }
+.tb-acceptance input[type='radio'],
+.tb-acceptance input[type='checkbox'] { appearance: auto; flex: 0 0 16px; width: 16px; min-width: 16px; max-width: 16px; height: 16px; min-height: 16px; margin: 2px 0 0; padding: 0; border: 0; border-radius: 50%; background: transparent; box-shadow: none; accent-color: var(--tb-accent, #32735a); }
+.tb-acceptance input[type='checkbox'] { border-radius: 3px; }
+.tb-acceptance-criteria-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--tb-line, #e5e7eb); border-radius: 8px; }
+.tb-acceptance-criteria { width: 100%; min-width: 760px; border-collapse: collapse; background: var(--tb-card, #fff); font-size: 12px; }
+.tb-acceptance-criteria th,
+.tb-acceptance-criteria td { border: 1px solid var(--tb-line, #e5e7eb); padding: 6px; text-align: left; vertical-align: top; }
+.tb-acceptance-criteria th { background: var(--surface-soft, #f4f6f5); color: var(--tb-ink, #24302b); font-weight: 650; white-space: nowrap; }
+.tb-acceptance-criteria input[type=text],
+.tb-acceptance-criteria input:not([type]) { width: 100%; min-width: 90px; height: 30px; padding: 5px 6px; }
+.tb-acceptance-criteria input:not([type='checkbox']),
+.tb-acceptance-criteria select { font-size: 12px; border: 1px solid #d1d5db; border-radius: 5px; }
+.tb-acceptance-criteria select { width: 100%; min-width: 108px; height: 30px; padding: 4px 6px; }
+.tb-acceptance-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-start; }
+.tb-acceptance-request { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; align-items: end; border: 1px solid var(--tb-line, #e5e7eb); border-radius: 8px; padding: 12px; }
+.tb-acceptance-request label { display: flex; min-width: 0; flex-direction: column; gap: 4px; margin: 0; color: var(--tb-ink, #374151); font-size: 12px; line-height: 1.4; }
+.tb-acceptance-request label input,
+.tb-acceptance-request label select { width: 100%; min-width: 0; }
+.tb-acceptance-request > button,
+.tb-acceptance-request > .tb-acceptance-alert,
+.tb-acceptance-request > .tb-acceptance-note { grid-column: 1 / -1; }
+.tb-acceptance-runs { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.tb-acceptance-runs li { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--tb-line, #e5e7eb); border-radius: 8px; padding: 10px; }
+.tb-acceptance-outcome ul { margin: 4px 0 0 18px; padding: 0; color: #7f1d1d; font-size: 12px; }
+.tb-acceptance code { font-size: 12px; word-break: break-all; }
+.tb-acceptance-reopen { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--tb-line, #e5e7eb); padding-top: 10px; }
+@media (max-width: 760px) {
+  .tb-acceptance-request { grid-template-columns: 1fr; }
+  .tb-acceptance-request > button,
+  .tb-acceptance-request > .tb-acceptance-alert,
+  .tb-acceptance-request > .tb-acceptance-note { grid-column: auto; }
+}
+
+/* Match the larger taskboard reading size inside the detail dialog. */
+.tb-acceptance { font-size: 15px; }
+.tb-acceptance h3 { font-size: 17px; }
+.tb-acceptance h4 { font-size: 15px; }
+.tb-acceptance p,
+.tb-acceptance-alert,
+.tb-acceptance-mode label { font-size: 14px; }
+.tb-acceptance-criteria { font-size: 13px; }
+.tb-acceptance-criteria select { font-size: 13px; }
+.tb-acceptance-request label { font-size: 13px; }
+.tb-acceptance-outcome ul,
+.tb-acceptance code { font-size: 13px; }

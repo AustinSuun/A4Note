@@ -1,7 +1,9 @@
+import { HighlightAppearanceControl } from './HighlightAppearanceControl';
 import { useEffect, useState, type CSSProperties, type WheelEvent as ReactWheelEvent } from 'react';
 import { ReaderToolbarPortal } from './ReaderToolbarPortal';
 import { ReaderAnnotationDock } from './ReaderAnnotationDock';
 import { ReaderToolPopover } from './ReaderToolPopover';
+import { TEXT_FONT_SIZE_OPTIONS } from './pdf/pdfTextAnnotation';
 import './reader-file-switch.css';
 import type { AnnotationColor, PaperDocument, ReaderTool } from '../../core/types';
 import { zh } from '../../ui/zh';
@@ -80,10 +82,21 @@ export function ReaderToolbar({
 
 
   useEffect(() => {
-    setToolSettingsOpenFor((current) => (current === activeAnnotationTool ? current : null));
-  }, [activeAnnotationTool]);
+    setToolSettingsOpenFor((current) => (current === activeAnnotationTool || current === contextAnnotationTool ? current : null));
+  }, [activeAnnotationTool, contextAnnotationTool]);
+
+  // Selecting an annotation no longer opens its settings panel by itself (task 540986ab): the panel covered
+  // the page and stole focus from in-place text editing. The tool button lights up as "contextual" and a
+  // click on it opens the panel for that annotation on demand.
+  useEffect(() => {
+    setToolSettingsOpenFor(null);
+  }, [contextAnnotationId]);
 
   const handleSelectTool = (tool: ReaderTool) => {
+    if (contextAnnotationId && contextAnnotationTool === tool && toolHasSettings(tool)) {
+      setToolSettingsOpenFor((current) => (current === tool ? null : tool));
+      return;
+    }
     if (contextAnnotationId) onClearContextAnnotation?.();
     const isCurrentTool = activeAnnotationTool === tool;
     if (isCurrentTool && toolHasSettings(tool)) {
@@ -119,7 +132,7 @@ export function ReaderToolbar({
 
 
 
-  const optionsTool = contextAnnotationTool ?? toolSettingsOpenFor;
+  const optionsTool = toolSettingsOpenFor && (toolSettingsOpenFor === contextAnnotationTool || toolSettingsOpenFor === activeAnnotationTool) ? toolSettingsOpenFor : null;
   const currentColor = contextAnnotationColor ?? toolColors[activeAnnotationTool] ?? activeAnnotationColor;
   const currentToolSettings = contextToolSettings ?? toolSettings;
   const handleToolSettingsChange = (settings: ReaderToolSettings) => {
@@ -247,7 +260,7 @@ export function ReaderToolbar({
                     className={`annotation-tool-btn ${isActive ? 'active' : ''} ${isContextual ? 'contextual' : ''}`.trim()}
                     type="button"
                     onClick={() => handleSelectTool(tool.id)}
-                    title={tool.id === 'hand' ? '手形拖动：按住左键移动；空格＋左键可临时拖动' : toolHasSettings(tool.id) ? `${tool.label}（再次点击打开设置）` : tool.label}
+                    title={tool.id === 'hand' ? '手形拖动：按住左键移动；空格＋左键可临时拖动' : isContextual ? `${tool.label}（点击打开所选标注的设置）` : toolHasSettings(tool.id) ? `${tool.label}（再次点击打开设置）` : tool.label}
                     aria-label={tool.label}
                     aria-pressed={isActive}
                     aria-haspopup={toolHasSettings(tool.id) ? 'dialog' : undefined}
@@ -259,7 +272,7 @@ export function ReaderToolbar({
                     )}
                   </button>
                   {optionsTool === tool.id && (
-                    <ReaderToolPopover onClose={() => { setToolSettingsOpenFor(null); if (contextAnnotationId) onClearContextAnnotation?.(); }}>
+                    <ReaderToolPopover title={annotationTools.find((candidate) => candidate.id === optionsTool)?.label ?? '标注'} onClose={() => { setToolSettingsOpenFor(null); if (contextAnnotationId) onClearContextAnnotation?.(); }}>
                     <ToolOptionsBar
                       tool={optionsTool}
                       toolSettings={currentToolSettings}
@@ -315,6 +328,8 @@ function ToolOptionsBar({
           onCustomColorChange={onCustomAnnotationColorChange}
         />
       )}
+
+      {tool === 'highlight' && <HighlightAppearanceControl />}
 
       {tool === 'ink' && (
         <>
@@ -389,7 +404,7 @@ function ToolOptionsBar({
             value={toolSettings.arrowStrokeWidth}
             min={ARROW_STROKE_MIN}
             max={ARROW_STROKE_MAX}
-            step={0.2}
+            step={0.1}
             onChange={(arrowStrokeWidth) => onToolSettingsChange({ ...toolSettings, arrowStrokeWidth })}
           />
           <div className="tool-option-block">
@@ -493,7 +508,7 @@ function ToolOptionsBar({
                 <span className="text-outline-preview" aria-hidden="true">T</span>
               </button>
             </div>
-            <span className="tool-option-hint">点击页面创建文本标记</span>
+            <span className="tool-option-hint">点击页面后直接输入；Esc 或点击外部完成，框随文字扩展</span>
           </div>
           <div className="tool-option-block compact text-size-option">
             <span className="tool-option-label">字号</span>
@@ -502,7 +517,7 @@ function ToolOptionsBar({
               onChange={(event) => onToolSettingsChange({ ...toolSettings, textFontSize: Number(event.target.value) })}
               aria-label="文本字号"
             >
-              {[12, 13, 14, 16, 18, 20, 24].map((size) => (
+              {(TEXT_FONT_SIZE_OPTIONS.includes(toolSettings.textFontSize) ? TEXT_FONT_SIZE_OPTIONS : [toolSettings.textFontSize, ...TEXT_FONT_SIZE_OPTIONS].sort((a, b) => a - b)).map((size) => (
                 <option key={size} value={size}>{size}</option>
               ))}
             </select>

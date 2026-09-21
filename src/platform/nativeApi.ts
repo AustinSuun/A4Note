@@ -357,7 +357,7 @@ export async function createNativeAnnotation(request: {
   color: string;
   positionJson: PositionJson;
 }) {
-  return invoke<{ id: string }>('create_annotation', {
+  return invoke<{ id: string; created_at: number }>('create_annotation', {
     request: {
       paper_id: request.paperId,
       file_id: request.fileId,

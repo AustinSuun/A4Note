@@ -20,6 +20,7 @@ import { validatePluginManifest } from './types';
 import { LocalDocumentRepository, type DocumentRepository } from './documentRepository';
 import { createLibraryPlugin } from './libraryPlugin';
 import { createMarkdownPlugin } from './markdownPlugin';
+import { createTaskBoardPlugin } from './taskBoardPlugin';
 import { builtinScenePluginId, createBuiltinScenePlugin } from './builtinScenePlugins';
 import { createOverviewPlugin } from './overviewPlugin';
 import { createReaderPlugin } from './readerPlugin';
@@ -850,6 +851,7 @@ export function createAsterCore(documents: PaperDocument[], scenes: SceneContrib
     { id: 'reader', pluginId: 'reader.core', create: createReaderPlugin },
     { id: 'aiChat', pluginId: 'ai.core', create: createAiPlugin },
     { id: 'markdown', pluginId: 'markdown.core', create: createMarkdownPlugin },
+    { id: 'tasks', pluginId: 'tasks.core', create: createTaskBoardPlugin },
   ];
   const registeredBuiltinPluginIds = new Set<string>();
   for (const definition of builtinSceneDefinitions) {

@@ -162,17 +162,25 @@
 .md-body .markdown-figure-sized .markdown-image-zoom img { width: 100%; height: auto; }
 
 /* ---- blockquote ---- */
+/* Reading follows the existing live-editor card, never the reverse. */
 .md-body blockquote:not(.markdown-callout) {
-  margin: .35em 0 1em;
-  padding: .65em .9em;
+  margin: 0 0 1em;
+  padding: .65em .9em .65em .85em;
   border-left: 3px solid var(--md-quote);
-  border-radius: 0 8px 8px 0;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--accent-soft) 68%, transparent);
-  color: color-mix(in srgb, var(--ink) 84%, var(--muted));
+  color: var(--muted);
+  box-shadow: 0 6px 12px -6px rgba(30,45,38,.2);
 }
 .md-body blockquote > :last-child { margin-bottom: 0; }
-.md-body blockquote:not(.markdown-callout):has(+ blockquote:not(.markdown-callout)) { margin-bottom: 0; border-bottom-right-radius: 0; }
-.md-body blockquote:not(.markdown-callout) + blockquote:not(.markdown-callout) { margin-top: 0; border-top-right-radius: 0; }
+/* Live preview hides the source quote prefix without collapsing its advance.
+   Preserve that inline inset here, without inserting text into the document. */
+.md-body blockquote:not(.markdown-callout) > p::before,
+.md-body .markdown-callout-content > p::before {
+  content: '> ';
+  visibility: hidden;
+  white-space: pre;
+}
 /* ---- callout (`> [!NOTE]` and friends) ---- */
 .md-body blockquote.markdown-callout {
   --callout-color: #2b7774;
@@ -180,81 +188,73 @@
   --callout-header-bg: rgba(43,119,116,.105);
   position: relative;
   overflow: hidden;
-  margin: 12px 0;
+  margin: 0 0 1em;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--callout-color) 28%, var(--line));
+  border: 0;
+  border-left: 5px solid var(--callout-color);
+  border-top: 1px solid color-mix(in srgb, var(--callout-color) 34%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--callout-color) 22%, transparent);
   border-radius: 9px;
-  background: color-mix(in srgb, var(--surface) 91%, var(--callout-bg));
+  background: color-mix(in srgb, var(--surface) 92%, var(--callout-bg));
   color: var(--ink);
-  box-shadow: 0 2px 8px rgba(29,45,38,.07);
-}
-.md-body blockquote.markdown-callout::before {
-  position: absolute;
-  z-index: 1;
-  inset: 0 auto 0 0;
-  width: 5px;
-  background: var(--callout-color);
-  content: '';
+  box-shadow: 0 4px 10px -6px rgba(29,45,38,.18);
 }
 .md-body .markdown-callout-heading {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  position: relative;
+  display: block;
+  padding: 9px 16px 0 17px;
+  background-image: linear-gradient(var(--callout-header-bg), var(--callout-header-bg));
+  color: var(--ink);
+  line-height: inherit;
+}
+.md-body .markdown-callout-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 5px 14px 5px 17px;
-  border-bottom: 1px solid color-mix(in srgb, var(--callout-color) 22%, transparent);
-  background: var(--callout-header-bg);
-  color: var(--callout-color);
+  gap: 7px;
+  margin-right: 9px;
+  vertical-align: -.18em;
 }
 .md-body .markdown-callout-icon {
-  display: inline-grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border: 0;
-  border-radius: 0;
-  background: none;
+  display: inline-flex;
+  width: 1.05em;
+  height: 1.05em;
+  flex: 0 0 auto;
   color: var(--callout-color);
 }
-/* One header row: icon, type label and title side by side. The live editor keeps
-   the title as editable source on a single line and cannot stack the label above
-   it, so the reading view follows the editor's shape instead of the reverse. */
-.md-body .markdown-callout-heading-main { display: contents; }
+.md-body .markdown-callout-icon svg { width: 100%; height: 100%; }
 .md-body .markdown-callout-label {
   color: color-mix(in srgb, var(--callout-color) 76%, var(--muted));
   font-size: .68em;
   font-weight: 780;
   letter-spacing: .08em;
-  line-height: 1.15;
   text-transform: uppercase;
 }
 .md-body .markdown-callout-heading strong {
-  min-width: 0;
-  overflow: hidden;
   color: var(--ink);
-  font-size: .98em;
+  font-size: inherit;
   font-weight: 760;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: inherit;
 }
 .md-body .markdown-callout-kind {
-  align-self: start;
-  padding: 4px 7px;
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  padding: 3px 6px;
   border: 1px solid color-mix(in srgb, var(--callout-color) 28%, transparent);
   border-radius: 5px;
   color: color-mix(in srgb, var(--callout-color) 82%, var(--muted));
-  font: 760 .63em/1 var(--font-code);
+  font: 760 .62em/1 var(--font-code);
   letter-spacing: .04em;
   white-space: nowrap;
+  pointer-events: none;
 }
 .md-body .markdown-callout-content {
-  padding: 8px 17px 8px 21px;
-  background: color-mix(in srgb, var(--surface) 92%, var(--callout-bg));
+  padding: 0 16px 11px 21px;
 }
 .md-body .markdown-callout-content > :first-child { margin-top: 0; }
-.md-body .markdown-callout-content > :last-child { margin-bottom: 8px; }
+.md-body .markdown-callout-content > :last-child { margin-bottom: 0; }
+/* A header-only callout still gets the live run's bottom cap. */
+.md-body .markdown-callout-content:empty { padding-bottom: 11px; }
 .md-body blockquote.markdown-callout.markdown-callout-note,
 .md-body blockquote.markdown-callout.markdown-callout-info { --callout-color: #2b7774; --callout-bg: rgba(43,119,116,.075); --callout-header-bg: rgba(43,119,116,.105); }
 .md-body blockquote.markdown-callout.markdown-callout-tip,

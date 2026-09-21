@@ -1,3 +1,4 @@
+import { PdfHighlightLayer } from './PdfHighlightLayer';
 import type { MouseEvent } from 'react';
 import type { AnnotationColor, PaperDocument, PositionJson, ReaderTool } from '../../../core/types';
 import {
@@ -9,7 +10,7 @@ import {
 import { normalizeBox } from './pdfGeometry';
 import { arrowPositionFromDrag } from './pdfInteraction';
 import { AnnotationMark } from './AnnotationMark';
-import type { AnnotationMarkModel, AnnotationResizeHandle, DraftAnnotationPreview, DragDraft, InkDraft, ReaderToolSettings } from './types';
+import type { AnnotationMarkModel, AnnotationResizeHandle, DraftAnnotationPreview, DragDraft, InkDraft, InlineTextEditorState, ReaderToolSettings, TextAnnotationStylePatch } from './types';
 
 export function AnnotationOverlay({
   annotations,
@@ -26,6 +27,11 @@ export function AnnotationOverlay({
   onUpdateAnnotationColor,
   onDeleteAnnotation,
   onAppendAnnotationToNote,
+  onUpdateTextStyle,
+  inlineTextEditor,
+  onCommitInlineText,
+  onInlineEditorReady,
+  onInlineEditorLayout,
   focusedAnnotationId,
 }: {
   annotations: PaperDocument['annotations'];
@@ -42,6 +48,12 @@ export function AnnotationOverlay({
   onUpdateAnnotationColor: (annotationId: string, color: AnnotationColor) => void | Promise<void>;
   onDeleteAnnotation: (annotationId: string) => void | Promise<void>;
   onAppendAnnotationToNote: (annotationId: string) => void;
+  onUpdateTextStyle?: (annotationId: string, patch: TextAnnotationStylePatch) => void | Promise<void>;
+  /** Inline text editing session for this page, if any. */
+  inlineTextEditor?: InlineTextEditorState | null;
+  onCommitInlineText?: (text: string, element: HTMLDivElement) => void;
+  onInlineEditorReady?: (element: HTMLDivElement | null) => void;
+  onInlineEditorLayout?: (element: HTMLDivElement) => void;
   focusedAnnotationId: string | null;
 }) {
   const dragPosition = dragDraft && activeTool !== 'cursor' && activeTool !== 'comment' && activeTool !== 'text' && activeTool !== 'ink' && activeTool !== 'eraser' && activeTool !== 'arrow' && activeTool !== 'rect' ? normalizeBox(dragDraft) : null;
@@ -91,7 +103,24 @@ export function AnnotationOverlay({
         },
       }
     : null;
+  const newTextPreview: AnnotationMarkModel | null = inlineTextEditor && !inlineTextEditor.annotationId
+    ? {
+        page: inlineTextEditor.page,
+        type: 'text',
+        color: inlineTextEditor.color,
+        comment: '',
+        quote: '',
+        positionJson: inlineTextEditor.positionJson,
+      }
+    : null;
+  const highlightAnnotations: AnnotationMarkModel[] = [...annotations, ...drafts];
+  if (dragPosition && dragDraft && activeTool === 'highlight') {
+    highlightAnnotations.push({ id: 'highlight-drag-preview', page: dragDraft.page, type: 'highlight',
+      color: activeAnnotationColor, quote: '', comment: '', positionJson: dragPosition });
+  }
   return (
+    <>
+    <PdfHighlightLayer annotations={highlightAnnotations} />
     <div className="annotation-overlay" data-reader-layer="annotations" aria-label="PDF annotation layer">
       {annotations.map((annotation) => (
         <AnnotationMark
@@ -104,10 +133,26 @@ export function AnnotationOverlay({
           onUpdateAnnotationColor={onUpdateAnnotationColor}
           onDeleteAnnotation={onDeleteAnnotation}
           onAppendAnnotationToNote={onAppendAnnotationToNote}
+          onUpdateTextStyle={onUpdateTextStyle}
+          inlineEditor={inlineTextEditor?.annotationId === annotation.id ? inlineTextEditor : null}
+          onCommitInlineText={onCommitInlineText}
+          onInlineEditorReady={onInlineEditorReady}
+          onInlineEditorLayout={onInlineEditorLayout}
           focused={focusedAnnotationId === annotation.id}
           eraserActive={activeTool === 'eraser'}
         />
       ))}
+      {newTextPreview && (
+        <AnnotationMark
+          key="inline-text-draft"
+          annotation={newTextPreview}
+          draft
+          inlineEditor={inlineTextEditor}
+          onCommitInlineText={onCommitInlineText}
+          onInlineEditorReady={onInlineEditorReady}
+          onInlineEditorLayout={onInlineEditorLayout}
+        />
+      )}
       {drafts.map((annotation) => (
         <AnnotationMark key={annotation.id} annotation={annotation} draft />
       ))}
@@ -121,6 +166,7 @@ export function AnnotationOverlay({
         />
       )}
     </div>
+    </>
   );
 }
 

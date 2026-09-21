@@ -29,6 +29,7 @@ export interface MarkdownLivePreviewEditorHandle {
   setMarkdown: (markdown: string) => void;
   focus: () => void;
   scrollToLine: (lineNumber: number) => void;
+  getLineAtViewportY: (y: number) => number | null;
   hasSelection: () => boolean;
   insertMarkdown: (before: string, after?: string, placeholder?: string) => void;
   clearFormatting: () => void;
@@ -1913,6 +1914,13 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
         replaceEditorDocument(view, nextMarkdown);
       },
       focus: () => viewRef.current?.focus(),
+      getLineAtViewportY: (y) => {
+        const view = viewRef.current;
+        if (!view || !view.dom.getClientRects().length || y < view.documentTop) return null;
+        // CodeMirror's measured height map is already in scaled viewport pixels.
+        const block = view.lineBlockAtHeight(Math.max(0, y - view.documentTop));
+        return view.state.doc.lineAt(Math.min(block.from, view.state.doc.length)).number;
+      },
       scrollToLine: (lineNumber) => {
         const view = viewRef.current;
         if (!view) return;
@@ -1926,8 +1934,10 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
           const coordinates = view.coordsAtPos(position);
           const container = view.dom.closest<HTMLElement>('.markdown-resource-content');
           if (!coordinates || !container) return;
-          const top = container.scrollTop + coordinates.top - container.getBoundingClientRect().top - 56;
-          container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+          const bounds = container.getBoundingClientRect();
+          const scale = bounds.height / (container.offsetHeight || bounds.height || 1);
+          const top = container.scrollTop + (coordinates.top - bounds.top) / (scale || 1) - 56;
+          container.scrollTo({ top: Math.max(0, top), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         });
         view.focus();
       },

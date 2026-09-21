@@ -4,7 +4,6 @@
 //! Command bodies belong to their domain modules. `agent_cli` has no Tauri;
 //! `agent_bridge` joins the two but never accesses SQLite. Agent history
 //! commands remain on the database side in `state_commands` (CLI-4).
-
 mod agent_bridge;
 pub mod agent_cli;
 mod agent_history;
@@ -12,6 +11,7 @@ mod app_paths;
 mod backup;
 mod capture;
 mod database;
+mod dev_environment;
 mod diagnostics;
 mod guide;
 mod library_ai;
@@ -27,40 +27,41 @@ mod library_state;
 mod pdf_metadata;
 mod plugin_sandbox;
 mod project_commands;
+mod project_tasks;
 mod resource_annotations;
 mod state_commands;
 mod sync_commands;
 mod workbench_store;
 mod workspace_fs;
 mod window_commands;
-
 #[cfg(test)]
 mod library_tests;
 #[cfg(test)]
 mod startup_tests;
 #[cfg(test)]
 mod integrity_tests;
-
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        // The Agent supervisor needs an AppHandle to emit with, so it can only be
-        // built here — before any window is able to invoke a command.
+        // The Agent supervisor needs an AppHandle to emit with, so it can only be built here — before any window can invoke a command.
         .setup(|app| {
+            // Block unverified debug identities before any repair, capture or library I/O.
+            if dev_environment::initialize(app.handle()).blocked { eprintln!("[a4note] {}", dev_environment::block_reason().unwrap_or_default()); agent_bridge::register(app.handle()); return Ok(()); }
             let root = app_paths::app_data_root(app.handle()).map_err(std::io::Error::other)?;
             backup::recover_interrupted_restore(&root).map_err(std::io::Error::other)?;
             agent_bridge::register(app.handle());
             capture::start_native(app.handle());
             Ok(())
-        })
+        }).on_window_event(project_tasks::on_window_event)
         .invoke_handler(tauri::generate_handler![
-            app_paths::get_aster_paths,
+            app_paths::get_aster_paths, dev_environment::get_dev_environment,
             app_paths::initialize_library,
             diagnostics::get_app_diagnostics,
             capture::capture_control,
             app_paths::reveal_aster_path,
             project_commands::describe_project_folder,
+            project_tasks::start_project_tasks, project_tasks::preflight_project_tasks, project_tasks::inspect_project_tasks, project_tasks::stop_project_tasks, project_tasks::set_project_tasks_exit_policy, project_tasks::resolve_app_exit,
             project_commands::list_directory_entries,
             project_commands::reveal_path,
             project_commands::open_path_external,
@@ -146,12 +147,12 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("failed to run A4Note")
-        // A CLI child must not outlive the window: Tauri's exit path does not run
-        // destructors, so the sessions are closed here.
+        // A CLI child must not outlive the window: Tauri's exit path does not run destructors, so the sessions are closed here.
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
                 agent_bridge::shutdown(app);
                 capture::shutdown();
+                project_tasks::shutdown_on_exit(app);
             }
         });
 }

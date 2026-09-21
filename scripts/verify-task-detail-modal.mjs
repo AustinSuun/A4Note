@@ -1,0 +1,66 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+import assert from 'node:assert/strict';
+import ts from 'typescript';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+const dir=path.resolve('.tmp/task-detail-regression',String(process.pid));
+fs.mkdirSync(dir,{recursive:true});
+let checks=0;
+const check=(condition,message)=>{assert.ok(condition,message);checks++};
+try {
+  async function load(name) {
+    const source=fs.readFileSync('src/features/taskboard/'+name+'.tsx','utf8');
+    const output=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText.replace(/import ['"]\.\/[\w-]+\.css['"];?/g,'').replace(/from ['"]\.\/TaskImageViewer['"]/g,()=>'from '+JSON.stringify(pathToFileURL(path.join(dir,'TaskImageViewer.mjs')).href));
+    const file=path.join(dir,name+'.mjs');fs.writeFileSync(file,output);return import(pathToFileURL(file).href);
+  }
+  const {canPreviewTaskImage,TaskAttachments}=await load('TaskImageViewer');
+  const {TaskDetailDialog}=await load('TaskDetailDialog');
+  const sample={id:'file',task_id:'task',name:'<script>test</script>.png',mime:'image/png',size:123,purpose:'reference',caption:'说明 <script>test</script>',created_at:'2026-09-19',created_by:'fixture',retired_at:null};
+  for(const mime of ['image/png','image/jpeg','image/gif','image/webp','image/bmp','image/avif'])check(canPreviewTaskImage({...sample,mime}),'Supported raster '+mime);
+  for(const mime of ['image/svg+xml','text/html','application/xhtml+xml','application/pdf','image/jpg','image/unknown','text/plain','image/png;evil=true'])check(!canPreviewTaskImage({...sample,mime}),'Reject active/unknown '+mime);
+  const client={file:()=>{throw Error('Server rendering must not read attachments')}};
+  const render=props=>renderToStaticMarkup(React.createElement(TaskAttachments,{files:[sample],client,readonly:false,remove:()=>{},...props}));
+  let html=render({});
+  check(!html.includes('<script>'),'Names and captions are escaped');
+  check(html.includes('查看大图'),'Raster opens internal viewer');
+  check(!html.includes('target="_blank"'),'No external image browser');
+  check(!html.includes('选择对比')&&!html.includes('并排对比'),'A lone image shows no comparison chrome');
+  const pairHtml=render({files:[sample,{...sample,id:'file-2',name:'second.png'}]});
+  check(pairHtml.includes('不自动推断修改前后'),'Comparison does not infer before/after from purpose');
+  check((pairHtml.match(/tb-compare-chip/g)||[]).length===2,'Two images expose compact selection chips');
+  check(pairHtml.includes('aria-label="选择对比：second.png"'),'Chip checkbox keeps an accessible name');
+  check(pairHtml.includes('type="checkbox"')&&!pairHtml.includes('tb-compare-choice'),'Legacy full-width choice label is gone');
+  check(html.includes('标记替代'),'Mutable active attachment preserves replacement action');
+  check(!render({readonly:true}).includes('标记替代'),'Archived/busy attachment stays read-only');
+  check(!render({files:[{...sample,retired_at:'2026-09-19'}]}).includes('标记替代'),'Already retired attachment is not replaced twice');
+  html=render({files:[{...sample,mime:'image/svg+xml'}]});
+  check(!html.includes('查看大图'),'SVG does not get preview controls');
+  check(!html.includes('<img'),'SVG is never inlined');
+  check(html.includes('下载'),'Unsafe preview still allows authenticated download');
+  html=renderToStaticMarkup(React.createElement(TaskDetailDialog,{title:'任务详情',busy:false,onClose:()=>{},children:'说明',footer:'验收操作',error:'请求冲突'}));
+  check(html.startsWith('<dialog'),'Native modal semantics');
+  check(html.includes('tb-dialog-body')&&html.includes('tb-detail-footer'),'Body scrolls separately; the footer slot renders only when a caller supplies one');
+  check(html.includes('role="alert"')&&html.includes('请求冲突'),'Errors remain visible in modal');
+  check(!renderToStaticMarkup(React.createElement(TaskDetailDialog,{title:'任务详情',busy:false,onClose:()=>{},children:'说明'})).includes('tb-detail-footer'),'Without a footer prop no footer bar is rendered');
+  // Round 2 (user feedback): the board must not pin review actions to the dialog; they end the scrolling body instead.
+  const board=fs.readFileSync('src/features/taskboard/TaskBoard.tsx','utf8');
+  const dialogUse=board.slice(board.indexOf('<TaskDetailDialog'),board.indexOf('</TaskDetailDialog>'));
+  check(dialogUse.length>0&&!/\bfooter=\{/.test(dialogUse),'TaskBoard passes no fixed footer to the detail dialog');
+  const actionsAt=board.indexOf('tb-detail-actions-section');
+  check(actionsAt>board.indexOf('aria-label="任务历史原始记录"')&&actionsAt<board.indexOf('</aside>'),'Review actions render inside the scrolling body after the last content section');
+  check(/<div className="tb-review-buttons">[\s\S]*?\{feedbackOpen && \(/.test(dialogUse),'Feedback panel expands below the buttons instead of replacing the hint');
+  const css=fs.readFileSync('src/features/taskboard/taskboard-dialog.css','utf8');
+  check(/\.tb-detail-actions-section\s*\{[^}]*border-top/.test(css)&&!/\.tb-detail-actions(-section)?\s*\{[^}]*position:\s*(sticky|fixed)/.test(css),'Action block is separated by a rule, never sticky or fixed');
+  const {TaskReviewSummary}=await load('TaskReviewSummary');
+  const detail={id:'task',title:'长标题',owner:'agent',spec_revision:2,result:'结论 '.repeat(200),feedback:'',events:[{seq:9,kind:'task.submit',created_at:'2026-09-20T10:00:00Z'}],attachments:[sample,{...sample,id:'r1',name:'result.png',purpose:'result'}]};
+  const summary=renderToStaticMarkup(React.createElement(TaskReviewSummary,{task:detail,client,agents:[{id:'agent',alias:'青澄'}],variant:'dialog'}));
+  check(summary.indexOf('实际结果截图')<summary.indexOf('交付结论')&&summary.indexOf('交付结论')<summary.indexOf('证据说明与限制'),'Dialog summary orders screenshots, conclusion, then provenance notes');
+  check(summary.includes('交付成果与实际效果')&&!summary.includes('<h3>长标题</h3>'),'Dialog variant does not repeat the dialog title');
+  check(summary.includes('开发自述不等于独立验收'),'Honesty caution stays visible');
+  check(summary.includes('展开完整开发报告'),'Long report remains reachable');
+  const stage=renderToStaticMarkup(React.createElement(TaskReviewSummary,{task:detail,client,agents:[],onOpen:()=>{}}));
+  check(stage.includes('长标题')&&stage.includes('打开完整详情与人工审核'),'Stage variant keeps title and open action');
+  console.log(`Task detail modal regression passed (${checks} assertions)`);
+} finally {fs.rmSync(dir,{recursive:true,force:true});}

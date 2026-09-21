@@ -17,8 +17,15 @@ assert.match(css, /font-size: calc\(var\(--ui-control-font-size, 13px\) - 1px\)/
 assert.doesNotMatch(plugin, /value: 'fluid'/);
 assert.match(read('src/ui/App.tsx'), /dataset.documentLayout = 'narrow'/);
 assert.match(css, /overflow-x: auto/);
-assert.match(css, /grid-template-columns: repeat\(11, 28px\)/);
-assert.match(css, /min-height: 26px !important/);
+assert.match(css, /grid-template-columns: repeat\(11, 30px\)/);
+assert.match(css, /min-height: 28px !important/);
+assert.match(css, /flex-basis: 20px/);
+const readerDock = read('src/features/reader/reader-annotation-dock.css');
+assert.match(readerDock, /width: 36px; min-width: 36px; height: 36px; min-height: 36px !important/);
+assert.match(readerDock, /width: 24px; height: 24px; flex-basis: 24px/);
+const surface = read('src/shared/floating-dock.css');
+assert.doesNotMatch(surface, /background: color-mix/);
+assert.match(surface, /backdrop-filter: blur\(18px\) saturate\(140%\)/);
 assert.match(dock, /const orderedActions/);
 assert.match(dock, /import '.\/markdown-dock-layout.css'/);
 assert.match(plugin, /id: 'markdown.dockLabels'[^\n]*defaultValue: 'chinese'/);

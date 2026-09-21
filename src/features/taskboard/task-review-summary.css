@@ -1,0 +1,17 @@
+.tb-review-summary { min-width: 0; font-size: var(--ui-control-font-size, 14px); line-height: 1.6; }
+.tb-review-summary header { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.tb-review-summary h3 { margin: 0; flex: 1; font-size: 18px; }
+.tb-review-summary h4 { margin: 16px 0 8px; font-size: 15px; }
+.tb-review-summary .tb-review-heading { display: flex; align-items: center; gap: 8px; }
+.tb-review-summary .tb-compare-toolbar { margin: 14px 0 8px; }
+.tb-review-summary .tb-review-heading span { padding: 0 8px; border-radius: 999px; background: var(--surface-soft, #f1f4f2); color: var(--muted); font-size: 12px; font-weight: 600; line-height: 20px; }
+.tb-review-summary .tb-review-meta { flex: 1 1 100%; margin: 0; color: var(--muted); font-size: 13px; }
+.tb-review-summary .tb-review-heading { margin: 0; }
+.tb-review-summary .tb-review-empty { margin: 4px 0; color: var(--muted); }
+.tb-review-summary pre, .tb-review-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.tb-review-summary details { margin: 12px 0; }
+.tb-review-summary summary { cursor: pointer; font-weight: 600; }
+.tb-review-summary .tb-review-notes summary { color: var(--muted); font-size: 13px; font-weight: 500; }
+.tb-review-summary .tb-review-notes p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.tb-review-summary button { color: inherit; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+.tb-review-caution { color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; margin: 10px 0; }
