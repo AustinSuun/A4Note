@@ -4,6 +4,10 @@ import { ReaderNoteActivity, ReaderNoteRequests } from './ReaderNoteActivity';
 import { BookOpenText, ChevronLeft } from 'lucide-react';
 import { useReaderLayoutPosition } from './useReaderLayoutPosition';
 import { useReaderWritingShortcuts } from './useReaderWritingShortcuts';
+import { ReaderNoteWorkbenchMenu } from './ReaderNoteWorkbenchMenu';
+import { ReaderToolbarPortal } from './ReaderToolbarPortal';
+import { NOTE_WORKBENCH_COMMANDS, modeForNoteWorkbenchCommand, splitWidthPx, type NoteWorkbenchMode } from './noteWorkbench';
+import { useNoteWorkbench } from './useNoteWorkbench';
 import { useReaderDrawerLayout } from './useReaderDrawerLayout';
 import './reader-writing-layout.css';
 import { useEffect, useState, type CSSProperties } from 'react';
@@ -67,6 +71,7 @@ export function ReaderScene({
   const currentTranslatedFileId = preferredTranslatedFileId(paper, translatedFileId);
   const activeFileKind = fileMode === 'parallel' ? activeParallelFileKind : fileMode;
   const drawer = useReaderDrawerLayout();
+  const workbench = useNoteWorkbench(paper.paperId, drawer.available);
   const writingExpanded = drawer.expanded && sidePanelOpen && sidePanelTab === 'notes';
   const overlay = sidePanelOpen && drawer.compact;
   const mainHidden = writingExpanded || overlay;
@@ -76,7 +81,104 @@ export function ReaderScene({
   const openNotes = () => { onSidePanelTabChange('notes'); onSidePanelOpenChange(true); };
   const toggleNotes = () => { if (sidePanelOpen && sidePanelTab === 'notes') onSidePanelOpenChange(false); else openNotes(); };
   const toggleWriting = () => { if (!sidePanelOpen || sidePanelTab !== 'notes') { openNotes(); drawer.setExpanded(true); } else if (!drawer.compact) drawer.setExpanded(!drawer.expanded); };
-  useReaderWritingShortcuts(drawer.containerRef, toggleNotes, toggleWriting);
+  /* One command path for the entry button, the menu, Escape and the shortcut listener;
+     the registry (src/core/shortcuts.ts on the shortcuts branch) registers NOTE_WORKBENCH_COMMAND_LIST
+     and calls this same dispatcher, so no second key listener is added here. */
+  const applyNoteMode = (mode: NoteWorkbenchMode) => workbench.setMode(mode);
+  /* Escape leaves the wide mode and returns to the anchor the reader came from. */
+  const exitNoteMode = () => workbench.restoreMode();
+  const runWorkbenchCommand = (command: string) => {
+    const mode = modeForNoteWorkbenchCommand(command);
+    if (mode) { applyNoteMode(mode); return; }
+    if (command === NOTE_WORKBENCH_COMMANDS.toggle) applyNoteMode(workbench.mode === 'reading' ? workbench.prefs.wideMode : 'reading');
+  };
+  useReaderWritingShortcuts(drawer.containerRef, runWorkbenchCommand);
+  useEffect(() => {
+    if (workbench.mode === 'reading') {
+      if (sidePanelOpen && sidePanelTab === 'notes') onSidePanelOpenChange(false);
+      return;
+    }
+    if (sidePanelTab !== 'notes') onSidePanelTabChange('notes');
+    if (!sidePanelOpen) onSidePanelOpenChange(true);
+  }, [workbench.mode]);
+  useEffect(() => {
+    if (drawer.compact) return;
+    drawer.setExpanded(workbench.mode === 'writing');
+  }, [workbench.mode, drawer.compact]);
+  useEffect(() => {
+    if (workbench.mode !== 'split') return;
+    drawer.changeWidth(splitWidthPx(drawer.available, workbench.prefs.splitRatio));
+  }, [workbench.mode, workbench.prefs.splitRatio, drawer.available]);
+  const floatingActive = workbench.mode === 'floating';
+  const floatingRect = workbench.prefs.floating;
+  const floatingStyle = floatingActive ? ({
+    '--floating-note-left': `${floatingRect.x * 100}%`,
+    '--floating-note-top': `${floatingRect.y * 100}%`,
+    '--floating-note-width': `${floatingRect.width * 100}%`,
+    '--floating-note-height': `${floatingRect.height * 100}%`,
+  } as CSSProperties) : undefined;
+  const startFloatingDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const container = drawer.containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const startX = event.clientX, startY = event.clientY;
+    const origin = { ...floatingRect };
+    const element = event.currentTarget;
+    element.setPointerCapture(event.pointerId);
+    const move = (moveEvent: PointerEvent) => {
+      const dx = (moveEvent.clientX - startX) / Math.max(1, rect.width);
+      const dy = (moveEvent.clientY - startY) / Math.max(1, rect.height);
+      workbench.setFloatingRect({
+        ...origin,
+        x: Math.min(1 - origin.width, Math.max(0, origin.x + dx)),
+        y: Math.min(1 - origin.height, Math.max(0, origin.y + dy)),
+      });
+    };
+    const stop = () => {
+      element.releasePointerCapture(event.pointerId);
+      element.removeEventListener('pointermove', move);
+      element.removeEventListener('pointerup', stop);
+      element.removeEventListener('pointercancel', stop);
+    };
+    element.addEventListener('pointermove', move);
+    element.addEventListener('pointerup', stop);
+    element.addEventListener('pointercancel', stop);
+  };
+  const nudgeFloating = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const step = event.shiftKey ? 0.05 : 0.02;
+    if (event.key === 'ArrowLeft') workbench.setFloatingRect({ ...floatingRect, x: Math.max(0, floatingRect.x - step) });
+    else if (event.key === 'ArrowRight') workbench.setFloatingRect({ ...floatingRect, x: Math.min(1 - floatingRect.width, floatingRect.x + step) });
+    else if (event.key === 'ArrowUp') workbench.setFloatingRect({ ...floatingRect, y: Math.max(0, floatingRect.y - step) });
+    else if (event.key === 'ArrowDown') workbench.setFloatingRect({ ...floatingRect, y: Math.min(1 - floatingRect.height, floatingRect.y + step) });
+    else if (event.key === 'Escape') applyNoteMode('split');
+    else return;
+    event.preventDefault();
+  };
+  const startFloatingResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const container = drawer.containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const startX = event.clientX, startY = event.clientY;
+    const origin = { ...floatingRect };
+    const element = event.currentTarget;
+    element.setPointerCapture(event.pointerId);
+    const move = (moveEvent: PointerEvent) => {
+      workbench.setFloatingRect({
+        ...origin,
+        width: Math.min(1 - origin.x, Math.max(0.24, origin.width + (moveEvent.clientX - startX) / Math.max(1, rect.width))),
+        height: Math.min(1 - origin.y, Math.max(0.24, origin.height + (moveEvent.clientY - startY) / Math.max(1, rect.height))),
+      });
+    };
+    const stop = () => {
+      element.releasePointerCapture(event.pointerId);
+      element.removeEventListener('pointermove', move);
+      element.removeEventListener('pointerup', stop);
+      element.removeEventListener('pointercancel', stop);
+    };
+    element.addEventListener('pointermove', move);
+    element.addEventListener('pointerup', stop);
+    element.addEventListener('pointercancel', stop);
+  };
   const [toolSettings, setToolSettings] = useState<ReaderToolSettings>(() => loadReaderToolSettings());
   useEffect(() => { saveReaderToolSettings(toolSettings); }, [toolSettings]);
   const focusedAnnotation = paper.annotations.find((annotation) => annotation.id === focusedAnnotationId) ?? null;
@@ -180,17 +282,32 @@ export function ReaderScene({
       onDeleteAnnotation={onDeleteAnnotation}
     >
       <section className="scene active reader-scene-shell" data-reader-layer="root">
-        <div ref={drawer.containerRef} className={`reader-workspace-shell ${sidePanelOpen ? 'workspace-open' : ''} ${writingExpanded ? 'writing-expanded' : ''} ${overlay ? 'drawer-overlay' : ''}`} style={readerLayoutStyle}
+        <div ref={drawer.containerRef} className={`reader-workspace-shell note-mode-${workbench.mode} ${sidePanelOpen ? 'workspace-open' : ''} ${writingExpanded ? 'writing-expanded' : ''} ${overlay ? 'drawer-overlay' : ''}`}
+          data-note-mode={workbench.mode} data-note-requested-mode={workbench.requestedMode} data-note-temporary={workbench.temporary ? 'true' : 'false'} style={{ ...readerLayoutStyle, ...floatingStyle }}
           onKeyDown={event => {
             if (event.key === 'Escape' && !event.defaultPrevented && !event.nativeEvent.isComposing && writingExpanded && !drawer.compact && !(event.target as HTMLElement).closest('[role="dialog"], dialog')) {
-              event.preventDefault(); drawer.setExpanded(false);
+              event.preventDefault(); exitNoteMode();
             }
           }}>
-          {!sidePanelOpen && <button type="button" className="reader-note-reopen" aria-label="继续笔记，展开笔记侧栏" aria-expanded={false} aria-keyshortcuts="Control+Alt+N" title="继续笔记（Ctrl+Alt+N）" onClick={openNotes}>
-            <BookOpenText size={15} aria-hidden="true" />
-            <span className="reader-note-reopen-label">继续笔记</span>
-            <ChevronLeft size={12} className="reader-note-reopen-chevron" aria-hidden="true" />
-          </button>}
+          <ReaderToolbarPortal compactLabel="笔记工作台">
+            <ReaderNoteWorkbenchMenu
+              mode={workbench.mode}
+              temporary={workbench.temporary}
+              onToggle={() => runWorkbenchCommand(NOTE_WORKBENCH_COMMANDS.toggle)}
+              onSelectMode={applyNoteMode}
+              onNewNote={onCreateNote}
+              onOpenHistory={() => applyNoteMode('writing')}
+            />
+          </ReaderToolbarPortal>
+          {floatingActive && (
+            <div className="reader-note-floating-controls">
+              <button type="button" className="reader-note-floating-drag" aria-label="拖动悬浮速记卡（方向键微调，Escape 回到分屏）" onPointerDown={startFloatingDrag} onKeyDown={nudgeFloating}>
+                <span aria-hidden="true">⠿</span> 拖动
+              </button>
+              <button type="button" className="reader-note-floating-resize" aria-label="调整悬浮速记卡大小" onPointerDown={startFloatingResize} />
+            </div>
+          )}
+
           <ReaderSaveErrorNotice paperId={paper.paperId} />
           <ReaderNoteActivity.Provider value={!mainHidden}><ReaderNoteRequests.Provider value={!(sidePanelOpen && sidePanelTab === 'notes')}>
           <div className="reader-main-workspace" inert={mainHidden} aria-hidden={mainHidden}>
@@ -265,7 +382,10 @@ export function ReaderScene({
             expanded={writingExpanded}
             compact={drawer.compact}
             onExpandedChange={drawer.setExpanded}
-            onWidthChange={drawer.changeWidth}
+            onWidthChange={(next) => {
+              drawer.changeWidth(next);
+              workbench.setSplitRatio(next / Math.max(1, drawer.available));
+            }}
             sidePanels={sidePanels}
             panelViews={panelViews}
             sidePanelTab={sidePanelTab}

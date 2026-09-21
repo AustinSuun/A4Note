@@ -29,6 +29,7 @@
     "test:pdf-text-annotation": "node --experimental-strip-types scripts/verify-pdf-text-annotation.mjs",
     "test:ai-toolbar": "node scripts/verify-ai-toolbar.mjs",
     "test:ui-state": "node scripts/verify-ui-state.mjs",
+    "test:note-workbench": "node scripts/verify-note-workbench.mjs",
     "test:settings-ui": "node scripts/verify-settings-ui.mjs",
     "test:architecture": "node scripts/verify-architecture-boundaries.mjs",
     "test:scene-plugins": "node scripts/verify-scene-plugin-wiring.mjs",
@@ -52,7 +53,8 @@
     "test:capture-native-process": "node scripts/verify-native-process.mjs",
     "package:native-host": "node scripts/prepare-native-host.mjs",
     "test:capture-native-registration": "node scripts/verify-native-registration.mjs",
-    "test:extension-updates": "node scripts/verify-extension-updates.mjs"
+    "test:extension-updates": "node scripts/verify-extension-updates.mjs",
+    "test:note-workbench-browser": "node scripts/verify-note-workbench-browser.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",

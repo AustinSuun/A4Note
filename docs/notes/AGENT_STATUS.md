@@ -1,6 +1,8 @@
 ﻿# A4 Note Agent 状态
 
 
+- reader-note-workbench-arena：Arena 执行 24ea34e5（high）完成阅读器笔记工作台重设计：新增四态状态机与按论文偏好（noteWorkbench.ts / useNoteWorkbench.ts，键 a4note.reader.noteWorkbench.<paperId>，含 mode/previousMode/wideMode/splitRatio/floating/activeNoteId 与损坏回退），阅读顶栏收敛为唯一入口 ReaderNoteWorkbenchMenu（主按钮恢复上次模式 + 四模式/新建/历史菜单，含 kbd 与 aria-keyshortcuts），移除旧纵向「继续笔记」耳朵与笔记面板「全宽写作」按钮；分屏宽度改由比例驱动（默认 37%、26%-62% 夹取、PDF>=520px）并可拖动/键盘调整后按论文持久化；悬浮速记卡按容器比例记录位置尺寸且不可越界；专注写作占满内容区而正文列保持共享宽度 token --authoring-content-max-width（tokens.css，独立 Markdown 同步改用，消除第二套 760px 常量）；开合过渡 200ms 且 prefers-reduced-motion 取消；命令清单 reader.notes.toggle/quickCapture/mode.split/mode.focus/mode.floating 与 reader.pdf.focus 通过 NOTE_WORKBENCH_COMMAND_LIST 暴露给快捷键分支的 scoped resolver，useReaderWritingShortcuts 收敛为单一监听器；新增 scripts/verify-note-workbench.mjs（51/51）与 scripts/verify-note-workbench-browser.mjs（隔离 headless Chrome 42/42、9 场景截图存 .tmp/shots/note-workbench/）；未安装、未打包、未发布。
+
 - reader-overlap-selection-arena：Arena 执行 3128932d 第二轮反馈修复：跨行高亮/下划线改用 PDF 文字层运行几何（`textSelectionRectsFromOffsets` 优先、浏览器实时矩形仅兜底），端点跟随可见文字、同字号行高一致；新增 `underlineThicknessForSegments` 以段高中位数统一整条下划线线宽，`AnnotationMark` 渲染传入统一线宽。`test:reader-helpers` 新增断言、`test:reader` 源码契约同步；合成重叠回归 9/9；英文 arXiv 2505.13447v1 与中文文字层 fixture 正文回归各 20/20（含跨行厚度一致、末端跟随文字审计）、pageErrors 0；npm run verify 全绿。详见 `docs/mcp-reader-overlap-selection-arena-2026-09-21.md`「跨行标注几何修复」。
 
 - settings-ui-refactor-arena：Arena 执行 05795e28（low）完成 Settings UI 重构：单体 index.tsx 拆为 types/catalog/primitives/useAsyncStatus/updateModel/updateViews 与 7 个分类 section；新增 settings.css 作为布局唯一权威（1180/1040 断点，去 nth-child，清理 components/workbench 双列冲突与零引用的 settings-typography.css）；分类导航键盘/aria-current/焦点归属、全局搜索 combobox、label 与 ≥32px 点击目标、live-region 不堆叠、Capture 100 条分页、UpdateSettings 与 BrandUpdateMenu 共享 updateModel、initialSection 受控同步；新增渲染级套件 scripts/verify-settings-ui.mjs 115/115（真实 DOM+CDP，截图 .tmp/shots/settings-ui），build、test:ui-state、verify-brand-update、架构与完整 verify 全绿。未打包未发布。
@@ -29,7 +31,7 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-21T19:50:30+08:00
+更新时间：2026-09-21T21:05:00+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 
