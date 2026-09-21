@@ -11,6 +11,7 @@ mod app_paths;
 mod backup;
 mod capture;
 mod database;
+mod dev_environment;
 mod diagnostics;
 mod guide;
 mod library_ai;
@@ -44,9 +45,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        // The Agent supervisor needs an AppHandle to emit with, so it can only be
-        // built here — before any window is able to invoke a command.
+        // The Agent supervisor needs an AppHandle to emit with, so it can only be built here — before any window can invoke a command.
         .setup(|app| {
+            // Isolation verdict first: a debug process that cannot prove which library it owns does no repair, capture or library I/O.
+            if dev_environment::initialize(app.handle()).blocked { eprintln!("[a4note] {}", dev_environment::block_reason().unwrap_or_default()); agent_bridge::register(app.handle()); return Ok(()); }
             let root = app_paths::app_data_root(app.handle()).map_err(std::io::Error::other)?;
             backup::recover_interrupted_restore(&root).map_err(std::io::Error::other)?;
             agent_bridge::register(app.handle());
@@ -54,7 +56,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            app_paths::get_aster_paths,
+            app_paths::get_aster_paths, dev_environment::get_dev_environment,
             app_paths::initialize_library,
             diagnostics::get_app_diagnostics,
             capture::capture_control,
@@ -146,8 +148,7 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("failed to run A4Note")
-        // A CLI child must not outlive the window: Tauri's exit path does not run
-        // destructors, so the sessions are closed here.
+        // A CLI child must not outlive the window: Tauri's exit path does not run destructors, so the sessions are closed here.
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
                 agent_bridge::shutdown(app);

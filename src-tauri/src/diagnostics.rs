@@ -8,7 +8,7 @@ use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::app_paths::get_aster_paths;
 use crate::database::initialize_database;
@@ -44,13 +44,17 @@ pub(crate) struct LibraryFileStats {
 #[tauri::command]
 pub fn get_app_diagnostics(app: AppHandle) -> Result<AppDiagnostics, String> {
     let _access = crate::library_access::operation()?;
+    // Real runtime identity: an isolated dev instance must not report itself as
+    // the production `app.aster.research` install.
+    let identifier = app.config().identifier.clone();
+    let product_name = app.config().product_name.clone().unwrap_or_else(|| "A4 Note".to_string());
     let paths = get_aster_paths(app)?;
     let database_path = PathBuf::from(&paths.database);
     let file_stats = library_file_stats(&database_path)?;
     Ok(AppDiagnostics {
-        product_name: "A4 Note".to_string(),
+        product_name,
         version: env!("CARGO_PKG_VERSION").to_string(),
-        identifier: "app.aster.research".to_string(),
+        identifier,
         platform: std::env::consts::OS.to_string(),
         data_root: paths.root.clone(),
         paper_count: file_stats.paper_count,

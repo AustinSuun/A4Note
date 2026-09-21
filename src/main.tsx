@@ -6,6 +6,7 @@ import { CaptureConsent } from './features/capture';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { createWorkbenchStorage } from './platform/workbench';
 import { configureWorkbenchStorage } from './workbench';
+import { installDevEnvironmentStrip } from './platform/devEnvironmentStrip';
 import './ui/styles.css';
 
 /**
@@ -15,6 +16,14 @@ import './ui/styles.css';
  * blocking startup.
  */
 async function bootstrap() {
+  // Environment strip first: it must exist even if the product bundle below fails. Release
+  // builds get the native `release` verdict and render nothing; isolated debug instances show
+  // "DEV · <instance> · 独立测试库" only after the native side verified identity + data root.
+  installDevEnvironmentStrip({
+    instance: import.meta.env.VITE_A4NOTE_DEV_INSTANCE ?? (import.meta.env.DEV ? 'preview' : null),
+    expected: import.meta.env.VITE_A4NOTE_DEV_IDENTIFIER ?? null,
+    dev: import.meta.env.DEV,
+  });
   document.addEventListener('contextmenu', (event) => {
     const target = event.target;
     if (target instanceof HTMLElement && target.closest('input, textarea, select, [contenteditable="true"]')) return;
