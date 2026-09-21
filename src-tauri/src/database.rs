@@ -78,7 +78,9 @@ pub(crate) fn initialize_database(database_path: &Path) -> Result<(), String> {
     transaction
         .execute_batch(
             "CREATE INDEX IF NOT EXISTS annotations_by_layer_page ON annotations (paper_id, layer_id, file_id, page);
-             CREATE INDEX IF NOT EXISTS resource_annotations_by_layer_page ON resource_annotations (resource_id, layer_id, page);",
+             CREATE INDEX IF NOT EXISTS annotations_by_layer_created ON annotations (paper_id, layer_id, created_at DESC);
+             CREATE INDEX IF NOT EXISTS resource_annotations_by_layer_page ON resource_annotations (resource_id, layer_id, page);
+             CREATE INDEX IF NOT EXISTS resource_annotations_by_layer_created ON resource_annotations (resource_id, layer_id, created_at DESC);",
         )
         .map_err(|error| error.to_string())?;
     crate::annotation_layers::backfill_layers(&transaction)?;

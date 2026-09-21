@@ -855,7 +855,7 @@ pub(crate) fn backfill_layers(connection: &Connection) -> Result<(), String> {
 mod tests {
     use super::*;
     use crate::library_annotations::{
-        delete_annotation_in_database, insert_annotation, list_annotations_for_paper, restore_annotation_in_database,
+        delete_annotation_in_database, insert_annotation, list_annotations_for_paper, list_visible_annotations_for_paper, restore_annotation_in_database,
         update_annotation_color_in_database, CreateAnnotationRequest, DeleteAnnotationRequest, RestoreAnnotationRequest, UpdateAnnotationColorRequest,
     };
 
@@ -1059,6 +1059,82 @@ mod tests {
         assert_eq!(state.layers[0].annotation_count, 1);
         let assigned: String = connection.query_row("SELECT layer_id FROM resource_annotations WHERE id = 'ra-1'", [], |r| r.get(0)).unwrap();
         assert_eq!(assigned, "layer-default-res-1");
+        drop(connection);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    /// Repeatable performance fixture (fb5e3f2f §performance): 20 layers × 500 annotations = 10,000 rows
+    /// on one paper. Checks that the bounded reads use the layer/page index and stay far below the cost
+    /// of loading every layer, and prints the measured numbers as JSON for the delivery report.
+    #[test]
+    fn perf_fixture_twenty_layers_ten_thousand_annotations_use_the_layer_index() {
+        let (root, db) = fresh_db("perf");
+        initialize_database(&db).unwrap();
+        seed_paper(&db, "paper-perf");
+        let mut connection = Connection::open(&db).unwrap();
+        let owner = LayerOwner::paper("paper-perf").unwrap();
+        let default_id = ensure_owner_layers(&connection, &owner).unwrap();
+        let mut layer_ids = vec![default_id.clone()];
+        for index in 1..20 {
+            let (_, id) = create_layer_in_database(&db, &CreateAnnotationLayerRequest { owner_kind: "paper".into(), owner_id: "paper-perf".into(), name: format!("第 {index} 次"), kind: "attempt".into(), activate: false, solo: false }).unwrap();
+            layer_ids.push(id);
+        }
+        let seed_started = std::time::Instant::now();
+        {
+            let transaction = connection.transaction().unwrap();
+            let mut insert = transaction.prepare("INSERT INTO annotations (id, paper_id, file_id, page, type, quote, comment, color, position_json, created_at, updated_at, layer_id) VALUES (?1, 'paper-perf', 'paper-perf-file', ?2, 'highlight', 'perf', '', 'yellow', ?3, ?4, ?4, ?5)").unwrap();
+            for (layer_index, layer_id) in layer_ids.iter().enumerate() {
+                for item in 0..500 {
+                    let page = (item % 40) + 1;
+                    insert.execute(params![format!("anno-perf-{layer_index}-{item}"), page, format!("{{\"x\":{},\"y\":{},\"width\":30,\"height\":2.5}}", item % 60, (item * 7) % 90), 1_700_000_000_000i64 + (layer_index * 500 + item) as i64, layer_id]).unwrap();
+                }
+            }
+            drop(insert);
+            transaction.commit().unwrap();
+        }
+        let seed_ms = seed_started.elapsed().as_secs_f64() * 1000.0;
+        set_view_in_database(&db, &SetAnnotationLayerViewRequest { owner_kind: "paper".into(), owner_id: "paper-perf".into(), active_layer_id: layer_ids[19].clone(), visible_layer_ids: vec![layer_ids[19].clone()] }).unwrap();
+
+        let plan: Vec<String> = connection
+            .prepare("EXPLAIN QUERY PLAN SELECT id FROM annotations WHERE paper_id = ?1 AND layer_id = ?2 ORDER BY created_at DESC")
+            .unwrap()
+            .query_map(params!["paper-perf", layer_ids[19]], |row| row.get::<_, String>(3))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert!(plan.iter().any(|step| step.contains("annotations_by_layer_created") || step.contains("annotations_by_layer_page")), "layer reads must use a (paper_id, layer_id, …) index: {plan:?}");
+        let count_plan: Vec<String> = connection
+            .prepare("EXPLAIN QUERY PLAN SELECT layer_id, COUNT(*) FROM annotations WHERE paper_id = ?1 GROUP BY layer_id")
+            .unwrap()
+            .query_map(params!["paper-perf"], |row| row.get::<_, String>(3))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert!(count_plan.iter().any(|step| step.contains("annotations_by_layer_") || step.contains("COVERING INDEX")), "layer counts must be served by an index: {count_plan:?}");
+
+        let timed = |label: &str, runs: u32, body: &dyn Fn() -> usize| {
+            let started = std::time::Instant::now();
+            let mut rows = 0;
+            for _ in 0..runs { rows = body(); }
+            (label.to_string(), rows, started.elapsed().as_secs_f64() * 1000.0 / runs as f64)
+        };
+        let visible = timed("visible layer (500 rows)", 20, &|| list_visible_annotations_for_paper(&connection, "paper-perf").unwrap().len());
+        let everything = timed("all 20 layers (10,000 rows)", 5, &|| list_annotations_for_paper(&connection, "paper-perf").unwrap().len());
+        let counts = timed("layer list with counts", 20, &|| list_layers(&connection, &owner).unwrap().len());
+        let switch = timed("switch active/visible layer", 20, &|| {
+            let target = layer_ids[(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().subsec_nanos() as usize) % 20].clone();
+            set_view_in_database(&db, &SetAnnotationLayerViewRequest { owner_kind: "paper".into(), owner_id: "paper-perf".into(), active_layer_id: target.clone(), visible_layer_ids: vec![target] }).unwrap();
+            list_visible_annotations_for_paper(&connection, "paper-perf").unwrap().len()
+        });
+        assert_eq!(visible.1, 500, "the startup/reader read is bounded by the visible layer");
+        assert_eq!(everything.1, 10_000);
+        assert_eq!(counts.1, 20);
+        assert!(visible.2 * 4.0 < everything.2, "visible-layer read ({:.2} ms) must be far cheaper than loading every layer ({:.2} ms)", visible.2, everything.2);
+        assert!(counts.2 < 250.0, "layer counts took {:.2} ms", counts.2);
+        println!(
+            "ANNOTATION_LAYER_PERF {{\"layers\":20,\"annotations\":10000,\"seed_ms\":{seed_ms:.1},\"visible_layer_read_ms\":{:.2},\"visible_rows\":{},\"all_layers_read_ms\":{:.2},\"all_rows\":{},\"layer_counts_ms\":{:.2},\"switch_layer_ms\":{:.2},\"plan\":{:?}}}",
+            visible.2, visible.1, everything.2, everything.1, counts.2, switch.2, plan
+        );
         drop(connection);
         let _ = std::fs::remove_dir_all(root);
     }
