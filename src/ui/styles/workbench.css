@@ -318,25 +318,8 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
   opacity: 0;
   cursor: pointer;
 }
-
-/* Categorized settings navigation and plugin management surfaces. */
-.settings-layout { display: grid; grid-template-columns: 166px minmax(0, 880px); align-items: start; gap: 28px; max-width: 1080px; padding-bottom: 28px; }
-.settings-section-nav { position: sticky; top: 18px; display: grid; gap: 3px; padding: 5px; border-right: 1px solid var(--line); }
-.settings-section-nav button { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 11px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: inherit; font-size: var(--ui-nav-font-size); font-weight: 560; letter-spacing: .01em; text-align: left; cursor: pointer; }
-.settings-section-nav button span { display: inline-block; transform: scaleY(.96); transform-origin: left center; }
-.settings-section-nav button:hover { background: var(--surface-soft); color: var(--ink); }
-.settings-section-nav button.active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 680; }
-.settings-category-content { min-width: 0; }
-.settings-category-heading { margin-bottom: 10px; }
-.settings-category-heading h2 { margin: 0; font-size: var(--ui-heading-font-size); font-weight: 720; letter-spacing: .005em; color: var(--ink); transform: scaleY(.96); transform-origin: left center; }
-.settings-layout .settings-grid { max-width: 880px; }
 .plugin-management-toolbar { margin-bottom: 12px; }
 .plugin-management-toolbar input { width: min(420px, 100%); }
-@media (max-width: 760px) {
-  .settings-layout { grid-template-columns: 1fr; gap: 14px; }
-  .settings-section-nav { position: static; display: flex; overflow-x: auto; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); }
-  .settings-section-nav button { flex: 0 0 auto; }
-}
 .workbench-open-item:hover .workbench-open-item-close,
 .workbench-open-item.active .workbench-open-item-close { opacity: 1; }
 .workbench-open-item-close:hover { background: var(--surface); color: var(--ink); }
@@ -2262,18 +2245,6 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
   box-shadow: var(--shadow-soft);
 }
 .primary { box-shadow: none; }
-
-.settings-grid {
-  grid-template-columns: minmax(0, 880px);
-  gap: 0;
-  max-width: 920px;
-  padding-bottom: 28px;
-}
-.settings-grid .soft-panel {
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  box-shadow: none;
-}
 
 .overview-scene { background: var(--bg); }
 .overview-focus,
