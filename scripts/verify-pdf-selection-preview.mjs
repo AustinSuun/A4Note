@@ -9,7 +9,8 @@ import { extname } from 'node:path';
 
 const resolution = registerHooks({
   resolve(specifier, context, next) {
-    return next(specifier.startsWith('.') && !extname(specifier) ? `${specifier}.ts` : specifier, context);
+    const inRepoSource = !context.parentURL?.includes('/node_modules/');
+    return next(inRepoSource && specifier.startsWith('.') && !extname(specifier) ? `${specifier}.ts` : specifier, context);
   },
 });
 const appearance = await import('../src/features/reader/pdf/pdfHighlightAppearance.ts');
