@@ -517,7 +517,7 @@
   box-shadow: none;
 }
 .annotation-inline-actions button.danger { color: #8f4137; }
-.annotation-inline-actions svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.annotation-inline-actions svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .annotation-inline-actions button:hover { background: var(--accent-soft); }
 .annotation-inline-actions button.danger:hover { background: #fff0ef; }
 .pdf-meta { display: flex; gap: 10px; color: var(--muted); font-size: 12px; }

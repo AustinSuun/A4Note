@@ -237,7 +237,7 @@ createRoot(document.getElementById('root')!).render(<Harness />);
 
   if (phase === 'before') {
     // Baseline: text tool click opens the settings popover; save the default text to see the default box.
-    const anchors = { 1: [30, 20], 2: [30, 31], 3.35: [30, 42] };
+    const anchors = { 1: [30, 12], 2: [30, 42], 3.35: [30, 72] };
     for (const zoom of [1, 2, 3.35]) {
       await setZoom(zoom);
       await evaluate(`window.__pdfHarness.setTool('text')`); await frame();
@@ -267,7 +267,7 @@ createRoot(document.getElementById('root')!).render(<Harness />);
   const legacyBase = await markState('legacy-1');
   ok(legacyBase && near(legacyBase.fontPx, 13, 0.1) && near(legacyBase.xPct, 10, 0.2) && near(legacyBase.wPct, 22, 0.3) && legacyBase.layoutMode === 'fixed', 'legacy annotation renders unchanged (13px, 22% wide, fixed layout)', legacyBase);
 
-  const anchors = { 1: [30, 20], 2: [30, 31], 3.35: [30, 42] };
+  const anchors = { 1: [30, 12], 2: [30, 42], 3.35: [30, 72] };
   for (const zoom of [1, 2, 3.35]) {
     await setZoom(zoom);
     await evaluate(`window.__pdfHarness.setTool('text')`); await frame();
@@ -281,11 +281,11 @@ createRoot(document.getElementById('root')!).render(<Harness />);
     const fresh = await editorState();
     ok(fresh && !fresh.popover, `zoom ${zoom}: clicking with the text tool opens no settings popover`, fresh);
     ok(fresh.focused, `zoom ${zoom}: the page box itself has keyboard focus`);
-    ok(near(fresh.fontPx, 16 * zoom, 0.6), `zoom ${zoom}: default font is 16 page px (${(16 * zoom).toFixed(1)} css px)`, { fontPx: fresh.fontPx });
+    ok(near(fresh.fontPx, 24 * zoom, 0.6), `zoom ${zoom}: default font is 24 page px (${(24 * zoom).toFixed(1)} css px)`, { fontPx: fresh.fontPx });
     const oneLine = fresh.fontPx * 1.3 + 6 * zoom;
     ok(near(fresh.height, oneLine, 2 + zoom), `zoom ${zoom}: the empty box is one line high`, { height: fresh.height, oneLine });
-    const minWidth = 16 * zoom * 3 + 12 * zoom;
-    ok(fresh.width <= minWidth + 3 && fresh.wPct < 14, `zoom ${zoom}: the empty box is short (min width ${minWidth.toFixed(0)}px)`, { width: fresh.width, wPct: fresh.wPct });
+    const minWidth = 24 * zoom * 9;
+    ok(fresh.width <= minWidth + 3 && fresh.wPct < 40, `zoom ${zoom}: the empty box is short (min width ${minWidth.toFixed(0)}px)`, { width: fresh.width, wPct: fresh.wPct });
     ok(near(fresh.xPct, ax, 0.3) && near(fresh.yPct, ay, 0.3), `zoom ${zoom}: the box sits where the user clicked`, { xPct: fresh.xPct, yPct: fresh.yPct });
     const tool = await evaluate(`document.querySelector('.pdf-document').className`);
     ok(/cursor-mode/.test(tool), `zoom ${zoom}: the one-shot text tool returns to the cursor while editing`, tool);
@@ -314,7 +314,7 @@ createRoot(document.getElementById('root')!).render(<Harness />);
     const list = await annotations();
     const created = list[list.length - 1];
     ok(list.length === before + 1 && created.type === 'text' && created.comment === multi.text.replace(/\n+$/, ''), `zoom ${zoom}: Escape finishes editing and persists the text once`, { count: list.length, comment: created?.comment });
-    ok(created.positionJson.fontUnit === 'page' && created.positionJson.autoWidth === true && created.positionJson.fontSize === 16, `zoom ${zoom}: new annotations store page-unit font and auto width`, created.positionJson);
+    ok(created.positionJson.fontUnit === 'page' && created.positionJson.autoWidth === true && created.positionJson.fontSize === 24, `zoom ${zoom}: new annotations store page-unit font and auto width`, created.positionJson);
     ok(near(created.positionJson.width, multi.wPct, 0.3) && near(created.positionJson.height, multi.hPct, 0.3) && near(created.positionJson.x, multi.xPct, 0.2) && near(created.positionJson.y, multi.yPct, 0.2), `zoom ${zoom}: the saved geometry equals the measured editor box`, { saved: created.positionJson, measured: { x: multi.xPct, y: multi.yPct, w: multi.wPct, h: multi.hPct } });
     const mark = await markState(created.id);
     ok(mark && near(mark.wPct, multi.wPct, 0.15) && near(mark.hPct, multi.hPct, 0.15) && near(mark.xPct, multi.xPct, 0.1) && near(mark.yPct, multi.yPct, 0.1), `zoom ${zoom}: the rendered label keeps the exact editor geometry (no jump)`, { mark, editor: { x: multi.xPct, y: multi.yPct, w: multi.wPct, h: multi.hPct } });
@@ -373,7 +373,7 @@ createRoot(document.getElementById('root')!).render(<Harness />);
   // Empty box is discarded; emptied annotation is deleted.
   await setZoom(1);
   await evaluate(`window.__pdfHarness.setTool('text')`); await frame();
-  const ep = await pointOnPage(55, 55);
+  const ep = await pointOnPage(5, 90);
   const countBefore = (await annotations()).length;
   await clickAt(ep.x, ep.y);
   await until(`!!document.querySelector('.annotation-text-editor')`);
@@ -388,7 +388,7 @@ createRoot(document.getElementById('root')!).render(<Harness />);
   await evaluate(`document.execCommand('selectAll')`);
   await key('Delete');
   const emptied = await editorState();
-  ok(emptied.text.trim() === '' && emptied.height <= 16 * 1.3 + 6 + 3, 'deleting all text shrinks the box back to one line', { height: emptied.height });
+  ok(emptied.text.trim() === '' && emptied.height <= 24 * 1.3 + 6 + 3, 'deleting all text shrinks the box back to one line', { height: emptied.height });
   await key('Escape');
   await until(`!document.querySelector('.annotation-text-editor')`);
   await pause(200);
@@ -404,7 +404,7 @@ createRoot(document.getElementById('root')!).render(<Harness />);
   const panReady = await evaluate(`document.querySelector('.pdf-document').classList.contains('pan-ready')`);
   ok(!panReady, 'Space typed in the editor does not arm the hand/pan gesture');
   await insertText('提交');
-  const away = await pointOnPage(80, 90);
+  const away = await pointOnPage(5, 50);
   await clickAt(away.x, away.y);
   await until(`!document.querySelector('.annotation-text-editor')`);
   await pause(200);
@@ -474,7 +474,9 @@ createRoot(document.getElementById('root')!).render(<Harness />);
   await evaluate(`document.querySelector('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}] .annotation-text-style-toggle').click()`);
   await until(`!!document.querySelector('.annotation-text-style-panel')`);
   await screenshot('after-style-panel-on-demand');
-  await evaluate(`(()=>{const s=document.querySelector('.annotation-text-style-panel select');const set=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set;set.call(s,'24');s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await evaluate(`document.querySelector('.annotation-text-style-panel .font-size-trigger').click()`);
+  await until(`!!document.querySelector('.annotation-text-style-panel .font-size-list')`);
+  await evaluate(`[...document.querySelectorAll('.annotation-text-style-panel .font-size-list button')].find(button => button.textContent === '24')?.click()`);
   await pause(250);
   const restyled = (await annotations()).find(a => a.id === rz.id);
   const restyledMark = await markState(rz.id);
@@ -483,7 +485,7 @@ createRoot(document.getElementById('root')!).render(<Harness />);
 
   // IME-style input through CDP composition events (real Windows IME cannot be driven headlessly).
   await evaluate(`window.__pdfHarness.setTool('text')`); await frame();
-  const ip = await pointOnPage(40, 72);
+  const ip = await pointOnPage(5, 75);
   await clickAt(ip.x, ip.y);
   await until(`!!document.querySelector('.annotation-text-editor')`);
   await rpc('Input.imeSetComposition', { text: 'pin', selectionStart: 3, selectionEnd: 3 });

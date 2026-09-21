@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-21T15:35:00+08:00",
+  "updatedAt": "2026-09-21T18:30:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
+      "reader-pdf-annotation-qingyan：青砚完成 b6c1a566 PDF 标注几何、文字工具、跨页橡皮与颜色点修复；定向验证、build、完整 verify、隔离原生运行 21/21 及两份 PDF 100/150/200% 九图验收通过。见 docs/mcp-reader-pdf-annotation-qingyan-2026-09-21.md。",
       "reader-escape-qingsui：009cede5，独立 fix/reader-escape-qingsui；PdfReader shape draft 取消生命周期及回归测试，25项通过，已合并本地 main 待验收。",
       "agent-owned-merge：青帆已将新流程合入main c727762，完成独立Windows0.1.25包；完整verify/Rust201过5忽略，服务86过1跳过，包内7回归及18资源哈希通过。指定他人报告哈希不变；不安装、不重启、不发布。源码/打包资源释放，详见docs/mcp-task-workflow-windows-0.1.25-2026-09-21.md。",
       "task-service-exit-lifecycle-arena：Arena状态核查5f8ce0ee任务服务退出生命周期按be3b361d抢救为独立分支rescue/5f8ce0ee-gateway-exit-lifecycle（网关v4+gateway-lifecycle+Tauri关闭拦截/Exit兜底+前端退出流程与服务栏）；分支上build、test:project-tasks 90项、cargo check/test通过；未重启4319、未打包安装；见docs/mcp-task-service-exit-lifecycle-arena-2026-09-20.md。",
@@ -118,6 +119,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "reader-pdf-annotation-qingyan：青砚完成 b6c1a566 PDF 标注几何、文字工具、跨页橡皮与颜色点修复；定向验证、build、完整 verify、隔离原生运行 21/21 及两份 PDF 100/150/200% 九图验收通过。见 docs/mcp-reader-pdf-annotation-qingyan-2026-09-21.md。",
       "阅读写作布局续改源码完成：收起或同论文内切到其他面板保留笔记编辑器实例/模式/选择/撤销历史，恢复时还原可用滚动与焦点；ReaderNoteActivity与ReaderNoteRequests分离可见性和请求归属，隐藏侧栏不消费openNote/append，主区仍可正常自动保存，收起排空非错误会话、不暗中重试错误。全宽改绝对叠放、不把PDF压成零宽；useReaderLayoutPosition按页码/页内进度保存布局切换锚点，显式跳页/标注/缩放/源变化不回拉。阅读容器<720px自动叠放，放大恢复分栏，窄侧栏工具行换行；宽度保存200ms防抖。右侧继续笔记入口，Ctrl+Alt+N开合、Ctrl+Alt+Enter全宽、Esc先关闭面板菜单再返回分栏，IMEs/AltGraph/模态对话框不拦截。最终npm run build及git --no-pager diff --check cmd_0c6bb5f0303d32edd19175df260bdf08bd4f1bfd16dc341c exit0/10729ms，阅读目录诊断0错误。本agent未测试/运行时视觉验收/真实資料操作/打包安装/发布。本轮不改总结绑定迁移或后端；并行独立笔记/授权工作及已报告共享architecture阻塞保留。详见docs/mcp-reader-layout-continuation-2026-09-16.md。",
       "独立笔记两项源码完成（本agent，未打包）：相对路径图片实时/阅读共用noteImageSource/Loader，笔记路径Facet更新、路径白名单/中文空格父目录、异步销毁保护/错误提示，原始Markdown地址不变；笔记场景单层文件夹工作区使用noteFolderModel/useNoteFolderWorkspaces，顶部与侧栏通用插槽，文件夹去重/打开/取消/空状态，只投影folder项目，旧配置不删除、不搬迁文件、不包含论文关联笔记，其他场景原逻辑保留。最终build、6项专项回归、定向diff检查通过，src错误0；本地Chromium实际hook+模拟FS/store的打开/重复/取消/切换/其他场景恢复通过，非原生E2E。整体architecture在本任务未改的src-tauri/src/lib.rs模块体约束失败，保留并行授权改动待协调。详见docs/mcp-note-folders-relative-images-2026-09-16.md。下一步桌面实际图片/工作区恢复验收，用户要求时再打包。",
       "浏览器授权弹窗源码完成：Windows系统MessageBox替换为A4 Note应用内dialog，复用浅色/纸张/深色token、共享Button和独立样式；权限分项、主次按钮、可关闭/键盘操作。新增main窗口限定的一次性120秒Broker，旧ID/重复答复/超时/退出不能授权；仍由NativeState保存授权并处理撤销代际。仅改capture模块/platform出口及main.tsx两行挂载，未改App/笔记/阅读器、未重新打包或安装。",
@@ -416,6 +418,9 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "npm run verify (reader PDF annotation; passed)",
+      "isolated dev:live qingyan runtime 21/21 (passed)",
+      "native two-PDF 100/150/200% evidence: 9 screenshots",
       "授权弹窗最终build cmd_b922297213cb9ad0070d04f924aca8c727aaf7730b832945 exit0；cargo check --lib cmd_4c9a8e7c3a1c785551a358427c5180a634be06fa27d91c69 exit0；专用Rust native_consent两项cmd_d1512eb9b019d7aea61b48cc41f661b5a9cfce6f4d8e00c6通过；src诊断0错误。真实React/Chromium隔离检查通过浅/深/纸张、焦点、Esc/关闭拒绝、显式允许、IPC失败保留、超时移除及窄窗；IPC为mock，不是Windows安装后验收。",
       "test:architecture在现有lib.rs模块清单边界断言失败（cmd_6bafa74995260f46c5bc6d253804ba8a3eebd3b4c5b5b597）；本次未修改lib.rs，也未放宽断言。未声称全量verify通过。保留并行工作，未关闭应用/操作真实资料/打包安装。",
       "cmd_1789263609851_110 exit0：三个JS文件node --check、扩展标准打包和git diff --check通过。0.6.2 ZIP共21文件、106545 bytes，SHA256 1e5c1ee4f0a66a5e65bff11f44ac35976752ff38f826ff3b6f708677838cc405；MCP传输后哈希一致，包含三个树模块/样式。提供独立可交互HTML预览（示例目录，记忆仅当前页面），不当作真实浏览器验收。本轮未运行任何测试/CI或真实论文入库，未启动/安装/重启桌面。",
