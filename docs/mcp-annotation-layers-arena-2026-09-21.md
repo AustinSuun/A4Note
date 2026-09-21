@@ -66,3 +66,4 @@
 - 隔离实例 arena-f4：56/56（§5）。
 - `npm run verify`：在 `2ca97e1`（含全部功能提交）上全量通过（`.tmp/f4/verify2.log`）；合入 main 78dbc43 后在 `fc59a0a` 上复跑，仅 `apps/project-tasks/test/onboarding.test.mjs` 出现一次环境性失败（同机其他 Agent 并行占用服务端口），单独重跑 `npm run test:project-tasks` 86/86 通过，其余步骤全部通过（`.tmp/f4/verify3.log`）。
 - 性能说明：一次显示 500 条标注的层会触发约 0.5 s 的渲染长任务（React 标记节点 + 高亮 SVG），没有页面级冻结；进一步降低需要按可见页虚拟化标记渲染，列为后续优化。
+- 收尾（21:2x，同身份的接续会话）：合入 main `f4f21af`（含 35496a06 选区色带、24ea34e5 笔记工作台、`.worktrees/` 忽略）得 `2a56be0`，冲突仅 package.json / verify-all / 两个状态文件的并列新增；复跑 `npm run verify` 全量通过（`.tmp/f4/verify4.log`），`test:annotation-layers` 51、`verify-annotation-history` 175、`test:note-workbench` 51、selection-preview 37、crosspage 31 通过。
