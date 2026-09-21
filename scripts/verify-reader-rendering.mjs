@@ -84,7 +84,8 @@ assert.match(pdfAnnotationHelpersSource, /export function annotationCustomColorS
 assert.match(pdfAnnotationHelpersSource, /const topInset = Math\.max\(height \* 0\.28, 0\.02\)/);
 assert.match(pdfAnnotationHelpersSource, /const bottomInset = Math\.max\(height \* 0\.18, 0\.015\)/);
 assert.match(pdfAnnotationHelpersSource, /const band = Math\.max\(height - topInset - bottomInset, height \* 0\.5\)/);
-assert.match(pdfAnnotationHelpersSource, /const lineHeight = Math\.min\(Math\.max\(height \* 0\.08, 0\.05\), 0\.42\)/);
+assert.match(pdfAnnotationHelpersSource, /const lineHeight = thicknessOverride \?\? Math\.min\(Math\.max\(height \* 0\.08, 0\.05\), 0\.42\)/);
+assert.match(pdfAnnotationHelpersSource, /export function underlineThicknessForSegments\(segments: PositionJson\[\]\): number \| undefined/);
 assert.match(pdfAnnotationHelpersSource, /const ruleBottom = Math\.min\(y \+ height - descender \+ baselineGap \+ lineHeight, y \+ height\)/);
 assert.match(coreTypesSource, /export type AnnotationType = 'highlight' \| 'comment' \| 'underline' \| 'area' \| 'text' \| 'ink' \| 'rect' \| 'arrow'/);
 assert.match(coreTypesSource, /export type ReaderTool = 'cursor' \| 'hand' \| 'eraser' \| AnnotationType/);

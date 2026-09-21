@@ -13,8 +13,10 @@
   border-radius: 999px;
 }
 /* Thumb size, color, hover/active and hidden arrow buttons come from base.css. */
+/* The authoring column width is shared with reader notes (--authoring-content-max-width);
+   the dock itself stays chrome and may use the full container width. */
 :root .markdown-authoring-dock {
-  max-width: min(760px, calc(100% - 56px));
+  max-width: min(calc(var(--authoring-content-max-width, 720px) + 40px), calc(100% - 56px));
 }
 
 /* Both modes share row-major order and matched columns; menus retain their own sizing. */

@@ -28,7 +28,7 @@ export const toolColorPresets = [
 
 export function annotationColorInputValue(color: string) {
   if (/^#[0-9a-fA-F]{6}$/.test(color)) return color;
-  if (color === 'yellow') return '#ffe579';
+  if (color === 'yellow') return '#ffd54a';
   if (color === 'green') return '#56cc9d';
   if (color === 'blue') return '#5c8edb';
   if (color === 'purple') return '#9770db';

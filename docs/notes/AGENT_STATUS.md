@@ -1,4 +1,14 @@
 ﻿# A4 Note Agent 状态
+- reader-selection-band-arena：Arena 接管 35496a06 高亮色带任务，保留 b79ba58/6b507e8。拖选期间保留真实 Range，但把浏览器原生色带透明化并通过与持久高亮相同的 textSelectionDraft→方向感知 segments→highlightPositionStyle 管线绘制；forced-colors 恢复系统选区。黄/绿/蓝/紫改为 #ffd54a/#8fd9a3/#8fb9f2/#bf9cf0，未保存配置默认 opacity 22→40、范围 10–60，既有明确保存值不迁移；单 SVG 合成避免重叠 alpha 累积。selection preview 37、highlight 57、reader、rotate 142、crosspage 31、完整 verify（Rust 209/0/5 ignored）全绿，diagnostics 0。指定 2505.13447v1.pdf 当前损坏、译文 PDF 缺失，未冒充样本验证；隔离原生改用有效内置指南与旋转 fixture 复核。详见 docs/mcp-reader-selection-band-highlight-arena-2026-09-21.md。
+
+
+
+- reader-note-workbench-arena：Arena 执行 24ea34e5（high）完成阅读器笔记工作台重设计：新增四态状态机与按论文偏好（noteWorkbench.ts / useNoteWorkbench.ts，键 a4note.reader.noteWorkbench.<paperId>，含 mode/previousMode/wideMode/splitRatio/floating/activeNoteId 与损坏回退），阅读顶栏收敛为唯一入口 ReaderNoteWorkbenchMenu（主按钮恢复上次模式 + 四模式/新建/历史菜单，含 kbd 与 aria-keyshortcuts），移除旧纵向「继续笔记」耳朵与笔记面板「全宽写作」按钮；分屏宽度改由比例驱动（默认 37%、26%-62% 夹取、PDF>=520px）并可拖动/键盘调整后按论文持久化；悬浮速记卡按容器比例记录位置尺寸且不可越界；专注写作占满内容区而正文列保持共享宽度 token --authoring-content-max-width（tokens.css，独立 Markdown 同步改用，消除第二套 760px 常量）；开合过渡 200ms 且 prefers-reduced-motion 取消；命令清单 reader.notes.toggle/quickCapture/mode.split/mode.focus/mode.floating 与 reader.pdf.focus 通过 NOTE_WORKBENCH_COMMAND_LIST 暴露给快捷键分支的 scoped resolver，useReaderWritingShortcuts 收敛为单一监听器；新增 scripts/verify-note-workbench.mjs（51/51）与 scripts/verify-note-workbench-browser.mjs（隔离 headless Chrome 42/42、9 场景截图存 .tmp/shots/note-workbench/）；未安装、未打包、未发布。
+
+- reader-overlap-selection-arena：Arena 执行 3128932d 第二轮反馈修复：跨行高亮/下划线改用 PDF 文字层运行几何（`textSelectionRectsFromOffsets` 优先、浏览器实时矩形仅兜底），端点跟随可见文字、同字号行高一致；新增 `underlineThicknessForSegments` 以段高中位数统一整条下划线线宽，`AnnotationMark` 渲染传入统一线宽。`test:reader-helpers` 新增断言、`test:reader` 源码契约同步；合成重叠回归 9/9；英文 arXiv 2505.13447v1 与中文文字层 fixture 正文回归各 20/20（含跨行厚度一致、末端跟随文字审计）、pageErrors 0；npm run verify 全绿。详见 `docs/mcp-reader-overlap-selection-arena-2026-09-21.md`「跨行标注几何修复」。
+
+- settings-ui-refactor-arena：Arena 执行 05795e28（low）完成 Settings UI 重构：单体 index.tsx 拆为 types/catalog/primitives/useAsyncStatus/updateModel/updateViews 与 7 个分类 section；新增 settings.css 作为布局唯一权威（1180/1040 断点，去 nth-child，清理 components/workbench 双列冲突与零引用的 settings-typography.css）；分类导航键盘/aria-current/焦点归属、全局搜索 combobox、label 与 ≥32px 点击目标、live-region 不堆叠、Capture 100 条分页、UpdateSettings 与 BrandUpdateMenu 共享 updateModel、initialSection 受控同步；新增渲染级套件 scripts/verify-settings-ui.mjs 115/115（真实 DOM+CDP，截图 .tmp/shots/settings-ui），build、test:ui-state、verify-brand-update、架构与完整 verify 全绿。未打包未发布。
+- reader-eraser-precision-qingyan：qingyan 8dba61be 退回后续（用户追加橡皮擦诉求）完成，分支 fix/eraser-precision-qingyan，基线 main 78dbc43，提交 74bda28。根因与画笔设计相关：画笔按 0.16% 位移稀疏采样，旧 eraseInkPosition 只要橡皮蹭到一条长边就整段丢弃，导致未接触的字迹被整块擦掉（两点笔迹中部单击直接返回 null 整条删除）；改为按 eraserSpanOnSegment 求进出参数区间裁剪并插回边界点。另修两处漂移：eraseInkAtPointer 原用会 clamp 的 pointFromEvent，指针移出页面后沿页边继续擦除，现用未钳制坐标并在超出「页面+橡皮半径」时提前返回；updateEraserCursor 去掉 clamp，预览环不再贴页边滑动。新增 test:pdf-eraser-precision（16 项）接入 verify-all，并用 main 旧代码反向验证测试确实会失败。隔离实例 qingyan/1433/9243 真实鼠标：画 41 点长笔迹→中部单击→polyline 变 [21,21] 两段保留、缺口等于光标大小，预览环漂移 0px，按住拖出页外 polyline 不变，隔离 SQLite ink 行 runs=[21,21]/42 点一致，无 pageerror。tsc 0、npm run verify 全绿。实例已退出、锁已清。详见 docs/mcp-reader-eraser-precision-qingyan-2026-09-21.md。
 
 - annotation-layers-arena：Arena执行 fb5e3f2f（high）第一阶段完成：annotation_layers + 按 owner 视图表、annotations/resource_annotations 加 layer_id 与复合索引、启动事务内幂等回填默认层；图层 CRUD/排序/锁定/归档/移动/删除预览与删除命令，锁定/归档层拒绝写入，启动载荷只含可见层并按层懒加载；Reader 工具坞图层入口 + 快速选择器（唯一活动层、显示/锁定、新建空白/学习记录/管理）、标注列表按层分组筛选与移动、完整管理页与两步删除；undo/redo 快照带 layer_id 并新增可撤销 move。Rust 214 项（含 20 层×10,000 条夹具：可见层读 3ms/全量 21ms/计数 0.8ms，走 annotations_by_layer_created 索引）、前端 51 断言、verify 全绿；隔离实例 arena-f4 真实窗口 56/56。分支 feat/annotation-layers-arena，详见 docs/mcp-annotation-layers-arena-2026-09-21.md。
 
@@ -25,7 +35,7 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-21T19:21:32+08:00
+更新时间：2026-09-21T21:22:18+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 

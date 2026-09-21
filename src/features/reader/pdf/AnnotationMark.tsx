@@ -8,6 +8,7 @@ import {
   highlightPositionStyle,
   positionStyle,
   underlinePositionStyle,
+  underlineThicknessForSegments,
 } from './pdfAnnotationHelpers';
 import { numberValue } from './pdfGeometry';
 import { InlineTextEditor } from './InlineTextEditor';
@@ -68,6 +69,9 @@ function AnnotationMarkView({
   const textLayout = annotation.type === 'text' ? textAnnotationLayout(annotation.positionJson) : null;
   const editing = Boolean(inlineEditor && annotation.type === 'text' && (draft ? !inlineEditor.annotationId : inlineEditor.annotationId === annotation.id));
   const rangeSelectionPassthrough = rangeSelectionActive && (annotation.type === 'highlight' || annotation.type === 'underline');
+  // A single annotation-wide rule thickness so every line of a multi-line underline draws
+  // the same stroke even if one line box is taller than the rest.
+  const underlineThickness = annotation.type === 'underline' ? underlineThicknessForSegments(segments) : undefined;
 
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
     if (!annotation.id || event.button !== 0 || rangeSelectionPassthrough) return;
@@ -333,7 +337,7 @@ function AnnotationMarkView({
           onDoubleClick={handleDoubleClick}
           style={
             annotation.type === 'underline'
-              ? { ...underlinePositionStyle(segment), ...customColorStyle }
+              ? { ...underlinePositionStyle(segment, underlineThickness), ...customColorStyle }
               : annotation.type === 'highlight'
                 ? { ...highlightPositionStyle(segment), ...customColorStyle }
                 : annotation.type === 'rect'
