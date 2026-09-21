@@ -34,7 +34,6 @@ mod sync_commands;
 mod workbench_store;
 mod workspace_fs;
 mod window_commands;
-
 #[cfg(test)]
 mod library_tests;
 #[cfg(test)]
@@ -47,7 +46,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         // The Agent supervisor needs an AppHandle to emit with, so it can only be built here — before any window can invoke a command.
         .setup(|app| {
-            // Isolation verdict first: a debug process that cannot prove which library it owns does no repair, capture or library I/O.
+            // Block unverified debug identities before any repair, capture or library I/O.
             if dev_environment::initialize(app.handle()).blocked { eprintln!("[a4note] {}", dev_environment::block_reason().unwrap_or_default()); agent_bridge::register(app.handle()); return Ok(()); }
             let root = app_paths::app_data_root(app.handle()).map_err(std::io::Error::other)?;
             backup::recover_interrupted_restore(&root).map_err(std::io::Error::other)?;
