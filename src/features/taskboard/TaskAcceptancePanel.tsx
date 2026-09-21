@@ -28,6 +28,11 @@ export function TaskAcceptancePanel({ task, state, enabled, busy, onAction }: {
 }) {
   const [mode, setMode] = useState<'manual' | 'automatic'>(state?.config.mode ?? 'manual');
   const [criteria, setCriteria] = useState<AcceptanceCriterion[]>(state?.config.criteria.length ? state.config.criteria : [emptyCriterion(0)]);
+  const [advancedOpen, setAdvancedOpen] = useState(state?.config.mode === 'automatic');
+  const [openCriteria, setOpenCriteria] = useState<Set<number>>(() => state?.config.mode === 'automatic'
+    ? new Set((state.config.criteria.length ? state.config.criteria : [emptyCriterion(0)]).map((_, index) => index))
+    : new Set());
+  const [openReports, setOpenReports] = useState<Set<string>>(() => new Set());
   const [target, setTarget] = useState({ kind: 'desktop' as AcceptanceCapability, source: '', version: '', sha256: '' });
   const [ttlMinutes, setTtlMinutes] = useState(30);
   const [configRevision, setConfigRevision] = useState(state?.config.revision ?? 0);
@@ -40,6 +45,9 @@ export function TaskAcceptancePanel({ task, state, enabled, busy, onAction }: {
   </section>;
   const patch = (index: number, value: Partial<AcceptanceCriterion>) =>
     setCriteria(list => list.map((item, i) => (i === index ? { ...item, ...value } : item)));
+  const updateMode = (next: 'manual' | 'automatic') => { setMode(next); if (next === 'automatic') setAdvancedOpen(true); };
+  const toggleCriterion = (index: number) => setOpenCriteria(current => { const next = new Set(current); if (next.has(index)) next.delete(index); else next.add(index); return next; });
+  const toggleReport = (id: string) => setOpenReports(current => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const renderRun = (run: AcceptanceRun) => <li key={run.id}>
     <p><strong>{run.status === 'waiting' ? '等待验收Agent' : run.status === 'running' ? '验收执行中' : run.status === 'cancelled' ? '已取消' : '已结束'}</strong>
       {' · '}方式 {run.binding.mode === 'automatic' ? '自动' : '人工辅助'} · 请求 {run.id.slice(0, 8)} · 运行版本 {run.revision}</p>
@@ -51,8 +59,12 @@ export function TaskAcceptancePanel({ task, state, enabled, busy, onAction }: {
     {run.outcome && <div className="tb-acceptance-outcome">
       <p><strong>{decisionLabel[run.outcome.decision] ?? run.outcome.decision}</strong></p>
       {run.outcome.reasons.length ? <ul>{run.outcome.reasons.map(r => <li key={r}>{r}</li>)}</ul> : <p>全部批准标准通过且证据有效。</p>}
-      {run.report && <details><summary>报告检查项 · {run.report.checks.length}</summary>
-        <pre>{run.report.environment + '\n' + JSON.stringify(run.report.checks, null, 2)}</pre></details>}
+      {run.report && <div className="tb-acceptance-report">
+        <button type="button" className="tb-secondary-disclosure" aria-expanded={openReports.has(run.id)} onClick={() => toggleReport(run.id)}>
+          {openReports.has(run.id) ? '隐藏' : '查看'}报告检查项 · {run.report.checks.length}
+        </button>
+        {openReports.has(run.id) && <pre>{run.report.environment + '\n' + JSON.stringify(run.report.checks, null, 2)}</pre>}
+      </div>}
     </div>}
     {run.status !== 'completed' && run.status !== 'cancelled' && <button type="button" disabled={busy}
       onClick={() => void onAction({ action: 'cancel', runId: run.id, runRevision: run.revision }, '确定取消该验收请求？已上传证据会保留。')}>取消验收请求</button>}
@@ -63,36 +75,42 @@ export function TaskAcceptancePanel({ task, state, enabled, busy, onAction }: {
     <p className="tb-acceptance-note">默认人工验收。切换方式与批准标准仅项目所有者（human）可执行；开发Agent、派发者不能自行切换为自动或降低标准。</p>
     <div className="tb-acceptance-mode">
       <label><input type="radio" name="acceptance-mode" checked={mode === 'manual'} disabled={!enabled || busy}
-        onChange={() => setMode('manual')} />人工验收（可让Agent辅助准备与提交证据，最终仍由你归档）</label>
+        onChange={() => updateMode('manual')} />人工验收（可让Agent辅助准备与提交证据，最终仍由你归档）</label>
       <label><input type="radio" name="acceptance-mode" checked={mode === 'automatic'} disabled={!enabled || busy}
-        onChange={() => setMode('automatic')} />自动验收（全部可判定标准通过且证据有效时才自动归档，并标记为自动验收）</label>
+        onChange={() => updateMode('automatic')} />自动验收（全部可判定标准通过且证据有效时才自动归档，并标记为自动验收）</label>
     </div>
     <p>已批准：{state.config.approvedBy ? `v${state.config.revision} · ${new Date(state.config.approvedAt ?? 0).toLocaleString('zh-CN')}` : '尚未批准标准'}</p>
-    <h4>验收标准 · {criteria.length}/40</h4>
-    <div className="tb-acceptance-criteria-wrap">
-    <table className="tb-acceptance-criteria">
-      <thead><tr><th>ID</th><th>说明</th><th>预期结果</th><th>能力</th><th>可判定</th><th>需截图</th><th></th></tr></thead>
-      <tbody>{criteria.map((item, index) => <tr key={index}>
-        <td><input aria-label="标准ID" value={item.id} maxLength={64} disabled={!enabled || busy} onChange={e => patch(index, { id: e.target.value })} /></td>
-        <td><input aria-label="标准说明" value={item.label} maxLength={2000} disabled={!enabled || busy} onChange={e => patch(index, { label: e.target.value })} /></td>
-        <td><input aria-label="预期结果" value={item.expected} maxLength={2000} disabled={!enabled || busy} onChange={e => patch(index, { expected: e.target.value })} /></td>
-        <td><select aria-label="验收能力" value={item.capability} disabled={!enabled || busy}
-          onChange={e => patch(index, { capability: e.target.value as AcceptanceCapability })}>
-          {capabilities.map(c => <option key={c} value={c}>{capabilityLabel[c]}</option>)}</select></td>
-        <td><input type="checkbox" aria-label="可判定" checked={item.objective} disabled={!enabled || busy} onChange={e => patch(index, { objective: e.target.checked })} /></td>
-        <td><input type="checkbox" aria-label="需截图" checked={item.screenshotRequired} disabled={!enabled || busy} onChange={e => patch(index, { screenshotRequired: e.target.checked })} /></td>
-        <td><button type="button" disabled={!enabled || busy || criteria.length <= 1} onClick={() => setCriteria(list => list.filter((_, i) => i !== index))}>删除</button></td>
-      </tr>)}</tbody>
-    </table>
-    </div>
-    <div className="tb-acceptance-actions">
-      <button type="button" disabled={!enabled || busy || criteria.length >= 40}
-        onClick={() => setCriteria(appendAcceptanceCriterion)}>增加标准</button>
-      <button type="button" className="tb-primary" disabled={!enabled || busy}
-        onClick={() => void onAction({ action: 'configure', revision: task.revision, configRevision, mode, criteria },
-          '确定保存验收方式与标准？会提升验收标准版本，旧验收请求将失效。')}>保存验收方式与标准</button>
-    </div>
+    {mode === 'manual' && !advancedOpen ? <div className="tb-acceptance-original">
+      <h4>人工审核依据</h4>
+      <p>人工模式优先显示任务原始验收要求；不要求检查者理解机器能力、可判定或截图字段。</p>
+      <pre>{task.acceptance || '任务没有提供结构化验收要求。'}</pre>
+      {!state.config.criteria.length && <p className="tb-acceptance-alert">先批准验收标准，才能发起验收请求。</p>}
+      {!enabled && <button type="button" disabled>保存验收方式与标准</button>}
+      <button type="button" className="tb-secondary-disclosure" disabled={!enabled || busy} onClick={() => setAdvancedOpen(true)}>配置自动 / Agent 辅助验收</button>
+    </div> : <>
+      <h4>高级验收标准 · {criteria.length}/40</h4>
+      <div className="tb-acceptance-criteria-list">
+        {criteria.map((item, index) => { const open = openCriteria.has(index); return <article className="tb-acceptance-criterion" key={index}>
+          <header><strong>标准 {index + 1}</strong><code>{item.id || '未设置 ID'}</code><button type="button" className="tb-secondary-disclosure" aria-expanded={open} onClick={() => toggleCriterion(index)}>{open ? '隐藏高级字段' : '显示高级字段'}</button></header>
+          <label>说明<textarea aria-label="标准说明" value={item.label} maxLength={2000} disabled={!enabled || busy} onChange={e => patch(index, { label: e.target.value })} /></label>
+          <label>预期结果<textarea aria-label="预期结果" value={item.expected} maxLength={2000} disabled={!enabled || busy} onChange={e => patch(index, { expected: e.target.value })} /></label>
+          {open && <div className="tb-acceptance-advanced-fields">
+            <label>标准 ID<input aria-label="标准ID" value={item.id} maxLength={64} disabled={!enabled || busy} onChange={e => patch(index, { id: e.target.value })} /></label>
+            <label>验收能力<select aria-label="验收能力" value={item.capability} disabled={!enabled || busy} onChange={e => patch(index, { capability: e.target.value as AcceptanceCapability })}>{capabilities.map(c => <option key={c} value={c}>{capabilityLabel[c]}</option>)}</select></label>
+            <label className="tb-acceptance-check"><input type="checkbox" aria-label="可判定" checked={item.objective} disabled={!enabled || busy} onChange={e => patch(index, { objective: e.target.checked })} />可判定</label>
+            <label className="tb-acceptance-check"><input type="checkbox" aria-label="需截图" checked={item.screenshotRequired} disabled={!enabled || busy} onChange={e => patch(index, { screenshotRequired: e.target.checked })} />需要截图</label>
+          </div>}
+          <button type="button" className="tb-criterion-delete" disabled={!enabled || busy || criteria.length <= 1} onClick={() => setCriteria(list => list.filter((_, i) => i !== index))}>删除此标准</button>
+        </article>; })}
+      </div>
+      <div className="tb-acceptance-actions">
+        <button type="button" disabled={!enabled || busy || criteria.length >= 40} onClick={() => setCriteria(appendAcceptanceCriterion)}>增加标准</button>
+        <button type="button" className="tb-primary" disabled={!enabled || busy} onClick={() => void onAction({ action: 'configure', revision: task.revision, configRevision, mode, criteria }, '确定保存验收方式与标准？会提升验收标准版本，旧验收请求将失效。')}>保存验收方式与标准</button>
+      </div>
+    </>}
     {mode === 'automatic' && <p className="tb-acceptance-note">自动验收须全部标准可判定；主观标准请保留人工验收。桌面标准不能用无头浏览器或命令测试代替。</p>}
+    <button type="button" className="tb-secondary-disclosure tb-advanced-tools-toggle" aria-expanded={advancedOpen || mode === 'automatic'} onClick={() => setAdvancedOpen(open => !open)}>{advancedOpen || mode === 'automatic' ? '收起高级验收工具' : '打开高级验收工具'}{state.runs.length ? ` · ${state.runs.length} 条记录` : ''}</button>
+    {(advancedOpen || mode === 'automatic') && <section className="tb-acceptance-advanced-tools" aria-label="高级验收工具">
     <h3>独立验收请求</h3>
     {task.status !== 'review' && <p>任务处于「{task.status}」，只有已提交的待检查交付可以发起验收请求。</p>}
     {active && <p role="status">已有进行中的请求 {active.id.slice(0, 8)}（{active.status === 'waiting' ? '等待验收Agent领取' : '执行中'}）。需先取消才能重新发起。</p>}
@@ -115,9 +133,8 @@ export function TaskAcceptancePanel({ task, state, enabled, busy, onAction }: {
         <code>cli.mjs acceptance {task.id} --action claim --run-id &lt;runId&gt; --run-revision 1 --capabilities desktop</code><br />
         <code>cli.mjs upload {task.id} --file 报告.json --revision N --purpose result --acceptance-run &lt;runId&gt; --evidence-kind report --captured-at &lt;epoch ms&gt;</code></p>
     </div>}
-    <h4>验收请求记录 · {state.runs.length}</h4>
-    {!state.runs.length && <p>尚无独立验收请求。人工验收仍可直接在下方检查效果并归档。</p>}
-    <ul className="tb-acceptance-runs">{state.runs.slice(0, 8).map(renderRun)}</ul>
+    {state.runs.length > 0 && <><h4>验收请求记录 · {state.runs.length}</h4><ul className="tb-acceptance-runs">{state.runs.slice(0, 8).map(renderRun)}</ul></>}
+    </section>}
     {task.status === 'archived' && task.acceptance_archive_run && <div className="tb-acceptance-reopen">
       <p>该任务由自动验收归档（请求 {task.acceptance_archive_run.slice(0, 8)}）。自动通过不代表用户满意。</p>
       <button type="button" disabled={!enabled || busy}

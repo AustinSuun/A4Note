@@ -22,6 +22,13 @@
 .tb-dialog-header h2 { min-width: 0; flex: 1 1 180px; overflow-wrap: anywhere; font-size: 1.15em; }
 .tb-detail-dialog .tb-dialog-header h2,
 .tb-image-dialog .tb-dialog-header h2 { font-size: 1.25em; }
+.tb-dialog-title-group { display: grid; min-width: 0; flex: 1 1 360px; gap: 2px; }
+.tb-dialog-title-group h2 { margin: 0; flex: none; }
+.tb-dialog-task-title, .tb-dialog-short-id { overflow-wrap: anywhere; }
+.tb-dialog-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; color: var(--tb-muted); font-size: 12px; line-height: 1.4; }
+.tb-dialog-identity > span { min-width: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.tb-dialog-copy-id { min-height: 28px; padding: 4px 8px; border: 1px solid var(--tb-line); border-radius: 6px; color: var(--tb-accent, #32735a); background: var(--surface-soft, #f4f6f5); font-size: 12px; cursor: pointer; }
+.tb-dialog-copy-id:hover { border-color: var(--tb-accent); background: color-mix(in srgb, var(--tb-accent, #32735a) 8%, var(--tb-card, #fff)); }
 .tb-dialog-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .tb-dialog-body { min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 18px 24px 24px; }
 .tb-detail-dialog .tb-dialog-body,
@@ -124,9 +131,28 @@
 .taskboard .tb-detail-dialog .tb-detail-title { margin: 0 0 14px; }
 .taskboard .tb-detail-dialog .tb-detail-title:empty { display: none; }
 .taskboard .tb-detail-dialog .tb-detail :is(.tb-assignee, .tb-notice) { margin: 0 0 16px; font-size: 14px; }
+.taskboard .tb-requirement-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.taskboard .tb-requirement-card { min-width: 0; padding: 14px 16px; border: 1px solid var(--tb-line); border-radius: 10px; background: var(--surface-soft, #f4f6f5); }
+.taskboard .tb-requirement-card h3 { margin: 0 0 8px; color: var(--tb-accent, #32735a); }
+.taskboard .tb-requirement-card .tb-prose { margin: 0; }
+.taskboard .tb-execution-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0 0 18px; }
+.taskboard .tb-execution-summary-item { display: grid; min-width: 0; gap: 3px; padding: 12px 14px; border: 1px solid var(--tb-line); border-radius: 10px; background: var(--surface-soft, #f4f6f5); }
+.taskboard .tb-execution-summary-item span { color: var(--tb-muted); font-size: 12px; }
+.taskboard .tb-execution-summary-item strong { min-width: 0; color: var(--tb-ink); font-size: 16px; overflow-wrap: anywhere; }
+.taskboard .tb-execution-summary-item small { min-width: 0; color: var(--tb-muted); font-size: 12px; overflow-wrap: anywhere; }
 .taskboard .tb-detail-dialog .tb-event-timeline p { color: var(--tb-muted); font-size: 13px; }
-.taskboard .tb-detail-dialog .tb-event-timeline li { padding: 10px 0; border-bottom: 1px solid var(--tb-line); }
-.taskboard .tb-detail-dialog .tb-event-timeline summary { color: var(--tb-muted); font-size: 13px; cursor: pointer; }
+.taskboard .tb-detail-dialog .tb-event-timeline-list { display: grid; gap: 0; margin: 16px 0 0; padding: 0 0 0 24px; list-style: none; border-left: 2px solid color-mix(in srgb, var(--tb-accent, #32735a) 30%, var(--tb-line)); }
+.taskboard .tb-detail-dialog .tb-event-timeline-item { position: relative; display: grid; gap: 4px; min-width: 0; padding: 0 0 18px 16px; }
+.taskboard .tb-detail-dialog .tb-event-timeline-item::before { content: ''; position: absolute; top: 7px; left: -31px; width: 10px; height: 10px; border: 3px solid var(--tb-card, #fff); border-radius: 50%; background: var(--tb-accent, #32735a); box-shadow: 0 0 0 1px var(--tb-accent, #32735a); }
+.taskboard .tb-detail-dialog .tb-event-timeline-item:last-child { padding-bottom: 4px; }
+.taskboard .tb-detail-dialog .tb-event-timeline-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.taskboard .tb-detail-dialog .tb-event-timeline-head strong { color: var(--tb-ink); }
+.taskboard .tb-detail-dialog .tb-event-timeline-head time,
+.taskboard .tb-detail-dialog .tb-event-timeline-actor { color: var(--tb-muted); font-size: 13px; }
+.taskboard .tb-detail-dialog .tb-event-timeline-summary { margin: 0; color: var(--tb-muted); font-size: 14px; overflow-wrap: anywhere; }
+.taskboard .tb-detail-dialog .tb-event-timeline-raw { justify-self: start; min-height: 30px; margin-top: 3px; padding: 5px 9px; border: 1px solid var(--tb-line); border-radius: 6px; color: var(--tb-muted); background: transparent; font-size: 12px; cursor: pointer; }
+.taskboard .tb-detail-dialog .tb-event-timeline-raw:hover { color: var(--tb-ink); background: var(--surface-soft, #f4f6f5); }
+.taskboard .tb-detail-dialog .tb-event-timeline-payload { max-height: 280px; margin: 4px 0 0; padding: 10px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--tb-line); border-radius: 7px; background: var(--surface-soft, #f4f6f5); font: 12px/1.5 ui-monospace, Consolas, monospace; }
 .taskboard .tb-detail-dialog .tb-review-summary {
   margin: 0 0 24px;
   padding: 14px 20px 10px;
@@ -144,6 +170,11 @@
 .taskboard .tb-detail-dialog .tb-review-caution { font-size: 13px; line-height: 1.6; }
 .taskboard .tb-detail-dialog .tb-acceptance { margin-top: 8px; }
 .taskboard .tb-detail-dialog .tb-detail > section > details > summary { min-height: 36px; padding: 8px 0; font-weight: 600; cursor: pointer; }
+.taskboard .tb-detail-dialog .tb-secondary-disclosure { display: inline-flex; align-items: center; min-height: 36px; margin: 10px 0; padding: 7px 11px; border: 1px solid var(--tb-line); border-radius: 7px; color: var(--tb-muted); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
+.taskboard .tb-detail-dialog .tb-secondary-disclosure:hover,
+.taskboard .tb-detail-dialog .tb-secondary-disclosure[aria-expanded=true] { color: var(--tb-ink); background: var(--surface-soft, #f4f6f5); }
+.taskboard .tb-detail-dialog .tb-secondary-panel { margin: 4px 0 18px; padding: 14px; border: 1px solid var(--tb-line); border-radius: 10px; background: var(--surface-soft, #f4f6f5); }
+.taskboard .tb-detail-dialog .tb-attachment-manager .tb-section-title { margin-top: 0; }
 
 /* Review actions: rendered at the end of the scrolling body, never as a fixed footer, so they cannot cover the evidence.
    Primary review actions on the right, destructive action collapsed on the left; the feedback panel expands below the buttons. */
@@ -156,6 +187,8 @@
 .taskboard .tb-detail-actions .tb-review-buttons button { box-sizing: border-box; min-height: 44px; padding: 10px 20px; border-radius: 10px; font-size: 15px; font-weight: 600; line-height: 22px; }
 .taskboard .tb-detail-actions .tb-review-buttons .tb-archive { min-width: 176px; font-size: 16px; font-weight: 700; box-shadow: 0 2px 8px color-mix(in srgb, var(--tb-accent, #32735a) 30%, transparent); }
 .taskboard .tb-detail-actions .tb-review-buttons button[aria-expanded=true] { border-color: var(--tb-accent); background: color-mix(in srgb, var(--tb-accent, #32735a) 10%, var(--tb-card, #fff)); }
+.taskboard .tb-detail-actions .tb-user-actions { grid-area: more; align-self: start; min-width: 0; }
+.taskboard .tb-detail-actions .tb-user-actions .tb-danger { min-height: 40px; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
 .taskboard .tb-detail-actions .tb-feedback-panel { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; gap: 8px; padding: 12px 14px; border: 1px solid var(--tb-line); border-radius: 10px; background: var(--surface-soft, #f4f6f5); }
 .taskboard .tb-detail-actions .tb-feedback-panel label { display: block; margin: 0; font-size: 14px; font-weight: 600; }
 .taskboard .tb-detail-actions .tb-feedback-panel textarea { width: 100%; min-height: 72px; height: 88px; margin: 0; font-size: 14px; line-height: 1.5; }
@@ -178,14 +211,6 @@
   .taskboard .tb-detail-actions .tb-review-buttons button { flex: 1 1 160px; }
   .taskboard .tb-detail-actions .tb-more-actions { padding-top: 10px; border-top: 1px dashed var(--tb-line); }
 }
-.taskboard .tb-detail-dialog .tb-review-summary::before {
-  content: '交付成果与实际效果';
-  display: block;
-  margin-bottom: 10px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--tb-accent, #32735a);
-}
 .taskboard .tb-release-stale { grid-column: 1 / -1; display: grid; justify-items: start; }
 .taskboard .tb-release-stale-trigger { min-height: 40px; border-color: #c89033; color: #815600; background: #fff9e9; font-weight: 650; }
 .taskboard .tb-release-stale-trigger:hover { border-color: #9d6500; background: #fff3cf; }
@@ -204,4 +229,6 @@
   .taskboard .tb-detail-dialog .tb-detail-tabs { padding: 8px 16px; }
   .taskboard .tb-detail-dialog .tb-detail-actions-section { margin-top: 24px; padding-top: 14px; }
   .taskboard .tb-detail-dialog .tb-review-summary { padding: 16px; }
+  .taskboard .tb-requirement-grid,
+  .taskboard .tb-execution-summary { grid-template-columns: minmax(0, 1fr); }
 }
