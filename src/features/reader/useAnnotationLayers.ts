@@ -49,6 +49,8 @@ export type AnnotationLayersApi = {
   revealAnnotation: (annotationId: string) => Promise<Annotation | null>;
   /** Re-reads layer counts after annotations were created, deleted or moved. */
   refresh: () => Promise<void>;
+  /** Ids of the in-memory annotations of one layer, read from the store (not from a filtered view). */
+  annotationIdsInLayer: (layerId: string) => string[];
   managerOpen: boolean;
   setManagerOpen: (open: boolean) => void;
   busy: boolean;
@@ -394,6 +396,7 @@ export function useAnnotationLayers({
     },
     managerOpen,
     setManagerOpen,
+    annotationIdsInLayer: (layerId) => (paperId ? document(paperId)?.annotations ?? [] : []).filter((annotation) => annotation.layerId === layerId).map((annotation) => annotation.id),
     refresh: () =>
       mutate('刷新图层', async (id, current) => {
         const next = isTauriRuntime() ? await listNativeAnnotationLayers('paper', id) : current.state;

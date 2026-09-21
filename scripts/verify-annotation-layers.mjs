@@ -369,7 +369,7 @@ function layersFixture() {
   assert.match(picker, /aria-live="polite"/);
   const manager = fs.readFileSync('src/features/reader/AnnotationLayerManager.tsx', 'utf8');
   assert.match(manager, /role="alertdialog"/);
-  assert.match(manager, /trigger\?\.focus\(\)/);
+  assert.match(manager, /restoreFocus\(trigger, section\.current\)/);
   checks += 10;
 }
 

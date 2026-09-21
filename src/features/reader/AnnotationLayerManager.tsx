@@ -9,7 +9,8 @@ import './reader-annotation-layers.css';
  * reorder, show/hide, lock, archive/restore, move a whole layer's annotations and delete with a
  * two-step confirmation that spells out the affected annotations and note references.
  */
-export function AnnotationLayerManager({ layers, paper, onClose }: { layers: AnnotationLayersApi; paper: PaperDocument; onClose: () => void }) {
+export function AnnotationLayerManager({ layers, onClose }: { layers: AnnotationLayersApi; paper: PaperDocument; onClose: () => void }) {
+  const section = useRef<HTMLElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   const [deleting, setDeleting] = useState<{ layer: AnnotationLayer; preview: AnnotationLayerDeletePreview; trigger: HTMLElement | null } | null>(null);
@@ -48,14 +49,14 @@ export function AnnotationLayerManager({ layers, paper, onClose }: { layers: Ann
     if (!moving || !moving.to || moving.from === moving.to) return;
     // Hidden layers are not in memory yet: showing the source loads its annotations first.
     if (!layers.isLayerVisible(moving.from)) await layers.setLayerVisible(moving.from, true);
-    const ids = paper.annotations.filter((annotation) => annotation.layerId === moving.from).map((annotation) => annotation.id);
+    const ids = layers.annotationIdsInLayer(moving.from);
     const count = await layers.moveAnnotations(ids, moving.to);
     say(`已移动 ${count} 条标注到「${layers.layerName(moving.to)}」`);
     setMoving(null);
   };
 
   return (
-    <section className="annotation-layer-manager" aria-label="图层管理" data-reader-layer="layer-manager">
+    <section ref={section} className="annotation-layer-manager" aria-label="图层管理" data-reader-layer="layer-manager">
       <header className="annotation-layer-manager-header">
         <h3>图层管理</h3>
         <button type="button" className="annotation-layer-icon-btn" onClick={onClose} aria-label="关闭图层管理，返回标注列表"><X size={16} aria-hidden="true" /></button>
@@ -151,18 +152,26 @@ export function AnnotationLayerManager({ layers, paper, onClose }: { layers: Ann
           layer={deleting.layer}
           preview={deleting.preview}
           busy={layers.busy}
-          onCancel={() => { const trigger = deleting.trigger; setDeleting(null); trigger?.focus(); }}
+          onCancel={() => { const trigger = deleting.trigger; setDeleting(null); restoreFocus(trigger, section.current); }}
           onConfirm={async (mode, target) => {
             const ok = await layers.deleteLayer(deleting.layer.id, mode, target);
             const trigger = deleting.trigger;
             setDeleting(null);
             if (ok) say(mode === 'move' ? `已删除「${deleting.layer.name}」，其标注已移到「${layers.layerName(target ?? '')}」` : `已永久删除「${deleting.layer.name}」及其标注`);
-            trigger?.focus();
+            restoreFocus(trigger, section.current);
           }}
         />
       )}
     </section>
   );
+}
+
+/** After the dialog closes, focus goes back to the button that opened it; if that row is gone, to the page header. */
+function restoreFocus(trigger: HTMLElement | null, section: HTMLElement | null) {
+  window.setTimeout(() => {
+    if (trigger && trigger.isConnected) { trigger.focus(); return; }
+    section?.querySelector<HTMLElement>('.annotation-layer-manager-header button')?.focus();
+  }, 0);
 }
 
 function DeleteLayerDialog({ layer, preview, busy, onCancel, onConfirm }: { layer: AnnotationLayer; preview: AnnotationLayerDeletePreview; busy: boolean; onCancel: () => void; onConfirm: (mode: 'move' | 'purge', target?: string) => Promise<void> }) {
