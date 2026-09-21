@@ -178,7 +178,7 @@ assert.match(readerSource, /className=\{`pdf-reader-status \$\{status\}`\}/);
 assert.match(annotationHistoryHookSource, /const createAnnotation = \(annotation: AnnotationDraft & \{ page: number \}, fileKind = readerFileMode\) =>/);
 assert.match(annotationHistoryHookSource, /const fileId = fileKind === 'translated' \? preferredTranslatedFileId\(selectedPaper, readerTranslatedFileId\) : selectedPaper\.sourceFileId/);
 assert.match(annotationHistoryHookSource, /const draft = \{ \.\.\.annotation, positionJson: clonePositionJson\(annotation\.positionJson\) \}/);
-assert.match(annotationHistoryHookSource, /annotation: \{ \.\.\.draft, fileId \}/);
+assert.match(annotationHistoryHookSource, /annotation: \{ \.\.\.draft, fileId, layerId \}/);
 assert.match(tauriSource, /if !paper_exists\(&database_path, &request\.paper_id\)\?/);
 assert.match(tauriSource, /translated\.\{language\}\.\{file_id\}\.pdf/);
 assert.match(readerSource, /loadPaperFileBytes\(\{ paperId: request\.paperId, kind: request\.kind, fileId: request\.fileId \}\)/);

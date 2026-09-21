@@ -70,6 +70,7 @@ export function PdfResourceTab({ path, name, resourceId, initialZoom = 1, initia
         color: row.color,
         positionJson: JSON.parse(row.position_json) as PositionJson,
         createdAt: new Date(row.created_at).toISOString(),
+        layerId: row.layer_id || `layer-default-${row.resource_id}`,
       })));
     }).catch(error => {
       if (!disposed) { setLoadState('error'); setLoadError(`标注读取失败，不能视为没有标注：${String(error)}`); }
@@ -83,7 +84,8 @@ export function PdfResourceTab({ path, name, resourceId, initialZoom = 1, initia
     const id = isTauriRuntime()
       ? await createNativeResourceAnnotation({ resourceId, page: draft.page, type: draft.type, quote: draft.quote, comment: draft.comment, color: draft.color, positionJson: draft.positionJson })
       : `resource-anno-${Date.now()}`;
-    if (resourceIdentity.current === identity) setAnnotations((current) => [...current, { id, paperId: '', fileId: '', resourceId, ...draft, createdAt: new Date().toISOString() }]);
+    // Generic resources write to their default layer until they get a layer picker of their own.
+    if (resourceIdentity.current === identity) setAnnotations((current) => [...current, { id, paperId: '', fileId: '', resourceId, ...draft, createdAt: new Date().toISOString(), layerId: `layer-default-${resourceId}` }]);
     return id;
   };
 

@@ -1,7 +1,7 @@
 {
   "name": "a4note",
   "private": true,
-  "version": "0.1.26",
+  "version": "0.1.27",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -25,10 +25,13 @@
     "test:reader-helpers": "node --experimental-strip-types scripts/verify-reader-helpers.mjs",
     "test:pdf-rotated-text": "node --experimental-strip-types scripts/verify-pdf-rotated-text-layer.mjs",
     "test:pdf-crosspage-selection": "node --experimental-strip-types scripts/verify-pdf-crosspage-selection.mjs",
+    "test:annotation-layers": "node scripts/verify-annotation-layers.mjs",
+    "test:pdf-selection-preview": "node --experimental-strip-types scripts/verify-pdf-selection-preview.mjs",
     "test:pdf-eraser-precision": "node --experimental-strip-types scripts/verify-pdf-eraser-precision.mjs",
     "test:pdf-text-annotation": "node --experimental-strip-types scripts/verify-pdf-text-annotation.mjs",
     "test:ai-toolbar": "node scripts/verify-ai-toolbar.mjs",
     "test:ui-state": "node scripts/verify-ui-state.mjs",
+    "test:note-workbench": "node scripts/verify-note-workbench.mjs",
     "test:settings-ui": "node scripts/verify-settings-ui.mjs",
     "test:architecture": "node scripts/verify-architecture-boundaries.mjs",
     "test:scene-plugins": "node scripts/verify-scene-plugin-wiring.mjs",
@@ -52,7 +55,8 @@
     "test:capture-native-process": "node scripts/verify-native-process.mjs",
     "package:native-host": "node scripts/prepare-native-host.mjs",
     "test:capture-native-registration": "node scripts/verify-native-registration.mjs",
-    "test:extension-updates": "node scripts/verify-extension-updates.mjs"
+    "test:extension-updates": "node scripts/verify-extension-updates.mjs",
+    "test:note-workbench-browser": "node scripts/verify-note-workbench-browser.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",

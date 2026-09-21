@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type WheelEvent as Rea
 import { HighlightAppearanceControl } from './HighlightAppearanceControl';
 import { ReaderToolbarPortal } from './ReaderToolbarPortal';
 import { ReaderAnnotationDock } from './ReaderAnnotationDock';
+import { AnnotationLayerPicker } from './AnnotationLayerPicker';
 import { ReaderToolPopover } from './ReaderToolPopover';
 import { TEXT_FONT_SIZE_OPTIONS } from './pdf/pdfTextAnnotation';
 import './reader-file-switch.css';
@@ -287,6 +288,7 @@ export function ReaderToolbar({
                 </div>
               );
             })}
+            <AnnotationLayerPicker />
           </div>
         </div>}
 

@@ -7,6 +7,7 @@ import {
   createNativeAnnotation,
   deleteNativeAnnotation,
   isTauriRuntime,
+  moveNativeAnnotationsToLayer,
   restoreNativeAnnotation,
   updateNativeAnnotationColor,
   updateNativeAnnotationComment,
@@ -15,13 +16,16 @@ import {
 } from '../../platform/nativeApi';
 
 type AsterCore = ReturnType<typeof createAsterCore>;
+const defaultAnnotationLayerId = (ownerId: string) => `layer-default-${ownerId}`;
 
 export type AnnotationHistoryAction =
   | { kind: 'create'; annotation: PaperDocument['annotations'][number] }
   | { kind: 'delete'; annotation: PaperDocument['annotations'][number] }
   | { kind: 'updateComment'; annotationId: string; previous: string; next: string }
   | { kind: 'updateColor'; annotationId: string; previous: string; next: string }
-  | { kind: 'updatePosition'; annotationId: string; previous: PositionJson; next: PositionJson };
+  | { kind: 'updatePosition'; annotationId: string; previous: PositionJson; next: PositionJson }
+  /** Layer membership change; `from` remembers every annotation's previous layer so undo is exact. */
+  | { kind: 'move'; annotationIds: string[]; from: Record<string, string>; to: string };
 
 export function useAnnotationHistory({
   aster,
@@ -31,6 +35,9 @@ export function useAnnotationHistory({
   setReaderFocusedAnnotationId,
   setRevision,
   setLibraryStatus,
+  writeLayerId,
+  writeBlockedReason,
+  onLayersChanged,
 }: {
   aster: AsterCore;
   selectedPaper: PaperDocument | null;
@@ -39,6 +46,11 @@ export function useAnnotationHistory({
   setReaderFocusedAnnotationId: (value: string | null | ((current: string | null) => string | null)) => void;
   setRevision: (value: number | ((current: number) => number)) => void;
   setLibraryStatus: (status: string) => void;
+  /** Layer new marks go to, resolved when the write starts (never when it finishes). */
+  writeLayerId?: () => string | null;
+  writeBlockedReason?: () => string | null;
+  /** Called after a create/delete/move changed per-layer counts. */
+  onLayersChanged?: () => void;
 }) {
   // Keep independent histories per paper; all model/history commits share one write queue.
   type HistoryScope = { paperId: string; undo: AnnotationHistoryAction[]; redo: AnnotationHistoryAction[] };
@@ -106,6 +118,18 @@ export function useAnnotationHistory({
       await updateNativeAnnotationComment({ annotationId: action.annotationId, comment: direction === 'undo' ? action.previous : action.next });
     } else if (action.kind === 'updateColor') {
       await updateNativeAnnotationColor({ annotationId: action.annotationId, color: direction === 'undo' ? action.previous : action.next });
+    } else if (action.kind === 'move') {
+      if (direction === 'redo') {
+        await moveNativeAnnotationsToLayer({ annotationIds: action.annotationIds, targetLayerId: action.to });
+      } else {
+        // Undo returns each annotation to the layer it came from, one request per source layer.
+        const groups = new Map<string, string[]>();
+        for (const annotationId of action.annotationIds) {
+          const from = action.from[annotationId];
+          if (from) groups.set(from, [...(groups.get(from) ?? []), annotationId]);
+        }
+        for (const [targetLayerId, annotationIds] of groups) await moveNativeAnnotationsToLayer({ annotationIds, targetLayerId });
+      }
     } else {
       await updateNativeAnnotationPosition({ annotationId: action.annotationId, positionJson: clonePositionJson(direction === 'undo' ? action.previous : action.next) });
     }
@@ -123,6 +147,11 @@ export function useAnnotationHistory({
         }
         focus(owner, action.annotation.id);
       }
+      onLayersChanged?.();
+    } else if (action.kind === 'move') {
+      const ids = new Set(action.annotationIds);
+      paper.annotations = paper.annotations.map(item => ids.has(item.id) ? { ...item, layerId: direction === 'redo' ? action.to : action.from[item.id] ?? item.layerId } : item);
+      onLayersChanged?.();
     } else {
       const annotation = requireAnnotation(owner, action.annotationId);
       if (action.kind === 'updateComment') annotation.comment = direction === 'undo' ? action.previous : action.next;
@@ -141,7 +170,7 @@ export function useAnnotationHistory({
       const action = from[from.length - 1];
       if (!action) return false;
       requirePaper(owner);
-      if (action.kind !== 'create' && action.kind !== 'delete') requireAnnotation(owner, action.annotationId);
+      if (action.kind !== 'create' && action.kind !== 'delete' && action.kind !== 'move') requireAnnotation(owner, action.annotationId);
       await persistHistoryAction(action, direction);
       applyAnnotationHistoryAction(owner, action, direction);
       // No pop/push until the native write succeeds. Failure leaves the same action retryable.
@@ -161,26 +190,31 @@ export function useAnnotationHistory({
     if (!owner || !selectedPaper) return Promise.resolve(undefined);
     const fileId = fileKind === 'translated' ? preferredTranslatedFileId(selectedPaper, readerTranslatedFileId) : selectedPaper.sourceFileId;
     const draft = { ...annotation, positionJson: clonePositionJson(annotation.positionJson) };
+    // Capture the target layer now: a layer switch while the save is queued must not redirect this mark.
+    const layerId = writeLayerId ? writeLayerId() : defaultAnnotationLayerId(owner.paperId);
+    const blocked = layerId ? null : (writeBlockedReason?.() ?? '当前没有可写入的标注图层');
     return queueAnnotationPersistence(owner, '创建标注', async () => {
+      if (!layerId) throw new Error(blocked ?? '当前没有可写入的标注图层');
       let paper = requirePaper(owner);
       let createdId: string | undefined;
       if (isTauriRuntime()) {
         if (!fileId) throw new Error('PDF 文件标识缺失，未写入标注');
         const { page, ...payload } = draft;
-        const created = await createNativeAnnotation({ paperId: owner.paperId, fileId, page, ...payload });
+        const created = await createNativeAnnotation({ paperId: owner.paperId, fileId, page, ...payload, layerId });
         createdId = created.id;
         paper = requirePaper(owner);
         if (!paper.annotations.some(item => item.id === created.id)) {
-          paper.annotations = [...paper.annotations, { id: created.id, paperId: owner.paperId, fileId, ...draft, createdAt: new Date(created.created_at).toISOString() }]
+          paper.annotations = [...paper.annotations, { id: created.id, paperId: owner.paperId, fileId, ...draft, createdAt: new Date(created.created_at).toISOString(), layerId: created.layer_id || layerId }]
             .sort((a, b) => a.page - b.page || (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
         }
       } else {
-        const created = aster.commands.execute<unknown, { id: string } | null>('document.addAnnotation', { paperId: owner.paperId, annotation: { ...draft, fileId } });
+        const created = aster.commands.execute<unknown, { id: string } | null>('document.addAnnotation', { paperId: owner.paperId, annotation: { ...draft, fileId, layerId } });
         createdId = created?.id;
       }
       const createdAnnotation = paper.annotations.find(item => item.id === createdId);
       if (!createdAnnotation) throw new Error('未确认标注创建成功');
       pushAnnotationHistory(owner, { kind: 'create', annotation: cloneAnnotation(createdAnnotation) });
+      onLayersChanged?.();
       publish(owner);
       return createdId;
     });
@@ -239,7 +273,32 @@ export function useAnnotationHistory({
       currentPaper.annotations = currentPaper.annotations.filter(item => item.id !== annotationId);
       pushAnnotationHistory(owner, { kind: 'delete', annotation: snapshot });
       if (mounted.current && activeScope.current === owner) setReaderFocusedAnnotationId(current => current === annotationId ? null : current);
+      onLayersChanged?.();
       publish(owner);
+    });
+  };
+  /** Moves annotations to another layer as one undoable step; ids, geometry and timestamps are untouched. */
+  const moveAnnotationsToLayer = (annotationIds: string[], targetLayerId: string) => {
+    const owner = scope;
+    if (!owner || !annotationIds.length) return Promise.resolve(0);
+    return queueAnnotationPersistence(owner, '移动标注到图层', async () => {
+      const paper = requirePaper(owner);
+      const from: Record<string, string> = {};
+      const moving = annotationIds.filter(id => {
+        const annotation = paper.annotations.find(item => item.id === id);
+        if (!annotation || annotation.layerId === targetLayerId) return false;
+        from[id] = annotation.layerId;
+        return true;
+      });
+      if (!moving.length) return 0;
+      if (isTauriRuntime()) await moveNativeAnnotationsToLayer({ annotationIds: moving, targetLayerId });
+      const current = requirePaper(owner);
+      const ids = new Set(moving);
+      current.annotations = current.annotations.map(item => ids.has(item.id) ? { ...item, layerId: targetLayerId } : item);
+      pushAnnotationHistory(owner, { kind: 'move', annotationIds: moving, from, to: targetLayerId });
+      onLayersChanged?.();
+      publish(owner);
+      return moving.length;
     });
   };
   const clearAnnotationHistory = () => {
@@ -260,6 +319,7 @@ export function useAnnotationHistory({
     updateAnnotationColor,
     updateAnnotationPosition,
     deleteAnnotation,
+    moveAnnotationsToLayer,
     clearAnnotationHistory,
   };
 }

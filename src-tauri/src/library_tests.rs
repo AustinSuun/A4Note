@@ -380,6 +380,7 @@ mod tests {
                 comment: String::new(),
                 color: "yellow".to_string(),
                 position_json: "{\"x\":10,\"y\":20,\"width\":30,\"height\":4}".to_string(),
+                layer_id: String::new(),
             },
         )
         .unwrap();
@@ -409,6 +410,7 @@ mod tests {
                 color: "green".to_string(),
                 position_json: "{\"x\":10,\"y\":20,\"width\":30,\"height\":4}".to_string(),
                 created_at: current_timestamp_ms(),
+                layer_id: String::new(),
             },
         )
         .unwrap();
@@ -477,6 +479,7 @@ mod tests {
                 comment: "Source note".to_string(),
                 color: "yellow".to_string(),
                 position_json: "{\"x\":10,\"y\":12,\"width\":30,\"height\":4}".to_string(),
+                layer_id: String::new(),
             },
         )
         .unwrap();
@@ -491,6 +494,7 @@ mod tests {
                 comment: "Translated note".to_string(),
                 color: "blue".to_string(),
                 position_json: "{\"x\":12,\"y\":22,\"width\":28,\"height\":3}".to_string(),
+                layer_id: String::new(),
             },
         )
         .unwrap();

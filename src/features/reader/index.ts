@@ -14,6 +14,7 @@ export {
   readerPanelCommandTitle,
 } from './readerHelpers';
 export { useAnnotationHistory } from './useAnnotationHistory';
+export { useAnnotationLayers, AnnotationLayersContext, useAnnotationLayersContext, type AnnotationLayersApi } from './useAnnotationLayers';
 export { createReaderSceneContribution, createReaderSidebarContribution, createReaderPanelViewContributions, createReaderResourceViewContribution, type ReaderSceneContributionProps } from './contributions';
 export type { ReaderSidePanelContentProps } from './ReaderSidePanelContent';
 export type {

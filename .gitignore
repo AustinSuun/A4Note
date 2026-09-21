@@ -36,6 +36,8 @@ yarn-error.log*
 .cache/
 .tmp/
 tmp/
+# Per-task git worktrees (docs/notes/LIVE_MULTI_AGENT_WORKFLOW.md); never part of the tree, and `git clean -fd` must not wipe them.
+.worktrees/
 
 # Local environment and editor state
 .env

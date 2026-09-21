@@ -27,6 +27,8 @@ import {
   preferredTranslatedFileId,
   readerPanelCommandTitle,
   useAnnotationHistory,
+  useAnnotationLayers,
+  AnnotationLayersContext,
   type NoteDraftPatch,
   type NoteSaveInput,
   type ReaderContentMode,
@@ -844,6 +846,8 @@ export default function App() {
     aiProvider,
     refreshNativeDocuments,
   });
+  // Annotation layers (fb5e3f2f): which layer new marks go to and which layers the reader draws.
+  const annotationLayers = useAnnotationLayers({ aster, selectedPaper, setRevision, setLibraryStatus });
   const {
     annotationUndoStack,
     annotationRedoStack,
@@ -854,6 +858,7 @@ export default function App() {
     updateAnnotationColor,
     updateAnnotationPosition,
     deleteAnnotation,
+    moveAnnotationsToLayer,
     clearAnnotationHistory,
   } = useAnnotationHistory({
     aster,
@@ -863,7 +868,29 @@ export default function App() {
     setReaderFocusedAnnotationId,
     setRevision,
     setLibraryStatus,
+    writeLayerId: annotationLayers.writeLayerId,
+    writeBlockedReason: () => annotationLayers.writeBlockedReason,
+    onLayersChanged: () => void annotationLayers.refresh(),
   });
+  const annotationLayersApi = { ...annotationLayers, moveAnnotations: moveAnnotationsToLayer };
+  /** The reader only ever sees annotations of visible layers; hidden layers create no marks, rects or hit targets. */
+  const withVisibleLayers = (paper: PaperDocument): PaperDocument => annotationLayers.state && annotationLayers.paperId === paper.paperId
+    ? { ...paper, annotations: paper.annotations.filter((annotation) => annotationLayers.isLayerVisible(annotation.layerId)) }
+    : paper;
+  /** Jumps to an annotation even when its layer is hidden: the layer is shown first, then the mark is focused. */
+  const revealAndFocusAnnotation = (annotationId: string, page?: number | null) => {
+    const visible = selectedPaper?.annotations.find((item) => item.id === annotationId && annotationLayers.isLayerVisible(item.layerId));
+    if (visible) {
+      setReaderRequestedPage(page ?? visible.page);
+      setReaderFocusedAnnotationId(annotationId);
+      return;
+    }
+    void annotationLayers.revealAnnotation(annotationId).then((annotation) => {
+      if (!annotation) { setLibraryStatus('标注不存在或已删除'); return; }
+      setReaderRequestedPage(annotation.page);
+      setReaderFocusedAnnotationId(annotationId);
+    });
+  };
   const paperState = usePaperState(aster, () => setRevision((current) => current + 1), setLibraryStatus);
   const selectLibraryFolder = (folderId: string) => {
     setActiveFolderId(folderId);
@@ -1975,8 +2002,9 @@ export default function App() {
   // resulting component mounted, so selecting another tab cannot replace an
   // already-open PDF with the globally selected paper.
   const renderReaderNode = (paper: PaperDocument | null, panelViews: WorkbenchPanelViewContribution[] = []) => paper ? (
+    <AnnotationLayersContext.Provider value={annotationLayersApi}>
     <ReaderScene
-      paper={paper}
+      paper={withVisibleLayers(paper)}
       layout={readerLayout}
       contentMode={readerContentMode}
       fileMode={readerFileMode}
@@ -2039,6 +2067,7 @@ export default function App() {
       onNoteDraftPatchConsumed={() => setNoteDraftPatch(current => current === noteDraftPatch ? null : current)}
       onAppendAnnotationToNote={appendAnnotationToNote}
     />
+    </AnnotationLayersContext.Provider>
   ) : (
     <EmptyScene title={zh.reader.noPaperTitle} description={zh.reader.noPaperDescription} action={zh.library.importPdf} onAction={openImportDialog} />
   );
@@ -2443,17 +2472,14 @@ export default function App() {
       onDeleteAnnotation: deleteAnnotation,
       onAppendAnnotationToNote: appendAnnotationToNote,
       onNavigateAnnotation: (annotationId) => {
-        const annotation = selectedPaper?.annotations.find((item) => item.id === annotationId);
-        if (!annotation || !selectedPaper) return;
-        setReaderRequestedPage(annotation.page);
-        setReaderFocusedAnnotationId(annotationId);
+        if (!selectedPaper) return;
+        revealAndFocusAnnotation(annotationId);
       },
       onNavigateRelationTarget: (target) => {
         if (!target) return;
         if (target.kind === 'ai_thread') setReaderSidePanelTab('chat');
         if (target.kind === 'annotation') {
-          setReaderRequestedPage(target.page ?? null);
-          setReaderFocusedAnnotationId(target.annotationId);
+          revealAndFocusAnnotation(target.annotationId, target.page ?? null);
           setReaderSidePanelTab('annotations');
         }
       },

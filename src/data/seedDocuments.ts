@@ -41,6 +41,7 @@ export const seedDocuments: PaperDocument[] = [
         comment: '适合作为方法演化的核心解释。',
         color: 'yellow',
         positionJson: { x: 18, y: 64, width: 46, height: 6 },
+        layerId: 'layer-default-paper-transformer',
       },
     ],
     aiThreads: ['解释为什么多头注意力比单头更稳定', '总结 Transformer 对后续大模型的影响'],

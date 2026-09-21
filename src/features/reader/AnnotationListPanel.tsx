@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import type { AnnotationColor, PaperDocument, PositionJson } from '../../core/types';
 import type { PaperFileKind } from '../../platform/nativeApi';
 import { zh } from '../../ui/zh';
+import { AnnotationLayerManager } from './AnnotationLayerManager';
 import { TrashIcon } from './ReaderIcons';
 import { annotationPresetColors } from './readerConstants';
 import { annotationLabelText, noteSaveStateText, preferredTranslatedFileId } from './readerHelpers';
 import type { ReaderSaveState } from './types';
+import { useAnnotationLayersContext } from './useAnnotationLayers';
+import './reader-annotation-layers.css';
 
 export function AnnotationListPanel({
   paper,
@@ -31,19 +34,42 @@ export function AnnotationListPanel({
   onAppendToNote: (annotationId: string) => void;
 }) {
   const activeFileId = fileMode === 'source' ? paper.sourceFileId : preferredTranslatedFileId(paper, translatedFileId);
+  const layers = useAnnotationLayersContext();
+  const [layerFilter, setLayerFilter] = useState<string>('');
   const sortedAnnotations = paper.annotations
     .filter((annotation) => !activeFileId || annotation.fileId === activeFileId)
+    .filter((annotation) => !layerFilter || annotation.layerId === layerFilter)
     .sort((a, b) => a.page - b.page || (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-  if (!sortedAnnotations.length) {
-    return <div className="mini-message">{zh.reader.noAnnotations}</div>;
+  if (layers?.state && layers.managerOpen) {
+    return <AnnotationLayerManager layers={layers} paper={paper} onClose={() => layers.setManagerOpen(false)} />;
   }
-  return (
-    <div className="annotation-list">
-      {sortedAnnotations.map((annotation) => (
+  // Layers are only offered when the layer system is available for this paper (Tauri or the local store).
+  const visibleLayers = layers?.state ? layers.layers.filter((layer) => !layer.archivedAt && layers.isLayerVisible(layer.id)) : [];
+  const writableTargets = layers?.state ? layers.layers.filter((layer) => !layer.archivedAt && !layer.locked) : [];
+  const toolbar = layers?.state ? (
+    <div className="annotation-list-toolbar" role="group" aria-label="标注图层筛选">
+      <label>
+        图层
+        <select value={layerFilter} onChange={(event) => setLayerFilter(event.target.value)} aria-label="按图层筛选标注列表">
+          <option value="">全部可见图层（{visibleLayers.length}）</option>
+          {visibleLayers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name}（{layer.annotationCount}）</option>)}
+        </select>
+      </label>
+      <button type="button" className="annotation-layer-action" onClick={() => layers.setManagerOpen(true)} aria-haspopup="true">管理图层</button>
+    </div>
+  ) : null;
+  if (!sortedAnnotations.length) {
+    return <>{toolbar}<div className="mini-message">{zh.reader.noAnnotations}</div></>;
+  }
+  const renderItem = (annotation: PaperDocument['annotations'][number]) => (
         <AnnotationListItem
           key={annotation.id}
           annotation={annotation}
           focused={focusedAnnotationId === annotation.id}
+          layerName={layers?.state ? layers.layerName(annotation.layerId) : null}
+          layerLocked={layers?.state ? layers.layers.find((layer) => layer.id === annotation.layerId)?.locked ?? false : false}
+          moveTargets={writableTargets.filter((layer) => layer.id !== annotation.layerId)}
+          onMoveToLayer={layers ? (annotationId, layerId) => void layers.moveAnnotations([annotationId], layerId) : undefined}
           onFocusAnnotation={onFocusAnnotation}
           onUpdateAnnotationComment={onUpdateAnnotationComment}
           onUpdateAnnotationPosition={onUpdateAnnotationPosition}
@@ -51,14 +77,41 @@ export function AnnotationListPanel({
           onDeleteAnnotation={onDeleteAnnotation}
           onAppendToNote={onAppendToNote}
         />
-      ))}
-    </div>
+  );
+  // Several visible layers: group rows by layer so each mark's origin (first read, attempt 2, …) is obvious.
+  const grouped = layers?.state && !layerFilter && visibleLayers.length > 1;
+  return (
+    <>
+      {toolbar}
+      <div className="annotation-list">
+        {grouped
+          ? visibleLayers.map((layer) => {
+            const items = sortedAnnotations.filter((annotation) => annotation.layerId === layer.id);
+            if (!items.length) return null;
+            return (
+              <section key={layer.id} className="annotation-list-layer-group" aria-label={`图层 ${layer.name}`} data-layer-id={layer.id}>
+                <h4 className="annotation-list-layer-heading">
+                  <span>{layer.name}</span>
+                  {layer.locked && <span className="annotation-list-layer-badge">已锁定</span>}
+                  <span className="annotation-layer-count">{items.length}</span>
+                </h4>
+                {items.map(renderItem)}
+              </section>
+            );
+          })
+          : sortedAnnotations.map(renderItem)}
+      </div>
+    </>
   );
 }
 
 function AnnotationListItem({
   annotation,
   focused,
+  layerName,
+  layerLocked,
+  moveTargets,
+  onMoveToLayer,
   onFocusAnnotation,
   onUpdateAnnotationComment,
   onUpdateAnnotationPosition,
@@ -68,6 +121,10 @@ function AnnotationListItem({
 }: {
   annotation: PaperDocument['annotations'][number];
   focused: boolean;
+  layerName: string | null;
+  layerLocked: boolean;
+  moveTargets: Array<{ id: string; name: string }>;
+  onMoveToLayer?: (annotationId: string, layerId: string) => void;
   onFocusAnnotation: (annotationId: string) => void;
   onUpdateAnnotationComment: (annotationId: string, comment: string) => void | Promise<void>;
   onUpdateAnnotationPosition: (annotationId: string, positionJson: PositionJson) => void | Promise<void>;
@@ -110,6 +167,20 @@ function AnnotationListItem({
       <div className="annotation-list-meta">
         <span>{zh.reader.annotationPage(annotation.page)}</span>
         <span>{annotationLabelText(annotation.type)}</span>
+        {layerName && <span className="annotation-list-layer-badge" title={layerLocked ? '所在图层已锁定' : '所在图层'}>{layerName}{layerLocked ? ' · 锁定' : ''}</span>}
+        {onMoveToLayer && moveTargets.length > 0 && !layerLocked && (
+          <select
+            className="annotation-list-move"
+            value=""
+            aria-label="移动到图层"
+            title="移动到其他图层（保留标注 id 与笔记引用）"
+            onClick={(event) => event.stopPropagation()}
+            onChange={(event) => { event.stopPropagation(); if (event.target.value) onMoveToLayer(annotation.id, event.target.value); }}
+          >
+            <option value="">移到…</option>
+            {moveTargets.map((layer) => <option key={layer.id} value={layer.id}>{layer.name}</option>)}
+          </select>
+        )}
       </div>
       {annotation.quote ? <p className="annotation-list-quote">{annotation.quote}</p> : null}
       <button

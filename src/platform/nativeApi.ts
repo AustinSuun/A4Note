@@ -1,6 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import type { AnnotationType, ImportDraft, LibraryFolder, PaperDocument, PositionJson } from '../core/types';
+import type { Annotation, AnnotationLayer, AnnotationLayerDeletePreview, AnnotationLayerKind, AnnotationLayerOwnerKind, AnnotationLayerState, AnnotationType, ImportDraft, LibraryFolder, PaperDocument, PositionJson } from '../core/types';
+
+/** Deterministic default layer id (mirrors the native migration); kept local so this module stays type-only towards core. */
+const defaultAnnotationLayerId = (ownerId: string) => `layer-default-${ownerId}`;
 
 const FALLBACK_TAG = '未分类';
 
@@ -94,6 +97,7 @@ export interface NativePaperSummary {
     color: string;
     position_json: string;
     created_at: number;
+    layer_id?: string;
   }>;
   ai_threads: string[];
   folder_id?: string | null;
@@ -325,19 +329,7 @@ export function nativePaperToDocument(paper: NativePaperSummary): PaperDocument 
       format: 'markdown',
       updatedAt: new Date(note.updated_at).toISOString(),
     })),
-    annotations: paper.annotations.map((annotation) => ({
-      id: annotation.id,
-      paperId: paper.paper_id,
-      fileId: annotation.file_id,
-      resourceId: annotation.resource_id,
-      page: annotation.page,
-      type: annotation.annotation_type,
-      quote: annotation.quote,
-      comment: annotation.comment,
-      color: annotation.color,
-      positionJson: parsePositionJson(annotation.position_json),
-      createdAt: new Date(annotation.created_at).toISOString(),
-    })),
+    annotations: paper.annotations.map((annotation) => mapNativeAnnotation(paper.paper_id, annotation)),
     aiThreads: paper.ai_threads,
     metadataSource: 'sqlite',
     createdAt: paper.created_at == null ? undefined : new Date(paper.created_at).toISOString(),
@@ -356,8 +348,10 @@ export async function createNativeAnnotation(request: {
   comment: string;
   color: string;
   positionJson: PositionJson;
+  /** Layer captured when the write started; the native side refuses locked/archived layers. */
+  layerId: string;
 }) {
-  return invoke<{ id: string; created_at: number }>('create_annotation', {
+  return invoke<{ id: string; created_at: number; layer_id: string }>('create_annotation', {
     request: {
       paper_id: request.paperId,
       file_id: request.fileId,
@@ -367,11 +361,139 @@ export async function createNativeAnnotation(request: {
       comment: request.comment,
       color: request.color,
       position_json: JSON.stringify(request.positionJson),
+      layer_id: request.layerId,
     },
   });
 }
 
-export async function listNativeResourceAnnotations(resourceId: string) {
+export type NativeAnnotationRow = {
+  id: string;
+  file_id?: string;
+  resource_id?: string;
+  page: number;
+  annotation_type: AnnotationType;
+  quote: string;
+  comment: string;
+  color: string;
+  position_json: string;
+  created_at: number;
+  layer_id?: string;
+};
+
+export function mapNativeAnnotation(paperId: string, annotation: NativeAnnotationRow): Annotation {
+  return {
+    id: annotation.id,
+    paperId,
+    fileId: annotation.file_id ?? '',
+    resourceId: annotation.resource_id,
+    page: annotation.page,
+    type: annotation.annotation_type,
+    quote: annotation.quote,
+    comment: annotation.comment,
+    color: annotation.color,
+    positionJson: parsePositionJson(annotation.position_json),
+    createdAt: new Date(annotation.created_at).toISOString(),
+    layerId: annotation.layer_id || defaultAnnotationLayerId(annotation.resource_id ?? paperId),
+  };
+}
+
+/** Bounded read of one paper's annotations in the given layers (used when a hidden layer is shown). */
+export async function listNativePaperAnnotations(paperId: string, layerIds: string[]) {
+  const rows = await invoke<NativeAnnotationRow[]>('list_paper_annotations', { paperId, layerIds });
+  return rows.map((row) => mapNativeAnnotation(paperId, row));
+}
+
+/** Resolves an annotation regardless of layer visibility (note references may target hidden layers). */
+export async function getNativeAnnotation(paperId: string, annotationId: string) {
+  const row = await invoke<NativeAnnotationRow | null>('get_annotation', { annotationId });
+  return row ? mapNativeAnnotation(paperId, row) : null;
+}
+
+type NativeAnnotationLayer = {
+  id: string; owner_kind: AnnotationLayerOwnerKind; owner_id: string; name: string; sort_order: number; kind: AnnotationLayerKind;
+  locked: boolean; archived_at: number | null; created_at: number; updated_at: number; annotation_count: number;
+};
+type NativeAnnotationLayerState = { owner_kind: AnnotationLayerOwnerKind; owner_id: string; layers: NativeAnnotationLayer[]; view: { active_layer_id: string; visible_layer_ids: string[] } };
+
+function mapNativeLayer(layer: NativeAnnotationLayer): AnnotationLayer {
+  return {
+    id: layer.id,
+    ownerKind: layer.owner_kind,
+    ownerId: layer.owner_id,
+    name: layer.name,
+    sortOrder: layer.sort_order,
+    kind: layer.kind,
+    locked: layer.locked,
+    archivedAt: layer.archived_at == null ? null : new Date(layer.archived_at).toISOString(),
+    createdAt: new Date(layer.created_at).toISOString(),
+    updatedAt: new Date(layer.updated_at).toISOString(),
+    annotationCount: layer.annotation_count,
+  };
+}
+
+function mapNativeLayerState(state: NativeAnnotationLayerState): AnnotationLayerState {
+  return {
+    ownerKind: state.owner_kind,
+    ownerId: state.owner_id,
+    layers: state.layers.map(mapNativeLayer),
+    view: { activeLayerId: state.view.active_layer_id, visibleLayerIds: [...state.view.visible_layer_ids] },
+  };
+}
+
+export async function listNativeAnnotationLayers(ownerKind: AnnotationLayerOwnerKind, ownerId: string) {
+  return mapNativeLayerState(await invoke<NativeAnnotationLayerState>('list_annotation_layers', { ownerKind, ownerId }));
+}
+
+export async function createNativeAnnotationLayer(request: { ownerKind: AnnotationLayerOwnerKind; ownerId: string; name?: string; kind: 'layer' | 'attempt'; activate: boolean; solo: boolean }) {
+  return mapNativeLayerState(await invoke<NativeAnnotationLayerState>('create_annotation_layer', {
+    request: { owner_kind: request.ownerKind, owner_id: request.ownerId, name: request.name ?? '', kind: request.kind, activate: request.activate, solo: request.solo },
+  }));
+}
+
+export async function updateNativeAnnotationLayer(request: { layerId: string; name?: string; locked?: boolean; archived?: boolean }) {
+  return mapNativeLayerState(await invoke<NativeAnnotationLayerState>('update_annotation_layer', {
+    request: { layer_id: request.layerId, name: request.name ?? null, locked: request.locked ?? null, archived: request.archived ?? null },
+  }));
+}
+
+export async function reorderNativeAnnotationLayers(request: { ownerKind: AnnotationLayerOwnerKind; ownerId: string; layerIds: string[] }) {
+  return mapNativeLayerState(await invoke<NativeAnnotationLayerState>('reorder_annotation_layers', {
+    request: { owner_kind: request.ownerKind, owner_id: request.ownerId, layer_ids: request.layerIds },
+  }));
+}
+
+export async function setNativeAnnotationLayerView(request: { ownerKind: AnnotationLayerOwnerKind; ownerId: string; activeLayerId: string; visibleLayerIds: string[] }) {
+  return mapNativeLayerState(await invoke<NativeAnnotationLayerState>('set_annotation_layer_view', {
+    request: { owner_kind: request.ownerKind, owner_id: request.ownerId, active_layer_id: request.activeLayerId, visible_layer_ids: request.visibleLayerIds },
+  }));
+}
+
+export async function moveNativeAnnotationsToLayer(request: { annotationIds: string[]; targetLayerId: string }) {
+  return invoke<{ moved: number; target_layer_id: string }>('move_annotations_to_layer', {
+    request: { annotation_ids: request.annotationIds, target_layer_id: request.targetLayerId },
+  });
+}
+
+export async function previewNativeAnnotationLayerDelete(layerId: string): Promise<AnnotationLayerDeletePreview> {
+  const preview = await invoke<{ layer_id: string; name: string; annotation_count: number; referencing_note_count: number; move_targets: NativeAnnotationLayer[]; deletable: boolean; reason: string | null }>('preview_annotation_layer_delete', { layerId });
+  return {
+    layerId: preview.layer_id,
+    name: preview.name,
+    annotationCount: preview.annotation_count,
+    referencingNoteCount: preview.referencing_note_count,
+    moveTargets: preview.move_targets.map(mapNativeLayer),
+    deletable: preview.deletable,
+    reason: preview.reason,
+  };
+}
+
+export async function deleteNativeAnnotationLayer(request: { layerId: string; mode: 'move' | 'purge'; targetLayerId?: string }) {
+  return mapNativeLayerState(await invoke<NativeAnnotationLayerState>('delete_annotation_layer', {
+    request: { layer_id: request.layerId, mode: request.mode, target_layer_id: request.targetLayerId ?? null },
+  }));
+}
+
+export async function listNativeResourceAnnotations(resourceId: string, layerIds?: string[]) {
   return invoke<Array<{
     id: string;
     resource_id: string;
@@ -382,7 +504,8 @@ export async function listNativeResourceAnnotations(resourceId: string) {
     color: string;
     position_json: string;
     created_at: number;
-  }>>('list_resource_annotations', { resourceId });
+    layer_id?: string;
+  }>>('list_resource_annotations', { resourceId, layerIds: layerIds ?? null });
 }
 
 export async function createNativeResourceAnnotation(request: {
@@ -393,6 +516,7 @@ export async function createNativeResourceAnnotation(request: {
   comment: string;
   color: string;
   positionJson: PositionJson;
+  layerId?: string;
 }) {
   return invoke<string>('create_resource_annotation', { request: {
     resource_id: request.resourceId,
@@ -402,6 +526,7 @@ export async function createNativeResourceAnnotation(request: {
     comment: request.comment,
     color: request.color,
     position_json: JSON.stringify(request.positionJson),
+    layer_id: request.layerId ?? '',
   } });
 }
 
@@ -434,6 +559,7 @@ export async function restoreNativeAnnotation(annotation: PaperDocument['annotat
       color: annotation.color,
       position_json: JSON.stringify(annotation.positionJson),
       created_at: annotation.createdAt ? Date.parse(annotation.createdAt) : Date.now(),
+      layer_id: annotation.layerId ?? '',
     },
   });
 }

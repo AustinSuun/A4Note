@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS annotations (
   position_json TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
+  layer_id TEXT NOT NULL DEFAULT '',
   FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE,
   FOREIGN KEY (file_id) REFERENCES paper_files(id) ON DELETE CASCADE
 );
@@ -103,7 +104,35 @@ CREATE TABLE IF NOT EXISTS resource_annotations (
   color TEXT,
   position_json TEXT NOT NULL,
   created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  layer_id TEXT NOT NULL DEFAULT ''
+);
+
+-- Annotation layers (fb5e3f2f): one owner (paper or generic resource) keeps several independent sets
+-- of marks (first read, revision, attempt N). Every owner always has one non-archived layer; the
+-- per-owner view row remembers the writing layer and the visible layers. Rows are looked up by
+-- (owner_kind, owner_id) — never by a UI component. `layer_id` indexes on the annotation tables are
+-- created by the Rust migration after the column exists on upgraded databases.
+CREATE TABLE IF NOT EXISTS annotation_layers (
+  id TEXT PRIMARY KEY,
+  owner_kind TEXT NOT NULL,
+  owner_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  kind TEXT NOT NULL DEFAULT 'default',
+  locked INTEGER NOT NULL DEFAULT 0,
+  archived_at INTEGER,
+  created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS annotation_layers_by_owner ON annotation_layers (owner_kind, owner_id, sort_order);
+CREATE TABLE IF NOT EXISTS annotation_layer_views (
+  owner_kind TEXT NOT NULL,
+  owner_id TEXT NOT NULL,
+  active_layer_id TEXT NOT NULL,
+  visible_layer_ids_json TEXT NOT NULL DEFAULT '[]',
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (owner_kind, owner_id)
 );
 
 CREATE TABLE IF NOT EXISTS ai_threads (

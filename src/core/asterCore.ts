@@ -185,6 +185,7 @@ class AsterDocumentStore {
       color: annotation.color ?? 'yellow',
       positionJson: annotation.positionJson ?? { x: 18, y: 28, width: 48, height: 6 },
       createdAt: new Date().toISOString(),
+      layerId: annotation.layerId ?? `layer-default-${paperId}`,
     };
     document.annotations.push(nextAnnotation);
     this.persist();

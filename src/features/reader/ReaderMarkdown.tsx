@@ -1,5 +1,6 @@
 import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
 import { useReaderNoteActive, useReaderNoteRequests } from './ReaderNoteActivity';
+import { preferredNoteIdFor, rememberPreferredNoteId } from './noteWorkbench';
 import { OverviewNoteBadge } from './OverviewNoteBadge';
 import { createSummaryNote, editSummary, loadSummary } from '../../platform/library/summaries';
 import { acquireLibraryNoteSession, existingLibraryNoteSession } from '../../platform/library/noteDocuments';
@@ -12,7 +13,6 @@ import type { MarkdownLiveEditorHandle } from './MarkdownLiveEditor';
 import type { NoteDraftPatch, NoteSaveInput } from './types';
 
 const claimedNoteRequests = new WeakSet<NoteDraftPatch>();
-const preferredNoteByPaper = new Map<string, string>();
 
 const MarkdownLiveEditor = lazy(() =>
   import('./MarkdownLiveEditor').then((module) => ({ default: module.MarkdownLiveEditor })),
@@ -66,7 +66,8 @@ export function MarkdownNotePanel({
   const acceptsRequests = useReaderNoteRequests();
   const surfaceActiveRef = useRef(surfaceActive); surfaceActiveRef.current = surfaceActive;
   const [session, setSession] = useState(() => {
-    const preferred = paper.notes.find(note => note.id === preferredNoteByPaper.get(paper.paperId)) ?? paper.notes[0];
+    const remembered = preferredNoteIdFor(paper.paperId);
+    const preferred = paper.notes.find(note => note.id === remembered) ?? paper.notes[0];
     return (preferred && existingLibraryNoteSession(paper.paperId, preferred.id)) || acquireLibraryNoteSession(paper.paperId, preferred, onSave, zh.reader.noteDefaultTitle);
   });
   const { noteId: selectedNoteId, title, content, status: saveState, error: saveError } = useSyncExternalStore(session.subscribe, session.getSnapshot);
@@ -80,7 +81,7 @@ export function MarkdownNotePanel({
   const historyRef = useRef<HTMLDivElement | null>(null);
   const switchingRef = useRef(false);
   session.setWriter(onSave);
-  useEffect(() => { if (surfaceActive) preferredNoteByPaper.set(paper.paperId, selectedNoteId); }, [paper.paperId, selectedNoteId, surfaceActive]);
+  useEffect(() => { if (surfaceActive) rememberPreferredNoteId(paper.paperId, selectedNoteId); }, [paper.paperId, selectedNoteId, surfaceActive]);
   useEffect(() => {
     let active = true;
     setSummaryLoading(true);

@@ -181,7 +181,7 @@ export function ReaderSideDrawer({
           </div>
         </div>
         <div className="reader-workspace-actions">
-          {sidePanelTab === 'notes' && <button type="button" className="reader-writing-expand" disabled={compact} aria-pressed={expanded || compact} aria-label={expanded ? '返回分栏' : '全宽写作'} title={compact ? '窗口空间不足，放大后自动恢复分栏' : '切换全宽写作（Ctrl+Alt+Enter）；Esc返回'} onClick={() => onExpandedChange(!expanded)}>{compact ? '叠放' : expanded ? '分栏' : '全宽'}</button>}
+          
           <button
             className="reader-workspace-toggle active"
             type="button"
