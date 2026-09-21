@@ -203,7 +203,9 @@ export class TaskClient {
     if (!r.ok || !r.body) throw Error('实时连接中断');
     const reader = r.body.getReader(),
       decoder = new TextDecoder();
+    liveEventReaders.add(reader);
     let buf = '';
+    try {
     while (true) {
       const { value, done } = await reader.read();
       if (done) throw Error('实时连接关闭');
@@ -215,5 +217,12 @@ export class TaskClient {
         if (event.includes('data:')) onChange();
       }
     }
+    } finally { liveEventReaders.delete(reader); }
   }
+}
+const liveEventReaders = new Set<ReadableStreamDefaultReader<Uint8Array>>();
+/** Closes live event streams (callers reconnect by themselves); used before asking the service whether other windows still hold it. */
+export function pauseTaskEventStreams() {
+  for (const reader of liveEventReaders) void reader.cancel().catch(() => {});
+  liveEventReaders.clear();
 }

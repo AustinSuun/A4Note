@@ -57,6 +57,7 @@
       "../apps/project-tasks/bootstrap.mjs": "project-tasks/bootstrap.mjs",
       "../apps/project-tasks/gateway.mjs": "project-tasks/gateway.mjs",
       "../apps/project-tasks/gateway-bootstrap.mjs": "project-tasks/gateway-bootstrap.mjs",
+      "../apps/project-tasks/gateway-lifecycle.mjs": "project-tasks/gateway-lifecycle.mjs",
       "../apps/project-tasks/lib/acceptance-policy.mjs": "project-tasks/lib/acceptance-policy.mjs",
       "../apps/project-tasks/lib/acceptance-store.mjs": "project-tasks/lib/acceptance-store.mjs",
       "../apps/project-tasks/lib/data-dir.mjs": "project-tasks/lib/data-dir.mjs",

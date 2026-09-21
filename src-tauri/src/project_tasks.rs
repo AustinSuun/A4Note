@@ -1,8 +1,151 @@
-//! Explicit user-triggered task service launch; never runs during app setup.
-use std::{path::PathBuf, process::{Command, Stdio}, time::{Duration, Instant}};
-use tauri::Manager;
+//! Explicit user-triggered task service launch and exit-time lifecycle; never runs during app setup.
+use std::{path::{Path, PathBuf}, process::{Command, Stdio}, sync::{Mutex, MutexGuard}, time::{Duration, Instant}};
+use tauri::{Emitter, Manager};
 #[path = "project_tasks_path.rs"]
 mod node_path;
+
+/// Event asking the WebView to run the exit confirmation flow for the task service.
+pub const EXIT_EVENT: &str = "a4note://task-service-exit";
+/// If the WebView does not answer within this window, the next close proceeds (crash-safe valve).
+const EXIT_PROMPT_GRACE: Duration = Duration::from_secs(10);
+
+/// What this app process knows about the shared gateway it launched or reused.
+struct Lifecycle {
+    /// `start_project_tasks` succeeded in this process, so exit may stop the service.
+    launched: bool,
+    /// User preference: leave the service running in the background after exit.
+    keep_running: bool,
+    /// Stop already happened or was explicitly waived for this exit.
+    exit_decided: bool,
+    /// WebView confirmation in flight since this instant.
+    exit_prompt: Option<Instant>,
+    /// WebView confirmed exit; closes are no longer intercepted.
+    exit_confirmed: bool,
+}
+static LIFECYCLE: Mutex<Lifecycle> = Mutex::new(Lifecycle {
+    launched: false,
+    keep_running: false,
+    exit_decided: false,
+    exit_prompt: None,
+    exit_confirmed: false,
+});
+fn lifecycle() -> MutexGuard<'static, Lifecycle> {
+    LIFECYCLE.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn dev_root() -> Result<PathBuf, String> {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().map(Path::to_path_buf).ok_or_else(|| "无法确定开发项目目录".to_string())
+}
+
+fn lifecycle_script(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let script = if cfg!(debug_assertions) {
+        dev_root()?.join("apps/project-tasks/gateway-lifecycle.mjs")
+    } else {
+        app.path().resource_dir().map_err(|e| e.to_string())?.join("project-tasks/gateway-lifecycle.mjs")
+    };
+    if !script.is_file() {
+        return Err("当前 A4 Note 缺少任务服务生命周期资源，请更新版本".into());
+    }
+    Ok(script)
+}
+
+/// Runs `gateway-lifecycle.mjs <action> [--k=v...]`; the script only ever acts on the gateway whose
+/// private record, live identity and pid agree, so this wrapper never receives ports or pids to kill.
+fn run_lifecycle(script: &Path, action: &str, extra: &[String], timeout: Duration) -> Result<serde_json::Value, String> {
+    let mut command = Command::new("node");
+    command.arg(node_path::for_node(script)).arg(action).args(extra)
+        .current_dir(script.parent().ok_or("无效的脚本目录")?)
+        .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    #[cfg(windows)] {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    let mut child = command.spawn().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound { "没有找到 Node.js，无法检查或停止任务服务".to_string() } else { format!("无法运行任务服务生命周期脚本：{e}") }
+    })?;
+    let deadline = Instant::now() + timeout;
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(50)),
+            Ok(None) => { let _ = child.kill(); let _ = child.wait(); return Err("任务服务生命周期脚本超时".into()); }
+            Err(error) => { let _ = child.kill(); let _ = child.wait(); return Err(format!("无法读取脚本状态：{error}")); }
+        }
+    }
+    let output = child.wait_with_output().map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().chars().take(1500).collect());
+    }
+    serde_json::from_slice(&output.stdout).map_err(|_| "任务服务生命周期脚本返回了无效数据".to_string())
+}
+
+/// Read-only: identity and activity of the recorded gateway (pid, agents recently online, open streams).
+#[tauri::command]
+pub async fn inspect_project_tasks(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let script = lifecycle_script(&app)?;
+    tauri::async_runtime::spawn_blocking(move || run_lifecycle(&script, "inspect", &[], Duration::from_secs(8)))
+        .await.map_err(|e| format!("检查任务服务未完成：{e}"))?
+}
+
+/// Graceful stop (HTTP/SSE close, SQLite close) with bounded, identity-rechecked termination as fallback.
+#[tauri::command]
+pub async fn stop_project_tasks(app: tauri::AppHandle, reason: Option<String>) -> Result<serde_json::Value, String> {
+    let script = lifecycle_script(&app)?;
+    let reason = reason.unwrap_or_default().chars().filter(|c| !c.is_control()).take(120).collect::<String>();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        run_lifecycle(&script, "stop", &[format!("--reason={reason}")], Duration::from_secs(20))
+    }).await.map_err(|e| format!("停止任务服务未完成：{e}"))??;
+    if result["stopped"].as_bool() == Some(true) {
+        lifecycle().exit_decided = true;
+    }
+    Ok(result)
+}
+
+#[tauri::command]
+pub fn set_project_tasks_exit_policy(keep_running: bool) {
+    lifecycle().keep_running = keep_running;
+}
+
+/// WebView answer to `EXIT_EVENT`: proceed (optionally leaving the stop to `shutdown_on_exit`) or cancel.
+#[tauri::command]
+pub fn resolve_app_exit(app: tauri::AppHandle, proceed: bool, stop_service: bool) {
+    {
+        let mut state = lifecycle();
+        if proceed {
+            state.exit_confirmed = true;
+            if !stop_service { state.exit_decided = true; }
+        } else {
+            state.exit_prompt = None;
+        }
+    }
+    if proceed { app.exit(0); }
+}
+
+/// Intercepts the close of a window only while a service this process launched would be stopped,
+/// so the WebView can disclose the disconnection impact first. Never blocks close for longer than the grace window.
+pub fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
+    let tauri::WindowEvent::CloseRequested { api, .. } = event else { return };
+    let mut state = lifecycle();
+    if !state.launched || state.keep_running || state.exit_decided || state.exit_confirmed { return; }
+    if let Some(started) = state.exit_prompt {
+        if started.elapsed() <= EXIT_PROMPT_GRACE { api.prevent_close(); }
+        return;
+    }
+    state.exit_prompt = Some(Instant::now());
+    api.prevent_close();
+    drop(state);
+    let _ = window.emit(EXIT_EVENT, serde_json::json!({ "graceMs": EXIT_PROMPT_GRACE.as_millis() as u64 }));
+}
+
+/// Last-resort stop on `RunEvent::Exit` when the WebView flow did not already decide (hung UI, forced close).
+pub fn shutdown_on_exit(app: &tauri::AppHandle) {
+    let pending = { let state = lifecycle(); state.launched && !state.keep_running && !state.exit_decided };
+    if !pending { return; }
+    if let Ok(script) = lifecycle_script(app) {
+        let _ = run_lifecycle(&script, "stop", &["--reason=app-exit".to_string()], Duration::from_secs(12));
+    }
+    lifecycle().exit_decided = true;
+}
 
 #[tauri::command]
 pub async fn start_project_tasks(
@@ -73,6 +216,48 @@ pub async fn start_project_tasks(
             return Err("本机连接信息无效".into());
         }
         // No logging: this result contains a local owner credential.
+        lifecycle().launched = true;
         Ok(result)
     }).await.map_err(|e| format!("启动任务未完成：{e}"))?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Real Node run of the packaged lifecycle script against an empty private directory:
+    // it must report "none" and must not create records or touch any process.
+    #[cfg(windows)]
+    #[test]
+    fn lifecycle_script_reports_none_for_empty_state_dir() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let script = dev_root().unwrap().join("apps/project-tasks/gateway-lifecycle.mjs");
+        let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let state_dir = std::env::temp_dir().join(format!("a4-lifecycle-rs-{}-{nonce}", std::process::id()));
+        std::fs::create_dir_all(&state_dir).unwrap();
+        let arg = format!("--state-dir={}", state_dir.display());
+        let inspected = run_lifecycle(&script, "inspect", &[arg.clone()], Duration::from_secs(20)).unwrap();
+        assert_eq!(inspected["state"], "none");
+        let stopped = run_lifecycle(&script, "stop", &[arg], Duration::from_secs(20)).unwrap();
+        assert_eq!(stopped["stopped"], false);
+        assert_eq!(stopped["skipped"], true);
+        assert!(std::fs::read_dir(&state_dir).unwrap().next().is_none(), "no records may be created");
+        std::fs::remove_dir_all(state_dir).unwrap();
+    }
+
+    #[test]
+    fn exit_policy_and_decisions_gate_the_fallback_stop() {
+        let mut state = lifecycle();
+        *state = Lifecycle { launched: false, keep_running: false, exit_decided: false, exit_prompt: None, exit_confirmed: false };
+        let pending = |s: &Lifecycle| s.launched && !s.keep_running && !s.exit_decided;
+        assert!(!pending(&state), "nothing launched: never stop");
+        state.launched = true;
+        assert!(pending(&state));
+        state.keep_running = true;
+        assert!(!pending(&state), "user keeps the service");
+        state.keep_running = false;
+        state.exit_decided = true;
+        assert!(!pending(&state), "already stopped or waived");
+        *state = Lifecycle { launched: false, keep_running: false, exit_decided: false, exit_prompt: None, exit_confirmed: false };
+    }
 }

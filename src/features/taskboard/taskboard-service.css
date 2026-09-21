@@ -1,0 +1,18 @@
+.taskboard .tb-service-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--tb-border, #dfe6e2);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tb-accent, #32735a) 4%, var(--tb-card, #fff));
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tb-muted, #64756b);
+}
+.taskboard .tb-service-bar .tb-service-summary { color: var(--tb-text, #24302b); }
+.taskboard .tb-service-bar .tb-service-policy { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.taskboard .tb-service-bar button { min-height: 32px; padding: 4px 12px; font-size: 13px; }
+.taskboard .tb-service-bar .tb-service-notice { flex-basis: 100%; }

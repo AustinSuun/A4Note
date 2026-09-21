@@ -5,6 +5,7 @@ import {
   normalizeProjectPath,
   type ManagedProject,
 } from './projectTasksPreference';
+import { installTaskServiceExitHandler } from './projectTasksLifecycle';
 
 export interface LocalTaskConnection {
   url: string;
@@ -78,6 +79,8 @@ export async function launchLocalTasks(
     }
 
     const start = async (pathRoot: string, sPort: number) => {
+      // Exit confirmation must be listening before the native side can start intercepting closes.
+      await installTaskServiceExitHandler();
       const result = await invoke<LocalTaskConnection>('start_project_tasks', {
         projectRoot: pathRoot,
         port: sPort,
