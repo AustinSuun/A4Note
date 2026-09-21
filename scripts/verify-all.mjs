@@ -44,9 +44,13 @@ const steps = [
   ['npm', ['run', 'test:reader-helpers']],
   ['npm', ['run', 'test:pdf-rotated-text']],
   ['npm', ['run', 'test:pdf-crosspage-selection']],
+  ['npm', ['run', 'test:pdf-eraser-precision']],
   ['npm', ['run', 'test:pdf-text-annotation']],
   ['npm', ['run', 'test:ai-toolbar']],
   ['npm', ['run', 'test:ui-state']],
+  ['npm', ['run', 'test:settings-ui']],
+  ['node', ['scripts/verify-brand-update.mjs']],
+
   ['npm', ['run', 'test:architecture']],
   ['npm', ['run', 'test:scene-plugins']],
   ['npm', ['run', 'test:plugin-bindings']],

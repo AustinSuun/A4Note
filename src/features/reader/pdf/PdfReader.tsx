@@ -787,10 +787,12 @@ export default function PdfReader({
       .map((rect) => normalizeClientRect(rect, pageElement))
       .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
     const textOrientation = page ? dominantTextOrientation(page.textItems, textItemSelections) : 0;
-    // Pages with /Rotate lay their runs out with writing-mode/bidi tricks whose line boxes are
-    // fatter than the glyphs, so their geometry comes from the run boxes sliced by offsets (the
-    // same source the drag path uses); horizontal pages keep the browser's live rects.
-    const rects = textOrientation !== 0 && preciseRects.length ? preciseRects : clientRects.length ? liveRects : preciseRects;
+    // The browser's live rects follow the substitute font of the transparent text layer:
+    // full lines overflow past the painted glyphs, ends land unevenly and line boxes vary
+    // in height, which made multi-line highlights/underlines ragged and uneven. The run
+    // boxes sliced by character offsets follow the PDF glyphs on every orientation, trim
+    // whitespace at both ends and keep one height per font size, so bands and rules stay even.
+    const rects = preciseRects.length ? preciseRects : liveRects;
     if (!rects.length) return null;
     // Merge along the run direction and keep it on each segment so highlight/underline marks
     // trim and underline along the glyph axis.
@@ -874,11 +876,20 @@ export default function PdfReader({
   function eraseInkAtPointer(pageNumber: number, event: MouseEvent<HTMLDivElement>) {
     if (activeTool !== 'eraser') return;
     const rect = pdfCoordinateLayer(event.currentTarget).getBoundingClientRect();
-    const point = pointFromEvent(event);
-    if (!point) return;
     if (rect.width <= 0 || rect.height <= 0) return;
+    // pointFromEvent clamps into 0..100, which would keep erasing along the page edge once the
+    // cursor leaves the page. The eraser needs the raw position so it can simply stop instead.
+    event.preventDefault();
+    event.stopPropagation();
+    const point = {
+      x: ((event.clientX - rect.left) / rect.width) * 100,
+      y: ((event.clientY - rect.top) / rect.height) * 100,
+    };
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
     const radiusX = Math.max((toolSettings.eraserSize / rect.width) * 50, 0.05);
     const radiusY = Math.max((toolSettings.eraserSize / rect.height) * 50, 0.05);
+    // Outside the page (plus the eraser radius) nothing can be touched, so do not erase at all.
+    if (point.x < -radiusX || point.x > 100 + radiusX || point.y < -radiusY || point.y > 100 + radiusY) return;
 
     for (const annotation of currentFileAnnotations) {
       if (annotation.page !== pageNumber || annotation.type !== 'ink') continue;
@@ -912,8 +923,10 @@ export default function PdfReader({
     }
     setEraserCursor({
       page: pageNumber,
-      x: clamp(x, 0, rect.width),
-      y: clamp(y, 0, rect.height),
+      // Do not clamp: a clamped ring slides along the page border while the real cursor is
+      // elsewhere, which reads as the eraser drifting away from the mouse.
+      x,
+      y,
     });
   }
 

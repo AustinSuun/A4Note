@@ -8,6 +8,7 @@ const resolution = registerHooks({ resolve(specifier, context, nextResolve) {
 
 const selection = await import('../src/features/reader/pdf/pdfSelection.ts');
 const interaction = await import('../src/features/reader/pdf/pdfInteraction.ts');
+const helpers = await import('../src/features/reader/pdf/pdfAnnotationHelpers.ts');
 resolution.deregister();
 
 const mergedRects = selection.mergeRectsIntoLineSegments([
@@ -55,6 +56,21 @@ assert.deepEqual(
   ),
   [{ x: 20, y: 30, width: 12, height: 2.5 }],
 );
+
+// Multi-line underline rules share one thickness derived from the median line box, so a
+// taller stray line can no longer produce a fatter rule (cross-line feedback 2026-09-21).
+const unevenSegments = [
+  { x: 10, y: 30, width: 55, height: 1.9 },
+  { x: 10, y: 32.4, width: 62, height: 2.3 },
+  { x: 10, y: 34.9, width: 12, height: 1.9 },
+];
+const sharedThickness = helpers.underlineThicknessForSegments(unevenSegments);
+assert.equal(sharedThickness, Math.min(Math.max(1.9 * 0.08, 0.05), 0.42));
+const sharedHeights = unevenSegments.map((segment) => helpers.underlinePositionStyle(segment, sharedThickness).height);
+assert.ok(sharedHeights.every((height) => height === sharedHeights[0]), 'one underline thickness per annotation');
+const defaultHeights = unevenSegments.map((segment) => helpers.underlinePositionStyle(segment).height);
+assert.ok(new Set(defaultHeights).size > 1, 'without an override the thickness still follows each segment');
+assert.equal(helpers.underlineThicknessForSegments([]), undefined);
 
 let prevented = false;
 let stopped = false;

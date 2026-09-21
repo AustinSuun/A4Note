@@ -1,70 +1,269 @@
-﻿import { UpdateSettings } from './UpdateSettings';
-import './settings-typography.css';
-import { CaptureSettings } from './CaptureSettings';
-import { useState } from 'react';
-import { CircleHelp, LibraryBig, Palette, Plug, RefreshCw, Settings, SlidersHorizontal } from 'lucide-react';
-import { aiProviderStatusLabel } from '../../core/aiProviders';
-import type { AiProviderContribution, ProviderContribution, ReaderLayout, SceneContribution, SettingContribution } from '../../core/types';
-import type { PluginMarketRecord } from '../../core/pluginMarket';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUpCircle, CircleHelp, LibraryBig, Palette, Plug, RefreshCw, Search, SlidersHorizontal, X } from 'lucide-react';
+import type { AiProviderContribution, ProviderContribution, SceneContribution, SettingContribution } from '../../core/types';
 import type { AppDiagnostics, AsterPaths, BackupResult } from '../../platform/nativeApi';
-import { Button, Panel } from '../../shared/ui';
 import { zh } from '../../ui/zh';
+import { SECTION_META, searchSettings, type SettingsSearchHit } from './catalog';
+import { EmptyState, SectionLayout } from './primitives';
+import { AboutSection } from './sections/AboutSection';
+import { AppearanceSection } from './sections/AppearanceSection';
+import { GeneralSection } from './sections/GeneralSection';
+import { LibrarySection } from './sections/LibrarySection';
+import { PluginsSection } from './sections/PluginsSection';
+import { SyncSection } from './sections/SyncSection';
+import { UpdatesSection } from './sections/UpdatesSection';
+import { normalizeSection, SETTINGS_SECTIONS } from './types';
+import type { AppSettings, LocalPluginSummary, PluginMarketSettingsState, PluginSettingValue, PluginSettingValues, Section, SettingsExtensionCounts, SettingsPathKind, SettingsPluginSummary, SyncSettingsState } from './types';
+import './settings.css';
 
-export type InterfaceDensity = 'compact' | 'comfortable';
-export type InterfaceFont = 'sourceHanSans' | 'system';
-export type InterfaceFontSize = number;
-export type AppTheme = 'a4note' | 'paper' | 'midnight';
-export type DocumentFont = 'sourceHanSans' | 'system' | 'serif';
-export type CodeFont = 'firaCode' | 'systemMono';
-export type DocumentFontSize = number;
-export type DocumentLineHeight = 'compact' | 'relaxed';
-export type DocumentLayout = 'fluid' | 'narrow';
-export type MetadataSourcePreference = 'crossrefFirst' | 'arxivFirst' | 'localOnly';
-export type PluginSettingValue = string | number | boolean;
-export type PluginSettingValues = Record<string, PluginSettingValue>;
-export type SettingsPathKind = 'root' | 'database' | 'files' | 'backups';
-export type AppSettings = { density: InterfaceDensity; theme: AppTheme; fontFamily: InterfaceFont; interfaceFontSize: InterfaceFontSize; documentFontFamily: DocumentFont; codeFontFamily: CodeFont; documentLineHeight: DocumentLineHeight; documentLayout: DocumentLayout; defaultReaderLayout: ReaderLayout; metadataSourcePreference: MetadataSourcePreference; onlineMetadataEnabled: boolean; aiProviderId: string };
-export type SettingsExtensionCounts = { commands: number; settings: number; views: number; metadata: number; translation: number; ai: number };
-export type SettingsPluginSummary = { id: string; name: string; version?: string; trust?: 'builtin' | 'trusted' | 'untrusted' | 'blocked'; enabled: boolean };
-export type LocalPluginSummary = SettingsPluginSummary & { source: 'local'; packagePath: string; status: 'verified' | 'blocked' | 'pending-runtime'; payload?: string; permissions?: import('../../core/types').PluginPermission[]; distribution?: 'local' | 'market'; integritySha256?: string; signature?: string; signer?: string };
-export type SyncSettingsState = { supported: boolean; authenticated: boolean; username?: string; pendingOperations: number; lastSuccessAt?: string; lastError?: string; busy?: boolean };
-export type PluginMarketSettingsState = { url: string; fetchedAt?: string; generatedAt?: string; records: PluginMarketRecord[]; loading?: boolean; error?: string };
-type Section = 'general' | 'appearance' | 'library' | 'plugins' | 'sync' | 'updates' | 'about';
-const sections: Array<{ id: Section; label: string; icon: typeof SlidersHorizontal }> = [
-  { id: 'general', label: '通用', icon: SlidersHorizontal },
-  { id: 'appearance', label: '外观与主题', icon: Palette },
-  { id: 'library', label: '资料库', icon: LibraryBig },
-  { id: 'plugins', label: '插件管理', icon: Plug },
-  { id: 'sync', label: '同步', icon: RefreshCw },
-  { id: 'updates', label: '软件更新', icon: RefreshCw },
-  { id: 'about', label: '关于', icon: CircleHelp },
-];
-export const defaultSettings: AppSettings = { density: 'compact', theme: 'a4note', fontFamily: 'sourceHanSans', interfaceFontSize: 18, documentFontFamily: 'sourceHanSans', codeFontFamily: 'firaCode', documentLineHeight: 'relaxed', documentLayout: 'narrow', defaultReaderLayout: 'focus', metadataSourcePreference: 'crossrefFirst', onlineMetadataEnabled: true, aiProviderId: 'local-context-assistant' };
-const layouts: Array<{ id: ReaderLayout; label: string }> = [{ id: 'focus', label: zh.reader.focusLayout }, { id: 'note', label: zh.reader.noteLayout }, { id: 'ai', label: zh.reader.aiLayout }];
+export { defaultSettings } from './types';
+export type { AppSettings, InterfaceDensity, InterfaceFont, InterfaceFontSize, AppTheme, DocumentFont, CodeFont, DocumentFontSize, DocumentLineHeight, DocumentLayout, MetadataSourcePreference, PluginSettingValue, PluginSettingValues, SettingsPathKind, SettingsExtensionCounts, SettingsPluginSummary, LocalPluginSummary, SyncSettingsState, PluginMarketSettingsState, Section } from './types';
 
-export function SettingsScene({ settings, pluginSettings: registeredPluginSettings, pluginSettingValues, paths, diagnostics, aiProviders, providers, plugins, extensionCounts, scenes, enabledSceneIds, initialSection = 'general', onChange, onToggleScene, onTogglePlugin, onPluginSettingChange, onRefreshPaths, onRevealPath, onCreateBackup, onRestoreBackup, sync, onSync, onSyncLogin, onSyncLogout, market, localPlugins, onImportPlugin, onMarketUrlChange, onRefreshMarket }: { settings: AppSettings; pluginSettings: SettingContribution[]; pluginSettingValues: PluginSettingValues; paths: AsterPaths | null; diagnostics: AppDiagnostics | null; aiProviders: AiProviderContribution[]; providers: ProviderContribution[]; plugins: SettingsPluginSummary[]; extensionCounts: SettingsExtensionCounts; scenes: SceneContribution[]; enabledSceneIds: string[]; initialSection?: Section; onChange: (settings: AppSettings) => void; onToggleScene: (sceneId: string, enabled: boolean) => void; onTogglePlugin: (pluginId: string, enabled: boolean) => void; onPluginSettingChange: (settingId: string, value: PluginSettingValue) => void; onRefreshPaths: () => void | Promise<void>; onRevealPath: (kind: SettingsPathKind) => void | Promise<void>; onCreateBackup: () => Promise<BackupResult>; onRestoreBackup: () => Promise<void>; sync: SyncSettingsState; onSync: () => void | Promise<void>; onSyncLogin: (username: string, password: string) => void | Promise<void>; onSyncLogout: () => void | Promise<void>; market: PluginMarketSettingsState; localPlugins: LocalPluginSummary[]; onImportPlugin: () => void | Promise<void>; onMarketUrlChange: (url: string) => void; onRefreshMarket: () => void | Promise<void> }) {
-  const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => onChange({ ...settings, [key]: value });
-  const [section, setSection] = useState<Section>(initialSection); const [query, setQuery] = useState(''); const [selectedPluginId, setSelectedPluginId] = useState<string | null>(null); const [copyStatus, setCopyStatus] = useState(''); const [backupStatus, setBackupStatus] = useState(''); const [busy, setBusy] = useState(false); const [restoreBusy, setRestoreBusy] = useState(false); const [username, setUsername] = useState(''); const [password, setPassword] = useState('');
-  const matches = (value: string) => !query.trim() || value.toLowerCase().includes(query.trim().toLowerCase()); const filteredPlugins = plugins.filter((p) => matches(`${p.name} ${p.id}`)); const filteredMarket = market.records.filter((p) => matches(`${p.name} ${p.id} ${p.description}`)); const filteredLocal = localPlugins.filter((p) => matches(`${p.name} ${p.id}`)); const pluginSettings = selectedPluginId ? registeredPluginSettings.filter((setting) => setting.pluginId === selectedPluginId) : [];
-  const copyPath = async (path: string) => { try { await navigator.clipboard.writeText(path); setCopyStatus(zh.settings.pathCopied); } catch { setCopyStatus(zh.settings.pathCopyFailed); } }; const backup = async () => { setBusy(true); try { const result = await onCreateBackup(); setBackupStatus(`${zh.settings.backupCreated}: ${result.backup_path}`); } catch { setBackupStatus(zh.settings.backupFailed); } finally { setBusy(false); } }; const restore = async () => { setRestoreBusy(true); try { await onRestoreBackup(); } catch { setBackupStatus(zh.settings.restoreFailed); } finally { setRestoreBusy(false); } }; const copyDiagnostics = async () => { try { await navigator.clipboard.writeText(`A4 Note\n${diagnostics?.version ?? '0.1.0'}`); setCopyStatus(zh.settings.diagnosticsCopied); } catch { setCopyStatus(zh.settings.pathCopyFailed); } };
-  return <section className="scene active"><header className="topbar compact"><div><h1>{zh.settings.title}</h1><p className="scene-description">{zh.settings.subtitle}</p></div></header><div className="settings-layout"><nav className="settings-section-nav" aria-label="设置分类">{sections.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" className={section === item.id ? 'active' : ''} onClick={() => setSection(item.id)}><Icon size={16} aria-hidden="true" /><span>{item.label}</span></button>; })}</nav><div className="settings-category-content"><div className="settings-category-heading"><h2>{sections.find((item) => item.id === section)?.label}</h2></div><div className="settings-grid">
-    {section === 'library' && <CaptureSettings />}
-    {section === 'general' && <><Panel title={zh.settings.language}><p>{zh.settings.chinese}</p></Panel><Panel title={zh.settings.density}><Button active={settings.density === 'compact'} onClick={() => update('density', 'compact')}>{zh.settings.compact}</Button> <Button active={settings.density === 'comfortable'} onClick={() => update('density', 'comfortable')}>{zh.settings.comfortable}</Button></Panel><Panel title={zh.settings.defaultReaderLayout}><select value={settings.defaultReaderLayout} onChange={(e) => update('defaultReaderLayout', e.target.value as ReaderLayout)}>{layouts.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Panel><Panel title={zh.settings.metadataSources}><select value={settings.metadataSourcePreference} onChange={(e) => update('metadataSourcePreference', e.target.value as MetadataSourcePreference)}><option value="crossrefFirst">{zh.settings.crossrefFirst}</option><option value="arxivFirst">{zh.settings.arxivFirst}</option><option value="localOnly">{zh.settings.localOnly}</option></select><label className="settings-check"><input type="checkbox" checked={settings.onlineMetadataEnabled} onChange={(e) => update('onlineMetadataEnabled', e.target.checked)} />{zh.settings.enableOnlineMetadata}</label></Panel><div className="soft-panel"><div className="panel-title">AI Provider</div><select value={settings.aiProviderId} onChange={(e) => update('aiProviderId', e.target.value)}>{aiProviders.map((provider) => <option key={provider.id} value={provider.id}>{provider.name} - {aiProviderStatusLabel(provider.status)}</option>)}</select></div></>}
-    {section === 'appearance' && <><Panel title="主题预设"><select value={settings.theme} onChange={(e) => update('theme', e.target.value as AppTheme)}><option value="a4note">A4 Note（默认）</option><option value="paper">纸张浅色</option><option value="midnight">深夜专注</option></select><p className="settings-muted">主题会同时调整工作台、Markdown 文档和阅读界面的颜色。</p></Panel><Panel title="界面字体"><select value={settings.fontFamily} onChange={(e) => update('fontFamily', e.target.value as InterfaceFont)}><option value="sourceHanSans">{zh.settings.sourceHanSans}</option><option value="system">{zh.settings.systemFont}</option></select></Panel><Panel title="界面字号"><div className="settings-range-input"><input type="range" min="10" max="32" step="1" value={settings.interfaceFontSize} aria-label="界面字号" onChange={(e) => update('interfaceFontSize', clampSettingNumber(e.target.value, 10, 32, 18))} /><output>{settings.interfaceFontSize}px</output></div><p className="settings-muted">只调整工具栏、侧边栏、设置标题和其他界面文字，不改变按钮尺寸、间距或页面布局。默认 18px。</p></Panel><Panel title="文档正文字体"><select value={settings.documentFontFamily} onChange={(e) => update('documentFontFamily', e.target.value as DocumentFont)}><option value="sourceHanSans">思源黑体</option><option value="system">系统无衬线字体</option><option value="serif">系统衬线字体</option></select></Panel><Panel title="代码字体"><select value={settings.codeFontFamily} onChange={(e) => update('codeFontFamily', e.target.value as CodeFont)}><option value="firaCode">FiraCode Nerd Font Mono</option><option value="systemMono">系统等宽字体</option></select></Panel><Panel title="文档行距"><Button active={settings.documentLineHeight === 'compact'} onClick={() => update('documentLineHeight', 'compact')}>紧凑</Button> <Button active={settings.documentLineHeight === 'relaxed'} onClick={() => update('documentLineHeight', 'relaxed')}>舒适</Button></Panel></>}
-    {section === 'library' && <><div className="soft-panel"><div className="panel-title">{zh.settings.library}</div><p>{zh.settings.localLibrary}</p><PathRow label={zh.settings.libraryRoot} value={paths?.root ?? zh.settings.pathUnavailable} onCopy={copyPath} /><PathRow label={zh.settings.databasePath} value={paths?.database ?? zh.settings.pathUnavailable} onCopy={copyPath} /><PathRow label={zh.settings.filesPath} value={paths?.files_root ?? zh.settings.pathUnavailable} onCopy={copyPath} /><div className="settings-control-row"><button type="button" onClick={() => void onRevealPath('root')}>{zh.settings.openLibraryRoot}</button><button type="button" onClick={() => void onRefreshPaths()}>{zh.settings.refreshPaths}</button>{copyStatus}</div><Button variant="primary" pill onClick={() => void backup()} disabled={busy}>{busy ? zh.settings.backupRunning : zh.settings.createBackup}</Button> <Button pill onClick={() => void restore()} disabled={restoreBusy}>{zh.settings.restoreBackup}</Button>{backupStatus && <span>{backupStatus}</span>}</div><div className="soft-panel"><div className="panel-title">场景</div>{scenes.map((scene) => <label key={scene.id} className="settings-check"><input type="checkbox" checked={enabledSceneIds.includes(scene.id)} onChange={(e) => onToggleScene(scene.id, e.target.checked)} />{scene.label}</label>)}</div></>}
-    {section === 'plugins' && <><div className="plugin-management-toolbar"><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索插件名称或 ID" aria-label="搜索插件" /></div><div className="soft-panel"><div className="panel-title">{zh.settings.plugins}</div><p>{zh.settings.extensionSummary}</p><div className="extension-status-grid"><ExtensionStatus label={zh.settings.extensionCommands} value={extensionCounts.commands} status={zh.settings.extensionEnabled} /><ExtensionStatus label={zh.settings.extensionSettings} value={extensionCounts.settings} status={zh.settings.extensionEnabled} /><ExtensionStatus label={zh.settings.extensionViews} value={extensionCounts.views} status={zh.settings.extensionEnabled} /></div><div className="plugin-runtime-list">{filteredPlugins.map((plugin) => <div key={plugin.id} className={selectedPluginId === plugin.id ? 'plugin-runtime-item selected' : 'plugin-runtime-item'}><span><strong>{plugin.name}</strong><small>{plugin.id} · {plugin.version ?? '0.0.0'} · {plugin.trust === 'builtin' ? '内置插件' : plugin.trust === 'trusted' ? '已验证插件' : '不可用'}</small></span><div className="plugin-runtime-actions"><button type="button" className="plugin-runtime-settings" title={`打开 ${plugin.name} 设置`} aria-label={`打开 ${plugin.name} 设置`} onClick={() => setSelectedPluginId(plugin.id)}><Settings size={15} aria-hidden="true" /></button><input type="checkbox" checked={plugin.enabled} onChange={(event) => onTogglePlugin(plugin.id, event.target.checked)} aria-label={`启用 ${plugin.name}`} /></div></div>)}</div><PluginSettingsList settings={pluginSettings} values={pluginSettingValues} onChange={onPluginSettingChange} /></div><div className="soft-panel"><div className="panel-title">插件市场</div><div className="settings-market-source"><input value={market.url} onChange={(e) => onMarketUrlChange(e.target.value)} placeholder="市场索引 URL" /><Button pill onClick={() => void onRefreshMarket()} disabled={market.loading}>刷新索引</Button></div><div className="plugin-market-list">{filteredMarket.map((p) => <article key={p.id} className="plugin-market-item"><strong>{p.name}</strong><p>{p.description}</p></article>)}</div><Button variant="primary" pill onClick={() => void onImportPlugin()}>导入已签名插件包</Button><div className="plugin-local-list">{filteredLocal.map((p) => <div className="plugin-local-item" key={p.id}><strong>{p.name}</strong><small>{p.id} · v{p.version ?? '0.0.0'} · {p.status === 'verified' ? '已验证' : p.status === 'blocked' ? '已阻止' : '待接入'} · {p.enabled ? '已启用' : '已停用'}</small></div>)}</div></div></>}
-    {section === 'sync' && <div className="soft-panel"><div className="panel-title">多端同步</div><p>{sync.supported ? '同步笔记内容；PDF 与本地文件保持设备隔离。' : '当前环境不支持桌面端同步。'}</p>{!sync.authenticated ? <form className="settings-sync-login" onSubmit={(e) => { e.preventDefault(); void onSyncLogin(username, password); }}><input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="账号" /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="密码" /><Button variant="primary" type="submit">登录同步服务</Button></form> : <Button variant="primary" onClick={() => void onSync()}>立即同步</Button>}</div>}
-    {section === 'updates' && <UpdateSettings currentVersion={diagnostics?.version} />}
-    {section === 'about' && <Panel title="更新"><p>桌面软件与浏览器插件的更新说明集中在软件更新页面。</p><Button onClick={() => setSection('updates')}>打开软件更新</Button></Panel>}
-    {section === 'about' && <div className="soft-panel"><div className="panel-title">{zh.settings.about}</div><div className="diagnostics-grid"><DiagnosticItem label={zh.settings.productName} value={diagnostics?.product_name ?? 'A4 Note'} /><DiagnosticItem label={zh.settings.version} value={diagnostics?.version ?? '0.1.0'} /><DiagnosticItem label={zh.settings.identifier} value={diagnostics?.identifier ?? 'app.aster.research'} /></div><button type="button" onClick={() => void copyDiagnostics()}>{zh.settings.copyDiagnostics}</button>{copyStatus}</div>}
-  </div></div></div></section>;
+const SECTION_ICONS: Record<Section, typeof SlidersHorizontal> = {
+  general: SlidersHorizontal,
+  appearance: Palette,
+  library: LibraryBig,
+  plugins: Plug,
+  sync: RefreshCw,
+  updates: ArrowUpCircle,
+  about: CircleHelp,
+};
+
+/* A search hit must land on the real control, not on a copy of its label: walk into
+   the anchor and focus the first focusable descendant, making the anchor focusable
+   itself when it holds no control at all. */
+export function focusSettingsAnchor(id: string): boolean {
+  const anchor = document.getElementById(id);
+  if (!anchor) return false;
+  const nested = anchor.querySelector<HTMLElement>('input, select, textarea, button, [tabindex]:not([tabindex="-1"])');
+  const target = anchor.matches('input, select, textarea, button') ? anchor : nested ?? anchor;
+  if (!target.hasAttribute('tabindex') && !/^(INPUT|SELECT|TEXTAREA|BUTTON|A)$/.test(target.tagName)) target.setAttribute('tabindex', '-1');
+  target.scrollIntoView({ block: 'center' });
+  target.focus({ preventScroll: true });
+  return true;
 }
-function DiagnosticItem({ label, value }: { label: string; value: string }) { return <div><span>{label}</span><code title={value}>{value}</code></div>; }
-function ExtensionStatus({ label, value, status }: { label: string; value: string | number; status: string }) { return <div className="extension-status-item"><span>{label}</span><strong>{value}</strong><em>{status}</em></div>; }
-function PathRow({ label, value, onCopy }: { label: string; value: string; onCopy: (value: string) => void | Promise<void> }) { return <div className="settings-path-row"><span>{label}</span><code title={value}>{value}</code><button type="button" onClick={() => void onCopy(value)}>{zh.settings.copyPath}</button></div>; }
-function PluginSettingsList({ settings, values, onChange }: { settings: SettingContribution[]; values: PluginSettingValues; onChange: (id: string, value: PluginSettingValue) => void }) { return <div className="plugin-settings-list"><div className="plugin-settings-heading"><div className="panel-title">插件设置</div></div>{settings.length === 0 && <p className="settings-muted">点击插件右侧齿轮查看对应设置。</p>}{settings.map((setting) => { const value = values[setting.id] ?? setting.defaultValue; return <label key={setting.id} className="plugin-setting-row"><span><strong>{setting.title}</strong>{setting.description && <small>{setting.description}</small>}</span>{setting.options?.length ? <select value={String(value)} onChange={(e) => onChange(setting.id, e.target.value)}>{setting.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : typeof value === 'boolean' ? <input type="checkbox" checked={value} onChange={(e) => onChange(setting.id, e.target.checked)} /> : <input type={typeof value === 'number' ? 'number' : 'text'} min={setting.id === 'markdown.documentFontSize' ? 10 : undefined} max={setting.id === 'markdown.documentFontSize' ? 48 : undefined} step={setting.id === 'markdown.documentFontSize' ? 1 : undefined} value={String(value)} onChange={(e) => onChange(setting.id, typeof value === 'number' ? clampSettingNumber(e.target.value, setting.id === 'markdown.documentFontSize' ? 10 : -100000, setting.id === 'markdown.documentFontSize' ? 48 : 100000, typeof value === 'number' ? value : 0) : e.target.value)} />}</label>; })}</div>; }
 
-function clampSettingNumber(value: string, min: number, max: number, fallback: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+export type SettingsSceneProps = {
+  settings: AppSettings;
+  pluginSettings: SettingContribution[];
+  pluginSettingValues: PluginSettingValues;
+  paths: AsterPaths | null;
+  diagnostics: AppDiagnostics | null;
+  aiProviders: AiProviderContribution[];
+  providers: ProviderContribution[];
+  plugins: SettingsPluginSummary[];
+  extensionCounts: SettingsExtensionCounts;
+  scenes: SceneContribution[];
+  enabledSceneIds: string[];
+  initialSection?: Section;
+  onChange: (settings: AppSettings) => void;
+  onToggleScene: (sceneId: string, enabled: boolean) => void;
+  onTogglePlugin: (pluginId: string, enabled: boolean) => void;
+  onPluginSettingChange: (settingId: string, value: PluginSettingValue) => void;
+  onRefreshPaths: () => void | Promise<void>;
+  onRevealPath: (kind: SettingsPathKind) => void | Promise<void>;
+  onCreateBackup: () => Promise<BackupResult>;
+  onRestoreBackup: () => Promise<void>;
+  sync: SyncSettingsState;
+  onSync: () => void | Promise<void>;
+  onSyncLogin: (username: string, password: string) => void | Promise<void>;
+  onSyncLogout: () => void | Promise<void>;
+  market: PluginMarketSettingsState;
+  localPlugins: LocalPluginSummary[];
+  onImportPlugin: () => void | Promise<void>;
+  onMarketUrlChange: (url: string) => void;
+  onRefreshMarket: () => void | Promise<void>;
+};
+
+export function SettingsScene(props: SettingsSceneProps) {
+  const {
+    settings, pluginSettings, pluginSettingValues, paths, diagnostics, aiProviders, providers, plugins, extensionCounts,
+    scenes, enabledSceneIds, initialSection, onChange, onToggleScene, onTogglePlugin, onPluginSettingChange,
+    onRefreshPaths, onRevealPath, onCreateBackup, onRestoreBackup, sync, onSync, onSyncLogin, onSyncLogout,
+    market, localPlugins, onImportPlugin, onMarketUrlChange, onRefreshMarket,
+  } = props;
+  const [section, setSection] = useState<Section>(() => normalizeSection(initialSection));
+  const [query, setQuery] = useState('');
+  const [activeResult, setActiveResult] = useState(0);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const navRefs = useRef<Partial<Record<Section, HTMLButtonElement | null>>>({});
+  /* Where focus goes after the next section render: the heading for navigation,
+     the matched control for a search hit. */
+  const pendingFocus = useRef<string | null>('__heading__');
+
+  /* `initialSection` is a controlled request, not just an initial value: the host can
+     change it while Settings stays mounted, and an unknown value must not strand the
+     user on an empty pane. */
+  useEffect(() => {
+    setSection(normalizeSection(initialSection));
+    pendingFocus.current = '__heading__';
+  }, [initialSection]);
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+    pendingFocus.current = null;
+    if (target === '__heading__') headingRef.current?.focus({ preventScroll: true });
+    else if (target) focusSettingsAnchor(target);
+  }, [section]);
+
+  const hits = useMemo(() => searchSettings(query), [query]);
+
+  /* User-initiated navigation keeps focus on the nav item (so arrow keys keep
+     working); external jumps - `initialSection` from the host or a search hit -
+     move focus into the content instead. */
+  const activate = (next: Section) => {
+    if (next === section) return;
+    pendingFocus.current = null;
+    setSection(next);
+  };
+
+  const openHit = (hit: SettingsSearchHit) => {
+    setQuery('');
+    setActiveResult(0);
+    if (hit.section === section) {
+      focusSettingsAnchor(hit.id);
+      return;
+    }
+    pendingFocus.current = hit.id;
+    setSection(hit.section);
+  };
+
+  const onNavKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = SETTINGS_SECTIONS.length - 1;
+    let next = index;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'ArrowLeft' || event.key === 'Home' || event.key === 'End') {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') next = index === last ? 0 : index + 1;
+      else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') next = index === 0 ? last : index - 1;
+      else if (event.key === 'Home') next = 0;
+      else next = last;
+      event.preventDefault();
+      navRefs.current[SETTINGS_SECTIONS[next]]?.focus();
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      activate(SETTINGS_SECTIONS[index]);
+    }
+  };
+
+  const onSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (hits.length === 0) return;
+      event.preventDefault();
+      setActiveResult((current) => (event.key === 'ArrowDown' ? Math.min(hits.length - 1, current + 1) : Math.max(0, current - 1)));
+      return;
+    }
+    if (event.key === 'Enter') {
+      if (hits.length === 0) return;
+      event.preventDefault();
+      openHit(hits[Math.min(activeResult, hits.length - 1)]);
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setQuery('');
+    }
+  };
+
+  const body = section === 'general' ? (
+    <GeneralSection settings={settings} onChange={onChange} aiProviders={aiProviders} />
+  ) : section === 'appearance' ? (
+    <AppearanceSection settings={settings} onChange={onChange} />
+  ) : section === 'library' ? (
+    <LibrarySection paths={paths} onRefreshPaths={onRefreshPaths} onRevealPath={onRevealPath} onCreateBackup={onCreateBackup} onRestoreBackup={onRestoreBackup} scenes={scenes} enabledSceneIds={enabledSceneIds} onToggleScene={onToggleScene} />
+  ) : section === 'plugins' ? (
+    <PluginsSection plugins={plugins} pluginSettings={pluginSettings} pluginSettingValues={pluginSettingValues} onTogglePlugin={onTogglePlugin} onPluginSettingChange={onPluginSettingChange} extensionCounts={extensionCounts} market={market} localPlugins={localPlugins} onImportPlugin={onImportPlugin} onMarketUrlChange={onMarketUrlChange} onRefreshMarket={onRefreshMarket} />
+  ) : section === 'sync' ? (
+    <SyncSection sync={sync} onSync={onSync} onSyncLogin={onSyncLogin} onSyncLogout={onSyncLogout} />
+  ) : section === 'updates' ? (
+    <UpdatesSection currentVersion={diagnostics?.version} />
+  ) : (
+    <AboutSection diagnostics={diagnostics} />
+  );
+
+  return (
+    <section className="scene active settings-scene">
+      <header className="topbar compact">
+        <div>
+          <h1>{zh.settings.title}</h1>
+          <p className="scene-description">{zh.settings.subtitle}</p>
+        </div>
+      </header>
+      <div className="settings-layout" data-settings-section={section} data-settings-query={query}>
+        <nav className="settings-section-nav" aria-label="设置分类">
+          <ul role="list">
+            {SETTINGS_SECTIONS.map((id, index) => {
+              const Icon = SECTION_ICONS[id];
+              const current = section === id;
+              return (
+                <li key={id}>
+                  <button
+                    type="button"
+                    ref={(node) => { navRefs.current[id] = node; }}
+                    className={current ? 'active' : ''}
+                    aria-current={current ? 'page' : undefined}
+                    tabIndex={current ? 0 : -1}
+                    onClick={() => activate(id)}
+                    onKeyDown={(event) => onNavKeyDown(event, index)}
+                  >
+                    <Icon size={16} aria-hidden="true" />
+                    <span>{SECTION_META[id].label}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+        <div className="settings-category-content">
+          <div className="settings-search">
+            <label className="settings-search-field" htmlFor="settings-search-input">
+              <span className="settings-search-label">搜索设置</span>
+              <span className="settings-search-control">
+                <Search size={14} aria-hidden="true" />
+                <input
+                  id="settings-search-input"
+                  type="search"
+                  role="combobox"
+                  aria-expanded={query.length > 0}
+                  aria-controls="settings-search-results"
+                  aria-autocomplete="list"
+                  aria-activedescendant={query && hits.length > 0 ? `settings-search-result-${Math.min(activeResult, hits.length - 1)}` : undefined}
+                  placeholder="搜索分类、设置项或关键词，例如 字号 / 备份"
+                  value={query}
+                  onChange={(event) => { setQuery(event.target.value); setActiveResult(0); }}
+                  onKeyDown={onSearchKeyDown}
+                />
+                {query ? <button type="button" className="settings-search-clear" aria-label="清空搜索" onClick={() => setQuery('')}><X size={13} aria-hidden="true" /></button> : null}
+              </span>
+            </label>
+            {query ? (
+              <ul className="settings-search-results" id="settings-search-results" role="listbox" aria-label="搜索结果">
+                {hits.length === 0 ? (
+                  <li className="settings-search-empty" role="presentation"><EmptyState title="没有匹配的设置" description="试试“字号”“备份”“插件”“更新”等关键词。" /></li>
+                ) : hits.map((hit, index) => (
+                  <li key={hit.id} role="none">
+                    <button
+                      type="button"
+                      id={`settings-search-result-${index}`}
+                      role="option"
+                      aria-selected={index === Math.min(activeResult, hits.length - 1)}
+                      className={index === Math.min(activeResult, hits.length - 1) ? 'is-active' : ''}
+                      onClick={() => openHit(hit)}
+                      onMouseEnter={() => setActiveResult(index)}
+                    >
+                      <span className="settings-search-result-title">{hit.title}</span>
+                      <span className="settings-search-result-section">{hit.sectionLabel}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+          <SectionLayout key={section} id={section} title={SECTION_META[section].label} description={SECTION_META[section].description} headingRef={(node) => { headingRef.current = node; }}>
+            {body}
+          </SectionLayout>
+        </div>
+      </div>
+    </section>
+  );
 }
