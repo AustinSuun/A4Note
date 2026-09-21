@@ -450,6 +450,9 @@
 .pdf-placeholder { min-height: 780px; padding: 34px; }
 .annotation-overlay { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .annotation-mark { position: absolute; border-radius: 4px; opacity: .78; pointer-events: auto; cursor: pointer; }
+/* Overlay text (text boxes, sticky comments) is not page text: a highlight drag that crosses a mark must not pull
+   its body into the selection. Only the in-place text editor opts back in while editing. */
+.annotation-mark, .annotation-mark .text-annotation-content, .annotation-mark .sticky-note-content { user-select: none; -webkit-user-select: none; }
 .annotation-mark:hover {
   opacity: .82;
   box-shadow: 0 0 0 1px rgba(77,131,107,.26);

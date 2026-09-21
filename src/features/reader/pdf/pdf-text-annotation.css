@@ -27,7 +27,7 @@
   letter-spacing: normal;
   overflow: visible;
 }
-.annotation-mark.text.text-inline .annotation-text-editor {
+.annotation-mark.text.text-inline.editing .annotation-text-editor {
   outline: none;
   cursor: text;
   caret-color: currentColor;

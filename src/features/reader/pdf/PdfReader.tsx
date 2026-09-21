@@ -30,7 +30,7 @@ import { arrowPositionFromDrag, createDragDraft, currentVisiblePage, pointFromEv
 import { TEXT_EDGE_MARGIN_PERCENT, TEXT_FONT_UNIT_PAGE, clampTextBoxToPage, percentBoxOf, placeNewTextBox, roundPercent, textAnnotationLayout } from './pdfTextAnnotation';
 import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
-import { boundingBox, dominantTextOrientation, mergeRectsIntoLineSegments, textItemSelectionsFromRange, textSelectionFromDrag, textSelectionRectsFromOffsets, withSegmentOrientation } from './pdfSelection';
+import { boundingBox, clipRangeToNode, dominantTextOrientation, mergeRectsIntoLineSegments, quoteFromTextItemSelections, textItemSelectionsFromRange, textSelectionFromDrag, textSelectionPageElements, textSelectionRectsFromOffsets, withSegmentOrientation } from './pdfSelection';
 import type {
   AnnotationMarkModel,
   AnnotationResize,
@@ -728,38 +728,55 @@ export default function PdfReader({
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || !selection.rangeCount) return;
     const range = selection.getRangeAt(0);
-    const textLayer = pdfCoordinateLayer(container).querySelector('.pdf-text-layer');
-    if (!textLayer?.contains(range.commonAncestorContainer)) return;
-    const selectionText = selection.toString().replace(/\s+/g, ' ').trim();
-    if (!selectionText) return;
+    // A drag that crosses a page boundary selects runs on several pages (two pages fit on screen at
+    // small zoom). Split the range per page and create one annotation per page instead of dropping
+    // the whole selection because no single text layer contains it.
+    const pageElements = textSelectionPageElements(containerRef.current, range);
+    const drafts = pageElements.flatMap((pageElement) => {
+      const draft = textSelectionDraft(pageElement, range, tool);
+      return draft ? [draft] : [];
+    });
+    if (!drafts.length) return;
+    selection.removeAllRanges();
+    for (const draft of drafts) await saveAnnotationDraft(draft);
+  };
+
+  const textSelectionDraft = (pageElement: HTMLElement, range: Range, tool: AnnotationType) => {
+    const pageNumber = Number(pageElement.dataset.page);
+    const textLayer = pdfCoordinateLayer(pageElement).querySelector('.pdf-text-layer');
+    if (!textLayer || !Number.isFinite(pageNumber) || !pageElement.getBoundingClientRect().width) return null;
+    const pageRange = clipRangeToNode(range, textLayer);
     const page = pages.find((candidate) => candidate.pageNumber === pageNumber);
-    const textItemSelections = textItemSelectionsFromRange(range, container);
+    const textItemSelections = textItemSelectionsFromRange(pageRange, pageElement);
+    // The quote comes from the text layer runs, never from overlay text the drag happened to cross.
+    const selectionText = page && textItemSelections.length
+      ? quoteFromTextItemSelections(page.textItems, textItemSelections)
+      : pageRange.toString().replace(/\s+/g, ' ').trim();
+    if (!selectionText) return null;
     const preciseRects = page ? textSelectionRectsFromOffsets(page.textItems, textItemSelections) : [];
     // Use the selected glyphs' live client rects in this page's rendering layer.
     // Only fall back when the browser provides no rectangles at all, never when
     // it reports invalid/out-of-page geometry that the filter rejects.
-    const clientRects = Array.from(range.getClientRects());
+    const clientRects = Array.from(pageRange.getClientRects());
     const liveRects = clientRects
-      .map((rect) => normalizeClientRect(rect, container))
+      .map((rect) => normalizeClientRect(rect, pageElement))
       .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
     const textOrientation = page ? dominantTextOrientation(page.textItems, textItemSelections) : 0;
     // Pages with /Rotate lay their runs out with writing-mode/bidi tricks whose line boxes are
     // fatter than the glyphs, so their geometry comes from the run boxes sliced by offsets (the
     // same source the drag path uses); horizontal pages keep the browser's live rects.
     const rects = textOrientation !== 0 && preciseRects.length ? preciseRects : clientRects.length ? liveRects : preciseRects;
-    if (!rects.length) return;
+    if (!rects.length) return null;
     // Merge along the run direction and keep it on each segment so highlight/underline marks
     // trim and underline along the glyph axis.
     const segments = withSegmentOrientation(mergeRectsIntoLineSegments(rects, textOrientation), textOrientation);
     const bounds = boundingBox(segments);
-    if (!bounds.width || !bounds.height) return;
-    const draft = {
+    if (!bounds.width || !bounds.height) return null;
+    return {
       ...buildAnnotationDraft(tool, { ...bounds, segments }, activeAnnotationColor),
       quote: selectionText,
       page: pageNumber,
     };
-    selection.removeAllRanges();
-    await saveAnnotationDraft(draft);
   };
 
   const finishInkAnnotation = async () => {

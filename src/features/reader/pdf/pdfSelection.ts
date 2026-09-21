@@ -83,6 +83,38 @@ export function textItemSelectionsFromRange(range: Range, container: HTMLElement
   });
 }
 
+/** Pages whose text layer the selection touches, in document order: a drag can cross a page boundary. */
+export function textSelectionPageElements(root: ParentNode, range: Range): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>('.pdf-page[data-page]')).filter((pageElement) => {
+    const textLayer = pageElement.querySelector('.pdf-text-layer');
+    return !!textLayer && Number.isFinite(Number(pageElement.dataset.page)) && range.intersectsNode(textLayer);
+  });
+}
+
+/** The part of a selection that lies inside `node`; boundaries outside it are clamped to the node's edges. */
+export function clipRangeToNode(range: Range, node: Node): Range {
+  const clipped = range.cloneRange();
+  if (!node.contains(range.startContainer)) clipped.setStart(node, 0);
+  if (!node.contains(range.endContainer)) clipped.setEnd(node, node.childNodes.length);
+  return clipped;
+}
+
+/** Quote assembled from the text layer runs alone, so overlay text (text boxes, comments) under the drag never leaks in. */
+export function quoteFromTextItemSelections(textItems: TextItemBox[], selections: TextItemSelection[]) {
+  let quote = '';
+  let prior: TextItemBox | undefined;
+  for (const selection of selections) {
+    const item = textItems[selection.itemIndex];
+    if (!item?.text.length) continue;
+    const text = item.text.slice(clampOffset(selection.startOffset, item.text.length), clampOffset(selection.endOffset, item.text.length));
+    if (!text.trim()) continue;
+    if (prior && textItemsSeparated(item, prior)) quote += ' ';
+    quote += text;
+    prior = item;
+  }
+  return quote.replace(/\s+/g, ' ').trim();
+}
+
 export function textSelectionRectsFromOffsets(textItems: TextItemBox[], selections: TextItemSelection[]): RectBox[] {
   return selections.flatMap((selection) => {
     const item = textItems[selection.itemIndex];
