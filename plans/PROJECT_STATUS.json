@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-21T18:40:00+08:00",
+  "updatedAt": "2026-09-21T19:21:32+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
+      "annotation-layers-arena：Arena执行 fb5e3f2f（high）第一阶段完成：annotation_layers + 按 owner 视图表、annotations/resource_annotations 加 layer_id 与复合索引、启动事务内幂等回填默认层；图层 CRUD/排序/锁定/归档/移动/删除预览与删除命令，锁定/归档层拒绝写入，启动载荷只含可见层并按层懒加载；Reader 工具坞图层入口 + 快速选择器（唯一活动层、显示/锁定、新建空白/学习记录/管理）、标注列表按层分组筛选与移动、完整管理页与两步删除；undo/redo 快照带 layer_id 并新增可撤销 move。Rust 214 项（含 20 层×10,000 条夹具：可见层读 3ms/全量 21ms/计数 0.8ms，走 annotations_by_layer_created 索引）、前端 51 断言、verify 全绿；隔离实例 arena-f4 真实窗口 56/56。分支 feat/annotation-layers-arena，详见 docs/mcp-annotation-layers-arena-2026-09-21.md。",
       "reader-overlap-selection-arena：Arena 执行 3128932d 完成范围标注事件补强；高亮/下划线正文区域回归覆盖英文 arXiv 2505.13447v1 与中文文字层 PDF fixture，各 14/14、pageErrors 0；合成重叠回归 9/9，npm run verify 全绿（Rust 209/0/5 ignored），src diagnostics 0。任务卡已附英文/中文正文截图、real-body-evidence.json 与既有隔离 SQLite 证据；确切 2505.13447v1-仅译文.pdf 未在当前 worktree，未冒充已验证。详见 docs/mcp-reader-overlap-selection-arena-2026-09-21.md。",
       "reader-annotation-list-entry-qingyan：qingyan 0bd39f48，分支 fix/annotation-list-entry-qingyan 基于 main 18f3ea9，提交 8e917a2+2299fb0。修三处：workspacePanelTabs 漏 annotations 致「+」菜单无入口；AnnotationListPanel 从未渲染 annotation.quote；行点击绑 onFocusAnnotation 只选中不跳页，改接 onNavigateAnnotation。dev:live 隔离实例 qingyan/1433/9243 自动化验收四项全过，列表 3 项与 SQLite 3 行一致，无 pageerror。build 通过；verify 的 test:reader/test:pdf-text-annotation/test:ui-state 为 stash 基线可复现的既有失败。待用户验收归档。详见 docs/mcp-reader-annotation-list-entry-qingyan-2026-09-21.md。",
       "reader-crosspage-selection-arena：Arena执行 8dba61be（审计F3，high）完成：跨页拖选按页裁剪 Range 逐页生成高亮/下划线（不再因公共祖先不在单页而静默丢弃），quote 只取文字层运行；文本框/便签正文非编辑态 user-select:none；新增 test:pdf-crosspage-selection（31 断言）接入 verify-all；隔离实例 arena-f3 真实窗口 22/22（60% 两页同屏跨页 2 条记录、跨页下划线、单页回归、文本框不可选、reload）；npm run verify 全绿。分支 fix/reader-crosspage-selection-arena，详见 docs/mcp-reader-crosspage-selection-fix-arena-2026-09-21.md。",

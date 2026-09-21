@@ -1,5 +1,7 @@
 ﻿# A4 Note Agent 状态
 
+- annotation-layers-arena：Arena执行 fb5e3f2f（high）第一阶段完成：annotation_layers + 按 owner 视图表、annotations/resource_annotations 加 layer_id 与复合索引、启动事务内幂等回填默认层；图层 CRUD/排序/锁定/归档/移动/删除预览与删除命令，锁定/归档层拒绝写入，启动载荷只含可见层并按层懒加载；Reader 工具坞图层入口 + 快速选择器（唯一活动层、显示/锁定、新建空白/学习记录/管理）、标注列表按层分组筛选与移动、完整管理页与两步删除；undo/redo 快照带 layer_id 并新增可撤销 move。Rust 214 项（含 20 层×10,000 条夹具：可见层读 3ms/全量 21ms/计数 0.8ms，走 annotations_by_layer_created 索引）、前端 51 断言、verify 全绿；隔离实例 arena-f4 真实窗口 56/56。分支 feat/annotation-layers-arena，详见 docs/mcp-annotation-layers-arena-2026-09-21.md。
+
 - reader-overlap-selection-arena：Arena 执行 3128932d 本轮补强：`AnnotationMark` 在高亮/下划线文字选择模式下对范围标注跳过 `preventDefault`/`stopPropagation`，`AnnotationOverlay` 传入选择模式；光标模式交互保持。合成重叠回归 9/9；使用真实英文 arXiv 2505.13447v1 第 1 页摘要正文和独立中文文字层 PDF fixture 做正文区域（页面高度 30% 之后）高亮/下划线回归，各 14/14、pageErrors 0；截图与 `real-body-evidence.json` 已附任务卡。当前 worktree 未找到任务描述列出的 `2505.13447v1-仅译文.pdf`，未冒充该文件已验证；原生隔离 WebView/SQLite 证据沿用任务卡既有 result 附件。详见 `docs/mcp-reader-overlap-selection-arena-2026-09-21.md`。
 
 - reader-crosspage-selection-arena：Arena执行 8dba61be（审计F3，high）完成：跨页拖选按页裁剪 Range 逐页生成高亮/下划线（不再因公共祖先不在单页而静默丢弃），quote 只取文字层运行；文本框/便签正文非编辑态 user-select:none；新增 test:pdf-crosspage-selection（31 断言）接入 verify-all；隔离实例 arena-f3 真实窗口 22/22（60% 两页同屏跨页 2 条记录、跨页下划线、单页回归、文本框不可选、reload）；npm run verify 全绿。分支 fix/reader-crosspage-selection-arena，详见 docs/mcp-reader-crosspage-selection-fix-arena-2026-09-21.md。
@@ -23,7 +25,7 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-21T17:13:40+08:00
+更新时间：2026-09-21T19:21:32+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 
