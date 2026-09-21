@@ -13,6 +13,8 @@
 
 - reader-escape-qingsui：青穗完成 009cede5 图形/箭头 Escape 取消草稿。独立 fix/reader-escape-qingsui 基于 main 18f3ea9，新增 usePdfShapeDraft（同步 ref、takeDraft、Escape/blur、文档/工具切换、卸载失效、输入框豁免），修改 PdfReader finish 入口为原子取出，新增 verify-reader-shape-cancel 25项回归全过，build/diagnostics 通过，已合并本地 main 待验收。详见 docs/mcp-reader-escape-qingsui-2026-09-21.md。
 
+- reader-annotation-list-entry-qingyan：qingyan 0bd39f48，独立 worktree 分支 fix/annotation-list-entry-qingyan，基线 main 18f3ea9。定位到三处缺陷而非一处：ReaderSideDrawer 的 workspacePanelTabs 白名单漏掉 annotations（「+」菜单无入口）、AnnotationListPanel 从未渲染 annotation.quote（annotation-quote 实为「引用到笔记」按钮）、列表行点击绑定只选中不跳页的 onFocusAnnotation 而非 onNavigateAnnotation。提交 8e917a2、2299fb0。用 dev:live 隔离实例（qingyan/1433/9243）自动化验收：+ 菜单出现「标注」、三行显示页码/类型/颜色/引文、点第 1/2 行分别跳到第 1/2 页并选中、列表 3 项与隔离 SQLite 3 行及文献库「注 3」一致，pageerror/console error 为空。npm run build 通过；npm run verify 中 test:reader、test:pdf-text-annotation、test:ui-state 失败，已用 git stash 干净基线复现同一断言，确认为既有失败且日志零引用本次改动文件。未碰真实资料库，未终止他人进程。详见 docs/mcp-reader-annotation-list-entry-qingyan-2026-09-21.md。
+
 - agent-owned-merge：青帆已将新流程合入main c727762，完成独立Windows0.1.25包；完整verify/Rust201过5忽略，服务86过1跳过，包内7回归及18资源哈希通过。指定他人报告哈希不变；不安装、不重启、不发布。源码/打包资源释放，详见docs/mcp-task-workflow-windows-0.1.25-2026-09-21.md。
 
 - reader-list-qingfan：青帆 ebe8db12，独立分支基于 main 4b4f57a；阅读列表按钮34px与资源类型标签完成，浏览器22项、完整verify及最终build/状态/架构检查通过。按用户授权合并本地main，提交review由用户验收；无真实窗口、资料库、安装发布占用。详见 docs/mcp-reader-list-qingfan-2026-09-20.md。
