@@ -29,3 +29,12 @@
 最终检查main仍为59235142509588029793c042127ba525b508113d，但存在其他Agent的未跟踪文件 `docs/mcp-archived-main-reconciliation-qinglan-2026-09-21.md`。遵守脏main时停止：本次只提交独立分支，不清理、不代提交该文件，不移动main。待该工作区干净后重新检查最新main及必要回归再合并。
 
 补充检查：验收回归109断言、编辑冲突14断言、项目启动器打包依赖、agent-protocol、agent-status及diff --check均通过。
+
+## 本轮继续复核
+
+- main在复核期间从3ce91ee推进到34738d6c45eb2c50daad82bdc8e51fa0dd2d7f69，末次读取前后SHA一致。
+- df9992cc71e9ae1f5c8d8a73ee2e7e0bcfd51592仍未被main包含（merge-base --is-ancestor退出1）。
+- main仍有他人的未跟踪报告docs/mcp-archived-main-reconciliation-qinglan-2026-09-21.md，不擅自清理或提交。
+- merge-tree预演退出1，报告plans/PROJECT_STATUS.json内容冲突；README、AGENT_STATUS和TaskBoard可文本自动合并，但不等于语义回归通过。预演未更新分支引用、索引或工作区。
+- 本轮没有实际合并，也未在合并结果上执行测试；上文测试成绩只适用于原任务分支。需先由文件负责人处理main未跟踪报告，再保留双方状态记录处理冲突并重跑相关验证，才能合并。
+- 未安装、重启、推送、发布或修改任务验收状态。
