@@ -43,6 +43,7 @@ import {TaskDetailDialog} from './TaskDetailDialog';
 import {TaskAttachments} from './TaskImageViewer';
 import { TaskAcceptancePanel } from './TaskAcceptancePanel';
 import { TaskServiceControls } from './TaskServiceControls';
+import { TaskBindingGuide } from './TaskBindingGuide';
 import {
   savedLocalTaskPort,
   launchLocalTasks,
@@ -515,12 +516,23 @@ export function TaskBoard({
           </button>
         </div>
       )}
-      <TaskServiceControls connected={!!client} />
+      <TaskServiceControls
+        connected={!!client}
+        boundProject={network === '已连接' ? (activeProject?.name ?? snapshot?.project.name) : undefined}
+        boundPort={network === '已连接' ? localPort : undefined}
+      />
       {!client ? (
         <div className="tb-connect">
           <div className="tb-connect-icon">▦</div>
           <h2>打开项目，监控任务进度</h2>
           <p>选择要监控的项目文件夹，自动启动该项目的看板服务，供 Agent 连接、领取任务和更新进度。</p>
+          <TaskBindingGuide
+            connected={!!client}
+            projectPath={activeProject?.path}
+            port={localPort}
+            busy={busy}
+            onStart={(choose) => void startLocal(choose)}
+          />
           <button
             className="tb-primary tb-start-local"
             disabled={busy || !supportsLocalTaskLaunch()}

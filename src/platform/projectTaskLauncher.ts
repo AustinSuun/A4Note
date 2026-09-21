@@ -23,6 +23,46 @@ export interface LocalTaskConnection {
 
 export const supportsLocalTaskLaunch = () => isTauri();
 
+/** One probe result inside {@link TaskPreflight}. */
+export interface PreflightCheck {
+  status: string;
+  detail?: string;
+}
+
+/**
+ * Read-only environment probe used by the binding guide.
+ *
+ * Reports blockers before anything is launched. It never starts, stops or
+ * contacts a service, and never frees a busy port.
+ */
+export interface TaskPreflight {
+  ready: boolean;
+  node: PreflightCheck & { version: string; required: string };
+  resources: PreflightCheck;
+  project: PreflightCheck & { path: string };
+  port: PreflightCheck & { value: number };
+}
+
+export async function preflightLocalTasks(
+  projectRoot?: string,
+  port = 4319,
+): Promise<TaskPreflight | null> {
+  if (!isTauri()) return null;
+  return invoke<TaskPreflight>('preflight_project_tasks', { projectRoot, port });
+}
+
+/** Human-readable blockers, in the order the guide should surface them. */
+export function preflightBlockers(p: TaskPreflight): string[] {
+  const out: string[] = [];
+  if (p.node.status !== 'ok') out.push(p.node.detail || '无法确认 Node.js 环境。');
+  if (p.resources.status !== 'ok') out.push(p.resources.detail || '缺少任务服务资源。');
+  if (p.project.status === 'unset') out.push('尚未选择项目文件夹。');
+  else if (p.project.status === 'invalid') out.push('所选项目文件夹无效或已不存在。');
+  if (p.port.status === 'invalid' || p.port.status === 'unknown')
+    out.push(p.port.detail || '端口不可用。');
+  return out;
+}
+
 export async function selectProjectFolder(title = '选择已有项目文件夹'): Promise<string | null> {
   if (!isTauri()) return null;
   const value = await open({

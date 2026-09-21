@@ -60,7 +60,7 @@ pub fn run() {
             capture::capture_control,
             app_paths::reveal_aster_path,
             project_commands::describe_project_folder,
-            project_tasks::start_project_tasks, project_tasks::inspect_project_tasks, project_tasks::stop_project_tasks, project_tasks::set_project_tasks_exit_policy, project_tasks::resolve_app_exit,
+            project_tasks::start_project_tasks, project_tasks::preflight_project_tasks, project_tasks::inspect_project_tasks, project_tasks::stop_project_tasks, project_tasks::set_project_tasks_exit_policy, project_tasks::resolve_app_exit,
             project_commands::list_directory_entries,
             project_commands::reveal_path,
             project_commands::open_path_external,

@@ -19,6 +19,7 @@ const steps = [
   ['node', ['scripts/verify-markdown-end-space.mjs']],
   ['node', ['scripts/verify-annotation-history.mjs']],
   ['node', ['scripts/verify-reader-priority-fixes.mjs']],
+  ['node', ['scripts/verify-task-binding-guide.mjs']],
   ...(isWindows ? [['node', ['scripts/prepare-native-host.mjs', '--debug']]] : []),
   ['npm', ['run', 'build']],
   ['npm', ['run', 'test:core']],

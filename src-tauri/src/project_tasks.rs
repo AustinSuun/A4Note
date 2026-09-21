@@ -147,6 +147,116 @@ pub fn shutdown_on_exit(app: &tauri::AppHandle) {
     lifecycle().exit_decided = true;
 }
 
+/// Minimum Node.js the task service is supported on.
+const MIN_NODE: (u32, u32) = (22, 13);
+
+/// Parse "v22.13.1" / "22.13.1" into (major, minor).
+fn parse_node_version(raw: &str) -> Option<(u32, u32)> {
+    let text = raw.trim();
+    let text = text.strip_prefix('v').unwrap_or(text);
+    let mut parts = text.split('.');
+    let major = parts.next()?.parse().ok()?;
+    let minor = parts.next().unwrap_or("0").parse().unwrap_or(0);
+    Some((major, minor))
+}
+
+/// Read-only environment probe for the one-click binding guide.
+///
+/// This never starts, stops or contacts a service: it only reports what the user
+/// would run into, so the UI can explain the blocker before anything is launched.
+/// A port that is already listening is reported, not seized; deciding whether it is
+/// a reusable A4 service or a foreign process stays with the existing launch path.
+#[tauri::command]
+pub async fn preflight_project_tasks(
+    app: tauri::AppHandle,
+    project_root: Option<String>,
+    port: Option<u16>,
+) -> Result<serde_json::Value, String> {
+    let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let dev_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent()
+            .ok_or("无法确定开发项目目录")?.to_path_buf();
+
+        // --- Node.js presence and version ---
+        let mut node = Command::new("node");
+        node.arg("--version").stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        #[cfg(windows)] {
+            use std::os::windows::process::CommandExt;
+            node.creation_flags(0x08000000);
+        }
+        let (node_status, node_version, node_detail) = match node.output() {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (
+                "missing", String::new(),
+                format!("没有找到 Node.js。请安装 {}.{} 以上版本后重启 A4 Note。", MIN_NODE.0, MIN_NODE.1),
+            ),
+            Err(e) => ("unknown", String::new(), format!("无法检查 Node.js：{e}")),
+            Ok(out) => {
+                let raw = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                match parse_node_version(&raw) {
+                    Some(v) if v >= MIN_NODE => ("ok", raw, String::new()),
+                    Some(_) => {
+                        let detail = format!(
+                            "当前 Node.js {raw} 低于要求的 {}.{}。请升级后重启 A4 Note。",
+                            MIN_NODE.0, MIN_NODE.1
+                        );
+                        ("outdated", raw, detail)
+                    }
+                    None => ("unknown", raw.clone(), format!("无法解析 Node.js 版本：{raw}")),
+                }
+            }
+        };
+
+        // --- Bundled service resources ---
+        let bootstrap = if cfg!(debug_assertions) {
+            dev_root.join("apps/project-tasks/bootstrap.mjs")
+        } else {
+            resource_dir.join("project-tasks/bootstrap.mjs")
+        };
+        let resources_ok = bootstrap.is_file();
+
+        // --- Project folder ---
+        let (project_status, project_path) = match project_root {
+            Some(value) if !value.trim().is_empty() => {
+                let root = node_path::for_node(&PathBuf::from(value));
+                let ok = root.is_absolute() && root.is_dir();
+                (if ok { "ok" } else { "invalid" }, root.to_string_lossy().to_string())
+            }
+            _ => ("unset", String::new()),
+        };
+
+        // --- Port availability (report only, never seize) ---
+        let port = port.unwrap_or(4319);
+        let (port_status, port_detail) = if port < 1024 {
+            ("invalid", "请选择 1024 以上的端口。".to_string())
+        } else {
+            match std::net::TcpListener::bind(("127.0.0.1", port)) {
+                Ok(listener) => { drop(listener); ("free", String::new()) }
+                Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => (
+                    "in_use",
+                    format!("端口 {port} 已被占用。可能是已在运行的任务服务（可直接连接），也可能是其他程序；A4 Note 不会结束占用进程。"),
+                ),
+                Err(e) => ("unknown", format!("无法检查端口 {port}：{e}")),
+            }
+        };
+
+        let ready = node_status == "ok" && resources_ok && project_status == "ok"
+            && (port_status == "free" || port_status == "in_use");
+
+        Ok(serde_json::json!({
+            "ready": ready,
+            "node": { "status": node_status, "version": node_version, "detail": node_detail,
+                      "required": format!("{}.{}", MIN_NODE.0, MIN_NODE.1) },
+            "resources": { "status": if resources_ok { "ok" } else { "missing" },
+                           "detail": if resources_ok { String::new() }
+                                     else { "当前 A4 Note 缺少任务服务资源，请更新包含一键启动功能的版本。".to_string() } },
+            "project": { "status": project_status, "path": project_path },
+            "port": { "status": port_status, "value": port, "detail": port_detail },
+        }))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn start_project_tasks(
     app: tauri::AppHandle,
