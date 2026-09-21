@@ -1,5 +1,7 @@
 # A4 Note Agent 状态
 
+- agent-owned-merge：青帆完成归档去Git写入、代码交付submit前main包含校验及执行协议/UI同步；服务测试80通过1跳过，build与架构检查通过。合并前发现main他人未跟踪报告，按脏main停机规则阻塞，尚未合并；未部署安装或重启现有服务。详见docs/mcp-agent-owned-merge-2026-09-21.md。
+
 - reader-list-qingfan：青帆 ebe8db12，独立分支基于 main 4b4f57a；阅读列表按钮34px与资源类型标签完成，浏览器22项、完整verify及最终build/状态/架构检查通过。按用户授权合并本地main，提交review由用户验收；无真实窗口、资料库、安装发布占用。详见 docs/mcp-reader-list-qingfan-2026-09-20.md。
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。

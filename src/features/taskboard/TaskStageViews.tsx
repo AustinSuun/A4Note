@@ -82,8 +82,8 @@ export function TaskStageWorkspace({ stage, tasks, agents, query,
       })()}</p>}
       {(task.status === 'review' || task.status === 'archived') && <section aria-label="代码集成状态">
         <p>交付：{task.delivery?.kind === 'code' ? task.delivery.commit : task.delivery?.kind === 'none' ? `非代码任务：${task.delivery.reason}` : '未提供提交信息'}</p>
-        <p>main 合并：{task.integration?.status ?? '尚未执行'}{task.integration?.after ? ` · ${task.integration.after}` : ''}</p>
-        {task.integration?.error && <p role="alert">{task.integration.error}。验收结论已记录；处理后可再次点击验收归档重试。</p>}
+        <p>main 合并：{task.integration?.status ?? '未核对，请查看Agent交付报告'}{task.integration?.after ? ` · ${task.integration.after}` : ''}</p>
+        {task.integration?.error && <p role="alert">{task.integration.error}。请执行Agent处理，归档不会自动合并。</p>}
         <p>远端：{task.integration?.remote === 'not_pushed' ? '未推送；本地合并不等于远端同步' : '未确认'}</p>
       </section>}
       <dl>{stageTaskFacts(task).map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
