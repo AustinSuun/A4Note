@@ -1,4 +1,6 @@
 ﻿# A4 Note Agent 状态
+- reader-selection-band-arena：Arena 接管 35496a06 高亮色带任务，保留 b79ba58/6b507e8。拖选期间保留真实 Range，但把浏览器原生色带透明化并通过与持久高亮相同的 textSelectionDraft→方向感知 segments→highlightPositionStyle 管线绘制；forced-colors 恢复系统选区。黄/绿/蓝/紫改为 #ffd54a/#8fd9a3/#8fb9f2/#bf9cf0，未保存配置默认 opacity 22→40、范围 10–60，既有明确保存值不迁移；单 SVG 合成避免重叠 alpha 累积。selection preview 37、highlight 57、reader、rotate 142、crosspage 31、完整 verify（Rust 209/0/5 ignored）全绿，diagnostics 0。指定 2505.13447v1.pdf 当前损坏、译文 PDF 缺失，未冒充样本验证；隔离原生改用有效内置指南与旋转 fixture 复核。详见 docs/mcp-reader-selection-band-highlight-arena-2026-09-21.md。
+
 
 
 - reader-overlap-selection-arena：Arena 执行 3128932d 第二轮反馈修复：跨行高亮/下划线改用 PDF 文字层运行几何（`textSelectionRectsFromOffsets` 优先、浏览器实时矩形仅兜底），端点跟随可见文字、同字号行高一致；新增 `underlineThicknessForSegments` 以段高中位数统一整条下划线线宽，`AnnotationMark` 渲染传入统一线宽。`test:reader-helpers` 新增断言、`test:reader` 源码契约同步；合成重叠回归 9/9；英文 arXiv 2505.13447v1 与中文文字层 fixture 正文回归各 20/20（含跨行厚度一致、末端跟随文字审计）、pageErrors 0；npm run verify 全绿。详见 `docs/mcp-reader-overlap-selection-arena-2026-09-21.md`「跨行标注几何修复」。
