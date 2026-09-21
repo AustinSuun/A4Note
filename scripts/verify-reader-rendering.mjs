@@ -463,6 +463,8 @@ assert.match(styles, /\.pdf-page\.updating \.pdf-canvas-page/);
 assert.match(styles, /\.pdf-parallel-pane\.active \{ box-shadow: none; \}/);
 assert.match(styles, /\.pdf-keepalive-pane\.active \{\s*box-shadow: none;\s*\}/);
 assert.match(styles, /\.annotation-inline-actions/);
+assert.match(styles, /\.pdf-document\.highlight-mode \.annotation-mark:is\(\.highlight, \.underline\),\s*\.pdf-document\.underline-mode \.annotation-mark:is\(\.highlight, \.underline\) \{\s*pointer-events: none;/);
+assert.match(styles, /\.annotation-mark \{[^}]*pointer-events: auto;/);
 assert.match(styles, /\.annotation-tool-btn svg \{\s*width: 20px;\s*height: 20px;/);
 assert.match(styles, /\.zoom-controls button \{\s*display: grid;\s*place-items: center;\s*min-width: 30px;\s*height: 30px;/);
 assert.match(styles, /\.zoom-controls svg \{\s*width: 19px;\s*height: 19px;/);

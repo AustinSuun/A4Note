@@ -10,6 +10,8 @@ export type PdfPageViewProps = {
   zoom: number;
   displayZoom: number;
   selectableText: boolean;
+  /** True while a text tool is active on a page whose text layer is empty. */
+  textToolsUnavailable: boolean;
   annotationLayer: ReactNode;
   commentPopover: CommentPopover | null;
   eraserPreview: { x: number; y: number; size: number; shape: ReaderToolSettings['eraserShape'] } | null;
@@ -38,6 +40,7 @@ export function PdfPageView({
   zoom,
   displayZoom,
   selectableText,
+  textToolsUnavailable,
   annotationLayer,
   commentPopover,
   eraserPreview,
@@ -196,7 +199,7 @@ export function PdfPageView({
   }, [shouldRender, hasBitmap, priorityDistance, flashKind, commentPopover]);
 
   return (
-    <div className={`pdf-page ${isUpdating ? 'updating' : ''} ${!hasBitmap ? 'released' : ''} ${flashKind ? `flash-${flashKind}` : ''}`} data-reader-layer="pdf-page" data-page={pageMeta.pageNumber} data-base-width={pageMeta.baseWidth} ref={rootRef} {...pageHandlers}>
+    <div className={`pdf-page ${isUpdating ? 'updating' : ''} ${!hasBitmap ? 'released' : ''} ${flashKind ? `flash-${flashKind}` : ''} ${textToolsUnavailable ? 'text-tools-unavailable' : ''}`.trim()} data-reader-layer="pdf-page" data-page={pageMeta.pageNumber} data-base-width={pageMeta.baseWidth} ref={rootRef} {...pageHandlers}>
       {renderError && <div className="pdf-render-error" role="alert" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
         <span>{renderError}</span><button type="button" onClick={() => setRetryRevision((current) => current + 1)}>重新渲染本页</button>
       </div>}

@@ -331,6 +331,31 @@
   min-width: 0;
   min-height: 0;
 }
+/* Scan pages have no text layer: a text tool must not look armed there. */
+.pdf-page.text-tools-unavailable,
+.pdf-page.text-tools-unavailable .pdf-text-layer,
+.pdf-page.text-tools-unavailable .pdf-text-layer span {
+  cursor: not-allowed !important;
+}
+.pdf-text-layer-hint {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  max-width: min(560px, calc(100% - 24px));
+  box-sizing: border-box;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 4px 16px #0002;
+  font: 12.5px var(--font-ui, sans-serif);
+  line-height: 1.5;
+  text-align: center;
+  pointer-events: none;
+}
 .reader-toolbar-progress {
   width: 100%;
   height: 2px;
@@ -453,6 +478,15 @@
 /* Overlay text (text boxes, sticky comments) is not page text: a highlight drag that crosses a mark must not pull
    its body into the selection. Only the in-place text editor opts back in while editing. */
 .annotation-mark, .annotation-mark .text-annotation-content, .annotation-mark .sticky-note-content { user-select: none; -webkit-user-select: none; }
+/* While a text-selection annotation tool is active, existing range marks must
+   behave like paint rather than an input surface. This lets the browser begin
+   and extend a native selection through an existing highlight/underline. The
+   same marks remain interactive in cursor mode for selection, recolouring and
+   deletion. Text boxes and shapes deliberately keep their normal hit targets. */
+.pdf-document.highlight-mode .annotation-mark:is(.highlight, .underline),
+.pdf-document.underline-mode .annotation-mark:is(.highlight, .underline) {
+  pointer-events: none;
+}
 .annotation-mark:hover {
   opacity: .82;
   box-shadow: 0 0 0 1px rgba(77,131,107,.26);
