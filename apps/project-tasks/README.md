@@ -82,6 +82,21 @@ revision 只是示例：每次修改前 get 最新版本，409 冲突后必须�
 
 派发者使用 `join --role dispatcher --authorized-dispatcher`，通过 `create --json task.json` 创建包含 `title`、`description`、`acceptance`、`priority` 的任务；修改用 `edit TASK_ID --revision N --json changed.json`。派发者不能领取，执行者不能改要求，用户负责归档。
 
+## UI 交付截图与隔离开发环境
+
+涉及界面效果的任务，执行 Agent 应通过隔离桌面开发入口启动实例：
+
+```sh
+npm run dev:live -- --instance <Agent代号> --port <独立端口> --cdp-port <独立端口>
+```
+
+- 不要把普通 `npm run dev` 的浏览器页面或未经明确放行的 `npm run tauri:dev` 当作可验收的桌面截图来源；后者可能关联正式资料库。
+- 截取真实应用区域，至少覆盖修改后的关键状态；适用时补充修改前、交互中、空状态、错误状态、窄窗口或缩放边界。
+- 保留底部 `DEV <代号> · 独立测试库` 状态条，不通过裁剪隐藏环境身份。截图说明注明实例、窗口尺寸、捕获时间、交付 commit 和验证内容；不得包含凭据或无关隐私区域。
+- 用 `upload TASK_ID --revision N --file IMAGE --purpose result --caption "..." --session PRIVATE_SESSION` 上传。每次上传后重新 `get` 获取最新 revision，再继续修改或提交。
+- 开发者上传的截图是交付结果证据，不代表独立验收。需要独立验收时，由不同 Agent 创建 acceptance 运行，在隔离环境中复现并把截图绑定到对应验收标准；开发会话不能验收自己的交付。
+- 无法获得真实桌面截图时必须明确记录未测范围，不能用合成图、DOM 静态渲染或旧截图冒充实际运行结果。
+
 ## MCP：标准 stdio
 
 启动 `node <项目路径>/apps/project-tasks/mcp.mjs`，cwd 设项目根目录。工具包括 `connection_status`、`join`、`list_tasks`、`get_task`、`heartbeat`、`create_task`、`update_task`、`attach_file`、`read_attachment` 及独立验收工具。`update_task` 只提供领取、确认要求版本、进度、提交、交还和编辑；没有方案审批动作或用户归档动作。

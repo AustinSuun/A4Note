@@ -161,8 +161,9 @@
   opacity: 0.6;
 }
 .tb-filters > input {
-  width: 240px;
+  flex: 1 1 240px;
   min-width: 120px;
+  max-width: 420px;
   font-size: 14px;
 }
 .tb-workspace {

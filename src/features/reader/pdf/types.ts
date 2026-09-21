@@ -77,7 +77,7 @@ export const defaultReaderToolSettings: ReaderToolSettings = {
   arrowStrokeWidth: 3.4,
   textBold: false,
   textItalic: false,
-  textFontSize: 16,
+  textFontSize: 24,
   textColor: '#202822',
   textBorderColor: '#ffffff',
   textBackgroundColor: 'transparent',

@@ -80,13 +80,22 @@ export function resizePositionFromDrag(
   if (vertical.includes('n')) top = clamp(point.y, 0, bottom - resize.minHeight);
   if (vertical.includes('s')) bottom = clamp(point.y, top + resize.minHeight, 100);
 
-  return {
+  const newWidth = Math.max(right - left, resize.minWidth);
+  const newHeight = Math.max(bottom - top, resize.minHeight);
+  const next: PositionJson = {
     ...positionJson,
     x: left,
     y: top,
-    width: Math.max(right - left, resize.minWidth),
-    height: Math.max(bottom - top, resize.minHeight),
+    width: newWidth,
+    height: newHeight,
   };
+  if (typeof (positionJson as any).fontSize === 'number' && Number.isFinite((positionJson as any).fontSize)) {
+    const originHeight = Math.max(resize.origin.height, 0.1);
+    const scale = newHeight / originHeight;
+    const scaled = (positionJson as any).fontSize * scale;
+    (next as any).fontSize = Math.max(2, Math.min(64, scaled));
+  }
+  return next;
 }
 
 export function currentVisiblePage(container: HTMLElement) {

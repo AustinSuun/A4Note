@@ -27,8 +27,10 @@ assert.doesNotMatch(source('src-tauri/src/lib.rs').split('.invoke_handler')[0],/
 const capability=JSON.parse(source('src-tauri/capabilities/default.json'));
 for(const permission of ['dialog:allow-ask','dialog:allow-message'])assert.ok(capability.permissions.includes(permission),'exit prompt needs '+permission);
 assert.match(source('src/platform/projectTaskLauncher.ts'),/await installTaskServiceExitHandler\(\)/,'exit listener must be installed before the native launch');
-// Mounted and driven by the live client; extra props (bound project/port) are allowed.
-assert.match(source('src/features/taskboard/TaskBoard.tsx'),/<TaskServiceControls[\s\S]{0,400}?connected=\{!!client\}/);
+// The service controls stay mounted in both states: a standalone strip before a board
+// connection exists, and inline in the toolbar row once connected.
+assert.match(source('src/features/taskboard/TaskBoard.tsx'),/\{!client && <TaskServiceControls connected=\{false\} \/>\}/);
+assert.match(source('src/features/taskboard/TaskBoard.tsx'),/<TaskServiceControls connected variant="inline" \/>/);
 assert.match(source('apps/project-tasks/README.md'),/关闭软件时保留后台服务/);
 for (const [sourcePath, destination] of Object.entries(config.bundle.resources)) {
   if (!destination.startsWith('project-tasks/') || !sourcePath.endsWith('.mjs')) continue;

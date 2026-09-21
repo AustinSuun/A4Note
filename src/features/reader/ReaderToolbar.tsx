@@ -1,5 +1,5 @@
+import { useEffect, useRef, useState, type CSSProperties, type WheelEvent as ReactWheelEvent } from 'react';
 import { HighlightAppearanceControl } from './HighlightAppearanceControl';
-import { useEffect, useState, type CSSProperties, type WheelEvent as ReactWheelEvent } from 'react';
 import { ReaderToolbarPortal } from './ReaderToolbarPortal';
 import { ReaderAnnotationDock } from './ReaderAnnotationDock';
 import { ReaderToolPopover } from './ReaderToolPopover';
@@ -512,15 +512,7 @@ function ToolOptionsBar({
           </div>
           <div className="tool-option-block compact text-size-option">
             <span className="tool-option-label">字号</span>
-            <select
-              value={toolSettings.textFontSize}
-              onChange={(event) => onToolSettingsChange({ ...toolSettings, textFontSize: Number(event.target.value) })}
-              aria-label="文本字号"
-            >
-              {(TEXT_FONT_SIZE_OPTIONS.includes(toolSettings.textFontSize) ? TEXT_FONT_SIZE_OPTIONS : [toolSettings.textFontSize, ...TEXT_FONT_SIZE_OPTIONS].sort((a, b) => a - b)).map((size) => (
-                <option key={size} value={size}>{size}</option>
-              ))}
-            </select>
+            <FontSizeDropdown value={toolSettings.textFontSize} onChange={(textFontSize) => onToolSettingsChange({ ...toolSettings, textFontSize: textFontSize })} />
           </div>
           <ToolColorPalette
             label="文字颜色"
@@ -757,4 +749,85 @@ function toolColorToCss(color: AnnotationColor): string {
     purple: 'rgba(151,112,219,.9)',
   };
   return map[color] ?? '#f2c94c';
+}
+
+function FontSizeDropdown({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside as any);
+    return () => document.removeEventListener('mousedown', handleClickOutside as any);
+  }, []);
+
+  useEffect(() => {
+    if (open && listRef.current) {
+      const active = listRef.current.querySelector('.active') as HTMLElement;
+      active?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [open]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      setOpen(false);
+      return;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) {
+        setOpen(true);
+        return;
+      }
+      const idx = TEXT_FONT_SIZE_OPTIONS.indexOf(value);
+      let nextIdx = idx;
+      if (e.key === 'ArrowDown') nextIdx = Math.min(idx + 1, TEXT_FONT_SIZE_OPTIONS.length - 1);
+      else nextIdx = Math.max(idx - 1, 0);
+      if (nextIdx !== idx) onChange(TEXT_FONT_SIZE_OPTIONS[nextIdx]);
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setOpen((o) => !o);
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!open) return;
+    e.preventDefault();
+    const idx = TEXT_FONT_SIZE_OPTIONS.indexOf(value);
+    if (e.deltaY < 0 && idx > 0) onChange(TEXT_FONT_SIZE_OPTIONS[idx - 1]);
+    if (e.deltaY > 0 && idx < TEXT_FONT_SIZE_OPTIONS.length - 1) onChange(TEXT_FONT_SIZE_OPTIONS[idx + 1]);
+  };
+
+  return (
+    <div className="font-size-dropdown" ref={ref} onKeyDown={handleKeyDown}>
+      <button type="button" className="font-size-trigger" aria-label="文本字号" onClick={() => setOpen((o) => !o)}>
+        <span>{value}</span>
+        <span className="dropdown-arrow" aria-hidden>▾</span>
+      </button>
+      {open && (
+        <div className="font-size-list" ref={listRef} onWheel={handleWheel}>
+          {TEXT_FONT_SIZE_OPTIONS.map((size) => (
+            <button
+              key={size}
+              type="button"
+              className={size === value ? 'active' : ''}
+              onClick={() => {
+                onChange(size);
+                setOpen(false);
+              }}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

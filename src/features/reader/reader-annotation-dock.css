@@ -5,7 +5,7 @@
 .reader-annotation-dock .annotation-tool-btn:not(:disabled) { color: var(--ink) !important; opacity: 1; }
 .reader-annotation-dock .annotation-tool-btn:not(:disabled):is(:hover, .active, .contextual) { color: var(--accent-strong) !important; }
 .reader-annotation-dock .annotation-tool-btn svg { width: 24px; height: 24px; flex: 0 0 24px; opacity: 1; stroke-width: 2.2; }
-.reader-annotation-dock .annotation-tool-color-dot { width: 6px; height: 6px; right: 3px; bottom: 3px; opacity: 1; }
+.reader-annotation-dock .annotation-tool-color-dot { width: 9px; height: 9px; right: 2px; bottom: 2px; opacity: 1; border: 1.5px solid rgba(255,255,255,0.9); box-shadow: 0 0 0 0.5px rgba(0,0,0,0.2); border-radius: 50%; box-sizing: border-box; }
 .reader-annotation-dock { position: absolute; z-index: 30; bottom: 16px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 24px); color: var(--ink); pointer-events: auto; -webkit-app-region: no-drag; }
 .reader-annotation-dock .reader-toolbar-annotations { display: block; min-height: 0; padding: 0; background: transparent; border: 0; box-shadow: none; }
 .reader-annotation-dock .annotation-tool-slot { flex: 0 0 auto; }

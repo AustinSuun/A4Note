@@ -20,17 +20,19 @@ export function highlightPositionStyle(position: PositionJson) {
   const x = numberValue(position.x, 18);
   const y = numberValue(position.y, 28);
   const width = numberValue(position.width, 42);
-  // Selection rectangles already carry the PDF text run's real height. Keep
-  // the correction proportional so small captions do not get a fixed-height
-  // highlight while large display text still has a little breathing room.
+  // Selection rectangles carry the glyph box including ascent/descent padding.
+  // A band that spans the full box looks like a solid slab over the line and
+  // visually collides with the rows above and below, so trim a proportional
+  // share from both edges and keep the band centred on the x-height.
   const height = Math.max(numberValue(position.height, 5), 0.2);
-  const inset = Math.min(Math.max(height * 0.04, 0.015), 0.12);
-  const bottomBleed = Math.min(Math.max(height * 0.04, 0.02), 0.14);
+  const topInset = Math.max(height * 0.28, 0.02);
+  const bottomInset = Math.max(height * 0.18, 0.015);
+  const band = Math.max(height - topInset - bottomInset, height * 0.5);
   return {
     left: `${x}%`,
-    top: `${y + inset}%`,
+    top: `${y + topInset}%`,
     width: `${width}%`,
-    height: `${Math.max(height - inset + bottomBleed, height * 0.96)}%`,
+    height: `${band}%`,
   };
 }
 
@@ -38,13 +40,23 @@ export function underlinePositionStyle(position: PositionJson) {
   const x = numberValue(position.x, 18);
   const y = numberValue(position.y, 28);
   const width = numberValue(position.width, 42);
+  // `height` is the full glyph box: the baseline sits above its bottom edge by
+  // the descender. Drawing at `y + height` therefore lands inside the descent
+  // of the same row and the rule crosses g/y/p. Clear the descender first, then
+  // add a small gap so the rule sits under the glyphs without touching the next
+  // line. The stroke also scales with the run height instead of a flat 1px.
   const height = Math.max(numberValue(position.height, 5), 0.2);
-  const lineHeight = Math.min(Math.max(height * 0.1, 0.04), 0.5);
-  const baselineGap = Math.min(Math.max(height * 0.06, 0.03), 0.16);
-  const baselineTop = y + height + baselineGap;
+  const lineHeight = Math.min(Math.max(height * 0.08, 0.05), 0.42);
+  const descender = height * 0.2;
+  const baselineGap = Math.min(Math.max(height * 0.08, 0.02), 0.12);
+  // `top` marks the rule's BOTTOM edge; `.annotation-mark.underline` lifts the
+  // element by its own height. The stylesheet keeps a 1px minimum so a hairline
+  // stays visible, and anchoring the bottom makes that clamp grow the rule
+  // upwards into the descender slack.
+  const ruleBottom = Math.min(y + height - descender + baselineGap + lineHeight, y + height);
   return {
     left: `${x}%`,
-    top: `${baselineTop}%`,
+    top: `${ruleBottom}%`,
     width: `${width}%`,
     height: `${lineHeight}%`,
   };

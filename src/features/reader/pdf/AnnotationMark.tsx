@@ -1,4 +1,4 @@
-import { memo, useState, type ComponentProps, type CSSProperties, type MouseEvent } from 'react';
+import { memo, useEffect, useRef, useState, type ComponentProps, type CSSProperties, type MouseEvent } from 'react';
 import type { AnnotationColor, PositionJson } from '../../../core/types';
 import { zh } from '../../../ui/zh';
 import { annotationColorInputValue, toolColorPresets } from '../readerConstants';
@@ -178,15 +178,7 @@ function AnnotationMarkView({
           <div className="annotation-text-style-panel" role="group" aria-label="文字样式" onClick={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
             <label>
               <span>字号</span>
-              <select
-                value={TEXT_FONT_SIZE_OPTIONS.includes(textLayout.fontSize) ? textLayout.fontSize : ''}
-                onChange={(event) => { const size = Number(event.target.value); if (size > 0) void onUpdateTextStyle(annotationId, { fontSize: size }); }}
-              >
-                {!TEXT_FONT_SIZE_OPTIONS.includes(textLayout.fontSize) && <option value="">{textLayout.fontSize}</option>}
-                {TEXT_FONT_SIZE_OPTIONS.map((size) => (
-                  <option key={size} value={size}>{size}</option>
-                ))}
-              </select>
+              <AnnotationFontSizeDropdown value={textLayout.fontSize} onChange={(size) => void onUpdateTextStyle(annotationId, { fontSize: size })} />
             </label>
             <button type="button" className={textLayout.bold ? 'active' : ''} aria-pressed={textLayout.bold} title="粗体" onClick={() => void onUpdateTextStyle(annotationId, { bold: !textLayout.bold })}>B</button>
             <button type="button" className={textLayout.italic ? 'active' : ''} aria-pressed={textLayout.italic} title="斜体" onClick={() => void onUpdateTextStyle(annotationId, { italic: !textLayout.italic })}>I</button>
@@ -369,7 +361,7 @@ function AnnotationMarkView({
             <div
               className="sticky-note-content"
               style={{
-                fontSize: `${numberValue(annotation.positionJson.fontSize, 13)}px`,
+                fontSize: `${numberValue(annotation.positionJson.fontSize, 24)}px`,
                 fontWeight: Boolean(annotation.positionJson.bold) ? 700 : 500,
                 fontStyle: Boolean(annotation.positionJson.italic) ? 'italic' : 'normal',
                 color: String(annotation.positionJson.textColor ?? '#202822'),
@@ -535,5 +527,69 @@ function EditIcon() {
       <path d="M5 19h4l10-10-4-4L5 15v4Z" />
       <path d="M13.5 6.5l4 4" />
     </svg>
+  );
+}
+
+function AnnotationFontSizeDropdown({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside as any);
+    return () => document.removeEventListener('mousedown', handleClickOutside as any);
+  }, []);
+  useEffect(() => {
+    if (open && listRef.current) {
+      const active = listRef.current.querySelector('.active') as HTMLElement;
+      active?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [open]);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      setOpen(false);
+      return;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) {
+        setOpen(true);
+        return;
+      }
+      const idx = TEXT_FONT_SIZE_OPTIONS.indexOf(value);
+      let nextIdx = idx;
+      if (e.key === 'ArrowDown') nextIdx = Math.min(idx + 1, TEXT_FONT_SIZE_OPTIONS.length - 1);
+      else nextIdx = Math.max(idx - 1, 0);
+      if (nextIdx !== idx) onChange(TEXT_FONT_SIZE_OPTIONS[nextIdx]);
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setOpen((o) => !o);
+    }
+  };
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!open) return;
+    e.preventDefault();
+    const idx = TEXT_FONT_SIZE_OPTIONS.indexOf(value);
+    if (e.deltaY < 0 && idx > 0) onChange(TEXT_FONT_SIZE_OPTIONS[idx - 1]);
+    if (e.deltaY > 0 && idx < TEXT_FONT_SIZE_OPTIONS.length - 1) onChange(TEXT_FONT_SIZE_OPTIONS[idx + 1]);
+  };
+  return (
+    <div className="font-size-dropdown" ref={ref} onKeyDown={handleKeyDown}>
+      <button type="button" className="font-size-trigger" onClick={() => setOpen((o) => !o)}>
+        <span>{value}</span>
+        <span className="dropdown-arrow" aria-hidden>▾</span>
+      </button>
+      {open && (
+        <div className="font-size-list" ref={listRef} onWheel={handleWheel}>
+          {TEXT_FONT_SIZE_OPTIONS.map((size) => (
+            <button key={size} type="button" className={size === value ? 'active' : ''} onClick={() => { onChange(size); setOpen(false); }}>{size}</button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

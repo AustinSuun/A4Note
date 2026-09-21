@@ -848,16 +848,23 @@ export default function PdfReader({
       setEraserCursor(null);
       return;
     }
-    const layer = event.currentTarget.querySelector<HTMLElement>('.pdf-render-layer') ?? event.currentTarget;
+    const layer = pdfCoordinateLayer(event.currentTarget as HTMLElement);
     const rect = layer.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) {
-      setEraserCursor(null);
+      return;
+    }
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    if (x < -rect.width * 0.15 || x > rect.width * 1.15 || y < -rect.height * 0.15 || y > rect.height * 1.15) {
+      if (x < -rect.width * 0.5 || x > rect.width * 1.5 || y < -rect.height * 0.5 || y > rect.height * 1.5) {
+        setEraserCursor(null);
+      }
       return;
     }
     setEraserCursor({
       page: pageNumber,
-      x: clamp(event.clientX - rect.left, 0, rect.width),
-      y: clamp(event.clientY - rect.top, 0, rect.height),
+      x: clamp(x, 0, rect.width),
+      y: clamp(y, 0, rect.height),
     });
   }
 
@@ -1292,10 +1299,12 @@ function measuredPercentBox(target: HTMLElement, layer: HTMLElement) {
 function inkPositionFromPoints(points: InkDraft['points']): PositionJson {
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
-  const x = Math.min(...xs);
-  const y = Math.min(...ys);
-  const width = Math.max(Math.max(...xs) - x, 0.1);
-  const height = Math.max(Math.max(...ys) - y, 0.1);
+  const x = Math.max(0, Math.min(100, Math.min(...xs)));
+  const y = Math.max(0, Math.min(100, Math.min(...ys)));
+  const maxX = Math.max(0, Math.min(100, Math.max(...xs)));
+  const maxY = Math.max(0, Math.min(100, Math.max(...ys)));
+  const width = Math.max(maxX - x, 0.1);
+  const height = Math.max(maxY - y, 0.1);
   return { x, y, width, height, points };
 }
 

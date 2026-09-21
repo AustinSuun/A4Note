@@ -30,17 +30,20 @@ export async function extractTextItemBoxes(page: pdfjsLib.PDFPageProxy, viewport
 export function normalizeClientRect(rect: DOMRect | ClientRect, container: HTMLElement): RectBox | null {
   const containerRect = pdfCoordinateLayer(container).getBoundingClientRect();
   if (!(containerRect.width > 0 && containerRect.height > 0) || ![rect.left, rect.top, rect.width, rect.height, containerRect.left, containerRect.top, containerRect.width, containerRect.height].every(Number.isFinite)) return null;
-  const left = Math.max(rect.left, containerRect.left);
-  const top = Math.max(rect.top, containerRect.top);
-  const right = Math.min(rect.left + rect.width, containerRect.left + containerRect.width);
-  const bottom = Math.min(rect.top + rect.height, containerRect.top + containerRect.height);
-  // Reject another page's rect instead of clamping it into this page's top-left.
-  if (right <= left || bottom <= top) return null;
+  // Allow a small epsilon for outer clipping: selection rects that slightly
+  // overflow the page (e.g. descenders) should still be considered, but
+  // completely disjoint rects from other pages are rejected.
+  const epsilon = 0.5;
+  const left = Math.max(rect.left, containerRect.left - epsilon);
+  const top = Math.max(rect.top, containerRect.top - epsilon);
+  const right = Math.min(rect.left + rect.width, containerRect.left + containerRect.width + epsilon);
+  const bottom = Math.min(rect.top + rect.height, containerRect.top + containerRect.height + epsilon);
+  if (right <= left + epsilon || bottom <= top + epsilon) return null;
   return {
-    x: ((left - containerRect.left) / containerRect.width) * 100,
-    y: ((top - containerRect.top) / containerRect.height) * 100,
-    width: ((right - left) / containerRect.width) * 100,
-    height: ((bottom - top) / containerRect.height) * 100,
+    x: clamp(((left - containerRect.left) / containerRect.width) * 100, 0, 100),
+    y: clamp(((top - containerRect.top) / containerRect.height) * 100, 0, 100),
+    width: clamp(((right - left) / containerRect.width) * 100, 0, 100),
+    height: clamp(((bottom - top) / containerRect.height) * 100, 0, 100),
   };
 }
 

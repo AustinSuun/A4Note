@@ -13,18 +13,10 @@ import './taskboard-service.css';
 
 const visibleStates = new Set<GatewayInspection['state']>(['running', 'legacy', 'stale-record']);
 
-/** Background service status, the exit policy toggle and an explicit stop; desktop only. */
-export function TaskServiceControls({
-  connected,
-  boundProject,
-  boundPort,
-}: {
-  connected: boolean;
-  /** Name of the project the board is bound to, when connected. */
-  boundProject?: string;
-  /** Port the board is bound to, when connected. */
-  boundPort?: number;
-}) {
+/** Exit policy toggle and an explicit stop; desktop only.
+ *  `inline` renders bare controls for the board toolbar, `bar` keeps the standalone strip
+ *  used before a board connection exists. */
+export function TaskServiceControls({ connected, variant = 'bar' }: { connected: boolean; variant?: 'bar' | 'inline' }) {
   const [info, setInfo] = useState<GatewayInspection | null>(null);
   const [keep, setKeep] = useState(loadExitPolicy);
   const [busy, setBusy] = useState(false);
@@ -58,22 +50,17 @@ export function TaskServiceControls({
       setBusy(false);
     }
   };
-  // Which project/port this board is actually bound to, so a stale or
-  // second service cannot be mistaken for the one in front of you.
-  const binding = connected && boundProject
-    ? `已绑定 ${boundProject}${boundPort ? ` · 端口 ${boundPort}` : ''}`
-    : connected
-      ? '已连接'
-      : '未连接到此服务';
   const summary =
     info.state === 'running'
-      ? `本机任务服务后台运行中 · PID ${info.pid} · ${binding} · ${agents.length > 0 ? `${agents.length} 个 Agent 最近在线` : '暂无 Agent 在线'}`
+      ? ''
       : info.state === 'legacy'
         ? `检测到旧版任务服务（PID ${info.pid}${info.alive === false ? '，已不在运行' : ''}）：不支持安全停止，退出软件时会按旧版方式结束它`
         : `上次的服务记录已失效（PID ${info.pid} ${info.alive ? '仍在运行但身份无法确认' : '未运行'}）`;
-  return (
-    <div className="tb-service-bar" role="status">
-      <span className="tb-service-summary" title={agents.length > 0 ? describeAgents(agents) : undefined}>{summary}</span>
+  const controls = (
+    <>
+      {summary && (
+        <span className="tb-service-summary" title={agents.length > 0 ? describeAgents(agents) : undefined}>{summary}</span>
+      )}
       <label className="tb-service-policy">
         <input
           type="checkbox"
@@ -86,6 +73,8 @@ export function TaskServiceControls({
         {busy ? '正在停止…' : info.state === 'stale-record' ? '清理记录' : '停止服务'}
       </button>
       {notice && <span className="tb-service-notice">{notice}</span>}
-    </div>
+    </>
   );
+  if (variant === 'inline') return <div className="tb-service-controls" role="status">{controls}</div>;
+  return <div className="tb-service-bar" role="status">{controls}</div>;
 }

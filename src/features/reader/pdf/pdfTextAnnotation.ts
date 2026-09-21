@@ -8,8 +8,8 @@ import type { PositionJson } from '../../../core/types';
  * Older annotations without `fontUnit` keep their legacy fixed-pixel font.
  */
 export const TEXT_FONT_UNIT_PAGE = 'page';
-export const TEXT_DEFAULT_FONT_SIZE = 16;
-export const TEXT_FONT_SIZE_OPTIONS = [12, 14, 16, 18, 20, 24, 28, 32];
+export const TEXT_DEFAULT_FONT_SIZE = 24;
+export const TEXT_FONT_SIZE_OPTIONS = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64];
 export const TEXT_LINE_HEIGHT = 1.3;
 /** Widest a fresh box may grow before wrapping, as a share of the page width. */
 export const TEXT_MAX_WIDTH_PERCENT = 60;
@@ -34,7 +34,7 @@ export type TextAnnotationLayout = {
 export function textAnnotationLayout(position: PositionJson): TextAnnotationLayout {
   const fontUnit = position.fontUnit === TEXT_FONT_UNIT_PAGE ? 'page' : 'px';
   return {
-    fontSize: Math.max(numberValue(position.fontSize, 13), 6),
+    fontSize: Math.max(numberValue(position.fontSize, 24), 2),
     fontUnit,
     autoWidth: fontUnit === 'page' && position.autoWidth !== false,
     maxWidth: clampPercent(numberValue(position.maxWidth, TEXT_MAX_WIDTH_PERCENT), 4, 100),
