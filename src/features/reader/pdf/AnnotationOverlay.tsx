@@ -15,6 +15,7 @@ import type { AnnotationMarkModel, AnnotationResizeHandle, DraftAnnotationPrevie
 export function AnnotationOverlay({
   annotations,
   drafts,
+  selectionPreview = [],
   dragDraft,
   inkDraft,
   activeTool,
@@ -36,6 +37,8 @@ export function AnnotationOverlay({
 }: {
   annotations: PaperDocument['annotations'];
   drafts: DraftAnnotationPreview[];
+  /** Live text-selection band(s): painted by the highlight layer only, never as interactive marks. */
+  selectionPreview?: readonly AnnotationMarkModel[];
   dragDraft: DragDraft | null;
   inkDraft: InkDraft | null;
   activeTool: ReaderTool;
@@ -114,7 +117,7 @@ export function AnnotationOverlay({
       }
     : null;
   const rangeSelectionActive = activeTool === 'highlight' || activeTool === 'underline';
-  const highlightAnnotations: AnnotationMarkModel[] = [...annotations, ...drafts];
+  const highlightAnnotations: AnnotationMarkModel[] = [...annotations, ...drafts, ...selectionPreview];
   if (dragPosition && dragDraft && activeTool === 'highlight') {
     highlightAnnotations.push({ id: 'highlight-drag-preview', page: dragDraft.page, type: 'highlight',
       color: activeAnnotationColor, quote: '', comment: '', positionJson: dragPosition });

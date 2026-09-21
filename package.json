@@ -25,6 +25,7 @@
     "test:reader-helpers": "node --experimental-strip-types scripts/verify-reader-helpers.mjs",
     "test:pdf-rotated-text": "node --experimental-strip-types scripts/verify-pdf-rotated-text-layer.mjs",
     "test:pdf-crosspage-selection": "node --experimental-strip-types scripts/verify-pdf-crosspage-selection.mjs",
+    "test:pdf-selection-preview": "node --experimental-strip-types scripts/verify-pdf-selection-preview.mjs",
     "test:pdf-eraser-precision": "node --experimental-strip-types scripts/verify-pdf-eraser-precision.mjs",
     "test:pdf-text-annotation": "node --experimental-strip-types scripts/verify-pdf-text-annotation.mjs",
     "test:ai-toolbar": "node scripts/verify-ai-toolbar.mjs",

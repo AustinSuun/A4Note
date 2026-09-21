@@ -470,8 +470,16 @@
   padding-bottom: 0.22em;
   line-height: 1.12;
 }
-.pdf-text-layer.selectable span::selection { background: rgba(77,131,107,.24); color: transparent; }
-.pdf-text-layer.selectable::selection { background: rgba(77,131,107,.24); color: transparent; }
+/* The native selection band would span the whole selectable box (font content area + descender
+   padding) and jump to the tighter glyph band once a highlight is created. The reader paints the
+   live selection itself through the highlight layer (PdfReader selection preview) with the same
+   geometry the highlight will get, so the browser band stays invisible; the real Range, hit boxes
+   and copy/quote are untouched. Forced-colors mode keeps the system selection for visibility. */
+.pdf-text-layer.selectable span::selection { background: transparent; color: transparent; }
+.pdf-text-layer.selectable::selection { background: transparent; color: transparent; }
+@media (forced-colors: active) {
+  .pdf-text-layer.selectable span::selection, .pdf-text-layer.selectable::selection { background: Highlight; color: HighlightText; }
+}
 .pdf-placeholder { min-height: 780px; padding: 34px; }
 .annotation-overlay { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .annotation-mark { position: absolute; border-radius: 4px; opacity: .78; pointer-events: auto; cursor: pointer; }
