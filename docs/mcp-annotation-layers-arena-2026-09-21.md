@@ -3,7 +3,7 @@
 - 日期：2026-09-21；执行者：Arena（任务板 worker「Arena执行」）。
 - 任务卡：`fb5e3f2f-0bef-4b64-a296-02a7466c1d19`（high）。
 - 分支：`feat/annotation-layers-arena`，基于 `main 498745a`（工作树 `.worktrees/annotation-layers-arena`）。
-- 提交：`bb45843`（模型/迁移/CRUD/前端状态）、`a353318`（Reader 入口、选择器、管理页、列表分组）、`bf0d9a5`（前端 reducer/竞态测试、Rust 性能夹具、layer/created 索引）、`e0dc81c`/`e6f3f0a`/`2a3c1c9`（整层移动取自 store、对话框焦点回退、入口宽度、nativeApi 保持仅类型导入）、`93e551b`（合入 main 78dbc43）。
+- 提交：`bb45843`（模型/迁移/CRUD/前端状态）、`a353318`（Reader 入口、选择器、管理页、列表分组）、`507210a`（前端 reducer/竞态测试、Rust 性能夹具、layer/created 索引）、`e0dc81c`/`52a58f1`/`2ca97e1`（整层移动取自 store、对话框焦点回退、入口宽度、nativeApi 保持仅类型导入）、`93e551b`（合入 main 78dbc43）、`fc59a0a`（报告/状态）。
 
 ## 1. 领域模型与存储
 
@@ -64,5 +64,5 @@
 - Rust：`cargo test`（src-tauri）214 项通过；`annotation_layers` 6 项含性能夹具，数据见 §4。
 - 前端：`npm run test:annotation-layers` 51 断言；`verify-annotation-history` 175；`verify-reader-rendering`、`verify-architecture-boundaries`、`test:ui-state`、`test:reader-helpers` 通过；`npx tsc -b`、`npm run build` 通过。
 - 隔离实例 arena-f4：56/56（§5）。
-- `npm run verify`：在 `2a3c1c9`（含全部功能提交）上全量通过（`.tmp/f4/verify2.log`）；合入 main 78dbc43 后再次复跑（见 §7 末尾）。
+- `npm run verify`：在 `2ca97e1`（含全部功能提交）上全量通过（`.tmp/f4/verify2.log`）；合入 main 78dbc43 后在 `fc59a0a` 上复跑，仅 `apps/project-tasks/test/onboarding.test.mjs` 出现一次环境性失败（同机其他 Agent 并行占用服务端口），单独重跑 `npm run test:project-tasks` 86/86 通过，其余步骤全部通过（`.tmp/f4/verify3.log`）。
 - 性能说明：一次显示 500 条标注的层会触发约 0.5 s 的渲染长任务（React 标记节点 + 高亮 SVG），没有页面级冻结；进一步降低需要按可见页虚拟化标记渲染，列为后续优化。
