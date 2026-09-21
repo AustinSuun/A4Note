@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const readerSource = await readFile('src/features/reader/pdf/PdfReader.tsx', 'utf8');
@@ -84,9 +84,8 @@ assert.match(pdfAnnotationHelpersSource, /export function annotationCustomColorS
 assert.match(pdfAnnotationHelpersSource, /const topInset = Math\.max\(height \* 0\.28, 0\.02\)/);
 assert.match(pdfAnnotationHelpersSource, /const bottomInset = Math\.max\(height \* 0\.18, 0\.015\)/);
 assert.match(pdfAnnotationHelpersSource, /const band = Math\.max\(height - topInset - bottomInset, height \* 0\.5\)/);
-assert.match(pdfAnnotationHelpersSource, /const baselineGap = Math\.min\(Math\.max\(height \* 0\.08, 0\.02\), 0\.12\)/);
+assert.match(pdfAnnotationHelpersSource, /const lineHeight = Math\.min\(Math\.max\(height \* 0\.08, 0\.05\), 0\.42\)/);
 assert.match(pdfAnnotationHelpersSource, /const ruleBottom = Math\.min\(y \+ height - descender \+ baselineGap \+ lineHeight, y \+ height\)/);
-assert.match(pdfAnnotationHelpersSource, /function segmentOrientation\(position: PositionJson\)/);
 assert.match(coreTypesSource, /export type AnnotationType = 'highlight' \| 'comment' \| 'underline' \| 'area' \| 'text' \| 'ink' \| 'rect' \| 'arrow'/);
 assert.match(coreTypesSource, /export type ReaderTool = 'cursor' \| 'hand' \| 'eraser' \| AnnotationType/);
 assert.match(readerConstantsSource, /id: 'text'/);

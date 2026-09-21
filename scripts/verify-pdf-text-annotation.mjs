@@ -25,7 +25,7 @@ const fresh = text.textAnnotationLayout({ x: 10, y: 10, width: 0, height: 0, fon
 check(fresh.fontUnit === 'page' && fresh.autoWidth && fresh.maxWidth === 60, 'new annotations use page units and auto width');
 check(text.textAnnotationLayout({ fontUnit: 'page', autoWidth: false, fontSize: 16 }).autoWidth === false, 'manual resize flag turns auto width off');
 check(text.textLength(16, 'page') === 'calc(var(--pdf-display-zoom, 1) * 16px)' && text.textLength(13, 'px') === '13px', 'font length follows the zoom variable only for page units');
-check(text.TEXT_DEFAULT_FONT_SIZE === 16 && text.TEXT_FONT_SIZE_OPTIONS.includes(16), 'default font size is 16 page px');
+check(text.TEXT_DEFAULT_FONT_SIZE === 24 && text.TEXT_FONT_SIZE_OPTIONS.length === 32 && text.TEXT_FONT_SIZE_OPTIONS[0] === 2 && text.TEXT_FONT_SIZE_OPTIONS.at(-1) === 64, 'default font size is 24 and selector covers 2–64 step 2');
 
 const autoStyle = text.textBoxStyle({ x: 30, y: 10 }, fresh);
 check(autoStyle.width === 'auto' && autoStyle.height === 'auto' && autoStyle.maxWidth === '60%', 'auto box hugs content up to its max width');
@@ -40,7 +40,7 @@ check(typography.lineHeight === text.TEXT_LINE_HEIGHT && typography.fontWeight =
 const middle = text.placeNewTextBox({ x: 30, y: 20, pageWidthPx: 612, pageHeightPx: 792, fontPx: 16 });
 check(middle.x === 30 && middle.y === 20 && middle.maxWidth === 60, 'a click in the page body keeps its anchor and the 60% cap');
 const right = text.placeNewTextBox({ x: 97, y: 20, pageWidthPx: 612, pageHeightPx: 792, fontPx: 16 });
-check(right.x < 97 && right.x + right.maxWidth <= 100 - text.TEXT_EDGE_MARGIN_PERCENT + 1e-9 && right.maxWidth >= (16 * 3 * 2 / 612) * 100 - 1e-9, 'a click at the right edge moves the anchor left so a few characters fit');
+check(right.x < 97 && right.x + right.maxWidth <= 100 - text.TEXT_EDGE_MARGIN_PERCENT + 1e-9 && right.maxWidth >= (16 * text.TEXT_MIN_WIDTH_EM / 612) * 100 - 1e-9, 'a click at the right edge moves the anchor left so a few characters fit');
 const bottom = text.placeNewTextBox({ x: 30, y: 99.5, pageWidthPx: 612, pageHeightPx: 792, fontPx: 16 });
 check(bottom.y === 100 - text.TEXT_EDGE_MARGIN_PERCENT, 'a click below the bottom margin is pulled back onto the page');
 const clamped = text.clampTextBoxToPage({ x: 30, y: 98, width: 20, height: 6 });
@@ -72,6 +72,6 @@ check(toolbar.includes("contextAnnotationId && contextAnnotationTool === tool &&
 const pageView = read('src/features/reader/pdf/PdfPageView.tsx');
 check(pageView.includes("'--pdf-display-zoom': displayZoom"), 'render layer publishes the zoom for page-unit fonts');
 const types = read('src/features/reader/pdf/types.ts');
-check(/textFontSize: 16,/.test(types), 'tool default font size raised to 16');
+check(/textFontSize: 24,/.test(types), 'tool default font size raised to 24');
 
 console.log(`verify-pdf-text-annotation: ${passed} checks passed`);

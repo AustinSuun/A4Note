@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const appSource = await readFile('src/ui/App.tsx', 'utf8');
@@ -460,7 +460,7 @@ assert.match(readerStylesSource, /\.zoom-controls svg \{\s*width: 19px;\s*height
 assert.match(readerStylesSource, /\.selection-popup-btn svg \{ width: 26px; height: 26px;/);
 assert.match(readerStylesSource, /\.selection-popup \{[\s\S]*?padding: 3px;[\s\S]*?border-radius: 999px;[\s\S]*?background: rgba\(255,255,255,\.96\);[\s\S]*?box-shadow: 0 5px 14px rgba\(26,41,33,\.12\);/);
 assert.match(readerStylesSource, /\.annotation-color-palette \{[\s\S]*?left: 50%;[\s\S]*?right: auto;[\s\S]*?grid-template-columns: 34px max-content;[\s\S]*?transform: translateX\(-50%\);/);
-assert.match(readerStylesSource, /\.annotation-color-presets \{[\s\S]*?grid-template-columns: repeat\(10, 16px\);/);
+assert.match(readerStylesSource, /\.annotation-color-presets \{[\s\S]*?grid-template-columns: repeat\(10, var\(--annotation-swatch-size\)\);/);
 assert.match(readerStylesSource, /\.reader-workspace-toggle \{[\s\S]*?width: 38px;[\s\S]*?height: 38px;[\s\S]*?border-radius: 6px;/);
 assert.match(readerStylesSource, /\.reader-tool-options-bar/);
 assert.match(readerStylesSource, /\.tool-option-color-custom/);

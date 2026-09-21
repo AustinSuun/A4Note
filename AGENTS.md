@@ -25,6 +25,8 @@ git status --short
 
 将截图以任务结果附件上传（`--purpose result`，填写说明）；开发者截图属于交付证据，不等于独立验收。需要独立验收时，由不同 Agent 建立 acceptance 会话并绑定其实际截图。完整命令和角色边界见 `apps/project-tasks/README.md`。
 
+截图默认自动化产出，不要手工凭印象描述效果：用 `playwright-core`（已在 `node_modules`）驱动本机 Chrome 连接 `dev:live` 的 `--cdp-port`，脚本须收集 `pageerror` 与 console error 以佐证「无控制台报错」，并全程 try/catch 写日志文件。截图存 `.tmp/shots/`，不要放进 `docs/`。若某状态受环境限制截不到（例如浏览器预览无法启动本机看板服务、只能停在未连接态），必须在提交说明中写明受限范围与原因，不得用其他状态的截图顶替。操作细节与常见坑见 `docs/mcp-dev-preview-visual-acceptance.md`。
+
 ## 代码任务完成与合并
 
 代码任务由执行Agent完成验证并合并到本地main后再submit，结果中注明交付与合并commit；冲突、脏main或验证失败时报告阻塞，不强行覆盖。归档只确认验收，不触发合并；默认不推送、打包、安装或发布。
