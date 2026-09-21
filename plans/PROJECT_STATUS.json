@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-20T20:42:00+08:00",
+  "updatedAt": "2026-09-21T08:28:03+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
+      "task-service-exit-lifecycle-arena：Arena状态核查5f8ce0ee任务服务退出生命周期按be3b361d抢救为独立分支rescue/5f8ce0ee-gateway-exit-lifecycle（网关v4+gateway-lifecycle+Tauri关闭拦截/Exit兜底+前端退出流程与服务栏）；分支上build、test:project-tasks 90项、cargo check/test通过；未重启4319、未打包安装；见docs/mcp-task-service-exit-lifecycle-arena-2026-09-20.md。",
       "reader-list-qingfan：青帆 ebe8db12，独立分支main 4b4f57a；按钮/类型标签完成，浏览器22项、完整verify、最终build/状态/架构检查通过；按用户授权合并本地main，提交review，无真实窗口资料库/安装发布占用。",
       "用户明确选择发布GitHub 0.1.7，允许本次发布必需CI；本agent开始发布整理，请并行agent暂缓生产源码修改。通过受保护PR/Verify后才生成tag和签名Release，不绕过检查，不安装/关闭软件/修改真实资料。插件保留0.6.5，旧0.1.6本地包不冒充新版。",
       "最新UI Windows包完成，解除打包占用：0.1.6，builtAt2026-09-17T04:48:53.892Z；package:windows cmd_34de00340b6aea0a505248384419ea487bd2a85167980b32 exit0，独立哈希核验cmd_537383d193e211036e6aed74f26798475070bda1e9f3c1c2 exit0，EXE/安装包SHA256与build-info一致、更新签名非空。包含阅读顶栏三轨、文献库顶栏切换及图标、笔记同款PDF滑块、实时源码居左、设置字号、当前已合入工作区配置/文案等生产源码。产物artifacts/windows/latest/a4note.exe与A4 Note_x64-setup.exe；旧包归档0.1.6-20260917-123917-31020。未测试/安装/关闭软件/发布/操作真实资料。详见docs/mcp-latest-ui-windows-package-2026-09-17.md。",

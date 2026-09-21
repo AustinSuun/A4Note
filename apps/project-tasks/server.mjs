@@ -122,6 +122,8 @@ export function createTaskServer({
             'Cache-Control': 'no-store',
           });
           res.write(`data: ${JSON.stringify({ sequence: seq })}\n\n`);
+          // Browser/WebView boards send an Origin; CLI and MCP agents do not.
+          res.a4Origin = req.headers.origin ?? '';
           clients.add(res);
           const heartbeat = setInterval(() => res.write(': ping\n\n'), 15000);
           heartbeat.unref();
@@ -234,6 +236,11 @@ export function createTaskServer({
   return {
     server,
     store,
+    streams() {
+      let app = 0, other = 0;
+      for (const r of clients) if (r.a4Origin) app++; else other++;
+      return { app, other };
+    },
     async close() {
       for (const r of clients) r.end();
       await new Promise((r) => server.close(r));

@@ -52,7 +52,7 @@ pub fn run() {
             agent_bridge::register(app.handle());
             capture::start_native(app.handle());
             Ok(())
-        })
+        }).on_window_event(project_tasks::on_window_event)
         .invoke_handler(tauri::generate_handler![
             app_paths::get_aster_paths,
             app_paths::initialize_library,
@@ -60,7 +60,7 @@ pub fn run() {
             capture::capture_control,
             app_paths::reveal_aster_path,
             project_commands::describe_project_folder,
-            project_tasks::start_project_tasks,
+            project_tasks::start_project_tasks, project_tasks::inspect_project_tasks, project_tasks::stop_project_tasks, project_tasks::set_project_tasks_exit_policy, project_tasks::resolve_app_exit,
             project_commands::list_directory_entries,
             project_commands::reveal_path,
             project_commands::open_path_external,
@@ -152,6 +152,7 @@ pub fn run() {
             if matches!(event, tauri::RunEvent::Exit) {
                 agent_bridge::shutdown(app);
                 capture::shutdown();
+                project_tasks::shutdown_on_exit(app);
             }
         });
 }
