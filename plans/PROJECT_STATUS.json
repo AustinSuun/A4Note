@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-21T09:21:45+08:00",
+  "updatedAt": "2026-09-21T15:38:56+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
+      "reader-rotated-text-layer-arena：Arena执行 e8106251（审计F1，high）完成：/Rotate 页文字层按运行/上升向量取框并记录 orientation，PdfTextLayer 用 vertical-rl/sideways-lr/rtl 布局，选区切片、分行、拖选、搜索与高亮/下划线几何沿字形轴；新增 test:pdf-rotated-text（142 断言，位图墨迹对齐）接入 verify-all；隔离实例 arena-f1 真实窗口 63 项通过（四方向高亮/下划线 SQLite 记录、缩放、重载）；顺带修正 main d7feb05 过期断言。分支 fix/reader-rotated-text-layer-arena，详见 docs/mcp-reader-rotated-text-layer-fix-arena-2026-09-21.md。",
       "agent-owned-merge：青帆已将新流程合入main c727762，完成独立Windows0.1.25包；完整verify/Rust201过5忽略，服务86过1跳过，包内7回归及18资源哈希通过。指定他人报告哈希不变；不安装、不重启、不发布。源码/打包资源释放，详见docs/mcp-task-workflow-windows-0.1.25-2026-09-21.md。",
       "task-service-exit-lifecycle-arena：Arena状态核查5f8ce0ee任务服务退出生命周期按be3b361d抢救为独立分支rescue/5f8ce0ee-gateway-exit-lifecycle（网关v4+gateway-lifecycle+Tauri关闭拦截/Exit兜底+前端退出流程与服务栏）；分支上build、test:project-tasks 90项、cargo check/test通过；未重启4319、未打包安装；见docs/mcp-task-service-exit-lifecycle-arena-2026-09-20.md。",
       "reader-list-qingfan：青帆 ebe8db12，独立分支main 4b4f57a；按钮/类型标签完成，浏览器22项、完整verify、最终build/状态/架构检查通过；按用户授权合并本地main，提交review，无真实窗口资料库/安装发布占用。",

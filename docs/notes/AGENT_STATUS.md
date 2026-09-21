@@ -6,7 +6,9 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-21T09:21:45+08:00
+更新时间：2026-09-21T15:38:56+08:00
+
+- reader-rotated-text-layer-arena：Arena执行 e8106251（审计F1，high）完成：/Rotate 页文字层按运行/上升向量取框并记录 orientation，PdfTextLayer 用 vertical-rl/sideways-lr/rtl 布局，选区切片、分行、拖选、搜索与高亮/下划线几何沿字形轴；新增 test:pdf-rotated-text（142 断言，位图墨迹对齐）接入 verify-all；隔离实例 arena-f1 真实窗口 63 项通过（四方向高亮/下划线 SQLite 记录、缩放、重载）；顺带修正 main d7feb05 过期断言。分支 fix/reader-rotated-text-layer-arena，详见 docs/mcp-reader-rotated-text-layer-fix-arena-2026-09-21.md。
 
 - task-service-exit-lifecycle-arena：Arena状态核查 5f8ce0ee 任务服务退出生命周期（已归档）按 be3b361d 从脏树抢救为独立分支 rescue/5f8ce0ee-gateway-exit-lifecycle：网关 v4（health 身份/pid、hub-only status+shutdown、优雅退出）、gateway-lifecycle.mjs（记录/health/pid 三重一致才停止）、Tauri 关闭拦截+10s 放行阀+Exit 兜底、前端退出流程/服务栏/保留策略；分支上 build(tsc -b)、test:project-tasks 90 项、cargo check/test 通过；未重启 4319、未打包安装。详见 docs/mcp-task-service-exit-lifecycle-arena-2026-09-20.md。
 
