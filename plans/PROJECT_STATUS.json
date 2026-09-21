@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-21T08:28:03+08:00",
+  "updatedAt": "2026-09-21T09:21:45+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
-      "agent-owned-merge：青帆完成归档去Git写入、代码交付submit前main包含校验及执行协议/UI同步；服务测试80通过1跳过，build与架构检查通过。用户授权仅保留指定报告例外，正在整合最新main和本地打包；不安装或重启现有服务。详见docs/mcp-agent-owned-merge-2026-09-21.md。",
+      "agent-owned-merge：青帆已将新流程合入main c727762，完成独立Windows0.1.25包；完整verify/Rust201过5忽略，服务86过1跳过，包内7回归及18资源哈希通过。指定他人报告哈希不变；不安装、不重启、不发布。源码/打包资源释放，详见docs/mcp-task-workflow-windows-0.1.25-2026-09-21.md。",
       "task-service-exit-lifecycle-arena：Arena状态核查5f8ce0ee任务服务退出生命周期按be3b361d抢救为独立分支rescue/5f8ce0ee-gateway-exit-lifecycle（网关v4+gateway-lifecycle+Tauri关闭拦截/Exit兜底+前端退出流程与服务栏）；分支上build、test:project-tasks 90项、cargo check/test通过；未重启4319、未打包安装；见docs/mcp-task-service-exit-lifecycle-arena-2026-09-20.md。",
       "reader-list-qingfan：青帆 ebe8db12，独立分支main 4b4f57a；按钮/类型标签完成，浏览器22项、完整verify、最终build/状态/架构检查通过；按用户授权合并本地main，提交review，无真实窗口资料库/安装发布占用。",
       "用户明确选择发布GitHub 0.1.7，允许本次发布必需CI；本agent开始发布整理，请并行agent暂缓生产源码修改。通过受保护PR/Verify后才生成tag和签名Release，不绕过检查，不安装/关闭软件/修改真实资料。插件保留0.6.5，旧0.1.6本地包不冒充新版。",

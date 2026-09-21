@@ -1,12 +1,12 @@
 # A4 Note Agent 状态
 
-- agent-owned-merge：青帆完成归档去Git写入、代码交付submit前main包含校验及执行协议/UI同步；服务测试80通过1跳过，build与架构检查通过。用户已授权保留指定未跟踪报告例外；最新main已整合到独立分支，服务86过1跳过、build/架构/状态通过，准备本地0.1.25打包；不安装、不重启、不发布。详见docs/mcp-agent-owned-merge-2026-09-21.md。
+- agent-owned-merge：青帆已将新流程合入main c727762，完成独立Windows0.1.25包；完整verify/Rust201过5忽略，服务86过1跳过，包内7回归及18资源哈希通过。指定他人报告哈希不变；不安装、不重启、不发布。源码/打包资源释放，详见docs/mcp-task-workflow-windows-0.1.25-2026-09-21.md。
 
 - reader-list-qingfan：青帆 ebe8db12，独立分支基于 main 4b4f57a；阅读列表按钮34px与资源类型标签完成，浏览器22项、完整verify及最终build/状态/架构检查通过。按用户授权合并本地main，提交review由用户验收；无真实窗口、资料库、安装发布占用。详见 docs/mcp-reader-list-qingfan-2026-09-20.md。
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-21T08:28:03+08:00
+更新时间：2026-09-21T09:21:45+08:00
 
 - task-service-exit-lifecycle-arena：Arena状态核查 5f8ce0ee 任务服务退出生命周期（已归档）按 be3b361d 从脏树抢救为独立分支 rescue/5f8ce0ee-gateway-exit-lifecycle：网关 v4（health 身份/pid、hub-only status+shutdown、优雅退出）、gateway-lifecycle.mjs（记录/health/pid 三重一致才停止）、Tauri 关闭拦截+10s 放行阀+Exit 兜底、前端退出流程/服务栏/保留策略；分支上 build(tsc -b)、test:project-tasks 90 项、cargo check/test 通过；未重启 4319、未打包安装。详见 docs/mcp-task-service-exit-lifecycle-arena-2026-09-20.md。
 
