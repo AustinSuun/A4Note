@@ -115,6 +115,8 @@ export function TaskBoard({
     [feedback, setFeedback] = useState(''),
     [releaseReason, setReleaseReason] = useState(''),
     [releaseOpen, setReleaseOpen] = useState(false),
+    [feedbackOpen, setFeedbackOpen] = useState(false),
+    feedbackPanelRef = useRef<HTMLDivElement>(null),
     [purpose, setPurpose] = useState('reference'),
     [caption, setCaption] = useState('');
   const stageSession = useTaskStageSession(snapshot?.project.id ?? '');
@@ -128,6 +130,14 @@ export function TaskBoard({
     if (area) { area.scrollTop = stageSession.view.top; area.scrollLeft = stageSession.view.left; }
   }, [snapshot?.project.id, filter]);
   const previewId = stageSession.view.selectedId;
+  /** The review actions live at the end of the scrolling body; reveal the feedback panel when it opens. */
+  useEffect(() => {
+    if (!feedbackOpen) return;
+    const panel = feedbackPanelRef.current;
+    if (!panel) return;
+    const frame = requestAnimationFrame(() => panel.scrollIntoView({ block: 'nearest' }));
+    return () => cancelAnimationFrame(frame);
+  }, [feedbackOpen]);
   const previewTask = snapshot?.tasks.find(task => task.id === previewId);
   useEffect(() => {
     setReviewDetail(null);
@@ -228,7 +238,7 @@ export function TaskBoard({
     selectedRef.current = null;
     ++detailRequest.current;
     setSelected(null); setDetail(null); setReviewDetail(null);
-    setEditing(false); setFeedback(''); setCaption(''); setShowCreate(false);
+    setEditing(false); setFeedback(''); setFeedbackOpen(false); setCaption(''); setShowCreate(false);
   };
   const changeStage = (next: TaskStage) => {
     if (next === filter || !mayLeave()) return;
@@ -331,6 +341,7 @@ export function TaskBoard({
     setFeedback('');
     setReleaseReason('');
     setReleaseOpen(false);
+    setFeedbackOpen(false);
     setPurpose('reference');
     setCaption('');
     if (client) void run(() => loadDetail(id, client));
@@ -354,6 +365,16 @@ export function TaskBoard({
       const d = await client.update(detail.id, { action: 'release_stale', revision: detail.revision, reason });
       if (clientRef.current === client && selectedRef.current === d.id) setDetail(d);
       setReleaseReason(''); setReleaseOpen(false);
+      await refresh(client);
+    });
+  /** Feedback is cleared only after the service accepted the return; a failed request keeps the draft. */
+  const requestChanges = () =>
+    run(async () => {
+      if (!client || !detail) return;
+      const d = await client.update(detail.id, { action: 'request_changes', revision: detail.revision, feedback });
+      if (clientRef.current === client && selectedRef.current === d.id) setDetail(d);
+      setFeedback('');
+      setFeedbackOpen(false);
       await refresh(client);
     });
   const addFiles = (files: File[]) =>
@@ -400,6 +421,7 @@ export function TaskBoard({
     setDetail(null);
     setEditing(false);
     setFeedback('');
+    setFeedbackOpen(false);
     setCaption('');
   };
   const loadAcceptance = async (id: string, c: TaskClient) => {
@@ -693,74 +715,7 @@ export function TaskBoard({
               <TaskDetailDialog key={selected} title={'任务详情 · ' + (detail?.title ?? '加载中…')}
                 subtitle={detail ? `${snapshot?.project.name ?? '项目'} · ${taskColumns.find(c => c[0] === detail.status)?.[1] ?? detail.status} · ${owner(detail.owner)?.alias ?? '尚无执行Agent'} · 需求 v${detail.spec_revision} · 提交记录 ${detail.events.filter(e => e.kind === 'task.submit').at(-1)?.seq ?? '未记录'}（非构建版本）` : undefined}
                 navigation={detail && <TaskDetailNavigation value={detailSection} onChange={changeDetailSection} />}
-                busy={busy} onClose={closeDetail} error={error} onDismissError={() => setError('')} footer={detail && (<>
-                    {detail.status === 'review' && (
-                      <div className="tb-review-actions">
-                        <section aria-label="交付合并状态"><p>交付提交：{detail.delivery?.commit ?? (detail.delivery?.kind === 'none' ? '非代码交付' : '未记录')}</p><p>main：{detail.integration?.status ?? '尚未合并'} · {detail.integration?.after ?? '无合并提交'}</p>{detail.integration?.error && <p role="alert">{detail.integration.error}；验收已记录，处理后可重试下方验收归档。</p>}<p>本地合并不等于远端推送或发布。</p></section>
-                        <h3>检查效果</h3>
-                        <p>Agent 已提交。确认实际效果后再归档。</p>
-                        <textarea
-                          aria-label="调整意见"
-                          placeholder="需要调整时，可在这里补一句，也可以回原来的对话沟通。"
-                          value={feedback}
-                          onChange={(e) => setFeedback(e.target.value)}
-                        />
-                        <div>
-                          <button
-                            disabled={busy}
-                            onClick={() =>
-                              void action('request_changes', { feedback })
-                            }
-                          >
-                            需要调整
-                          </button>
-                          <button
-                            className="tb-primary"
-                            disabled={
-                              busy ||
-                              detail.claimed_spec !== detail.spec_revision
-                            }
-                            onClick={() => void action('archive')}
-                          >
-                            效果满意，归档
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <div className="tb-user-actions">
-                      {detail.status !== 'archived' && (
-                      <>
-                    {detail.status === 'in_progress' && detail.owner && isAgentStale(owner(detail.owner)?.last_seen) && (
-                      <div className="tb-release-stale" role="group" aria-label="交还离线任务">
-                        {releaseOpen ? <div className="tb-release-stale-panel">
-                          <strong>交还离线任务并退回队列</strong>
-                          <p>负责人将被清空，任务可重新领取；任务、附件和历史不会删除。</p>
-                          <label htmlFor="tb-release-stale-reason">交还原因
-                            <textarea id="tb-release-stale-reason" autoFocus required placeholder="请说明为何确认执行者已离线"
-                              value={releaseReason} onChange={(event) => setReleaseReason(event.target.value)} />
-                          </label>
-                          <div className="tb-release-stale-buttons">
-                            <button type="button" disabled={busy} onClick={() => setReleaseOpen(false)}>取消</button>
-                            <button type="button" className="tb-release-stale-confirm" disabled={busy || !releaseReason.trim()}
-                              onClick={() => void releaseStaleTask()}>确认交还并退回队列</button>
-                          </div>
-                        </div> : <button type="button" className="tb-release-stale-trigger" disabled={busy}
-                          onClick={() => setReleaseOpen(true)}>交还离线任务、退回队列</button>}
-                      </div>
-                    )}
-                        <button type="button" className="tb-danger" disabled={busy || (detail.status === 'in_progress' && !!detail.owner)}
-                          onClick={() => void run(async () => {
-                            if (!client || !detail) return;
-                            if (!window.confirm('确定删除该任务？其附件记录将一并删除，操作不可恢复。')) return;
-                            await client.update(detail.id, { action: 'delete', revision: detail.revision });
-                            selectedRef.current = null;
-                            setSelected(null); setDetail(null); setEditing(false); setFeedback(''); setPurpose('reference'); setCaption('');
-                            await refresh(client);
-                          })}>删除任务</button>
-                      </>
-                      )}
-                    </div>
-                  </>)}>
+                busy={busy} onClose={closeDetail} error={error} onDismissError={() => setError('')}>
               <aside
                 className="tb-detail"
                 aria-label="任务详情"
@@ -884,7 +839,7 @@ export function TaskBoard({
                     <TaskEventTimeline task={detail} agents={snapshot?.agents ?? []} />
                     </section>
                     <section hidden={detailSection !== 'evidence'} aria-label="验收与证据工作区">
-                    <TaskReviewSummary key={`${snapshot?.project.id}:${detail.id}`} task={detail} client={client} agents={snapshot?.agents ?? []}/>
+                    <TaskReviewSummary key={`${snapshot?.project.id}:${detail.id}`} task={detail} client={client} agents={snapshot?.agents ?? []} variant="dialog"/>
                     <TaskAcceptancePanel key={`${snapshot?.project.id}:${detail.id}:${detail.revision}`} task={detail}
                       state={acceptance} enabled={snapshot?.capabilities?.acceptance === true} busy={busy} onAction={acceptanceAction} />
                     <details><summary>管理任务附件（粘贴、上传与替代）</summary>
@@ -968,6 +923,95 @@ export function TaskBoard({
                     <section hidden={detailSection !== 'history'} aria-label="任务历史原始记录">
                       <TaskEventTimeline task={detail} agents={snapshot?.agents ?? []} />
                     </section>
+                    {detail.status !== 'archived' && (
+                      <section className="tb-detail-actions-section" aria-label="验收与任务操作">
+                        <div className={'tb-detail-actions' + (detail.status === 'review' ? ' is-review' : '')}>
+                          {detail.status === 'review' && (
+                            <div className="tb-review-actions">
+                              <section className="tb-delivery-status" aria-label="交付合并状态">
+                                <p>交付提交：{detail.delivery?.commit ?? (detail.delivery?.kind === 'none' ? '非代码交付' : '未记录')}</p>
+                                <p>main：{detail.integration?.status ?? '尚未合并'} · {detail.integration?.after ?? '无合并提交'}</p>
+                                {detail.integration?.error && <p role="alert">{detail.integration.error}；验收已记录，处理后可重试下方验收归档。</p>}
+                                <p>本地合并不等于远端推送或发布。</p>
+                              </section>
+                              <p className="tb-review-hint">
+                                <strong>检查效果</strong>
+                                Agent 已提交，确认实际效果后再归档；不满意可退回调整。
+                              </p>
+                              <div className="tb-review-buttons">
+                                <button type="button" disabled={busy} aria-expanded={feedbackOpen} aria-controls="tb-feedback-input"
+                                  onClick={() => setFeedbackOpen((v) => !v)}>
+                                  需要调整
+                                </button>
+                                <button
+                                  type="button"
+                                  className="tb-primary tb-archive"
+                                  disabled={busy || detail.claimed_spec !== detail.spec_revision}
+                                  title={detail.claimed_spec !== detail.spec_revision ? '执行 Agent 尚未确认最新需求版本，暂不能归档' : undefined}
+                                  onClick={() => void action('archive')}
+                                >
+                                  效果满意，归档
+                                </button>
+                              </div>
+                              {feedbackOpen && (
+                                <div className="tb-feedback-panel" role="group" aria-label="调整意见" ref={feedbackPanelRef}>
+                                  <label htmlFor="tb-feedback-input">需要调整的地方</label>
+                                  <textarea
+                                    id="tb-feedback-input"
+                                    autoFocus
+                                    placeholder="写明需要调整的位置或问题；也可以回原来的对话沟通。"
+                                    value={feedback}
+                                    onChange={(e) => setFeedback(e.target.value)}
+                                  />
+                                  <div className="tb-feedback-buttons">
+                                    <button type="button" disabled={busy} onClick={() => setFeedbackOpen(false)}>
+                                      收起{feedback.trim() ? '（保留已写内容）' : ''}
+                                    </button>
+                                    <button type="button" className="tb-primary" disabled={busy} onClick={() => void requestChanges()}>
+                                      提交调整意见并退回
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {detail.status === 'in_progress' && detail.owner && isAgentStale(owner(detail.owner)?.last_seen) && (
+                            <div className="tb-release-stale" role="group" aria-label="交还离线任务">
+                              {releaseOpen ? <div className="tb-release-stale-panel">
+                                <strong>交还离线任务并退回队列</strong>
+                                <p>负责人将被清空，任务可重新领取；任务、附件和历史不会删除。</p>
+                                <label htmlFor="tb-release-stale-reason">交还原因
+                                  <textarea id="tb-release-stale-reason" autoFocus required placeholder="请说明为何确认执行者已离线"
+                                    value={releaseReason} onChange={(event) => setReleaseReason(event.target.value)} />
+                                </label>
+                                <div className="tb-release-stale-buttons">
+                                  <button type="button" disabled={busy} onClick={() => setReleaseOpen(false)}>取消</button>
+                                  <button type="button" className="tb-release-stale-confirm" disabled={busy || !releaseReason.trim()}
+                                    onClick={() => void releaseStaleTask()}>确认交还并退回队列</button>
+                                </div>
+                              </div> : <button type="button" className="tb-release-stale-trigger" disabled={busy}
+                                onClick={() => setReleaseOpen(true)}>交还离线任务、退回队列</button>}
+                            </div>
+                          )}
+                          <details className="tb-more-actions">
+                            <summary>更多操作</summary>
+                            <div className="tb-danger-zone" role="group" aria-label="危险操作">
+                              <p>删除会移除任务及其附件记录，且不可恢复；与验收归档无关。</p>
+                              <button type="button" className="tb-danger" disabled={busy || (detail.status === 'in_progress' && !!detail.owner)}
+                                title={detail.status === 'in_progress' && detail.owner ? '执行中且有负责人的任务不能删除' : undefined}
+                                onClick={() => void run(async () => {
+                                  if (!client || !detail) return;
+                                  if (!window.confirm('确定删除该任务？其附件记录将一并删除，操作不可恢复。')) return;
+                                  await client.update(detail.id, { action: 'delete', revision: detail.revision });
+                                  selectedRef.current = null;
+                                  setSelected(null); setDetail(null); setEditing(false); setFeedback(''); setFeedbackOpen(false); setReleaseReason(''); setReleaseOpen(false); setPurpose('reference'); setCaption('');
+                                  await refresh(client);
+                                })}>删除任务</button>
+                            </div>
+                          </details>
+                        </div>
+                      </section>
+                    )}
                   </>
                 )}
               </aside>

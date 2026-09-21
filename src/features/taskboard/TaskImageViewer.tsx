@@ -1,4 +1,4 @@
-import {useEffect, useId, useRef, useState, type PointerEvent} from 'react';
+import {useEffect, useId, useRef, useState, type PointerEvent, type ReactNode} from 'react';
 import type {Attachment, TaskClient} from '../../platform/projectTasks';
 import './taskboard-dialog.css';
 const purposes = {reference: '需求参考', reproduction: '复现材料', result: '完成结果'};
@@ -105,32 +105,48 @@ export function TaskImageViewer({files, initialIds, client, onClose}: {
     </div>
   </dialog>;
 }
-function AttachmentCard({file, client, readonly, remove, open, checked, toggle, compareFull}: {
+function AttachmentCard({file, client, readonly, remove, open, checked, toggle, compareFull, comparable}: {
   file: Attachment; client: TaskClient; readonly: boolean; remove: () => void; open: () => void;
-  checked: boolean; toggle: () => void; compareFull: boolean;
+  checked: boolean; toggle: () => void; compareFull: boolean; comparable: boolean;
 }) {
   const image = useImage(file, client), [error, setError] = useState('');
-  return <article className="tb-file">
-    {canPreviewTaskImage(file) ? <button className="tb-image-thumbnail" onClick={open} aria-label={'查看大图：' + file.name}>
-      {image.url && !image.error ? <img src={image.url} alt={file.name} onError={image.failed}/> : <span>{image.error || '图片加载中…'}</span>}</button> : <div className="tb-file-placeholder">附件（仅下载，不内嵌）</div>}
-    <strong title={file.name}>{file.name}</strong><small>{purposes[file.purpose]} · {Math.ceil(file.size/1024)} KB{file.retired_at ? ' · 已替代' : ''}</small>
-    {file.caption && <small title={file.caption}>{file.caption}</small>}
-    {canPreviewTaskImage(file) && <label className="tb-compare-choice"><input type="checkbox" checked={checked} disabled={!checked && compareFull} onChange={toggle}/>选择对比：{file.name}</label>}
+  const previewable = canPreviewTaskImage(file);
+  return <article className={'tb-file' + (checked ? ' is-chosen' : '')}>
+    {previewable ? <button type="button" className="tb-image-thumbnail" onClick={open} aria-label={'查看大图：' + file.name}>
+      {image.url && !image.error ? <img src={image.url} alt={file.name} onError={image.failed}/> : <span>{image.error || '图片加载中…'}</span>}
+      <em aria-hidden="true">查看大图</em>
+    </button> : <div className="tb-file-placeholder">附件（仅下载，不内嵌）</div>}
+    <div className="tb-file-meta">
+      <strong title={file.name}>{file.name}</strong>
+      <small>{purposes[file.purpose]} · {Math.ceil(file.size/1024)} KB{file.retired_at ? ' · 已替代' : ''}</small>
+    </div>
+    {file.caption && <p className="tb-file-caption" title={file.caption}>{file.caption}</p>}
     {error && <p role="alert">{error}</p>}
-    <div><button onClick={() => void download(file, client).catch(() => setError('下载失败，请重试'))}>下载</button>
-      {!readonly && !file.retired_at && <button className="tb-danger" onClick={remove}>标记替代</button>}</div>
+    <div className="tb-file-actions">
+      {previewable && comparable && <label className={'tb-compare-chip' + (checked ? ' is-checked' : '')}
+        title={!checked && compareFull ? '已选满两张，先取消一张再选择' : undefined}>
+        <input type="checkbox" checked={checked} disabled={!checked && compareFull} onChange={toggle} aria-label={'选择对比：' + file.name}/>
+        <span>{checked ? '已选对比' : '选择对比'}</span>
+      </label>}
+      <button type="button" onClick={() => void download(file, client).catch(() => setError('下载失败，请重试'))}>下载</button>
+      {!readonly && !file.retired_at && <button type="button" className="tb-danger" onClick={remove}>标记替代</button>}
+    </div>
   </article>;
 }
-export function TaskAttachments({files, client, readonly, remove}: {
-  files: Attachment[]; client: TaskClient; readonly: boolean; remove: (file: Attachment) => void;
+/** Selection chips only appear when a comparison is possible; a lone image opens full size directly. */
+export function TaskAttachments({files, client, readonly, remove, heading}: {
+  files: Attachment[]; client: TaskClient; readonly: boolean; remove: (file: Attachment) => void; heading?: ReactNode;
 }) {
   const [chosen, setChosen] = useState<string[]>([]), [view, setView] = useState<string[] | null>(null);
   const selected = chosen.filter(id => files.some(f => f.id === id && canPreviewTaskImage(f)));
+  const comparable = files.filter(canPreviewTaskImage).length >= 2;
   return <section className="tb-attachment-gallery" aria-label="任务附件列表">
-    <div className="tb-compare-toolbar"><span>手动选择两张图片对比（不自动推断修改前后）</span>
-      <button disabled={selected.length !== 2} onClick={() => setView(selected)}>并排对比（{selected.length}/2）</button></div>
+    {(heading || comparable) && <div className="tb-compare-toolbar">{heading}
+      {comparable && <><span>手动选择两张图片对比（不自动推断修改前后）</span>
+        <button type="button" disabled={selected.length !== 2} onClick={() => setView(selected)}>并排对比（{selected.length}/2）</button></>}</div>}
+    {!files.length && <p className="tb-files-empty">暂无附件</p>}
     <div className="tb-files">{files.map(file => <AttachmentCard key={file.id} file={file} client={client} readonly={readonly} remove={() => remove(file)}
-      open={() => setView([file.id])} checked={selected.includes(file.id)} compareFull={selected.length === 2}
+      open={() => setView([file.id])} checked={selected.includes(file.id)} compareFull={selected.length === 2} comparable={comparable}
       toggle={() => setChosen(selected.includes(file.id) ? selected.filter(id => id !== file.id) : [...selected, file.id].slice(0,2))}/>)}</div>
     {view && <TaskImageViewer key={view.join(',')} files={files} initialIds={view} client={client} onClose={() => setView(null)}/>}
   </section>;
