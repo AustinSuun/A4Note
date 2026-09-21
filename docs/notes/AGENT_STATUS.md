@@ -2,6 +2,9 @@
 
 - reader-crosspage-selection-arena：Arena执行 8dba61be（审计F3，high）完成：跨页拖选按页裁剪 Range 逐页生成高亮/下划线（不再因公共祖先不在单页而静默丢弃），quote 只取文字层运行；文本框/便签正文非编辑态 user-select:none；新增 test:pdf-crosspage-selection（31 断言）接入 verify-all；隔离实例 arena-f3 真实窗口 22/22（60% 两页同屏跨页 2 条记录、跨页下划线、单页回归、文本框不可选、reload）；npm run verify 全绿。分支 fix/reader-crosspage-selection-arena，详见 docs/mcp-reader-crosspage-selection-fix-arena-2026-09-21.md。
 
+
+- reader-scan-text-tools-arena：Arena 执行 259f7b91（审计 F6，high）完成：无文字层页面（扫描页）使用高亮/下划线不再静默失败——按当前页 textItems 为空判定，页容器加 text-tools-unavailable（光标 not-allowed）并显示 zh.reader.textLayerUnavailable 非阻断提示（role=status、aria-live=polite、pointer-events:none、约 5.2s 自动消失）；矩形/箭头/自由画笔/文本框不受影响。新增 scripts/verify-reader-text-tool-scan-notice.mjs（合成两页 PDF，23/23）；隔离原生实例 scantools 真实窗口 33 项通过、SQLite 终态 rect/ink/text/highlight 各 1 且扫描页零高亮记录、pageerror 与 console error 为 0；合并后 main `npm run verify` 全绿（exit 0）。已合并本地 main 61720e9，详见 docs/mcp-reader-scan-text-tools-arena-2026-09-21.md。
+
 - reader-overlap-highlight-qingyan：青砚完成 3128932d 阅读器重叠高亮选区修复；仅在高亮/下划线文字选择模式让已有范围标注穿透指针，光标模式的选择/改色/删除以及文本框/图形交互保持不变。reader 契约与真实 PdfReader 合成 PDF 浏览器回归 9/9 通过，隔离原生 WebView 使用真实 PDF 完成跨旧标注选区、创建重叠高亮、独立聚焦/改色/删除及 SQLite 终态复核。详见 docs/mcp-reader-overlap-highlight-qingyan-2026-09-21.md。
 
 - reader-rotated-text-layer-arena：Arena执行 e8106251（审计F1，high）完成：/Rotate 页文字层按运行/上升向量取框并记录 orientation，PdfTextLayer 用 vertical-rl/sideways-lr/rtl 布局，选区切片、分行、拖选、搜索与高亮/下划线几何沿字形轴；新增 test:pdf-rotated-text（142 断言，位图墨迹对齐）接入 verify-all；隔离实例 arena-f1 真实窗口 63 项通过（四方向高亮/下划线 SQLite 记录、缩放、重载）；已并入 main e394cfe 重新验证。分支 fix/reader-rotated-text-layer-arena，详见 docs/mcp-reader-rotated-text-layer-fix-arena-2026-09-21.md。
@@ -17,6 +20,8 @@
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
 更新时间：2026-09-21T17:13:40+08:00
+
+- MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 
 - task-service-exit-lifecycle-arena：Arena状态核查 5f8ce0ee 任务服务退出生命周期（已归档）按 be3b361d 从脏树抢救为独立分支 rescue/5f8ce0ee-gateway-exit-lifecycle：网关 v4（health 身份/pid、hub-only status+shutdown、优雅退出）、gateway-lifecycle.mjs（记录/health/pid 三重一致才停止）、Tauri 关闭拦截+10s 放行阀+Exit 兜底、前端退出流程/服务栏/保留策略；分支上 build(tsc -b)、test:project-tasks 90 项、cargo check/test 通过；未重启 4319、未打包安装。详见 docs/mcp-task-service-exit-lifecycle-arena-2026-09-20.md。
 
