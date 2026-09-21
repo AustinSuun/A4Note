@@ -328,7 +328,7 @@ export class Store {
           fail(409, '提交后需求已变化，请退回调整');
         if (this.integrateAcceptedTask(id, actor.id)) this.db
           .prepare(
-            "UPDATE tasks SET status='archived',progress='用户验收通过，交付处理状态见集成记录' WHERE id=?",
+            "UPDATE tasks SET status='archived',progress='用户验收通过（归档不执行代码合并）' WHERE id=?",
           )
           .run(id);
       } else if (action === 'release') {

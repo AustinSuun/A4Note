@@ -37,6 +37,7 @@ node "$cli" get TASK_ID --session "$session"
 
 - 服务不存在、身份不符或不可达时，报告阻塞，请用户回到A4点击“打开项目文件夹并启动看板”。不要自行启动server/bootstrap，不要另建任务库、抢占端口或杀进程。
 - 每次修改前get最新任务、附件和revision；按实际revision运行claim/progress/upload/submit，不盲目递增。409冲突后重读。
+- 代码任务由执行Agent完成验证并合并到本地main后再submit，结果中注明交付与合并commit；冲突、脏main或验证失败时报告阻塞，不强行覆盖。归档只确认验收，不触发合并；默认不推送、打包、安装或发布。
 - 直接队列流程：任务发布后进入queued，执行Agent可直接claim，无需方案审批。创建任务时必须写清description、acceptance和priority；submit后进入review，由用户检查实际效果并归档或退回队列。旧版服务（capabilities无queue/acceptance）需用户授权升级，不自行重启/迁移。
 - claim TASK_ID --revision N；progress TASK_ID --revision N --text "进度"；submit TASK_ID --revision N --text "结果与验证"。这些命令都必须附带 --session "$session"。
 - 约60秒heartbeat；需求变化先get再acknowledge。release必须停止文件写入后带--writes-stopped。文件/worktree认领规则仍然有效。

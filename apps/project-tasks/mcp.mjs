@@ -156,7 +156,7 @@ async function request(m) {
       capabilities: { tools: {} },
       serverInfo: { name: 'a4note-project-tasks', version: '0.1.0' },
       instructions:
-        '直接队列流程：先connection_status确认本项目服务，再join或使用已授权会话；先读任务再修改；派发Agent发布后任务进入queued，执行Agent按队列原子领取，更新progress与heartbeat，submit后进入review。用户在A4 Note检查实际效果，满意后归档，不满意则退回队列。独立验收会话仍需先读取请求、声明真实能力并绑定证据；执行Agent不能自行归档。',
+        '直接队列流程：先connection_status确认本项目服务，再join或使用已授权会话；先读任务再修改；派发Agent发布后任务进入queued，执行Agent按队列原子领取，更新progress与heartbeat，submit后进入review。代码任务由执行Agent完成验证并合并到本地main后再submit，结果中注明交付与合并commit；冲突、脏main或验证失败时报告阻塞，不强行覆盖。归档只确认验收，不触发合并；默认不推送、打包、安装或发布。用户在A4 Note检查实际效果，满意后归档，不满意则退回队列。独立验收会话仍需先读取请求、声明真实能力并绑定证据；执行Agent不能自行归档。',
     };
   if (m.method === 'ping') return {};
   if (m.method === 'tools/list') return { tools };

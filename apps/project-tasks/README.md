@@ -62,7 +62,7 @@ A4 Note 切到「任务」，地址默认为 `http://127.0.0.1:4319`，输入 op
 ### 执行者提示词
 
 ```text
-你是当前项目的任务执行者（worker）。先读取项目根 AGENTS.md 和 apps/project-tasks/README.md，确认项目身份后按用户授权读取 queued 任务并原子领取。读取最新要求、验收标准和参考附件，持续执行、更新进度并发送 heartbeat，完成后直接提交结果进入 review。遇到阻塞、范围变化，或未授权的安装、迁移、重启、发布时暂停并报告；不要自行归档。
+你是当前项目的任务执行者（worker）。先读取项目根 AGENTS.md 和 apps/project-tasks/README.md，确认项目身份后按用户授权读取 queued 任务并原子领取。读取最新要求、验收标准和参考附件，持续执行、更新进度并发送 heartbeat，代码任务完成并验证通过后，由执行Agent合并到本地main，再提交结果进入 review。遇到阻塞、范围变化，或未授权的安装、迁移、重启、发布时暂停并报告；不要自行归档。
 ```
 
 每个新对话自选代号，每次 join 有独立 UUID。私有 session 文件不得提交 Git，执行者之间不能共享。默认 worker；派发角色需明确用户授权。
@@ -120,29 +120,19 @@ handoff.json 可包含 completed、remaining、blockers、nextSteps、branch、w
 MCP update_task 同步支持 takeover（userAuthorized、workspaceChecked、reason）及 handoff（handoff对象）。接管重置 claimed_spec，需要重读并 acknowledge 后才能提交。
 工作区核验不可省略：任务权限不能阻止旧进程继续写文件；先核验隔离worktree/文件归属，必要时请用户协调旧写入，不能凭离线擅自杀进程。新客户端连接不支持接管的旧服务时会明确失败，不降级为伪造交还。进行中列表展示服务提供的负责人状态与最后心跳，事件历史保留授权说明和交接。
 
-## 验收与本地 main 集成
+## Agent负责本地main合并，归档仅验收
 
-新服务绑定项目根后，代码交付必须显式提交 delivery 清单，不再从共享 dirty HEAD 猜测成果。CLI submit 增加 `--delivery-json delivery.json`，MCP update_task.submit 增加 delivery 对象。
+代码任务由执行Agent完成验证并合并到本地main后再submit，结果中注明交付与合并commit；冲突、脏main或验证失败时报告阻塞，不强行覆盖。归档只确认验收，不触发合并；默认不推送、打包、安装或发布。
+
+流程：领取 → 独立开发 → 测试/构建及必要效果验证 → 检查main最新状态并串行合并本任务 → 核验包含关系 → submit待检查 → 用户归档或退回。
+只操作自己的任务提交，不覆盖其他Agent修改；main在验证期间变化时重新核对并执行必要回归。未完成合并不得宣称代码任务完成。
+
+CLI submit 使用 `--delivery-json delivery.json`；MCP update_task.submit 使用 delivery 对象：
 
 ```json
-{
-  "kind": "code",
-  "sourceRef": "refs/heads/feature/example",
-  "commit": "完整交付SHA",
-  "baseCommit": "完整基线SHA",
-  "paths": ["实际变化文件的完整清单"],
-  "validation": "真实执行的测试、结果、证据路径及未测范围"
-}
+{"kind":"code","sourceRef":"refs/heads/feature/example","commit":"完整交付SHA","baseCommit":"完整基线SHA","paths":["实际变更文件"],"validation":"验证命令、结果、合并SHA、证据及未测范围"}
 ```
 
-纯审计/验收等无代码任务提交 `{"kind":"none","reason":"无需合并的具体原因"}`。未提供声明的旧交付显示unknown，绑定仓库时阻止其静默归档；未绑定仓库的旧服务兼容归档，但明确显示not_configured，不能解释为已合并。
-
-人工归档和已授权的自动验收统一通过集成闸门：记录验收结论→取得仓库合并锁→隔离worktree生成候选→可信验证→检测main未变化且已检出的main无脏文件→更新本地main→确认提交包含关系→归档。冲突/验证失败/缺少配置保留review，记录错误与用户验收时间；处理原因后再次点“效果满意，归档”重试。已在main时只对账，不重复合并。Git成功但SQLite失败时下次以真实包含关系恢复。未推送任何远端，也不会安装/发布。
-
-### 可信验证命令（部署前配置）
-
-服务进程环境 `TASKS_GIT_VERIFY_ARGV` 是JSON字符串数组 `[可执行文件, 参数...]`。仅项目用户/部署负责人配置，任务负载无权提供执行命令。不配置就阻止代码合并，绝不跳过验证。该命令在隔离候选工作区执行，应负责独立依赖准备和项目验证，退出0才通过；不能依赖共享node_modules、真实数据或启动常驻进程。Windows应显式调用powershell.exe或node.exe，避免把.cmd误当可直接执行程序。不要将此配置写入任务附件或会话凭据。
-
-当前实现串行、同步执行验证（最长10分钟）；验证期间同一服务请求可能等待，因此在低干扰时段安排大项目集成。长任务后重新读取看板和心跳。服务若崩溃会保留Git公共目录下`a4note-task-integration.lock`；用户核实对应PID已停止、没有其他集成操作后才移除该锁，再重试。不会凭超时自动删锁或杀进程。
-
-代码任务失败保持review，不污染main；源分支后续新增提交不进入已验收SHA。修改交付内容必须退回并重新提交/验收。状态分别展示交付SHA、合并结果、合并SHA、错误及远端未推送；所有集成事件持久化，不自动追溯修改历史归档卡。
+服务只读验证交付SHA已被本地main包含；未合并的code交付拒绝submit。纯审计/无代码任务使用 `{"kind":"none","reason":"无需合并的具体原因"}`。
+人工和已授权自动归档都只更新验收状态并只读核对历史合并记录；不执行Git合并、checkout、update-ref、验证命令、推送或安装。未知旧交付或Git不可用可归档，但必须标明合并未确认，不能显示为已合并。
+`TASKS_GIT_VERIFY_ARGV` 旧服务配置不再用于归档；无需为归档配置执行命令。旧的历史集成事件保留，不重新合并历史任务。
