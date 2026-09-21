@@ -44,6 +44,7 @@ const steps = [
   ['npm', ['run', 'test:reader-helpers']],
   ['npm', ['run', 'test:pdf-rotated-text']],
   ['npm', ['run', 'test:pdf-crosspage-selection']],
+  ['npm', ['run', 'test:pdf-eraser-precision']],
   ['npm', ['run', 'test:pdf-text-annotation']],
   ['npm', ['run', 'test:ai-toolbar']],
   ['npm', ['run', 'test:ui-state']],
