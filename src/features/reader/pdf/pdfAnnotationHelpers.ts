@@ -56,7 +56,7 @@ export function highlightPositionStyle(position: PositionJson) {
   };
 }
 
-export function underlinePositionStyle(position: PositionJson) {
+export function underlinePositionStyle(position: PositionJson, thicknessOverride?: number) {
   const x = numberValue(position.x, 18);
   const y = numberValue(position.y, 28);
   const width = numberValue(position.width, 42);
@@ -67,7 +67,7 @@ export function underlinePositionStyle(position: PositionJson) {
     // is placed on the descender side of it, clamped into the glyph box; the stylesheet's
     // `.vertical-rule` variant keeps the element in place and draws it 2px wide.
     const glyphWidth = Math.max(width, 0.2);
-    const lineWidth = Math.min(Math.max(glyphWidth * 0.08, 0.05), 0.42);
+    const lineWidth = thicknessOverride ?? Math.min(Math.max(glyphWidth * 0.08, 0.05), 0.42);
     const descender = glyphWidth * 0.2;
     const baselineGap = Math.min(Math.max(glyphWidth * 0.08, 0.02), 0.12);
     const left = orientation === 90
@@ -81,7 +81,7 @@ export function underlinePositionStyle(position: PositionJson) {
   // add a small gap so the rule sits under the glyphs without touching the next
   // line. The stroke also scales with the run height instead of a flat 1px.
   const height = Math.max(numberValue(position.height, 5), 0.2);
-  const lineHeight = Math.min(Math.max(height * 0.08, 0.05), 0.42);
+  const lineHeight = thicknessOverride ?? Math.min(Math.max(height * 0.08, 0.05), 0.42);
   const descender = height * 0.2;
   const baselineGap = Math.min(Math.max(height * 0.08, 0.02), 0.12);
   if (orientation === 180) {
@@ -101,6 +101,21 @@ export function underlinePositionStyle(position: PositionJson) {
     width: `${width}%`,
     height: `${lineHeight}%`,
   };
+}
+
+/** One rule thickness for every segment of an annotation: the median glyph-box axis keeps
+ * multi-line underlines even even when a single line box differs from the rest. */
+export function underlineThicknessForSegments(segments: PositionJson[]): number | undefined {
+  if (!segments.length) return undefined;
+  const axes = segments
+    .map((segment) => {
+      const orientation = segmentOrientation(segment);
+      const axis = orientation === 90 || orientation === 270 ? numberValue(segment.width, 0.2) : numberValue(segment.height, 0.2);
+      return Math.max(axis, 0.2);
+    })
+    .sort((a, b) => a - b);
+  const median = axes[Math.floor((axes.length - 1) / 2)];
+  return Math.min(Math.max(median * 0.08, 0.05), 0.42);
 }
 
 /** Run direction stored on rotated selection segments (see pdfSelection.withSegmentOrientation). */

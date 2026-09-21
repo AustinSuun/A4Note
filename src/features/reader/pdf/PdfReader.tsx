@@ -787,10 +787,12 @@ export default function PdfReader({
       .map((rect) => normalizeClientRect(rect, pageElement))
       .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
     const textOrientation = page ? dominantTextOrientation(page.textItems, textItemSelections) : 0;
-    // Pages with /Rotate lay their runs out with writing-mode/bidi tricks whose line boxes are
-    // fatter than the glyphs, so their geometry comes from the run boxes sliced by offsets (the
-    // same source the drag path uses); horizontal pages keep the browser's live rects.
-    const rects = textOrientation !== 0 && preciseRects.length ? preciseRects : clientRects.length ? liveRects : preciseRects;
+    // The browser's live rects follow the substitute font of the transparent text layer:
+    // full lines overflow past the painted glyphs, ends land unevenly and line boxes vary
+    // in height, which made multi-line highlights/underlines ragged and uneven. The run
+    // boxes sliced by character offsets follow the PDF glyphs on every orientation, trim
+    // whitespace at both ends and keep one height per font size, so bands and rules stay even.
+    const rects = preciseRects.length ? preciseRects : liveRects;
     if (!rects.length) return null;
     // Merge along the run direction and keep it on each segment so highlight/underline marks
     // trim and underline along the glyph axis.
