@@ -6,8 +6,7 @@
 //! commands remain on the database side in `state_commands` (CLI-4).
 mod agent_bridge;
 pub mod agent_cli;
-mod agent_history;
-mod annotation_layers;
+mod agent_history; mod annotation_layers;
 mod app_paths;
 mod backup;
 mod capture;
@@ -119,17 +118,7 @@ pub fn run() {
             library_annotations::update_annotation_comment,
             library_annotations::update_annotation_color,
             library_annotations::update_annotation_position,
-            library_annotations::delete_annotation,
-            library_annotations::list_paper_annotations,
-            library_annotations::get_annotation,
-            annotation_layers::list_annotation_layers,
-            annotation_layers::create_annotation_layer,
-            annotation_layers::update_annotation_layer,
-            annotation_layers::reorder_annotation_layers,
-            annotation_layers::set_annotation_layer_view,
-            annotation_layers::move_annotations_to_layer,
-            annotation_layers::preview_annotation_layer_delete,
-            annotation_layers::delete_annotation_layer,
+            library_annotations::delete_annotation, library_annotations::list_paper_annotations, library_annotations::get_annotation, annotation_layers::list_annotation_layers, annotation_layers::create_annotation_layer, annotation_layers::update_annotation_layer, annotation_layers::reorder_annotation_layers, annotation_layers::set_annotation_layer_view, annotation_layers::move_annotations_to_layer, annotation_layers::preview_annotation_layer_delete, annotation_layers::delete_annotation_layer,
             resource_annotations::list_resource_annotations,
             resource_annotations::create_resource_annotation,
             resource_annotations::restore_resource_annotation,
