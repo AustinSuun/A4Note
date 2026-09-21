@@ -163,6 +163,9 @@ const aiIndexSource = await readFile('src/features/ai/index.ts', 'utf8');
 const aiSceneSource = await readFile('src/features/ai/AIChatScene.tsx', 'utf8');
 const sharedHooksIndexSource = await readFile('src/shared/hooks/index.ts', 'utf8');
 const settingsSource = await readFile('src/features/settings/index.tsx', 'utf8');
+const settingsGeneralSectionSource = await readFile('src/features/settings/sections/GeneralSection.tsx', 'utf8');
+const settingsPluginsSectionSource = await readFile('src/features/settings/sections/PluginsSection.tsx', 'utf8');
+const settingsStylesSource = await readFile('src/features/settings/settings.css', 'utf8');
 const workbenchIndexSource = await readFile('src/workbench/index.ts', 'utf8');
 const commandPaletteSource = await readFile('src/workbench/CommandPalette.tsx', 'utf8');
 const workbenchSource = await readFile('src/workbench/WorkspacePanelHost.tsx', 'utf8');
@@ -367,10 +370,17 @@ assert.match(aiIndexSource, /export \{ useChatThreads \} from '\.\/useChatThread
 assert.match(aiSceneSource, /export type AIChatMessage = \{/);
 assert.match(aiSceneSource, /export function AIChatScene\(/);
 assert.match(settingsSource, /export function SettingsScene\(/);
-assert.match(settingsSource, /function PluginSettingsList\(/);
-assert.match(settingsSource, /import \{ Button, Panel \} from '\.\.\/\.\.\/shared\/ui'/);
-assert.match(settingsSource, /<Panel title=\{zh\.settings\.language\}>/);
-assert.match(settingsSource, /<Button active=\{settings\.density === 'compact'\}/);
+assert.match(settingsSource, /from '\.\/sections\//);
+/* Task 05795e28 split the settings scene into one file per section plus shared
+   primitives; the same behaviours are asserted where the code now lives. */
+assert.match(settingsPluginsSectionSource, /export function PluginsSection\(/);
+assert.match(settingsPluginsSectionSource, /className="plugin-setting-row"/);
+assert.match(settingsPluginsSectionSource, /htmlFor=\{controlId\}/);
+assert.match(settingsGeneralSectionSource, /import \{ Button \} from '\.\.\/\.\.\/\.\.\/shared\/ui'/);
+assert.match(settingsGeneralSectionSource, /<SettingGroup title=\{zh\.settings\.language\}/);
+assert.match(settingsGeneralSectionSource, /<Button active=\{settings\.density === 'compact'\}/);
+assert.match(settingsStylesSource, /\.settings-layout/);
+assert.match(settingsStylesSource, /@media \(max-width: 1180px\)/);
 assert.match(workbenchIndexSource, /export \{ CommandPalette, type CommandPaletteItem \} from '\.\/CommandPalette'/);
 assert.match(workbenchIndexSource, /export \{ WorkbenchShell, type WorkbenchShellProps \} from '\.\/WorkbenchShell'/);
 assert.match(workbenchIndexSource, /export \{ ProjectSidebar, type ProjectSidebarProps, type SidebarSceneItem, type SidebarOpenItem \} from '\.\/ProjectSidebar'/);

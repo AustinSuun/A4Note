@@ -47,6 +47,9 @@ const steps = [
   ['npm', ['run', 'test:pdf-text-annotation']],
   ['npm', ['run', 'test:ai-toolbar']],
   ['npm', ['run', 'test:ui-state']],
+  ['npm', ['run', 'test:settings-ui']],
+  ['node', ['scripts/verify-brand-update.mjs']],
+
   ['npm', ['run', 'test:architecture']],
   ['npm', ['run', 'test:scene-plugins']],
   ['npm', ['run', 'test:plugin-bindings']],

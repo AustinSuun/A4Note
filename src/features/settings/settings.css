@@ -1,0 +1,211 @@
+/* Settings owns all of its layout. The shell (workbench.css/components.css)
+   no longer carries settings columns or nth-child placements, and breakpoints here
+   are reachable inside the desktop shell (min width 980px). */
+
+.settings-scene { padding-bottom: 28px; }
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 218px minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  max-width: 1180px;
+  padding-bottom: 28px;
+}
+
+.settings-section-nav { position: sticky; top: 18px; }
+.settings-section-nav ul { display: grid; gap: 3px; margin: 0; padding: 0 6px 0 0; list-style: none; border-right: 1px solid var(--line); }
+.settings-section-nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--ui-nav-font-size);
+  font-weight: 560;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-section-nav button:hover { background: var(--surface-soft); color: var(--ink); }
+.settings-section-nav button.active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 680; }
+.settings-section-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.settings-category-content { display: grid; gap: 16px; min-width: 0; }
+
+/* --- search ------------------------------------------------------------- */
+
+.settings-search { display: grid; gap: 8px; min-width: 0; }
+.settings-search-field { display: grid; gap: 6px; }
+.settings-search-label { color: var(--muted); font-size: var(--ui-caption-font-size); font-weight: 620; }
+.settings-search-control { display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); }
+.settings-search-control:focus-within { border-color: var(--accent); }
+.settings-search-control input { flex: 1 1 auto; min-width: 0; min-height: 34px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: var(--ui-control-font-size); }
+.settings-search-control input:focus-visible { outline: none; }
+.settings-search-clear { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+.settings-search-clear:hover { background: rgba(0,0,0,.05); color: var(--ink); }
+.settings-search-results { display: grid; gap: 4px; margin: 0; padding: 6px; list-style: none; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); max-height: 280px; overflow: auto; }
+.settings-search-results button { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 100%; min-height: 34px; padding: 6px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--ink); font: inherit; font-size: var(--ui-control-font-size); text-align: left; cursor: pointer; }
+.settings-search-results button:hover, .settings-search-results button.is-active { background: var(--accent-soft); color: var(--accent-strong); }
+.settings-search-result-section { flex: 0 0 auto; color: var(--muted); font-size: var(--ui-caption-font-size); }
+.settings-search-empty { padding: 4px; }
+
+/* --- sections and groups ------------------------------------------------ */
+
+.settings-section { display: grid; gap: 14px; min-width: 0; }
+.settings-section-heading h2 { margin: 0; color: var(--ink); font-size: var(--ui-heading-font-size); font-weight: 720; }
+.settings-section-heading h2:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.settings-section-description { margin: 4px 0 0; color: var(--muted); font-size: var(--ui-body-small-font-size); line-height: 1.55; overflow-wrap: anywhere; }
+.settings-section-body { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); }
+/* Full-width groups (lists, paths, tasks) opt out of the two-column grid instead of
+   relying on nth-child positions. */
+.settings-section-body > .settings-group.is-wide { grid-column: 1 / -1; }
+
+.settings-group { display: grid; gap: 10px; min-width: 0; }
+.settings-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.settings-group-heading .panel-title { margin: 0; }
+.settings-group-actions { display: inline-flex; align-items: center; gap: 8px; }
+.settings-group-description { margin: 0; color: var(--muted); font-size: var(--ui-caption-font-size); line-height: 1.55; overflow-wrap: anywhere; }
+
+/* --- fields ------------------------------------------------------------- */
+
+.settings-field { display: grid; gap: 5px; min-width: 0; }
+.settings-field-label { color: var(--ink); font-size: var(--ui-control-font-size); font-weight: 620; }
+.settings-field-description { color: var(--muted); font-size: var(--ui-caption-font-size); line-height: 1.5; overflow-wrap: anywhere; }
+.settings-field-control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.settings-field-hint { color: var(--muted); font-size: var(--ui-caption-font-size); }
+.settings-field input[type='text'], .settings-field input[type='search'], .settings-field input[type='url'], .settings-field input[type='number'], .settings-field input[type='password'], .settings-field select {
+  min-height: 32px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--ui-control-font-size);
+}
+.settings-field input:focus-visible, .settings-field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.settings-field input:disabled, .settings-field select:disabled { opacity: .6; cursor: not-allowed; }
+.settings-value-static { color: var(--ink); font-size: var(--ui-control-font-size); }
+
+.settings-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.settings-muted { color: var(--muted); font-size: var(--ui-caption-font-size); line-height: 1.55; overflow-wrap: anywhere; }
+.settings-path-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+/* Full-row toggles: the whole row is the click target, comfortably above 32x32. */
+.settings-toggle { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 9px; border-radius: 8px; background: rgba(238,243,239,.55); cursor: pointer; }
+.settings-toggle:hover { background: rgba(238,243,239,.85); }
+.settings-toggle.is-disabled { opacity: .6; cursor: not-allowed; }
+.settings-toggle input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--accent); }
+.settings-toggle-text { display: grid; gap: 2px; min-width: 0; }
+.settings-toggle-text strong { color: var(--ink); font-size: var(--ui-control-font-size); font-weight: 620; }
+.settings-toggle-text small { color: var(--muted); font-size: var(--ui-caption-font-size); overflow-wrap: anywhere; }
+.settings-toggle-list { display: grid; gap: 6px; }
+
+/* --- feedback ----------------------------------------------------------- */
+
+.settings-status { display: flex; align-items: center; gap: 8px; margin: 0; padding: 7px 10px; border-radius: 8px; font-size: var(--ui-body-small-font-size); line-height: 1.5; overflow-wrap: anywhere; }
+.settings-status--busy { background: rgba(238,243,239,.7); color: var(--muted); }
+.settings-status--success { background: rgba(224,235,226,.75); color: var(--accent-strong); }
+.settings-status--error { background: rgba(247,229,226,.85); color: #9b5148; }
+.settings-status--info { background: rgba(238,243,239,.55); color: var(--muted); }
+.settings-status-spinner { width: 10px; height: 10px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: settings-spin .8s linear infinite; }
+@keyframes settings-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .settings-status-spinner { animation: none; } }
+
+.settings-empty { display: grid; gap: 3px; padding: 12px; border: 1px dashed var(--line); border-radius: 9px; color: var(--muted); font-size: var(--ui-body-small-font-size); }
+.settings-empty strong { color: var(--ink); font-size: var(--ui-control-font-size); }
+
+/* --- paths, rows and lists --------------------------------------------- */
+
+.settings-paths { display: grid; gap: 7px; }
+.settings-path-row { display: grid; grid-template-columns: minmax(64px, 96px) minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 9px; background: rgba(238,243,239,.62); }
+.settings-path-label { color: var(--muted); font-size: var(--ui-body-small-font-size); }
+.settings-path-row code { min-width: 0; overflow: hidden; color: var(--ink); font-size: var(--ui-body-small-font-size); text-overflow: ellipsis; white-space: nowrap; }
+
+.diagnostics-grid { display: grid; gap: 7px; }
+.diagnostics-item { display: grid; grid-template-columns: minmax(72px, 120px) minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.diagnostics-item span { color: var(--muted); font-size: var(--ui-body-small-font-size); }
+.diagnostics-item code { min-width: 0; overflow: hidden; color: var(--ink); font-size: var(--ui-body-small-font-size); text-overflow: ellipsis; white-space: nowrap; }
+.settings-detail-grid { display: grid; gap: 7px; }
+
+.extension-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 8px; }
+.extension-status-item { display: grid; grid-template-columns: 1fr auto; gap: 5px 8px; align-items: center; padding: 9px 10px; border-radius: 9px; background: rgba(238,243,239,.68); }
+.extension-status-item span { color: var(--muted); font-size: var(--ui-body-small-font-size); }
+.extension-status-item strong { color: var(--ink); font-size: var(--ui-control-font-size); font-weight: 700; }
+.extension-status-item em { grid-column: 1 / -1; width: fit-content; padding: 2px 7px; border-radius: 999px; background: rgba(224,235,226,.85); color: var(--accent-strong); font-size: var(--ui-caption-font-size); font-style: normal; }
+
+.plugin-runtime-list { display: grid; gap: 6px; }
+.plugin-runtime-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 4px 9px 4px 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); }
+.plugin-runtime-item.selected { background: rgba(224,235,226,.78); border-color: rgba(76,126,92,.22); }
+.plugin-runtime-toggle { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; min-height: 36px; padding: 4px 6px; border-radius: 7px; cursor: pointer; }
+.plugin-runtime-toggle input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--accent); }
+.plugin-runtime-text { display: grid; gap: 2px; min-width: 0; }
+.plugin-runtime-text strong { color: var(--ink); font-size: var(--ui-control-font-size); font-weight: 660; overflow-wrap: anywhere; }
+.plugin-runtime-text small { color: var(--muted); font-size: var(--ui-caption-font-size); overflow-wrap: anywhere; }
+.plugin-runtime-actions { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.plugin-runtime-settings { min-width: 32px; min-height: 32px; }
+
+.plugin-settings-list { display: grid; gap: 8px; }
+.plugin-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; padding: 6px 9px; border-radius: 8px; background: rgba(238,243,239,.55); }
+.plugin-setting-text { display: grid; gap: 2px; min-width: 0; }
+.plugin-setting-text strong { color: var(--ink); font-size: var(--ui-body-small-font-size); font-weight: 640; }
+.plugin-setting-text small { color: var(--muted); font-size: var(--ui-caption-font-size); overflow-wrap: anywhere; }
+.plugin-setting-row select, .plugin-setting-row input[type='text'], .plugin-setting-row input[type='number'] { min-height: 32px; max-width: 190px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); font: inherit; font-size: var(--ui-control-font-size); }
+.plugin-setting-row input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+.plugin-market-list { display: grid; gap: 8px; }
+.plugin-market-item { padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.56); }
+.plugin-market-item-heading { display: flex; justify-content: space-between; gap: 8px; }
+.plugin-market-item-heading strong { font-size: var(--ui-control-font-size); }
+.plugin-market-item p { margin: 5px 0; color: var(--muted); font-size: var(--ui-body-small-font-size); line-height: 1.45; overflow-wrap: anywhere; }
+.plugin-local-list { display: grid; gap: 7px; }
+.plugin-local-item { display: grid; gap: 2px; padding: 8px 9px; border-radius: 8px; background: rgba(238,243,239,.62); }
+.plugin-local-item strong { color: var(--ink); font-size: var(--ui-body-small-font-size); }
+.plugin-local-item small { color: var(--muted); font-size: var(--ui-caption-font-size); overflow-wrap: anywhere; }
+
+/* --- capture ------------------------------------------------------------ */
+
+.settings-capture-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--muted); font-size: var(--ui-caption-font-size); }
+.settings-capture-chip { padding: 2px 8px; border-radius: 999px; background: rgba(238,243,239,.8); color: var(--muted); }
+.settings-capture-list { display: grid; gap: 6px; }
+.settings-capture-row { align-items: flex-start; }
+
+/* --- sync and updates --------------------------------------------------- */
+
+.settings-sync-login { display: grid; gap: 10px; }
+.settings-market-source { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.settings-market-source input { flex: 1 1 220px; }
+.settings-range-input { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.settings-range-input input[type='range'] { width: min(260px, 100%); height: 6px; padding: 0; accent-color: var(--accent); }
+.settings-range-input output { min-width: 48px; color: var(--accent-strong); font-variant-numeric: tabular-nums; font-weight: 700; }
+
+.settings-update-version { margin: 0; font-size: var(--ui-control-font-size); }
+.settings-update-notes { display: grid; gap: 6px; min-width: 0; }
+.settings-update-note-list { display: grid; gap: 4px; margin: 0; padding-left: 18px; color: var(--ink); font-size: var(--ui-body-small-font-size); line-height: 1.55; overflow-wrap: anywhere; }
+.settings-update-note-reminder { margin: 0; padding: 6px 9px; border-radius: 8px; background: rgba(245,238,224,.85); color: #7d6230; font-size: var(--ui-caption-font-size); overflow-wrap: anywhere; }
+.settings-update-note-more { margin: 0; color: var(--muted); font-size: var(--ui-caption-font-size); }
+.settings-update-progress { display: grid; gap: 5px; }
+.settings-update-progress-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--muted); font-size: var(--ui-body-small-font-size); }
+.settings-update-progress progress { width: 100%; height: 6px; accent-color: var(--accent); }
+.settings-update-consent { align-items: flex-start; }
+
+/* --- responsive --------------------------------------------------------- */
+
+@media (max-width: 1180px) {
+  .settings-layout { grid-template-columns: 190px minmax(0, 1fr); gap: 18px; }
+}
+
+@media (max-width: 1040px) {
+  .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .settings-section-nav { position: static; }
+  .settings-section-nav ul { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .settings-section-nav button { min-height: 36px; justify-content: center; }
+  .settings-section-body { grid-template-columns: minmax(0, 1fr); }
+}

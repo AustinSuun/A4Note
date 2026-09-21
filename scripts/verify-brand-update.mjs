@@ -5,12 +5,18 @@ import ts from 'typescript';
 const read = path => fs.readFileSync(path, 'utf8');
 const badge = read('src/features/settings/BrandUpdateNotice.tsx');
 const menu = read('src/features/settings/BrandUpdateMenu.tsx');
-assert.match(badge, /if \(!state.version\) return null/);
-assert.match(badge, /current.version \|\|/);
+assert.match(badge, /if \(!model.version\) return null/);
+assert.match(badge, /if \(model.version\) return false/);
+assert.match(badge, /updateActions\.check\(\)/);
 assert.match(badge, /if \(!isTauriRuntime\(\)\) return/);
 assert.match(badge, /6 \* 60 \* 60 \* 1000/);
 assert.doesNotMatch(badge, /void (downloadUpdate|installUpdate)\(/);
 assert.match(menu, /disabled={!confirmed \|\| busy}/);
+assert.match(menu, /useUpdateModel\(\)/);
+assert.match(menu, /from '\.\/updateModel'/);
+assert.match(menu, /<UpdateNotes notes=\{model\.notes\}/);
+assert.match(read('src/features/settings/UpdateSettings.tsx'), /from '\.\/updateModel'/);
+assert.match(read('src/features/settings/updateModel.ts'), /export function parseReleaseNotes/);
 assert.match(menu, /dialog.showModal\(\)/);
 assert.match(menu, /onCancel=/);
 assert.match(menu, /onMouseDown={event => event.stopPropagation\(\)}/);
@@ -25,6 +31,7 @@ const mocks = {
   '@tauri-apps/api/app': { getVersion: async () => '1.0.0' },
   '../pendingSaves': { flushPendingSaves: async () => { events.push('flush'); if (saveFails) throw Error('save conflict'); } },
   '../projects': { isTauriRuntime: () => true, openExternalUrl: async url => events.push(url) },
+  '../nativeApi': { createLibraryBackup: async () => { events.push('backup'); return { backup_path: 'D:/tmp/aster-backup' }; } },
 };
 const context = { exports: {}, require: name => { assert.ok(mocks[name]); return mocks[name]; }, document: { body: { inert: false } } };
 vm.runInNewContext(ts.transpileModule(read('src/platform/updater/index.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, context);
@@ -36,7 +43,7 @@ await api.installUpdate(); assert.ok(!events.includes('install'));
 downloadFails = false; await api.downloadUpdate(); assert.equal(api.updateSnapshot().downloaded, true);
 assert.equal(api.updateSnapshot().received, 100);
 saveFails = true; await api.installUpdate(); assert.ok(!events.includes('install')); assert.equal(context.document.body.inert, false);
-saveFails = false; await api.installUpdate(); assert.deepEqual(events.slice(-2), ['flush', 'install']); assert.equal(context.document.body.inert, false);
+saveFails = false; await api.installUpdate(); assert.deepEqual(events.slice(-3), ['flush', 'backup', 'install']); assert.equal(api.updateSnapshot().backupPath, 'D:/tmp/aster-backup'); assert.equal(context.document.body.inert, false);
 await api.openReleases(); assert.equal(events.at(-1), 'https://github.com/AustinSuun/A4Note/releases/latest');
 noUpdate = true; await api.checkForUpdates(); assert.equal(api.updateSnapshot().version, undefined); assert.equal(api.updateSnapshot().phase, 'latest');
 console.log('Brand update wiring assertions and mocked updater safety tests passed (no native operations).');

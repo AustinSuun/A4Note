@@ -1,5 +1,7 @@
 ﻿# A4 Note Agent 状态
 
+- settings-ui-refactor-arena：Arena 执行 05795e28（low）完成 Settings UI 重构：单体 index.tsx 拆为 types/catalog/primitives/useAsyncStatus/updateModel/updateViews 与 7 个分类 section；新增 settings.css 作为布局唯一权威（1180/1040 断点，去 nth-child，清理 components/workbench 双列冲突与零引用的 settings-typography.css）；分类导航键盘/aria-current/焦点归属、全局搜索 combobox、label 与 ≥32px 点击目标、live-region 不堆叠、Capture 100 条分页、UpdateSettings 与 BrandUpdateMenu 共享 updateModel、initialSection 受控同步；新增渲染级套件 scripts/verify-settings-ui.mjs 115/115（真实 DOM+CDP，截图 .tmp/shots/settings-ui），build、test:ui-state、verify-brand-update、架构与完整 verify 全绿。未打包未发布。
+
 - reader-crosspage-selection-arena：Arena执行 8dba61be（审计F3，high）完成：跨页拖选按页裁剪 Range 逐页生成高亮/下划线（不再因公共祖先不在单页而静默丢弃），quote 只取文字层运行；文本框/便签正文非编辑态 user-select:none；新增 test:pdf-crosspage-selection（31 断言）接入 verify-all；隔离实例 arena-f3 真实窗口 22/22（60% 两页同屏跨页 2 条记录、跨页下划线、单页回归、文本框不可选、reload）；npm run verify 全绿。分支 fix/reader-crosspage-selection-arena，详见 docs/mcp-reader-crosspage-selection-fix-arena-2026-09-21.md。
 
 
