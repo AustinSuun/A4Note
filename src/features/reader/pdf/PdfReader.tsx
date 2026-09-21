@@ -28,7 +28,7 @@ import { arrowPositionFromDrag, createDragDraft, currentVisiblePage, pointFromEv
 import { TEXT_EDGE_MARGIN_PERCENT, TEXT_FONT_UNIT_PAGE, clampTextBoxToPage, percentBoxOf, placeNewTextBox, roundPercent, textAnnotationLayout } from './pdfTextAnnotation';
 import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
-import { boundingBox, mergeRectsIntoLineSegments, textItemSelectionsFromRange, textSelectionFromDrag, textSelectionRectsFromOffsets } from './pdfSelection';
+import { boundingBox, dominantTextOrientation, mergeRectsIntoLineSegments, textItemSelectionsFromRange, textSelectionFromDrag, textSelectionRectsFromOffsets, withSegmentOrientation } from './pdfSelection';
 import type {
   AnnotationMarkModel,
   AnnotationResize,
@@ -743,7 +743,10 @@ export default function PdfReader({
       .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
     const rects = clientRects.length ? liveRects : preciseRects;
     if (!rects.length) return;
-    const segments = mergeRectsIntoLineSegments(rects);
+    // Pages with /Rotate: merge along the column and keep the run direction on each segment so
+    // highlight/underline marks trim and underline along the glyph axis.
+    const textOrientation = page ? dominantTextOrientation(page.textItems, textItemSelections) : 0;
+    const segments = withSegmentOrientation(mergeRectsIntoLineSegments(rects, textOrientation), textOrientation);
     const bounds = boundingBox(segments);
     if (!bounds.width || !bounds.height) return;
     const draft = {

@@ -1,3 +1,4 @@
+import { textItemsSeparated } from './pdfSelection';
 import type { PageMeta } from './types';
 export type PdfSearchMatch = { page: number; indices: number[] };
 /** Literal, case-insensitive text search. Never interprets the query as a regular expression. */
@@ -13,7 +14,7 @@ export function findPdfMatches(pages: Pick<PageMeta, 'pageNumber' | 'textItems'>
     const spans: { start: number; end: number; index: number }[] = [];
     page.textItems.forEach((item, index) => {
       const prior = page.textItems[index - 1];
-      if (prior && (Math.abs(item.y - prior.y) > Math.min(item.height, prior.height) / 2 || item.x > prior.x + prior.width + 0.25)) text += ' ';
+      if (prior && textItemsSeparated(item, prior)) text += ' ';
       const start = text.length; text += item.text;
       spans.push({ start, end: text.length, index });
     });

@@ -468,6 +468,8 @@
 .annotation-mark.green { background: rgba(100, 180, 130, .3); outline: 1px solid rgba(55, 128, 86, .28); }
 .annotation-mark.blue { background: rgba(92, 142, 219, .28); outline: 1px solid rgba(64, 111, 190, .25); }
 .annotation-mark.underline { min-height: 1px; transform: translateY(-100%); background: #5c8edb; opacity: .86; border-radius: 999px; }
+/* Runs on pages with /Rotate 90/270 read vertically: the rule keeps the segment's full height, stays in place and is 2px wide. */
+.annotation-mark.underline.vertical-rule { min-height: 0; min-width: 1px; width: 2px !important; transform: none; }
 .annotation-mark.area, .annotation-mark.purple { background: rgba(151, 112, 219, .16); outline: 2px solid rgba(123, 87, 186, .45); }
 .annotation-mark.comment {
   min-width: 148px;

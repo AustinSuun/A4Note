@@ -18,7 +18,12 @@ export type TextItemBox = {
   width: number;
   height: number;
   fontSize: number;
+  /** Quantized on-screen reading direction of the run; absent means left-to-right. */
+  orientation?: TextOrientation;
 };
+
+/** Clockwise quarter turns of a text run on screen: 0 reads left→right, 90 top→bottom (page /Rotate 90), 180 right→left, 270 bottom→top. */
+export type TextOrientation = 0 | 90 | 180 | 270;
 
 export type RectBox = {
   x: number;

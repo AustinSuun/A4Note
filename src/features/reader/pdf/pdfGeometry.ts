@@ -1,7 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { PositionJson } from '../../../core/types';
 import { pdfCoordinateLayer } from './pdfCoordinates';
-import type { DragDraft, RectBox, TextItemBox } from './types';
+import type { DragDraft, RectBox, TextItemBox, TextOrientation } from './types';
 
 const PDF_RENDER_BUFFER_SCALE = 2.15;
 
@@ -11,20 +11,53 @@ export async function extractTextItemBoxes(page: pdfjsLib.PDFPageProxy, viewport
     .filter((item): item is typeof item & { str: string; transform: number[]; width: number; height: number } => 'str' in item && Boolean(item.str?.trim()) && 'transform' in item)
     .map((item) => {
       const transformed = pdfjsLib.Util.transform(viewport.transform, item.transform);
-      const x = transformed[4];
-      const y = transformed[5];
-      const width = Math.max(item.width * viewport.scale, 1);
-      const height = Math.max(Math.abs(transformed[3]), item.height * viewport.scale, 6);
-      return {
-        text: item.str,
-        x: clamp((x / viewport.width) * 100, 0, 100),
-        y: clamp(((y - height) / viewport.height) * 100, 0, 100),
-        width: clamp((width / viewport.width) * 100, 0, 100),
-        height: clamp((height / viewport.height) * 100, 0, 100),
-        fontSize: height,
-      };
+      const orientation = textOrientationFromTransform(transformed);
+      const runLength = Math.max(item.width * viewport.scale, 1);
+      if (orientation === 0) {
+        const x = transformed[4];
+        const y = transformed[5];
+        const height = Math.max(Math.abs(transformed[3]), item.height * viewport.scale, 6);
+        return textItemBox(item.str, x, y - height, runLength, height, height, viewport, orientation);
+      }
+      // `getViewport` already folds the page's /Rotate into `transform`, so a rotated run's
+      // direction and ascent vectors are no longer axis aligned. Walk the run's four corners and
+      // keep their axis-aligned bounds so the span covers the painted glyphs and stays on the page.
+      const glyphHeight = Math.max(Math.hypot(transformed[2], transformed[3]), item.height * viewport.scale, 6);
+      const bounds = rotatedRunBounds(transformed, runLength, glyphHeight);
+      return textItemBox(item.str, bounds.left, bounds.top, bounds.width, bounds.height, glyphHeight, viewport, orientation);
     })
     .filter((item) => item.width > 0.15 && item.height > 0.15);
+}
+
+/** Reading direction of a text run in viewport space, quantized to clockwise quarter turns. */
+export function textOrientationFromTransform(transform: ArrayLike<number>): TextOrientation {
+  const angle = (Math.atan2(transform[1], transform[0]) * 180) / Math.PI;
+  const quarter = ((Math.round(angle / 90) * 90) % 360 + 360) % 360;
+  return quarter === 90 || quarter === 180 || quarter === 270 ? quarter : 0;
+}
+
+function rotatedRunBounds(transform: ArrayLike<number>, runLength: number, glyphHeight: number) {
+  const runNorm = Math.hypot(transform[0], transform[1]);
+  const ascentNorm = Math.hypot(transform[2], transform[3]);
+  const run: [number, number] = runNorm > 0 ? [transform[0] / runNorm, transform[1] / runNorm] : [1, 0];
+  const ascent: [number, number] = ascentNorm > 0 ? [transform[2] / ascentNorm, transform[3] / ascentNorm] : [0, -1];
+  const xs = [0, run[0] * runLength, ascent[0] * glyphHeight, run[0] * runLength + ascent[0] * glyphHeight].map((dx) => transform[4] + dx);
+  const ys = [0, run[1] * runLength, ascent[1] * glyphHeight, run[1] * runLength + ascent[1] * glyphHeight].map((dy) => transform[5] + dy);
+  const left = Math.min(...xs);
+  const top = Math.min(...ys);
+  return { left, top, width: Math.max(...xs) - left, height: Math.max(...ys) - top };
+}
+
+function textItemBox(text: string, left: number, top: number, width: number, height: number, fontSize: number, viewport: pdfjsLib.PageViewport, orientation: TextOrientation): TextItemBox {
+  const box: TextItemBox = {
+    text,
+    x: clamp((left / viewport.width) * 100, 0, 100),
+    y: clamp((top / viewport.height) * 100, 0, 100),
+    width: clamp((width / viewport.width) * 100, 0, 100),
+    height: clamp((height / viewport.height) * 100, 0, 100),
+    fontSize,
+  };
+  return orientation ? { ...box, orientation } : box;
 }
 
 export function normalizeClientRect(rect: DOMRect | ClientRect, container: HTMLElement): RectBox | null {

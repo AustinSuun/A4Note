@@ -1,5 +1,14 @@
-import { memo } from 'react';
-import type { TextItemBox } from './types';
+import { memo, type CSSProperties } from 'react';
+import type { TextItemBox, TextOrientation } from './types';
+
+/** Lay a rotated run out along the direction pdf.js painted it, so native selection and
+ * `getClientRects` follow the glyphs instead of a horizontal box hanging off the page. */
+function textOrientationStyle(orientation: TextOrientation | undefined): CSSProperties {
+  if (orientation === 90) return { writingMode: 'vertical-rl', textOrientation: 'sideways' };
+  if (orientation === 270) return { writingMode: 'vertical-rl', textOrientation: 'sideways', transform: 'rotate(180deg)', transformOrigin: 'center' };
+  if (orientation === 180) return { transform: 'rotate(180deg)', transformOrigin: 'center' };
+  return {};
+}
 
 function PdfTextLayerView({
   textItems,
@@ -16,12 +25,14 @@ function PdfTextLayerView({
         <span
           key={`${index}-${item.x}-${item.y}`}
           data-text-index={index}
+          data-text-orientation={item.orientation || undefined}
           style={{
             left: `${item.x}%`,
             top: `${item.y}%`,
             width: `${item.width}%`,
             height: `${item.height}%`,
             fontSize: `${Math.max(item.fontSize * zoom, 6)}px`,
+            ...textOrientationStyle(item.orientation),
           }}
         >
           {item.text}

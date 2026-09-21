@@ -1,10 +1,71 @@
-import type { RectBox, TextItemBox } from './types';
+import type { RectBox, TextItemBox, TextOrientation } from './types';
 
 export type TextItemSelection = {
   itemIndex: number;
   startOffset: number;
   endOffset: number;
 };
+
+type ReadingAxes = {
+  /** Coordinate that stays constant along one line (y for horizontal runs, x for rotated ones). */
+  line: (box: RectBox) => number;
+  lineExtent: (box: RectBox) => number;
+  /** Reading order across lines, then along the run. */
+  compareReading: (a: RectBox, b: RectBox) => number;
+  compareRun: (a: RectBox, b: RectBox) => number;
+};
+
+/** Reading order per quantized run direction: pages with /Rotate read column by column. */
+const READING_AXES: Record<TextOrientation, ReadingAxes> = {
+  0: { line: (box) => box.y, lineExtent: (box) => box.height, compareReading: (a, b) => a.y - b.y || a.x - b.x, compareRun: (a, b) => a.x - b.x },
+  90: { line: (box) => box.x, lineExtent: (box) => box.width, compareReading: (a, b) => b.x - a.x || a.y - b.y, compareRun: (a, b) => a.y - b.y },
+  180: { line: (box) => box.y, lineExtent: (box) => box.height, compareReading: (a, b) => b.y - a.y || b.x - a.x, compareRun: (a, b) => b.x - a.x },
+  270: { line: (box) => box.x, lineExtent: (box) => box.width, compareReading: (a, b) => a.x - b.x || b.y - a.y, compareRun: (a, b) => b.y - a.y },
+};
+
+export function textItemOrientation(item: { orientation?: unknown } | undefined): TextOrientation {
+  const value = item?.orientation;
+  return value === 90 || value === 180 || value === 270 ? value : 0;
+}
+
+export function isVerticalTextOrientation(orientation: TextOrientation) {
+  return orientation === 90 || orientation === 270;
+}
+
+/** Most common run direction among the selected items; horizontal wins ties. */
+export function dominantTextOrientation(textItems: TextItemBox[], selections: TextItemSelection[]): TextOrientation {
+  const counts = new Map<TextOrientation, number>();
+  for (const selection of selections) {
+    const orientation = textItemOrientation(textItems[selection.itemIndex]);
+    counts.set(orientation, (counts.get(orientation) ?? 0) + 1);
+  }
+  let dominant: TextOrientation = 0;
+  let dominantCount = counts.get(0) ?? 0;
+  for (const [orientation, count] of counts) {
+    if (count > dominantCount) {
+      dominant = orientation;
+      dominantCount = count;
+    }
+  }
+  return dominant;
+}
+
+/** Persist the run direction on rotated segments so marks trim and underline along the glyph axis. */
+export function withSegmentOrientation<T extends RectBox>(segments: T[], orientation: TextOrientation): Array<T | (T & { orientation: TextOrientation })> {
+  return orientation ? segments.map((segment) => ({ ...segment, orientation })) : segments;
+}
+
+/** Whether two consecutive runs sit on different lines or leave a gap (search joins them with a space). */
+export function textItemsSeparated(item: TextItemBox, prior: TextItemBox) {
+  const orientation = textItemOrientation(item);
+  if (orientation !== textItemOrientation(prior)) return true;
+  const axes = READING_AXES[orientation];
+  if (Math.abs(axes.line(item) - axes.line(prior)) > Math.min(axes.lineExtent(item), axes.lineExtent(prior)) / 2) return true;
+  if (orientation === 0) return item.x > prior.x + prior.width + 0.25;
+  if (orientation === 90) return item.y > prior.y + prior.height + 0.25;
+  if (orientation === 180) return item.x + item.width < prior.x - 0.25;
+  return item.y + item.height < prior.y - 0.25;
+}
 
 export function textItemSelectionsFromRange(range: Range, container: HTMLElement): TextItemSelection[] {
   return Array.from(container.querySelectorAll<HTMLElement>('.pdf-text-layer span[data-text-index]')).flatMap((span) => {
@@ -36,16 +97,22 @@ export function textSelectionRectsFromOffsets(textItems: TextItemBox[], selectio
     if (visibleEnd <= visibleStart) return [];
     const startRatio = visibleStart / item.text.length;
     const endRatio = visibleEnd / item.text.length;
-    return [{
-      x: item.x + item.width * startRatio,
-      y: item.y,
-      width: item.width * (endRatio - startRatio),
-      height: item.height,
-    }];
+    return [sliceTextItemBox(item, startRatio, endRatio)];
   });
 }
 
-export function mergeRectsIntoLineSegments(rects: RectBox[]) {
+/** Slice a run box along its reading direction: x for horizontal runs, y for rotated ones. */
+export function sliceTextItemBox(item: TextItemBox, startRatio: number, endRatio: number): RectBox {
+  const orientation = textItemOrientation(item);
+  const span = endRatio - startRatio;
+  if (orientation === 90) return { x: item.x, y: item.y + item.height * startRatio, width: item.width, height: item.height * span };
+  if (orientation === 270) return { x: item.x, y: item.y + item.height * (1 - endRatio), width: item.width, height: item.height * span };
+  if (orientation === 180) return { x: item.x + item.width * (1 - endRatio), y: item.y, width: item.width * span, height: item.height };
+  return { x: item.x + item.width * startRatio, y: item.y, width: item.width * span, height: item.height };
+}
+
+export function mergeRectsIntoLineSegments(rects: RectBox[], orientation: TextOrientation = 0) {
+  if (isVerticalTextOrientation(orientation)) return mergeRectsIntoColumnSegments(rects);
   const sorted = [...rects].sort((a, b) => a.y - b.y || a.x - b.x);
   const merged: RectBox[] = [];
   for (const rect of sorted) {
@@ -63,14 +130,28 @@ export function mergeRectsIntoLineSegments(rects: RectBox[]) {
   return merged;
 }
 
+function mergeRectsIntoColumnSegments(rects: RectBox[]) {
+  const sorted = [...rects].sort((a, b) => a.x - b.x || a.y - b.y);
+  const merged: RectBox[] = [];
+  for (const rect of sorted) {
+    const previous = merged[merged.length - 1];
+    if (previous && Math.abs(previous.x - rect.x) < 1.2 && rect.y <= previous.y + previous.height + 1.2) {
+      merged[merged.length - 1] = boundingBox([previous, rect]);
+    } else {
+      merged.push(rect);
+    }
+  }
+  return merged;
+}
+
 export function textSelectionFromDrag(textItems: TextItemBox[], box: RectBox) {
   const lineGroups = groupTextItemsIntoLines(textItems);
   const selectedGroups = lineGroups
-    .map((items) => ({ items, segment: boundingBox(items) }))
+    .map((items) => ({ items, segment: lineSegment(items) }))
     .filter(({ segment }) => lineSelectionScore(segment, box) >= 0.18)
-    .sort((a, b) => a.segment.y - b.segment.y || a.segment.x - b.segment.x);
+    .sort((a, b) => compareReadingOrder(a.segment, b.segment));
   if (!selectedGroups.length) return null;
-  const selected = selectedGroups.flatMap((group) => group.items).sort((a, b) => a.y - b.y || a.x - b.x);
+  const selected = selectedGroups.flatMap((group) => group.items).sort(compareReadingOrder);
   const segments = selectedGroups.map((group) => group.segment);
   const bounds = boundingBox(segments);
   return {
@@ -80,22 +161,40 @@ export function textSelectionFromDrag(textItems: TextItemBox[], box: RectBox) {
 }
 
 export function groupTextItemsIntoLines(items: TextItemBox[]) {
-  const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
   const lines: TextItemBox[][] = [];
-  for (const item of sorted) {
-    const line = lines.find((candidate) => Math.abs(candidate[0].y - item.y) < Math.max(candidate[0].height, item.height) * 0.65);
-    if (line) line.push(item);
-    else lines.push([item]);
+  for (const orientation of [0, 90, 180, 270] as const) {
+    const axes = READING_AXES[orientation];
+    const sorted = items.filter((item) => textItemOrientation(item) === orientation).sort(axes.compareReading);
+    const orientedLines: TextItemBox[][] = [];
+    for (const item of sorted) {
+      const line = orientedLines.find((candidate) => Math.abs(axes.line(candidate[0]) - axes.line(item)) < Math.max(axes.lineExtent(candidate[0]), axes.lineExtent(item)) * 0.65);
+      if (line) line.push(item);
+      else orientedLines.push([item]);
+    }
+    lines.push(...orientedLines.map((line) => line.sort(axes.compareRun)));
   }
-  return lines.map((line) => line.sort((a, b) => a.x - b.x));
+  return lines;
 }
 
-export function lineSelectionScore(line: RectBox, dragBox: RectBox) {
+/** Bounding box of one line; rotated lines remember their run direction for scoring and marks. */
+function lineSegment(items: TextItemBox[]): RectBox & { orientation?: TextOrientation } {
+  const orientation = textItemOrientation(items[0]);
+  return orientation ? { ...boundingBox(items), orientation } : boundingBox(items);
+}
+
+function compareReadingOrder(a: RectBox & { orientation?: TextOrientation }, b: RectBox & { orientation?: TextOrientation }) {
+  const orientation = textItemOrientation(a);
+  return orientation - textItemOrientation(b) || READING_AXES[orientation].compareReading(a, b);
+}
+
+export function lineSelectionScore(line: RectBox & { orientation?: TextOrientation }, dragBox: RectBox) {
   const intersection = intersectionBox(line, dragBox);
   if (!intersection) return 0;
   const verticalCoverage = intersection.height / Math.max(line.height, 0.1);
   const horizontalCoverage = intersection.width / Math.max(line.width, 0.1);
-  return verticalCoverage * Math.min(horizontalCoverage * 2.5, 1);
+  // Coverage across the line decides whether it was meant; coverage along it only needs a foothold.
+  const [acrossCoverage, alongCoverage] = isVerticalTextOrientation(textItemOrientation(line)) ? [horizontalCoverage, verticalCoverage] : [verticalCoverage, horizontalCoverage];
+  return acrossCoverage * Math.min(alongCoverage * 2.5, 1);
 }
 
 export function intersectionBox(a: RectBox, b: RectBox) {

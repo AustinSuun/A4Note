@@ -321,7 +321,7 @@ function AnnotationMarkView({
       {segments.map((segment, index) => (
         <div
           key={`${annotation.id ?? annotation.quote}-${index}`}
-          className={`annotation-mark ${annotation.type} ${annotation.color} ${annotation.type === 'rect' ? `${shapeKindFromPosition(annotation.positionJson)} ${Boolean(annotation.positionJson.fillEnabled) ? 'filled' : 'outline'}` : ''} ${textLayout ? `text-inline ${textLayout.autoWidth ? 'auto-width' : 'fixed-width'}` : ''} ${editing ? 'editing' : ''} ${draft ? 'draft' : ''} ${focused ? 'focused' : ''}`.trim()}
+          className={`annotation-mark ${annotation.type} ${annotation.color} ${annotation.type === 'rect' ? `${shapeKindFromPosition(annotation.positionJson)} ${Boolean(annotation.positionJson.fillEnabled) ? 'filled' : 'outline'}` : ''} ${annotation.type === 'underline' && (segment.orientation === 90 || segment.orientation === 270) ? 'vertical-rule' : ''} ${textLayout ? `text-inline ${textLayout.autoWidth ? 'auto-width' : 'fixed-width'}` : ''} ${editing ? 'editing' : ''} ${draft ? 'draft' : ''} ${focused ? 'focused' : ''}`.trim()}
           title={annotation.comment || annotation.quote}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
