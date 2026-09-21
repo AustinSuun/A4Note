@@ -17,7 +17,11 @@ const target = { kind: 'desktop', source: 'D:/apps/a4note.exe', version: '0.1.16
 
 test('acceptance CLI: human configuration, independent claim, fixtures and evidence upload', async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'acceptance-cli-data-'));
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'acceptance-cli-root-'));
+  // Runners expose os.tmpdir() as an 8.3 short path; the fixture guard compares
+  // realpath against resolve, so normalise here as the other suites already do.
+  const projectRoot = fs.realpathSync.native(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'acceptance-cli-root-')),
+  );
   const sessionDir = fs.mkdtempSync(path.join(os.tmpdir(), 'acceptance-cli-session-'));
   const app = createTaskServer({ dataDir, project: 'CLI验收项目' });
   await new Promise((r) => app.server.listen(0, '127.0.0.1', r));

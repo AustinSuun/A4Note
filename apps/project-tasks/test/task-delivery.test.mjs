@@ -7,7 +7,9 @@ import {execFileSync} from 'node:child_process';
 import {Store} from '../lib/store.mjs';
 const git=(root,...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 function fixture(){
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'delivery-')),root=path.join(dir,'repo');fs.mkdirSync(root);
+ // os.tmpdir() can be an 8.3 short path on CI runners while repo() realpaths the
+ // root, which would otherwise look like a different repository identity.
+ const dir=fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(),'delivery-'))),root=path.join(dir,'repo');fs.mkdirSync(root);
  git(root,'init','-b','main');git(root,'config','core.autocrlf','false');git(root,'config','user.name','Test');git(root,'config','user.email','test@localhost');
  fs.writeFileSync(path.join(root,'a.txt'),'base\n');git(root,'add','a.txt');git(root,'commit','-m','base');const base=git(root,'rev-parse','HEAD');
  git(root,'checkout','-b','task');fs.writeFileSync(path.join(root,'a.txt'),'delivery\n');git(root,'commit','-am','task');const commit=git(root,'rev-parse','HEAD');
