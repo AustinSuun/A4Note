@@ -874,11 +874,20 @@ export default function PdfReader({
   function eraseInkAtPointer(pageNumber: number, event: MouseEvent<HTMLDivElement>) {
     if (activeTool !== 'eraser') return;
     const rect = pdfCoordinateLayer(event.currentTarget).getBoundingClientRect();
-    const point = pointFromEvent(event);
-    if (!point) return;
     if (rect.width <= 0 || rect.height <= 0) return;
+    // pointFromEvent clamps into 0..100, which would keep erasing along the page edge once the
+    // cursor leaves the page. The eraser needs the raw position so it can simply stop instead.
+    event.preventDefault();
+    event.stopPropagation();
+    const point = {
+      x: ((event.clientX - rect.left) / rect.width) * 100,
+      y: ((event.clientY - rect.top) / rect.height) * 100,
+    };
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
     const radiusX = Math.max((toolSettings.eraserSize / rect.width) * 50, 0.05);
     const radiusY = Math.max((toolSettings.eraserSize / rect.height) * 50, 0.05);
+    // Outside the page (plus the eraser radius) nothing can be touched, so do not erase at all.
+    if (point.x < -radiusX || point.x > 100 + radiusX || point.y < -radiusY || point.y > 100 + radiusY) return;
 
     for (const annotation of currentFileAnnotations) {
       if (annotation.page !== pageNumber || annotation.type !== 'ink') continue;
@@ -912,8 +921,10 @@ export default function PdfReader({
     }
     setEraserCursor({
       page: pageNumber,
-      x: clamp(x, 0, rect.width),
-      y: clamp(y, 0, rect.height),
+      // Do not clamp: a clamped ring slides along the page border while the real cursor is
+      // elsewhere, which reads as the eraser drifting away from the mouse.
+      x,
+      y,
     });
   }
 
