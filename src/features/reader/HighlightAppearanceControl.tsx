@@ -1,10 +1,11 @@
 import { useHighlightAppearance } from './pdf/useHighlightAppearance';
+import { MAX_HIGHLIGHT_OPACITY, MIN_HIGHLIGHT_OPACITY } from './pdf/pdfHighlightAppearance';
 
 export function HighlightAppearanceControl() {
   const { appearance, setAppearance, storageFailed } = useHighlightAppearance();
   return <div className="tool-option-block highlight-appearance-control">
     <label>高亮不透明度 <output>{appearance.opacity}%</output>
-      <input type="range" aria-label="高亮不透明度" min={10} max={35} step={1} value={appearance.opacity}
+      <input type="range" aria-label="高亮不透明度" min={MIN_HIGHLIGHT_OPACITY} max={MAX_HIGHLIGHT_OPACITY} step={1} value={appearance.opacity}
         onChange={event => setAppearance({ ...appearance, opacity: Number(event.target.value) })} />
     </label>
     <small>数值越小越淡；应用于当前应用配置中的所有新旧高亮，仅改变显示，不修改标注内容。</small>

@@ -14,6 +14,6 @@ export function PdfHighlightLayer({ annotations }: { annotations: readonly Annot
     style={{ opacity: appearance.opacity / 100, mixBlendMode: appearance.blend }}>
     {annotations.filter(mark => mark.type === 'highlight').flatMap((mark, index) =>
       highlightRects(mark.positionJson).map((rect, segment) =>
-        <rect key={`${mark.id ?? index}-${index}-${segment}`} {...rect} fill={highlightFill(mark.color)} />))}
+        <rect key={`${mark.id ?? index}-${index}-${segment}`} {...rect} fill={highlightFill(mark.color)} data-selection-preview={mark.id?.startsWith('selection-preview') ? 'true' : undefined} />))}
   </svg>;
 }

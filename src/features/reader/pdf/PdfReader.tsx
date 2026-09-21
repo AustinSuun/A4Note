@@ -30,6 +30,7 @@ import { arrowPositionFromDrag, createDragDraft, currentVisiblePage, pointFromEv
 import { TEXT_EDGE_MARGIN_PERCENT, TEXT_FONT_UNIT_PAGE, clampTextBoxToPage, percentBoxOf, placeNewTextBox, roundPercent, textAnnotationLayout } from './pdfTextAnnotation';
 import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
+import { SELECTION_PREVIEW_COLOR } from './pdfHighlightAppearance';
 import { boundingBox, clipRangeToNode, dominantTextOrientation, mergeRectsIntoLineSegments, quoteFromTextItemSelections, textItemSelectionsFromRange, textSelectionFromDrag, textSelectionPageElements, textSelectionRectsFromOffsets, withSegmentOrientation } from './pdfSelection';
 import type {
   AnnotationMarkModel,
@@ -116,6 +117,7 @@ export default function PdfReader({
   const [pdfDocument, setPdfDocument] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [draftAnnotations, setDraftAnnotations] = useState<DraftAnnotationPreview[]>([]);
+  const [selectionPreview, setSelectionPreview] = useState<DraftAnnotationPreview[]>([]);
   const { draft: dragDraft, setDraft: setDragDraft, takeDraft: takeDragDraft } = usePdfShapeDraft(source.key, activeTool);
   const [inkDraft, setInkDraft] = useState<InkDraft | null>(null);
   const inkDraftRef = useRef<InkDraft | null>(null);
@@ -458,6 +460,50 @@ export default function PdfReader({
     }, {});
   }, [draftAnnotations]);
 
+  const selectionPreviewByPage = useMemo(() => {
+    return selectionPreview.reduce<Record<number, DraftAnnotationPreview[]>>((grouped, annotation) => {
+      if (!grouped[annotation.page]) grouped[annotation.page] = [];
+      grouped[annotation.page].push(annotation);
+      return grouped;
+    }, {});
+  }, [selectionPreview]);
+
+  // The browser's own selection band is transparent (reader.css): while the user drags, the live
+  // selection is painted through the highlight layer with the very same range → segments → band
+  // pipeline finishTextSelection uses, so the band never jumps when the highlight is created.
+  // Only painting changes: the real Range, its hit boxes, keyboard selection and copy stay native.
+  useEffect(() => {
+    if (!selectableText) {
+      setSelectionPreview((current) => (current.length ? [] : current));
+      return;
+    }
+    let frame: number | null = null;
+    const update = () => {
+      frame = null;
+      const root = containerRef.current;
+      const selection = window.getSelection();
+      if (!root || !selection || selection.isCollapsed || !selection.rangeCount) {
+        setSelectionPreview((current) => (current.length ? [] : current));
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      // The highlight tool previews in its own colour; other tools show a neutral band.
+      const color = activeTool === 'highlight' ? activeAnnotationColor : (SELECTION_PREVIEW_COLOR as AnnotationColor);
+      const previews = textSelectionPageElements(root, range).flatMap((pageElement, index) => {
+        const draft = textSelectionDraft(pageElement, range, 'highlight');
+        return draft ? [{ ...draft, color, id: `selection-preview-${index}` }] : [];
+      });
+      setSelectionPreview(previews);
+    };
+    const schedule = () => { if (frame === null) frame = window.requestAnimationFrame(update); };
+    document.addEventListener('selectionchange', schedule);
+    schedule();
+    return () => {
+      document.removeEventListener('selectionchange', schedule);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [selectableText, activeTool, activeAnnotationColor, pages, zoom]);
+
   const handleWheel = (event: globalThis.WheelEvent) => {
     // Preserve native tilt-wheel / trackpad deltaX. Map Shift + a vertical
     // wheel only when the device did not already supply horizontal movement.
@@ -763,6 +809,7 @@ export default function PdfReader({
     });
     if (!drafts.length) return;
     selection.removeAllRanges();
+    setSelectionPreview([]);
     for (const draft of drafts) await saveAnnotationDraft(draft);
   };
 
@@ -1320,6 +1367,7 @@ export default function PdfReader({
                 <AnnotationOverlay
                   annotations={annotationsByPage[page.pageNumber] ?? []}
                   drafts={draftAnnotationsByPage[page.pageNumber] ?? []}
+                  selectionPreview={selectionPreviewByPage[page.pageNumber] ?? []}
                   dragDraft={dragDraft?.page === page.pageNumber ? dragDraft : null}
                   inkDraft={inkDraft?.page === page.pageNumber ? inkDraft : null}
                   activeTool={annotationsEnabled ? activeTool : 'hand'}
