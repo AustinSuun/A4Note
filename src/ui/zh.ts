@@ -268,6 +268,7 @@ export const zh = {
     pdfPlaceholder: '导入真实 PDF 后，会在这里渲染内部文献库文件。',
     pdfError: '无法渲染这份 PDF，请检查文件是否仍在 A4 Note 文献库中。',
     annotationHint: '鼠标工具可选择复制文字；高亮、下划线、矩形、箭头和自由画笔请拖拽创建；文本框点击页面后输入内容；橡皮擦点击标注删除。阅读快捷键：Ctrl+=/- 缩放，Ctrl+0 适应宽度，Ctrl+M/H/U/T/P/E/R/A 切换工具。',
+    textLayerUnavailable: '本页没有可选择的文字层（可能是扫描页），高亮和下划线无法使用；请改用矩形、箭头、自由画笔或文本框标注。',
     commentAnnotation: '批注',
     commentLabel: '批注',
     underlineLabel: '下划线',

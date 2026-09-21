@@ -150,6 +150,8 @@ export default function PdfReader({
   const [status, setStatus] = useState<PdfStatus>('placeholder');
   const [message, setMessage] = useState(zh.reader.pdfPlaceholder);
   const [flash, setFlash] = useState<ReaderFlash | null>(null);
+  const [textLayerHint, setTextLayerHint] = useState<string | null>(null);
+  const textLayerHintTimerRef = useRef<number | null>(null);
   const [selectionPopup, setSelectionPopup] = useState<{ visible: boolean; x: number; y: number; pageNumber: number; pageElement: HTMLElement | null }>({ visible: false, x: 0, y: 0, pageNumber: 0, pageElement: null });
   const pan = usePdfPan(containerRef, activeTool === 'hand', source.key, () => {
     if (zoomFrameRef.current !== null) window.cancelAnimationFrame(zoomFrameRef.current);
@@ -181,6 +183,16 @@ export default function PdfReader({
   const textSelectionToolsActive = activeTool === 'highlight' || activeTool === 'underline';
   const shapeToolsActive = activeTool === 'area' || activeTool === 'rect' || activeTool === 'arrow';
   const selectableText = activeTool === 'cursor' || textSelectionToolsActive;
+  /** Scanned pages carry no text items, so a text tool can never build a selection there. */
+  const pageHasSelectableText = (pageNumber: number) => (pages.find((candidate) => candidate.pageNumber === pageNumber)?.textItems.length ?? 0) > 0;
+  const showTextLayerHint = () => {
+    setTextLayerHint(zh.reader.textLayerUnavailable);
+    if (textLayerHintTimerRef.current !== null) window.clearTimeout(textLayerHintTimerRef.current);
+    textLayerHintTimerRef.current = window.setTimeout(() => {
+      textLayerHintTimerRef.current = null;
+      setTextLayerHint(null);
+    }, 5200);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -347,6 +359,19 @@ export default function PdfReader({
     window.addEventListener('mouseup', handleMouseUp);
     return () => window.removeEventListener('mouseup', handleMouseUp);
   }, [textSelectionToolsActive, source.key, activeTool, pages, activeAnnotationColor]);
+
+  useEffect(() => () => {
+    if (textLayerHintTimerRef.current !== null) window.clearTimeout(textLayerHintTimerRef.current);
+  }, []);
+
+  // Say why up front when the page in view has no text layer, instead of letting a
+  // highlight/underline drag end silently (audit F6).
+  useEffect(() => {
+    if (!textSelectionToolsActive || !pages.length) return;
+    const page = pages.find((candidate) => candidate.pageNumber === visiblePage);
+    if (!page || page.textItems.length > 0) return;
+    showTextLayerHint();
+  }, [textSelectionToolsActive, activeTool, visiblePage, pages]);
 
   // cursor 模式下文本选中后显示 SelectionPopup
   useEffect(() => {
@@ -1152,6 +1177,10 @@ export default function PdfReader({
     onMouseDown: (event: MouseEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') return;
       if (stickyDrag) return;
+      if (textSelectionToolsActive && !pageHasSelectableText(pageNumber)) {
+        showTextLayerHint();
+        return;
+      }
       if (activeTool === 'eraser') {
         updateEraserCursor(pageNumber, event);
         eraseInkAtPointer(pageNumber, event);
@@ -1218,6 +1247,11 @@ export default function PdfReader({
     <div className="pdf-reader-surface" data-reader-layer="pdf-surface" ref={surfaceRef}>
       <PdfFindBar surface={surfaceRef} pages={pages} documentKey={source.key} />
       {saves.feedback}
+      {textLayerHint && (
+        <div className="pdf-text-layer-hint" role="status" aria-live="polite" data-reader-layer="hint">
+          {textLayerHint}
+        </div>
+      )}
       <div className="reader-toolbar-progress" data-reader-layer="progress" aria-hidden="true">
         <div style={{ transform: `scaleX(${Math.max(0.04, scrollProgress)})` }} />
       </div>
@@ -1240,6 +1274,7 @@ export default function PdfReader({
               zoom={zoom}
               displayZoom={displayZoom}
               selectableText={selectableText}
+              textToolsUnavailable={textSelectionToolsActive && page.textItems.length === 0}
               commentPopover={commentPopover?.page === page.pageNumber ? commentPopover : null}
               eraserPreview={activeTool === 'eraser' && eraserCursor?.page === page.pageNumber
                 ? { x: eraserCursor.x, y: eraserCursor.y, size: toolSettings.eraserSize, shape: toolSettings.eraserShape }
