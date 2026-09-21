@@ -1,7 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { Annotation, AnnotationLayer, AnnotationLayerDeletePreview, AnnotationLayerKind, AnnotationLayerOwnerKind, AnnotationLayerState, AnnotationType, ImportDraft, LibraryFolder, PaperDocument, PositionJson } from '../core/types';
-import { defaultAnnotationLayerId } from '../core/types';
+
+/** Deterministic default layer id (mirrors the native migration); kept local so this module stays type-only towards core. */
+const defaultAnnotationLayerId = (ownerId: string) => `layer-default-${ownerId}`;
 
 const FALLBACK_TAG = '未分类';
 

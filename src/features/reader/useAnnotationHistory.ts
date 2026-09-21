@@ -14,9 +14,9 @@ import {
   updateNativeAnnotationPosition,
   type PaperFileKind,
 } from '../../platform/nativeApi';
-import { defaultAnnotationLayerId } from '../../core/types';
 
 type AsterCore = ReturnType<typeof createAsterCore>;
+const defaultAnnotationLayerId = (ownerId: string) => `layer-default-${ownerId}`;
 
 export type AnnotationHistoryAction =
   | { kind: 'create'; annotation: PaperDocument['annotations'][number] }

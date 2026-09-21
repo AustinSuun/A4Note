@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { createAsterCore } from '../../core/asterCore';
 import type { Annotation, AnnotationLayer, AnnotationLayerDeletePreview, AnnotationLayerState, PaperDocument } from '../../core/types';
-import { defaultAnnotationLayerId } from '../../core/types';
 import {
   createNativeAnnotationLayer,
   deleteNativeAnnotationLayer,
@@ -17,6 +16,7 @@ import {
 } from '../../platform/nativeApi';
 
 type AsterCore = ReturnType<typeof createAsterCore>;
+const defaultAnnotationLayerId = (ownerId: string) => `layer-default-${ownerId}`;
 
 /** Per-owner cache: the layer state plus the layers whose annotations are already in memory. */
 type OwnerCache = { state: AnnotationLayerState; loaded: Set<string>; token: number };
