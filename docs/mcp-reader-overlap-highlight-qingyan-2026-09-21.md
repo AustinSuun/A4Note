@@ -21,8 +21,17 @@
   - 高亮模式命中真实 PDF 文本层；切回光标模式后命中标注层。
 - 证据：`.tmp/pdf-text-annotation/after/after-overlapping-highlight.png` 与同目录 `result.json`（不进入提交）。
 
+## 隔离原生实例验证
+
+- 使用隔离身份 `qingyan-overlap`（`app.aster.research.dev.qingyan-overlap.w3074f5e63b`）启动真实 Windows WebView；底部环境条确认资料根目录为独立的 `AsterData`，未接触正式资料库。
+- 向隔离资料库导入真实样本 `2505.13447v1.pdf`，高亮模式下旧标注计算样式为 `pointer-events: none`，其覆盖位置命中 `.pdf-text-layer span`。
+- 在旧标注覆盖范围内反向选择并创建新高亮，完整 quote 为 `Zhengyang Geng1∗Mingyang Deng2Xingjian Bai2J. Zico Kolter1Kaiming He`；重叠标注保有独立分段几何。
+- 切回光标模式后，原标注与新标注均可独立聚焦；原标注通过行内调色板改色，新标注通过行内删除操作移除，最终仅保留原标注。
+- 原生截图：`.tmp/native-evidence/02b-native-selection-through-mark.png`、`03-after-overlap-created.png`、`04-original-individually-selected.png`、`05-created-overlap-individually-selected.png`、`06-created-deleted-original-preserved.png`。
+- 交互结果：`.tmp/native-evidence/interaction-result.json` 与 `lifecycle-result.json`。隔离 SQLite 终态证据：`.tmp/native-evidence/sqlite-evidence.json`，`annotations` 仅剩原标注 `anno-e2402e4f-0816-41fe-b894-1e494b64246c`，颜色为 `#6b746c`。
+
 ## 边界
 
 - 未安装、打包、发布或重启正式服务；未读取或修改正式资料库。
-- 使用合成 PDF 和隔离验证数据，不把测试数据或截图纳入代码提交。
+- 自动化使用合成 PDF；原生复核使用真实样本的隔离副本。测试数据和截图不进入代码提交。
 
