@@ -24,5 +24,5 @@ export function useReaderDrawerLayout() {
     const value = Math.round(Math.min(maximum, Math.max(300, next)));
     setWidth(value);
   };
-  return { containerRef, width: clamped, maximum, compact, expanded, setExpanded, changeWidth };
+  return { containerRef, width: clamped, maximum, available, compact, expanded, setExpanded, changeWidth };
 }

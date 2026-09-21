@@ -22,6 +22,8 @@
   --font-code-latin: "FiraCode Nerd Font Mono", "Fira Code", "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono";
   /* UI chrome can be tuned independently from Markdown. */
   --ui-font-size: 18px;
+  /* shared authoring column for reader notes and standalone Markdown notes */
+  --authoring-content-max-width: 720px;
   /* Fixed-size UI labels keep their existing hierarchy while following the interface font setting. */
   --ui-scene-font-size: calc(var(--ui-font-size) * .694444);
   --ui-nav-font-size: calc(var(--ui-font-size) * .833333);

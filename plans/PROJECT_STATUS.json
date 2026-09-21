@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-21T18:40:00+08:00",
+  "updatedAt": "2026-09-21T21:05:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
@@ -127,6 +127,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "reader-note-workbench-arena：Arena 执行 24ea34e5（high）完成阅读器笔记工作台四态状态机、唯一入口菜单、比例驱动分屏、悬浮速记卡、专注写作与共享正文列 token；独立 worktree / 分支 feat/reader-note-workbench-arena。",
         "settings-ui-refactor-arena：Arena 执行 05795e28（low）完成 Settings UI 重构：单体 index.tsx 拆为 types/catalog/primitives/useAsyncStatus/updateModel/updateViews 与 7 个分类 section；新增 settings.css 作为布局唯一权威（1180/1040 断点，去 nth-child，清理 components/workbench 双列冲突与零引用的 settings-typography.css）；分类导航键盘/aria-current/焦点归属、全局搜索 combobox、label 与 ≥32px 点击目标、live-region 不堆叠、Capture 100 条分页、UpdateSettings 与 BrandUpdateMenu 共享 updateModel、initialSection 受控同步；渲染级套件 scripts/verify-settings-ui.mjs 115/115，build、test:ui-state、verify-brand-update、架构与完整 verify 全绿。未打包未发布。",
         "reader-scan-text-tools-arena：Arena 执行 259f7b91（审计 F6，high）完成：无文字层页面（扫描页）使用高亮/下划线时不再静默失败——PdfReader 判定当前页 textItems 为空即禁用文字工具，页容器加 text-tools-unavailable（含文字层与 span 光标 not-allowed），并显示 zh.reader.textLayerUnavailable 非阻断提示（role=status、aria-live=polite、pointer-events:none、5.2s 自动消失）；矩形/箭头/自由画笔/文本框路径不受影响，文字页照常高亮。新增 scripts/verify-reader-text-tool-scan-notice.mjs 合成夹具浏览器回归 23/23；隔离原生实例 scantools（app.aster.research.dev.scantools.w6515a5643c）真实窗口驱动 33 项通过，SQLite 终态 rect/ink/text/highlight 各 1、扫描页零高亮记录，pageerror 与 console error 为 0；合并后 main `npm run verify` 全绿。分支 fix/reader-text-tools-no-text-layer-arena，已合并本地 main 61720e9，基线 e394cfe。详见 docs/mcp-reader-scan-text-tools-arena-2026-09-21.md。",
       "MCP重连接准备完成（arena-one，无任务卡，2026-09-21T15:42+08:00）：新隧道 shuncode-bridge 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 /tmp 需 cygpath -w、git 需 --no-pager 否则 pager 挂起。只读核对 AGENTS/开发手册/双状态/git 与任务服务：会话期间 main 从 e74b5bd 前进到 e394cfe（青砚 fix/pdf-annotation-qingyan 合并，覆盖 b6c1a566 交付）；期间观察到 PROJECT_STATUS.json 短暂处于未合并冲突态（约 15:42），随后由合并方解决提交，本轮未介入、未写该文件冲突区。任务服务 4319 available。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。",
@@ -429,6 +430,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "npm run test:note-workbench=51/51；npm run test:note-workbench-browser=42/42（隔离 headless Chrome，9 场景截图见 .tmp/shots/note-workbench/）；npm run test:reader / npm run verify / npm run build 见交付说明。",
       "npm run verify (reader PDF annotation; passed)",
       "isolated dev:live qingyan runtime 21/21 (passed)",
       "native two-PDF 100/150/200% evidence: 9 screenshots",
@@ -799,6 +801,7 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
+      "24ea34e5 待用户验收；验收通过后可考虑把阅读器笔记历史独立成视图，并核对与 shortcuts 分支合并后的键位注册表。",
       "授权弹窗改造已在源码，现有安装版仍是旧系统窗口；待协调并行源码及现有架构门禁后再按标准package:windows生成安装包。详见docs/mcp-browser-consent-dialog-2026-09-16.md。",
       "本轮交付artifacts/browser-extension/A4-Note-Capture-0.6.2.zip和unpacked。用户等待采集结束，覆盖原插件目录后在扩展管理页重新加载并核对0.6.2（新增本地storage权限需重载才能生效），保留固定key及原目录。桌面0.1.5不动。当前feat/capture-folder-tree-0.6.2源码/状态未提交、未推送或发布在线通道；未来发布再按用户授权走必要PR/CI，不覆盖既有正式资产。",
       "现在已实际安装并启动0.1.5。用户关闭旧插件弹窗再打开以重建端口；authorized=true时不应重复要求授权。不要再使用artifacts/windows/latest的旧0.1.3安装器。此前未安装及等待用户升级的条目属于历史。",
