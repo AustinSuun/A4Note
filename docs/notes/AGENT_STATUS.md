@@ -1,5 +1,8 @@
 ﻿# A4 Note Agent 状态
 
+
+- reader-overlap-selection-arena：Arena 执行 3128932d 第二轮反馈修复：跨行高亮/下划线改用 PDF 文字层运行几何（`textSelectionRectsFromOffsets` 优先、浏览器实时矩形仅兜底），端点跟随可见文字、同字号行高一致；新增 `underlineThicknessForSegments` 以段高中位数统一整条下划线线宽，`AnnotationMark` 渲染传入统一线宽。`test:reader-helpers` 新增断言、`test:reader` 源码契约同步；合成重叠回归 9/9；英文 arXiv 2505.13447v1 与中文文字层 fixture 正文回归各 20/20（含跨行厚度一致、末端跟随文字审计）、pageErrors 0；npm run verify 全绿。详见 `docs/mcp-reader-overlap-selection-arena-2026-09-21.md`「跨行标注几何修复」。
+
 - reader-eraser-precision-qingyan：qingyan 8dba61be 退回后续（用户追加橡皮擦诉求）完成，分支 fix/eraser-precision-qingyan，基线 main 78dbc43，提交 74bda28。根因与画笔设计相关：画笔按 0.16% 位移稀疏采样，旧 eraseInkPosition 只要橡皮蹭到一条长边就整段丢弃，导致未接触的字迹被整块擦掉（两点笔迹中部单击直接返回 null 整条删除）；改为按 eraserSpanOnSegment 求进出参数区间裁剪并插回边界点。另修两处漂移：eraseInkAtPointer 原用会 clamp 的 pointFromEvent，指针移出页面后沿页边继续擦除，现用未钳制坐标并在超出「页面+橡皮半径」时提前返回；updateEraserCursor 去掉 clamp，预览环不再贴页边滑动。新增 test:pdf-eraser-precision（16 项）接入 verify-all，并用 main 旧代码反向验证测试确实会失败。隔离实例 qingyan/1433/9243 真实鼠标：画 41 点长笔迹→中部单击→polyline 变 [21,21] 两段保留、缺口等于光标大小，预览环漂移 0px，按住拖出页外 polyline 不变，隔离 SQLite ink 行 runs=[21,21]/42 点一致，无 pageerror。tsc 0、npm run verify 全绿。实例已退出、锁已清。详见 docs/mcp-reader-eraser-precision-qingyan-2026-09-21.md。
 
 - reader-overlap-selection-arena：Arena 执行 3128932d 本轮补强：`AnnotationMark` 在高亮/下划线文字选择模式下对范围标注跳过 `preventDefault`/`stopPropagation`，`AnnotationOverlay` 传入选择模式；光标模式交互保持。合成重叠回归 9/9；使用真实英文 arXiv 2505.13447v1 第 1 页摘要正文和独立中文文字层 PDF fixture 做正文区域（页面高度 30% 之后）高亮/下划线回归，各 14/14、pageErrors 0；截图与 `real-body-evidence.json` 已附任务卡。当前 worktree 未找到任务描述列出的 `2505.13447v1-仅译文.pdf`，未冒充该文件已验证；原生隔离 WebView/SQLite 证据沿用任务卡既有 result 附件。详见 `docs/mcp-reader-overlap-selection-arena-2026-09-21.md`。
@@ -25,7 +28,7 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-21T17:13:40+08:00
+更新时间：2026-09-21T19:50:30+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 

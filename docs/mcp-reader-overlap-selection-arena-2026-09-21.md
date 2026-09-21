@@ -51,3 +51,38 @@
 
 - 本轮最终源码只涉及 `AnnotationMark.tsx` 与 `AnnotationOverlay.tsx`；本报告和两个状态文件也已纳入提交。功能提交为 `e2d6e499c458b1fdf1e93ba665ebee5915b02859`，已以非快进方式合并到本地 `main`，合并提交为 `5a76df27af2c2ac26a441f1f4f06b2f99e4ea3b1`。
 - 交付前仍需在文档同步提交后复核 `main` 仍以 `498745a001e6ca9cdceaece60f91ea848bb8d7ed` 为祖先，并提交 `--delivery-json`。
+
+## 跨行标注几何修复（第二轮反馈）
+
+首轮交付后用户反馈：跨行情况下高亮和下划线不跟随文字结束、结束位置不整齐，且下划线线宽不一样。任务卡附件截图（`粘贴图片-1789988820835-0.png`）显示英文摘要第 1、2 行的下划线越过可见文字一直画到页面右缘，且各行线宽不一致。
+
+### 根因
+
+- `PdfReader.textSelectionDraft` 在横向页面曾采用浏览器 `range.getClientRects()` 的实时矩形。这些矩形跟随透明文字层的*替代字体*渲染结果，而非 PDF 位图字形：整行被选中时会越过已绘制文字，各行右端参差不齐，行盒高度也随替代字体度量变化。
+- 下划线线宽由 `clamp(段高度 × 8%, 0.05, 0.42)` 逐段导出，段高度不齐时线宽随之不齐。
+
+### 修改
+
+1. `src/features/reader/pdf/PdfReader.tsx`
+   - 只要存在文字层运行几何（`textSelectionRectsFromOffsets`，按字符偏移切分并裁掉首尾空白），任何方向页面一律优先使用；实时矩形仅在页面没有文字条目时兜底。端点跟随可见文字，同字号行高度一致。
+2. `src/features/reader/pdf/pdfAnnotationHelpers.ts`
+   - 新增 `underlineThicknessForSegments`：取同一条标注各段字形盒轴的*中位数*导出单一线宽，单个偏高的行盒不再产生更粗的线。
+   - `underlinePositionStyle` 增加可选线宽参数；不传时保持逐段原行为（拖拽预览与回归脚本不受影响）。
+3. `src/features/reader/pdf/AnnotationMark.tsx`
+   - 渲染下划线时把标注级统一线宽传入每个分段。
+
+### 回归
+
+- `npm run test:reader-helpers`：通过，含新增断言（中位数线宽、override 后各段线宽一致、默认行为保留、空数组返回 undefined）。
+- `npm run test:pdf-rotated-text`：142 断言通过（旋转方向仍沿字形轴裁切与画线）。
+- `npm run test:pdf-crosspage-selection`：31 断言通过。
+- `OVERLAP_ONLY=1 MODAL_PHASE=after node scripts/verify-pdf-text-annotation-browser.mjs`：9/9。
+- 真实 PDF 正文回归各 20/20（原 14 项 + 新增 6 项跨行审计），`pageErrors=0`：
+  - 同一条标注渲染出的各分段厚度一致（高亮带英文 5.375px、中文 7.547px；下划线英文 1px、中文 1.109px，最大差 ≤0.75px 断言通过）；
+  - 末行右端 ≤ 文字结束 +3px，首行左端 ≥ 拖选起点 −3px；
+  - 英文下划线中间行宽度由旧实时矩形的 64.42%（越过文字）收敛到 53.06%，与可见文字一致。
+- 证据：`.tmp/pdf-real-evidence/{english,chinese}/after/` 截图与 `result.json`，合并 `real-body-evidence.json` 附卡。
+
+### 线宽如何确定（对反馈的直接回答）
+
+线宽仍由字形盒高度导出（8%，夹在页面百分比 [0.05, 0.42]），但现在取*同一条标注各段的中位数*并统一应用到每一行；此前线宽不一是因为段高度来自替代字体实时矩形、逐行变化。改用 PDF 运行几何 + 中位数线宽后，同一条标注内、同字号之间的线宽一致。
