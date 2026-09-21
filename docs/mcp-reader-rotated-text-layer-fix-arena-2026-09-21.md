@@ -2,8 +2,8 @@
 
 - 日期：2026-09-21；执行者：Arena（任务板 worker「Arena执行」）。
 - 任务卡：`e8106251-7c9a-4453-b6d3-146a7f830f36`（high），来源审计 `docs/mcp-reader-annotation-audit-arena-2026-09-21.md` §6。
-- 分支：`fix/reader-rotated-text-layer-arena`，基于 `main d7feb05`（工作树 `.worktrees/fix-rotate-arena`）。
-- 提交：`2e357b8`（几何/文字层/选区/标记 + 回归脚本）、`bda54f6`（180/270 免 transform 布局 + 旋转选区取运行框几何）。
+- 分支：`fix/reader-rotated-text-layer-arena`，基于 `main d7feb05`，随后合入 `main e394cfe` 重新验证（工作树 `.worktrees/fix-rotate-arena`）。
+- 提交：`2e357b8`（几何/文字层/选区/标记 + 回归脚本）、`bda54f6`（180/270 免 transform 布局 + 旋转选区取运行框几何）、`8b1a088`（报告/状态）、`f0e79c8`（合入 main e394cfe，过期断言以 main 版本为准）。
 - 结论：四个方向（0/90/180/270）文字层 span 全部落在页面内并贴合位图字形；旋转页可原生选字、拖选，高亮/下划线记录写入 SQLite 且几何沿字形轴；水平页行为不变。
 
 ## 1. 根因
@@ -68,7 +68,7 @@ rotate 270: viewport 792x612 span px left=34    top=372.9 right=52    bottom=562
 - `npm run test:pdf-rotated-text`：142 断言通过。
 - `node scripts/verify-reader-rendering.mjs`、`node scripts/verify-architecture-boundaries.mjs`、`npm run test:reader-helpers`、`node --experimental-strip-types scripts/verify-pdf-highlight.mjs`（42）、`node scripts/verify-reader-priority-fixes.mjs`（60）：通过。
 - `npx tsc -b` 与 `npm run build`：通过。
-- `npm run verify`：见 §7 记录。
+- `npm run verify`：在 `f0e79c8`（含 main e394cfe）上全量通过（Rust 209 过 5 忽略；`.tmp/f1/verify2.log`）。此前基于 d7feb05 的一轮因 main 上过期断言（`test:pdf-text-annotation`、`test:ui-state`）失败，e394cfe 已修正。
 - `npm run test:agent-status`：通过。
 
 ## 6. 环境事件与注意
@@ -81,4 +81,4 @@ rotate 270: viewport 792x612 span px left=34    top=372.9 right=52    bottom=562
 ## 7. 交付
 
 - 任务卡进度/提交见任务板事件；交付 JSON 随 `submit` 提交。
-- 合并：按手册合入本地 main（仅 fast-forward/merge，不改写他人分支），合并结果记录于状态文件。
+- 合并：按手册合入本地 main（fast-forward，不改写他人分支）；合并 SHA 记录在任务卡交付 JSON 与提交结果中。
