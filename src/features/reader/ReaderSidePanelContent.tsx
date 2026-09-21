@@ -96,7 +96,9 @@ export function ReaderSidePanelContent({
         fileMode={fileMode}
         translatedFileId={translatedFileId}
         focusedAnnotationId={focusedAnnotationId}
-        onFocusAnnotation={onFocusAnnotation}
+        // Clicking a row must both jump the viewer to the annotation's page and
+        // select it; onFocusAnnotation alone only highlights without navigating.
+        onFocusAnnotation={onNavigateAnnotation}
         onUpdateAnnotationComment={onUpdateAnnotationComment}
         onUpdateAnnotationPosition={onUpdateAnnotationPosition}
         onUpdateAnnotationColor={onUpdateAnnotationColor}

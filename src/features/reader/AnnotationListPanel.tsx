@@ -111,6 +111,7 @@ function AnnotationListItem({
         <span>{zh.reader.annotationPage(annotation.page)}</span>
         <span>{annotationLabelText(annotation.type)}</span>
       </div>
+      {annotation.quote ? <p className="annotation-list-quote">{annotation.quote}</p> : null}
       <button
         type="button"
         className="annotation-delete"
