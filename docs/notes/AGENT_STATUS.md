@@ -1,5 +1,7 @@
 ﻿# A4 Note Agent 状态
 
+- reader-overlap-highlight-qingyan：青砚完成 3128932d 阅读器重叠高亮选区修复；仅在高亮/下划线文字选择模式让已有范围标注穿透指针，光标模式的选择/改色/删除以及文本框/图形交互保持不变。reader 契约通过，真实 PdfReader 合成 PDF 浏览器回归 9/9 通过。详见 docs/mcp-reader-overlap-highlight-qingyan-2026-09-21.md。
+
 - reader-pdf-annotation-qingyan：青砚完成 b6c1a566 PDF 标注修复：高亮/下划线按文字高度自适应，文本默认 24、2–64 步进 2、自定义下拉与单行初始框，工具设置持久化及旧 13→24 迁移，跨页间隙橡皮预览与分段擦除，色点/行内控件放大。定向 42+25+28+86+6 项、build、完整 npm run verify、隔离原生运行 21/21 通过；两份 PDF 在 100/150/200% 生成 9 张验收截图。详见 docs/mcp-reader-pdf-annotation-qingyan-2026-09-21.md。
 
 - reader-escape-qingsui：青穗完成 009cede5 图形/箭头 Escape 取消草稿。独立 fix/reader-escape-qingsui 基于 main 18f3ea9，新增 usePdfShapeDraft（同步 ref、takeDraft、Escape/blur、文档/工具切换、卸载失效、输入框豁免），修改 PdfReader finish 入口为原子取出，新增 verify-reader-shape-cancel 25项回归全过，build/diagnostics 通过，已合并本地 main 待验收。详见 docs/mcp-reader-escape-qingsui-2026-09-21.md。

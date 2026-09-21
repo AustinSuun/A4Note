@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-21T18:30:00+08:00",
+  "updatedAt": "2026-09-21T20:45:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
+      "reader-overlap-highlight-qingyan：青砚完成 3128932d 重叠高亮选区修复；高亮/下划线模式已有范围标注穿透到 PDF 文本层，光标模式交互保留；reader 契约及真实 PdfReader 合成 PDF 浏览器回归 9/9 通过。见 docs/mcp-reader-overlap-highlight-qingyan-2026-09-21.md。",
       "reader-pdf-annotation-qingyan：青砚完成 b6c1a566 PDF 标注几何、文字工具、跨页橡皮与颜色点修复；定向验证、build、完整 verify、隔离原生运行 21/21 及两份 PDF 100/150/200% 九图验收通过。见 docs/mcp-reader-pdf-annotation-qingyan-2026-09-21.md。",
       "reader-escape-qingsui：009cede5，独立 fix/reader-escape-qingsui；PdfReader shape draft 取消生命周期及回归测试，25项通过，已合并本地 main 待验收。",
       "agent-owned-merge：青帆已将新流程合入main c727762，完成独立Windows0.1.25包；完整verify/Rust201过5忽略，服务86过1跳过，包内7回归及18资源哈希通过。指定他人报告哈希不变；不安装、不重启、不发布。源码/打包资源释放，详见docs/mcp-task-workflow-windows-0.1.25-2026-09-21.md。",

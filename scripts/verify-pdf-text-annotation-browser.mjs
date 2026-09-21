@@ -138,6 +138,7 @@ function Harness() {
     setTool, setZoom, setToolSettings, log: log.current,
     annotations: () => latest.current,
     reset: () => setAnnotations([legacyAnnotation]),
+    replaceAnnotations: (next: any[]) => setAnnotations(next),
   };
   const update = (id: string, patch: (a: any) => any) => setAnnotations(list => list.map(a => a.id === id ? patch(a) : a));
   return <div className="reader-scene-shell" style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column' }}>
@@ -264,6 +265,7 @@ createRoot(document.getElementById('root')!).render(<Harness />);
   }
 
   // ---------------------------------------------------------------- after phase --------------------------------
+  if (!process.env.OVERLAP_ONLY) {
   const legacyBase = await markState('legacy-1');
   ok(legacyBase && near(legacyBase.fontPx, 13, 0.1) && near(legacyBase.xPct, 10, 0.2) && near(legacyBase.wPct, 22, 0.3) && legacyBase.layoutMode === 'fixed', 'legacy annotation renders unchanged (13px, 22% wide, fixed layout)', legacyBase);
 
@@ -501,6 +503,63 @@ createRoot(document.getElementById('root')!).render(<Harness />);
   const imeSaved = (await annotations()).pop();
   ok(imeSaved.comment === '拼音', 'the committed IME text is what gets saved', imeSaved.comment);
   results.cases.ime = { composing: composing.text, committed: committed.text, saved: imeSaved.comment, note: 'CDP composition simulation only; real Windows IME unverified' };
+  }
+
+  // Existing range marks are paint while highlight/underline selection is active,
+  // but become interactive again in cursor mode. Start a reverse drag inside an
+  // existing highlight and continue through it to create a second overlapping mark.
+  await setZoom(1);
+  const overlapFixture = await evaluate(`(()=>{
+    const span = [...document.querySelectorAll('.pdf-text-layer span')].find(s => (s.textContent || '').includes('Page 1 line 4:'));
+    const layer = span?.closest('.pdf-render-layer');
+    if (!span || !layer) return null;
+    span.scrollIntoView({ block: 'center', inline: 'center' });
+    const r = span.getBoundingClientRect(), p = layer.getBoundingClientRect();
+    const positionJson = {
+      x: ((r.left + r.width * 0.52 - p.left) / p.width) * 100,
+      y: ((r.top - p.top) / p.height) * 100,
+      width: (r.width * 0.42 / p.width) * 100,
+      height: (r.height / p.height) * 100,
+    };
+    window.__pdfHarness.replaceAnnotations([{ id: 'overlap-existing', paperId: 'harness', fileId: 'file-1', page: 1, type: 'highlight', quote: 'existing range', comment: '', color: 'yellow', positionJson, createdAt: new Date().toISOString() }]);
+    return {
+      start: { x: r.left + r.width * 0.82, y: r.top + r.height * 0.55 },
+      end: { x: r.left + r.width * 0.12, y: r.top + r.height * 0.55 },
+      existingOnly: { x: r.left + r.width * 0.90, y: r.top + r.height * 0.55 },
+      createdOnly: { x: r.left + r.width * 0.20, y: r.top + r.height * 0.55 },
+    };
+  })()`);
+  ok(overlapFixture, 'overlap fixture finds a real PDF text span');
+  await evaluate(`window.__pdfHarness.setTool('highlight')`); await frame();
+  await until(`!!document.querySelector('.annotation-mark[data-annotation-id="overlap-existing"]')`);
+  const highlightHit = await evaluate(`(()=>{const p=${JSON.stringify(overlapFixture.start)};const e=document.elementFromPoint(p.x,p.y);return { tag:e?.tagName, textLayer:!!e?.closest('.pdf-text-layer'), mark:!!e?.closest('.annotation-mark') }})()`);
+  ok(highlightHit.textLayer && !highlightHit.mark, 'highlight mode sends the pointer through the existing mark to the PDF text layer', highlightHit);
+  await mouse('mouseMoved', overlapFixture.start.x, overlapFixture.start.y, { button: 'none' });
+  await mouse('mousePressed', overlapFixture.start.x, overlapFixture.start.y);
+  await mouse('mouseMoved', overlapFixture.end.x, overlapFixture.end.y, { buttons: 1 });
+  await mouse('mouseReleased', overlapFixture.end.x, overlapFixture.end.y);
+  await until(`window.__pdfHarness.annotations().filter(a => a.type === 'highlight').length === 2`);
+  const overlapAnnotations = (await annotations()).filter(a => a.type === 'highlight');
+  ok(overlapAnnotations[1].quote.includes('The quick brown fox') && overlapAnnotations[1].quote.includes('annotated pap'), 'reverse drag through an existing mark preserves text from both sides of the overlap', overlapAnnotations.map(a => a.quote));
+  ok(overlapAnnotations.every(a => a.positionJson.width > 0 && a.positionJson.height > 0), 'both overlapping highlights keep independent geometry', overlapAnnotations.map(a => a.positionJson));
+  await screenshot('after-overlapping-highlight');
+  await evaluate(`window.__pdfHarness.setTool('cursor')`); await frame();
+  await clickAt(overlapFixture.existingOnly.x, overlapFixture.existingOnly.y);
+  const existingFocus = await evaluate(`document.querySelector('.annotation-mark.focused')?.dataset.annotationId || null`);
+  ok(existingFocus === 'overlap-existing', 'the non-covered end of the original highlight remains individually selectable', existingFocus);
+  await evaluate(`document.querySelector('.annotation-mark.focused .annotation-color-pill').click()`);
+  await until(`!!document.querySelector('.annotation-mark.focused .annotation-color-presets button:not(.active)')`);
+  await evaluate(`document.querySelector('.annotation-mark.focused .annotation-color-presets button:not(.active)').click()`);
+  await until(`window.__pdfHarness.annotations().find(a => a.id === 'overlap-existing').color !== 'yellow'`);
+  const recolored = (await annotations()).find(a => a.id === 'overlap-existing').color;
+  ok(recolored !== 'yellow', 'the original overlapping highlight remains recolorable in cursor mode', recolored);
+  await clickAt(overlapFixture.createdOnly.x, overlapFixture.createdOnly.y);
+  const createdFocus = await evaluate(`document.querySelector('.annotation-mark.focused')?.dataset.annotationId || null`);
+  ok(createdFocus === overlapAnnotations[1].id, 'the non-covered end of the new highlight remains individually selectable', createdFocus);
+  await evaluate(`document.querySelector('.annotation-mark.focused .annotation-inline-actions button[title*="删除"]').click()`);
+  await until(`window.__pdfHarness.annotations().filter(a => a.type === 'highlight').length === 1`);
+  ok((await annotations()).some(a => a.id === 'overlap-existing'), 'deleting one overlapping highlight preserves the other', await annotations());
+  results.cases.overlapHighlight = { hitDuringSelection: highlightHit, annotations: overlapAnnotations, existingFocus, recolored, createdFocus };
 
   ok(pageErrors.length === 0, 'no uncaught page errors', pageErrors.slice(0, 5));
   const invokes = await evaluate(`JSON.stringify(window.__invokes || [])`);
