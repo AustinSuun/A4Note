@@ -1,7 +1,5 @@
 ﻿# A4 Note Agent 状态
 
-- reader-rotated-text-layer-arena：Arena执行 e8106251（审计F1，high）完成：/Rotate 页文字层按运行/上升向量取框并记录 orientation，PdfTextLayer 用 vertical-rl/sideways-lr/rtl 布局，选区切片、分行、拖选、搜索与高亮/下划线几何沿字形轴；新增 test:pdf-rotated-text（142 断言，位图墨迹对齐）接入 verify-all；隔离实例 arena-f1 真实窗口 63 项通过（四方向高亮/下划线 SQLite 记录、缩放、重载）；已并入 main e394cfe 重新验证。分支 fix/reader-rotated-text-layer-arena，详见 docs/mcp-reader-rotated-text-layer-fix-arena-2026-09-21.md。
-
 - reader-pdf-annotation-qingyan：青砚完成 b6c1a566 PDF 标注修复：高亮/下划线按文字高度自适应，文本默认 24、2–64 步进 2、自定义下拉与单行初始框，工具设置持久化及旧 13→24 迁移，跨页间隙橡皮预览与分段擦除，色点/行内控件放大。定向 42+25+28+86+6 项、build、完整 npm run verify、隔离原生运行 21/21 通过；两份 PDF 在 100/150/200% 生成 9 张验收截图。详见 docs/mcp-reader-pdf-annotation-qingyan-2026-09-21.md。
 
 - reader-escape-qingsui：青穗完成 009cede5 图形/箭头 Escape 取消草稿。独立 fix/reader-escape-qingsui 基于 main 18f3ea9，新增 usePdfShapeDraft（同步 ref、takeDraft、Escape/blur、文档/工具切换、卸载失效、输入框豁免），修改 PdfReader finish 入口为原子取出，新增 verify-reader-shape-cancel 25项回归全过，build/diagnostics 通过，已合并本地 main 待验收。详见 docs/mcp-reader-escape-qingsui-2026-09-21.md。
@@ -12,7 +10,7 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-21T16:03:36+08:00
+更新时间：2026-09-21T15:35:00+08:00
 
 - task-service-exit-lifecycle-arena：Arena状态核查 5f8ce0ee 任务服务退出生命周期（已归档）按 be3b361d 从脏树抢救为独立分支 rescue/5f8ce0ee-gateway-exit-lifecycle：网关 v4（health 身份/pid、hub-only status+shutdown、优雅退出）、gateway-lifecycle.mjs（记录/health/pid 三重一致才停止）、Tauri 关闭拦截+10s 放行阀+Exit 兜底、前端退出流程/服务栏/保留策略；分支上 build(tsc -b)、test:project-tasks 90 项、cargo check/test 通过；未重启 4319、未打包安装。详见 docs/mcp-task-service-exit-lifecycle-arena-2026-09-20.md。
 
