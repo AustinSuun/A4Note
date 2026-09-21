@@ -8,6 +8,7 @@ import { useReaderSaveQueue } from '../useReaderSaveQueue';
 import { pdfLoadErrorMessage } from './pdfLoadError';
 import { capturePdfCenterAnchor, restorePdfPageAnchor } from './pdfZoomAnchor';
 import { usePdfPan } from './usePdfPan';
+import { usePdfShapeDraft } from './usePdfShapeDraft';
 import { pdfCoordinateLayer } from './pdfCoordinates';
 import type { Annotation, AnnotationColor, AnnotationDraft, AnnotationType, PositionJson, ReaderTool } from '../../../core/types';
 import { isTauriRuntime, loadPaperFileBytes } from '../../../platform/nativeApi';
@@ -37,7 +38,6 @@ import type {
   InlineTextEditorState,
   TextAnnotationStylePatch,
   DraftAnnotationPreview,
-  DragDraft,
   InkDraft,
   PageMeta,
   PdfScrollAnchor,
@@ -115,7 +115,7 @@ export default function PdfReader({
   const [pdfDocument, setPdfDocument] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [draftAnnotations, setDraftAnnotations] = useState<DraftAnnotationPreview[]>([]);
-  const [dragDraft, setDragDraft] = useState<DragDraft | null>(null);
+  const { draft: dragDraft, setDraft: setDragDraft, takeDraft: takeDragDraft } = usePdfShapeDraft(source.key, activeTool);
   const [inkDraft, setInkDraft] = useState<InkDraft | null>(null);
   const inkDraftRef = useRef<InkDraft | null>(null);
   const inkPointerIdRef = useRef<number | null>(null);
@@ -786,6 +786,7 @@ export default function PdfReader({
   };
 
   const finishShapeAnnotation = async () => {
+    const dragDraft = takeDragDraft();
     if (!dragDraft || !shapeToolsActive) return;
     const annotationType = activeTool as AnnotationType;
     const position = (annotationType === 'arrow'
@@ -803,7 +804,6 @@ export default function PdfReader({
             strokeWidth: toolSettings.shapeStrokeWidth,
           }
         : normalizeBox(dragDraft)) as PositionJson;
-    setDragDraft(null);
     const arrowLength = annotationType === 'arrow'
       ? Math.hypot(
           numberValue(position.endX, 0) - numberValue(position.startX, 0),
