@@ -114,4 +114,12 @@ const menuSource = fs.readFileSync('src/features/reader/ReaderNoteWorkbenchMenu.
 const shortcutPropsSource = fs.readFileSync('src/shared/shortcuts/ShortcutProvider.tsx', 'utf8');
 ok(menuSource.includes('shortcutProps(MODE_COMMAND[candidate]') && shortcutPropsSource.includes("'aria-keyshortcuts': aria"), '菜单项通过共享绑定的 aria-keyshortcuts 反映配置');
 
+ok(!scene.includes('compactLabel="笔记工作台"') && !scene.includes('ReaderToolbarPortal'), '标题栏及响应式溢出不再注册笔记工作台');
+ok(menuSource.includes('reader-note-edge-handle') && menuSource.includes('shortcutProps(NOTE_WORKBENCH_COMMANDS.toggle'), '上下文提示保持绑定到边缘按钮');
+ok(drawer.includes('ReaderNoteModeSwitch'), '笔记面板头部提供紧凑布局切换');
+const gesture = fs.readFileSync('src/features/reader/useReaderDrawerGesture.ts', 'utf8');
+ok(gesture.includes('>= 4') && gesture.includes('400'), '轻点拖宽4px阈值和400ms长按共用指针事务');
+ok(resizer.includes('useReaderDrawerGesture') && menuSource.includes('useReaderDrawerGesture'), '书签与原分隔条复用拖动实现');
+ok(gesture.includes('pointercancel') && gesture.includes('lostpointercapture') && gesture.includes('releasePointerCapture'), '取消与释放路径清理指针捕获');
+
 console.log(`note workbench checks passed: ${checks.length}/${checks.length}`);

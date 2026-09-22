@@ -1,3 +1,5 @@
+import { ReaderNoteModeSwitch } from './ReaderNoteWorkbenchMenu';
+import type { NoteWorkbenchMode } from './noteWorkbench';
 import { RetainedReaderNote } from './ReaderNoteActivity';
 import { ReaderDrawerResizer } from './ReaderDrawerResizer';
 import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
@@ -15,6 +17,8 @@ const workspacePanelTabs: ReaderSidePanelTab[] = ['notes', 'annotations', 'chat'
 
 export function ReaderSideDrawer({
   open,
+  noteMode,
+  onSelectNoteMode,
   width,
   maximumWidth,
   expanded,
@@ -45,6 +49,8 @@ export function ReaderSideDrawer({
   onNavigateRelationTarget,
 }: {
   open: boolean;
+  noteMode?: NoteWorkbenchMode;
+  onSelectNoteMode?: (mode: NoteWorkbenchMode) => void;
   width: number;
   maximumWidth: number;
   expanded: boolean;
@@ -181,6 +187,7 @@ export function ReaderSideDrawer({
           </div>
         </div>
         <div className="reader-workspace-actions">
+          {notesActive && noteMode && onSelectNoteMode && <ReaderNoteModeSwitch mode={noteMode} onSelectMode={onSelectNoteMode} />}
           
           <button
             className="reader-workspace-toggle active"

@@ -1,7 +1,9 @@
 import { useShortcutProps, useShortcuts } from '../../shared/shortcuts';
 import { formatBinding } from '../../core/shortcuts';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { BookOpenText, ChevronDown, Feather, History, Layers, Plus, ScanEye } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
+import { useReaderDrawerGesture } from './useReaderDrawerGesture';
+import { BookOpenText, ChevronLeft, ChevronRight, Feather, Layers, NotebookPen, ScanEye } from 'lucide-react';
 import { NOTE_WORKBENCH_COMMANDS, type NoteWorkbenchCommand, type NoteWorkbenchMode } from './noteWorkbench';
 
 /* Reader-side labels stay local: the workbench is a reader surface, and keeping them
@@ -30,23 +32,19 @@ const MODE_COMMAND: Record<NoteWorkbenchMode, NoteWorkbenchCommand> = {
 };
 
 
-/** The single reader entry point: one button that resumes the last mode plus a menu
-    for the four modes, new note and history. Replaces the old vertical ear and the
-    old "full width / split" toggle inside the notes panel. */
-export function ReaderNoteWorkbenchMenu({
-  mode,
-  onToggle,
-  onSelectMode,
-  onNewNote,
-  onOpenHistory,
-  temporary = false,
+/** The entry lives on the content boundary, never in the titlebar. New-note and
+ * history remain in the existing note header (open handle + header action). */
+export function ReaderNoteWorkbenchMenu({ mode, onToggle, onSelectMode, temporary = false,
+  docked = false, overlay = false, drawerWidth = 0, resize,
 }: {
   mode: NoteWorkbenchMode;
   onToggle: () => void;
   onSelectMode: (mode: NoteWorkbenchMode) => void;
-  onNewNote?: () => void | Promise<unknown>;
-  onOpenHistory?: () => void;
   temporary?: boolean;
+  docked?: boolean;
+  overlay?: boolean;
+  drawerWidth?: number;
+  resize?: { width: number; maximum: number; onChange: (width: number) => void };
 }) {
   const shortcutProps = useShortcutProps();
   const shortcuts = useShortcuts();
@@ -57,7 +55,23 @@ export function ReaderNoteWorkbenchMenu({
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const menuId = useId();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({ visibility: 'hidden' });
   const closed = mode === 'reading';
+  const [edgeTop, setEdgeTop] = useState<number>();
+  useLayoutEffect(() => {
+    const shell = rootRef.current?.closest<HTMLElement>('.reader-workspace-shell');
+    if (!shell) return;
+    const dock = shell.querySelector<HTMLElement>('.reader-toolbar-annotations');
+    const place = () => {
+      const box = shell.getBoundingClientRect(), scale = box.height / Math.max(1, shell.offsetHeight);
+      const tool = dock && getComputedStyle(dock).visibility !== 'hidden' ? dock.getBoundingClientRect() : null;
+      const bottom = tool && tool.height && tool.top > box.top ? Math.min(box.bottom, tool.top) : box.bottom;
+      setEdgeTop((bottom - box.top) / (2 * scale));
+    };
+    place(); const observer = new ResizeObserver(place); observer.observe(shell); if (dock) observer.observe(dock);
+    window.addEventListener('resize', place); return () => { observer.disconnect(); window.removeEventListener('resize', place); };
+  }, [mode, docked]);
 
   const close = useCallback((restoreFocus = true) => {
     setOpen(false);
@@ -72,65 +86,61 @@ export function ReaderNoteWorkbenchMenu({
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(event.target as Node) && !menuRef.current?.contains(event.target as Node)) setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown, true);
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
   }, [open]);
-
-  useEffect(() => {
-    if (open) itemRefs.current[activeIndex]?.focus({ preventScroll: true });
-  }, [open, activeIndex]);
-
-  const select = (next: NoteWorkbenchMode) => {
-    onSelectMode(next);
-    close();
-  };
-
+  useLayoutEffect(() => { if (open && menuStyle.visibility !== 'hidden') itemRefs.current[activeIndex]?.focus({ preventScroll: true }); }, [open, activeIndex, menuStyle.visibility]);
+  const select = (next: NoteWorkbenchMode) => { onSelectMode(next); close(); };
+  const gestures = useReaderDrawerGesture({ resize, onLongPress: () => openMenu(buttonRef.current, 0) });
+  const label = `笔记工作台：${MODE_LABELS[mode]} · ${shortcuts.bindings(NOTE_WORKBENCH_COMMANDS.toggle).map(formatBinding).join(' / ') || '未绑定'}${temporary ? '（窄窗临时悬浮）' : overlay ? '（窄窗覆盖面板）' : ''}${mode === 'writing' ? ' · 返回论文' : ''}`;
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const anchor = buttonRef.current?.getBoundingClientRect(), menu = menuRef.current;
+      if (!anchor || !menu) return;
+      const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      const box = menu.getBoundingClientRect();
+      const x = mode === 'writing' ? anchor.right + 6 : anchor.left - box.width - 6;
+      setMenuStyle({ position: 'fixed', left: Math.max(8, Math.min(x, innerWidth - box.width - 8)) / zoom,
+        top: Math.max(8, Math.min(anchor.top + anchor.height / 2 - box.height / 2, innerHeight - box.height - 8)) / zoom,
+        maxWidth: (innerWidth - 16) / zoom, maxHeight: (innerHeight - 16) / zoom });
+    };
+    place(); const observer = new ResizeObserver(place); if (menuRef.current) observer.observe(menuRef.current);
+    window.addEventListener('resize', place); window.addEventListener('scroll', place, true);
+    return () => { observer.disconnect(); window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
+  }, [open, mode, drawerWidth]);
   return (
-    <div className="reader-note-workbench-entry" ref={rootRef} data-note-mode={mode} data-note-temporary={temporary ? 'true' : 'false'}>
-      <button
-        type="button"
-        ref={buttonRef}
-        className={`reader-note-workbench-button${closed ? '' : ' active'}`}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-controls={open ? menuId : undefined}
-        {...shortcutProps(NOTE_WORKBENCH_COMMANDS.toggle, `笔记工作台：${MODE_LABELS[mode]}`)}
-        onClick={onToggle}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowDown') { event.preventDefault(); openMenu(event.currentTarget, 0); }
-          if (event.key === 'ArrowUp') { event.preventDefault(); openMenu(event.currentTarget, MODE_ORDER.length - 1); }
+    <div className="reader-note-workbench-entry reader-note-edge-entry" ref={rootRef} data-note-mode={mode}
+      data-note-temporary={temporary ? 'true' : 'false'} data-note-docked={docked ? 'true' : 'false'}
+      style={{ top: edgeTop, ...(mode === 'writing' || overlay ? { left: 0, right: 'auto' } : { right: docked ? Math.max(0, drawerWidth - (closed ? 16 : 13)) : 0 }) }}>
+      <button type="button" ref={buttonRef} className={`reader-note-workbench-button reader-note-edge-handle${closed ? '' : ' active'}`}
+        {...shortcutProps(NOTE_WORKBENCH_COMMANDS.toggle, label)} title={label} aria-label={label}
+        aria-pressed={!closed} aria-expanded={open} aria-haspopup="menu" aria-controls={open ? menuId : undefined}
+        onPointerDown={gestures.onPointerDown}
+        onClick={event => { if (event.detail === 0 || !gestures.consumeClick()) onToggle(); }}
+        onContextMenu={event => { event.preventDefault(); openMenu(event.currentTarget, 0); }}
+        onWheel={event => {
+          const pdf = rootRef.current?.closest('.reader-workspace-shell')?.querySelector<HTMLElement>('.pdf-document');
+          if (pdf && !event.ctrlKey && !event.metaKey) pdf.scrollBy({ left: event.deltaX, top: event.deltaY });
         }}
-      >
-        <BookOpenText size={15} aria-hidden="true" />
-        <span className="reader-note-workbench-label">笔记工作台</span>
-        <span className="reader-note-workbench-mode">{MODE_LABELS[mode]}</span>
+        onKeyDown={event => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || (event.shiftKey && event.key === 'F10')) {
+            event.preventDefault(); openMenu(event.currentTarget, event.key === 'ArrowUp' ? MODE_ORDER.length - 1 : 0);
+          }
+        }}>
+        {closed ? <><NotebookPen size={14} aria-hidden="true" /><span className="reader-note-edge-label">笔记</span></> :
+          mode === 'writing' ? <ChevronLeft size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
       </button>
-      <button
-        type="button"
-        className="reader-note-workbench-more"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-controls={open ? menuId : undefined}
-        aria-label="笔记工作台菜单"
-        onClick={(event) => (open ? close() : openMenu(event.currentTarget, 0))}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowDown') { event.preventDefault(); openMenu(event.currentTarget, 0); }
-          if (event.key === 'ArrowUp') { event.preventDefault(); openMenu(event.currentTarget, MODE_ORDER.length - 1); }
-          if (event.key === 'Escape' && open) { event.preventDefault(); close(); }
-        }}
-      >
-        <ChevronDown size={13} aria-hidden="true" />
-      </button>
-      {open && (
-        <div
+      {open && createPortal(
+        <div ref={menuRef} style={menuStyle}
           className="reader-note-workbench-menu"
           role="menu"
           id={menuId}
           aria-label="笔记工作台"
           onKeyDown={(event) => {
-            if (event.key === 'Escape') { event.preventDefault(); close(); return; }
+            if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); return; }
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
               event.preventDefault();
               const delta = event.key === 'ArrowDown' ? 1 : -1;
@@ -139,6 +149,7 @@ export function ReaderNoteWorkbenchMenu({
             }
             if (event.key === 'Home') { event.preventDefault(); setActiveIndex(0); return; }
             if (event.key === 'End') { event.preventDefault(); setActiveIndex(MODE_ORDER.length - 1); }
+            if (event.key === 'Tab') close(false);
           }}
         >
           {MODE_ORDER.map((candidate, index) => {
@@ -149,6 +160,7 @@ export function ReaderNoteWorkbenchMenu({
                 type="button"
                 role="menuitemradio"
                 aria-checked={candidate === mode}
+                tabIndex={activeIndex === index ? 0 : -1}
                 ref={(node) => { itemRefs.current[index] = node; }}
                 className={`reader-note-workbench-item${candidate === mode ? ' current' : ''}`}
                 {...shortcutProps(MODE_COMMAND[candidate], MODE_HINTS[candidate])}
@@ -161,31 +173,20 @@ export function ReaderNoteWorkbenchMenu({
               </button>
             );
           })}
-          <div className="reader-note-workbench-separator" role="separator" />
-          <button
-            type="button"
-            role="menuitem"
-            ref={(node) => { itemRefs.current[MODE_ORDER.length] = node; }}
-            className="reader-note-workbench-item"
-            onClick={() => { close(false); void onNewNote?.(); }}
-          >
-            <Plus size={14} aria-hidden="true" />
-            <span className="reader-note-workbench-item-label">新建论文笔记</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            ref={(node) => { itemRefs.current[MODE_ORDER.length + 1] = node; }}
-            className="reader-note-workbench-item"
-            onClick={() => { close(false); onOpenHistory?.(); }}
-          >
-            <History size={14} aria-hidden="true" />
-            <span className="reader-note-workbench-item-label">笔记历史</span>
-          </button>
-        </div>
+        </div>, document.body
       )}
     </div>
   );
 }
 
 export const NOTE_WORKBENCH_MENU_COMMANDS = NOTE_WORKBENCH_COMMANDS;
+
+/** Compact, keyboard-reachable alternatives to the handle's context menu. */
+export function ReaderNoteModeSwitch({ mode, onSelectMode }: { mode: NoteWorkbenchMode; onSelectMode: (mode: NoteWorkbenchMode) => void }) {
+  return <div className="reader-note-mode-switch" role="group" aria-label="笔记布局">
+    {(['split', 'floating', 'writing'] as const).map(value => { const Icon = MODE_ICONS[value];
+      return <button key={value} type="button" aria-label={MODE_LABELS[value]} title={MODE_LABELS[value]} aria-pressed={mode === value}
+        onClick={() => onSelectMode(value)}><Icon size={14} aria-hidden="true" /></button>;
+    })}
+  </div>;
+}

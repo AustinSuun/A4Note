@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 const widthKey = 'a4note.reader.noteDrawerWidth';
 export function useReaderDrawerLayout() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -8,13 +8,27 @@ export function useReaderDrawerLayout() {
   const compact = available < 720;
   const maximum = Math.max(300, available - 332);
   const clamped = compact ? Math.max(0, available) : Math.min(maximum, Math.max(300, width));
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = containerRef.current;
     if (!element) return;
-    const measure = () => { if (element.clientWidth > 0) setAvailable(element.clientWidth); };
-    measure(); const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null; observer?.observe(element);
-    window.addEventListener('resize', measure);
-    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
+    // The outer workbench has a desktop minimum width. At high UI zoom that
+    // minimum can exceed the viewport: constrain this reader, not the global shell,
+    // so its boundary controls and floating card remain on screen.
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const box = element.getBoundingClientRect();
+      const scale = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      const padding = element.parentElement ? Number.parseFloat(getComputedStyle(element.parentElement).paddingRight) || 0 : 0;
+      element.style.maxWidth = `${Math.max(0, (window.innerWidth - box.left) / scale - padding)}px`;
+      if (element.clientWidth > 0) setAvailable(element.clientWidth);
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    measure();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null; observer?.observe(element);
+    const zoomObserver = new MutationObserver(schedule); zoomObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+    window.addEventListener('resize', schedule);
+    return () => { observer?.disconnect(); zoomObserver.disconnect(); if (frame) cancelAnimationFrame(frame); window.removeEventListener('resize', schedule); };
   }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => { try { localStorage.setItem(widthKey, String(width)); } catch { /* geometry only */ } }, 200);
