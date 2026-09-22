@@ -9,7 +9,7 @@ annotation-popover-swatch-chengchuan：澄川完成 23528921 标注工具弹窗�
 
 ## 当前工作：上下文快捷键任务接手（星序）
 
-- context-shortcuts-xingxu：星序完成9230f8ce spec3实现07286bd（基线main41c51fe）：保留透明悬浮；分键轻键帽，非按钮提示右侧真实功能名，按钮旁不重复；对齐列/行及整组换列、底坞上方错层、侧栏图标贴邻。仅共享展示/布局/测试，不改绑定/分发/录制/PDF业务。最终verify退出0/111.990秒，core52/dispatcher50/layout27/browser99、原生35+布局41+重启4+Ctrl开关4均通过，diagnostics0；原生默认/侧栏/800×600 UI140截图已检查，两次最终隔离launcher均正常退出0。待本地main整合核验与上传spec3证据后submit，用户验收；未打包/安装/推送/发布。详见docs/mcp-shortcut-hints-spec3-xingxu-2026-09-22.md。
+- context-shortcuts-xingxu：星序完成9230f8ce spec3实现07286bd（基线main41c51fe）：保留透明悬浮；分键轻键帽，非按钮提示右侧真实功能名，按钮旁不重复；对齐列/行及整组换列、底坞上方错层、侧栏图标贴邻。仅共享展示/布局/测试，不改绑定/分发/录制/PDF业务。最终verify退出0/111.990秒，core52/dispatcher50/layout27/browser99、原生35+布局41+重启4+Ctrl开关4均通过，diagnostics0；原生默认/侧栏/800×600 UI140截图已检查，两次最终隔离launcher均正常退出0。已快进合入本地main93a9545并通过主树agent-status/快捷键/Reader/UI-state/helpers回归、源文件零差异与包含关系检查。交付入口为任务卡spec3，由用户验收；未打包/安装/推送/发布。详见docs/mcp-shortcut-hints-spec3-xingxu-2026-09-22.md。
 - reader-highlight-underline-baseline-xunzhou：巡舟完成 a35a4c83 阅读器高亮/下划线基线定位修复；按 PDF.js 基线语义对 0°/90°/180°/270° 高亮仅在降部侧扩展 20%，下划线移到基线外并保留 0.04×字形轴间隙，拖选预览与持久标注共用几何。旧标注数据、颜色/混合、重叠交互、文本框/形状/箭头/橡皮保持兼容。实现提交 983f3f7，最新 main d726c5d 已合入任务分支 ae13047；helpers、reader、selection 37、highlight 57、rotate 100/150/200% 各 151、完整 verify 全绿，diagnostics 0。详见 docs/mcp-reader-highlight-underline-baseline-xunzhou-2026-09-22.md。
 
 - windows-package-xingxu：用户授权本地EXE打包完成；0.1.27 windows-x64，main 4b40788，builtAt 2026-09-22T00:37:26.577Z（08:37）。package:windows 退出0/308.491秒，EXE与安装包SHA256独立核验一致，更新签名非空且与latest.json一致，5项前端入口嵌入与浮动工具坞CSS验证通过。Cargo.toml仅打包换行变化，按构建前SHA256逐字节恢复，业务源码哈希无变化。旧latest已归档。未包含23528921色板任务、e5e73f0f未交付图层精简或9230f8ce未完成快捷键；未完整verify、桌面测试、安装、推送、发布。详见 docs/mcp-windows-package-xingxu-2026-09-22.md。
@@ -50,7 +50,7 @@ annotation-popover-swatch-chengchuan：澄川完成 23528921 标注工具弹窗�
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-22T14:18:35+08:00
+更新时间：2026-09-22T14:19:37+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 

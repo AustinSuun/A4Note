@@ -53,4 +53,4 @@
 
 ## 本地main整合与交付
 
-最终本地main整合记录待下节追加。保持其他代理状态与无关未跟踪PDF/截图不变。任务提交后由用户验收，不自行归档；本轮不推送、打包、安装或发布。
+本地main已从`41c51fe`快进至`93a95450c55bdd4468a33fbb0f1ac0715060c6f9`，cmd_ba241a9748d65fcbf401edd6f4cef7e6720f840ce7106d46退出0/8.200秒。主树重跑agent-status、core52/dispatcher50/layout27、Reader rendering、UI-state、Reader helpers通过；源码与已验证`07286bd`零差异、包含关系通过、已跟踪文件干净。主树Reader helpers打印了可选@napi-rs/canvas缺失及DOMMatrix/Path2D polyfill警告，断言通过；不将其说成全平台渲染验证。随后仅本文和双状态更新记录的提交为最终delivery，准确SHA以任务卡为准。保持其他代理状态与无关未跟踪PDF/截图不变。任务提交后由用户验收，不自行归档；本轮不推送、打包、安装或发布。
