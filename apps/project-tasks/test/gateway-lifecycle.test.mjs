@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createTaskGateway } from '../gateway.mjs';
 import { inspectGateway, stopGateway, pidAlive } from '../gateway-lifecycle.mjs';
+import { testEnv } from './test-env.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const gatewayScript = path.join(here, '..', 'gateway.mjs');
@@ -19,8 +20,7 @@ const reachable = async url => { try { await fetch(url + '/api/gateway-health', 
 async function spawnGateway(temp) {
   const stateDir = path.join(temp, 'hub'), projectsHome = path.join(temp, 'private');
   fs.mkdirSync(stateDir, { recursive: true });
-  const env = { ...process.env, TASKS_GATEWAY_DIR: stateDir, TASKS_PROJECTS_HOME: projectsHome, TASKS_PORT: '0' };
-  for (const key of Object.keys(env)) if (key.startsWith('TASKS_') && !['TASKS_GATEWAY_DIR', 'TASKS_PROJECTS_HOME', 'TASKS_PORT'].includes(key)) delete env[key];
+  const env = testEnv({ TASKS_GATEWAY_DIR: stateDir, TASKS_PROJECTS_HOME: projectsHome, TASKS_PORT: '0' });
   const child = spawn(process.execPath, [gatewayScript], { env, cwd: path.dirname(gatewayScript), stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   let log = '';
   child.stdout.on('data', d => { log += d; }); child.stderr.on('data', d => { log += d; });
