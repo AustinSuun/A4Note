@@ -29,7 +29,7 @@
 - 修复前基线：`10/10`。
 - 旧 CSS 红测：`25/26`，唯一失败为 `Mouse press keeps selected title borderless`；证据：`.a4-tests/reader-list/reader-list-2026-09-22T07-01-03-789Z`。
 - 修复后首次绿测：`26/26`；证据：`.a4-tests/reader-list/reader-list-2026-09-22T07-01-53-170Z`。
-- 合并最新 `main` 后复跑：`26/26`；证据：`.a4-tests/reader-list/reader-list-2026-09-22T07-30-49-955Z`。
+- 最终合入本地 `main` `9bcc068` 后复跑：`26/26`；证据：`.a4-tests/reader-list/reader-list-2026-09-22T07-52-52-294Z`。
 - 断言覆盖：鼠标按下无 box-shadow/outline/border、释放后无残留、标题背景透明且只有行背景、键盘焦点可见、220/320px 宽度无溢出，以及既有展开/关闭/标签/笔记数/空状态行为。
 
 ### Windows/Tauri `dev:live`
@@ -49,7 +49,7 @@
 
 - Reader/helper/UI 定向测试通过；Reader popover 布局 `166/166`。
 - `npm run build` 在合并最新 `main` 后通过，`2623` modules transformed。
-- `npm run verify` 在合并最新 `main` 后通过；命令 `cmd_6ad57009b92520acca4feb19030b1fc8351ee824312bb3fe`，Rust `215 passed / 0 failed / 5 ignored`，末尾为 `A4Note verification passed`；日志：`.tmp/reader-selection-outline/post-merge-verify-final.log`。
+- `npm run verify` 在最终合入本地 `main` `9bcc068` 后通过；命令 `cmd_1dc3b77abb1f96b884359e7160a50ed9bfa15b05712197dd`，Rust `215 passed / 0 failed / 5 ignored`，末尾为 `A4Note verification passed`；日志：`.tmp/reader-selection-outline/final-verify.log`。
 - MCP `src` diagnostics：`0`。
 - `git diff --check`：通过。
 
