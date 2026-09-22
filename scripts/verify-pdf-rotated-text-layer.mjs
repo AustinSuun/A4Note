@@ -31,11 +31,13 @@ let checks = 0;
 const ok = (condition, message, detail) => { assert.ok(condition, detail === undefined ? message : `${message}: ${JSON.stringify(detail)}`); checks++; };
 const near = (actual, expected, message, tolerance = 1e-6) => ok(Math.abs(actual - expected) <= tolerance, message, { actual, expected });
 const percent = (value) => parseFloat(value);
+const fixtureScale = Number.parseFloat(process.env.ROTATED_TEXT_LAYER_ZOOM || '1');
+if (!Number.isFinite(fixtureScale) || fixtureScale <= 0) throw new Error('ROTATED_TEXT_LAYER_ZOOM must be a positive number');
 
 const LINES = [
-  { text: 'Rotated searchable line', x: 50, y: 740 },
-  { text: 'Second rotated line', x: 50, y: 712 },
-  { text: 'Third line near the end', x: 50, y: 684 },
+  { text: 'Typography gypqj,.; baseline', x: 50, y: 740 },
+  { text: 'Second rotated punctuation line!', x: 50, y: 712 },
+  { text: 'Third line near the end?', x: 50, y: 684 },
 ];
 const FONT_SIZE = 18;
 
@@ -61,7 +63,7 @@ async function openFixture(data) {
   const pdf = await task.promise;
   const page = await pdf.getPage(1);
   // Same call as PdfReader's page metadata: the intrinsic /Rotate is folded into the viewport.
-  const viewport = page.getViewport({ scale: 1 });
+  const viewport = page.getViewport({ scale: fixtureScale });
   const items = await geometry.extractTextItemBoxes(page, viewport);
   return { task, page, viewport, items };
 }
@@ -102,14 +104,31 @@ function saveEvidence(name, canvas, context, viewport, items, marks) {
   writeFileSync(join(evidenceDir, name), canvas.toBuffer('image/png'));
 }
 
+// Evidence-only reconstruction of the previous horizontal placement. It keeps the before/after
+// screenshot on the same PDF fixture without restoring obsolete production code.
+function legacyHorizontalMarks(segment) {
+  const height = Math.max(segment.height, 0.2);
+  const topInset = Math.max(height * 0.28, 0.02);
+  const bottomInset = Math.max(height * 0.18, 0.015);
+  const band = Math.max(height - topInset - bottomInset, height * 0.5);
+  const lineHeight = Math.min(Math.max(height * 0.08, 0.05), 0.42);
+  const descender = height * 0.2;
+  const baselineGap = Math.min(Math.max(height * 0.08, 0.02), 0.12);
+  const ruleBottom = Math.min(segment.y + height - descender + baselineGap + lineHeight, segment.y + height);
+  return {
+    highlight: [{ x: segment.x, y: segment.y + topInset, width: segment.width, height: band }],
+    underline: [{ x: segment.x, y: ruleBottom - lineHeight, width: segment.width, height: lineHeight }],
+  };
+}
+
 for (const rotate of [0, 90, 180, 270]) {
   const vertical = rotate === 90 || rotate === 270;
   // ---- one run: the span must sit exactly on the painted glyphs ----
   {
     const { task, page, viewport, items } = await openFixture(buildPdf({ rotate, runs: LINES.slice(0, 1) }));
     try {
-      near(viewport.width, vertical ? 792 : 612, `rotate ${rotate}: viewport width follows /Rotate`);
-      near(viewport.height, vertical ? 612 : 792, `rotate ${rotate}: viewport height follows /Rotate`);
+      near(viewport.width, (vertical ? 792 : 612) * fixtureScale, `rotate ${rotate}: viewport width follows /Rotate and zoom`);
+      near(viewport.height, (vertical ? 612 : 792) * fixtureScale, `rotate ${rotate}: viewport height follows /Rotate and zoom`);
       ok(items.length === 1 && items[0].text === LINES[0].text, `rotate ${rotate}: one text item`, items);
       const item = items[0];
       ok(onPage(item), `rotate ${rotate}: span stays inside the page`, item);
@@ -121,11 +140,19 @@ for (const rotate of [0, 90, 180, 270]) {
       const ink = inkBounds(context, canvas.width, canvas.height);
       ok(ink, `rotate ${rotate}: bitmap has glyph pixels`);
       const slack = 2.5;
-      ok(ink.left >= box.left - slack && ink.top >= box.top - slack && ink.right <= box.left + box.width + slack && ink.bottom <= box.top + box.height + slack,
-        `rotate ${rotate}: every glyph pixel lies inside the span box`, { ink, box });
+      const paintBox = toPixels(styleBox(helpers.highlightPositionStyle(item)), viewport);
+      ok(ink.left >= paintBox.left - slack && ink.top >= paintBox.top - slack && ink.right <= paintBox.left + paintBox.width + slack && ink.bottom <= paintBox.top + paintBox.height + slack,
+        `rotate ${rotate}: highlight contains descenders and punctuation outside the ascent box`, { ink, box, paintBox });
+      const baselineOverflow = rotate === 0 ? ink.bottom - box.top - box.height
+        : rotate === 90 ? box.left - ink.left
+          : rotate === 180 ? box.top - ink.top
+            : ink.right - box.left - box.width;
+      ok(baselineOverflow > 0, `rotate ${rotate}: fixture exposes real ink beyond the PDF.js baseline edge`, { baselineOverflow, ink, box });
+      const glyphAxis = vertical ? box.width : box.height;
+      ok(baselineOverflow <= glyphAxis * 0.25 + slack, `rotate ${rotate}: descender overflow stays within the 15–25% design allowance`, { baselineOverflow, glyphAxis });
       const gap = item.fontSize * 0.5;
       ok(box.left >= ink.left - gap && box.top >= ink.top - gap && box.left + box.width <= ink.right + gap && box.top + box.height <= ink.bottom + gap,
-        `rotate ${rotate}: the span box hugs the glyphs (no off-page or oversized box)`, { ink, box });
+        `rotate ${rotate}: ascent box still hugs the glyphs (no off-page or oversized hit box)`, { ink, box });
       saveEvidence(`rotate-${rotate}-single-run.png`, canvas, context, viewport, items, { highlight: [], underline: [] });
     } finally { await task.destroy(); }
   }
@@ -151,17 +178,19 @@ for (const rotate of [0, 90, 180, 270]) {
       ok(everything.position.segments.length === 3, `rotate ${rotate}: one segment per line`);
       const [highlight] = appearance.highlightRects(drag.position);
       ok(highlight && onPage(highlight), `rotate ${rotate}: highlight rect stays on the page`, highlight);
-      // The highlight band trims ascender/descender slack, so it lies inside the run and covers at least half of it across.
-      ok(coverage(first, highlight) >= 0.999 && coverage(highlight, first) >= 0.5, `rotate ${rotate}: highlight band lies inside the run box`, { highlight, first });
-      if (vertical) ok(Math.abs(highlight.y - first.y) < 1e-9 && Math.abs(highlight.height - first.height) < 1e-9 && highlight.x > first.x && highlight.x + highlight.width < first.x + first.width, `rotate ${rotate}: highlight band is trimmed along x (glyph axis)`, { highlight, first });
-      else ok(Math.abs(highlight.x - first.x) < 1e-9 && Math.abs(highlight.width - first.width) < 1e-9 && highlight.y > first.y && highlight.y + highlight.height < first.y + first.height, `rotate ${rotate}: highlight band is trimmed along y (glyph axis)`, { highlight, first });
+      // The run box ends at the baseline. The band contains the whole box and extends 20% only on
+      // the descender side, so painted glyphs cannot be cut off and adjacent-line growth is bounded.
+      ok(coverage(first, highlight) >= 0.83 && coverage(highlight, first) >= 0.999, `rotate ${rotate}: highlight covers the run plus bounded descender space`, { highlight, first });
+      if (rotate === 0) ok(Math.abs(highlight.y - first.y) < 1e-9 && highlight.y + highlight.height > first.y + first.height, 'rotate 0: highlight extends below the baseline', { highlight, first });
+      if (rotate === 90) ok(highlight.x < first.x && Math.abs(highlight.x + highlight.width - first.x - first.width) < 1e-9, 'rotate 90: highlight extends left of the baseline', { highlight, first });
+      if (rotate === 180) ok(highlight.y < first.y && Math.abs(highlight.y + highlight.height - first.y - first.height) < 1e-9, 'rotate 180: highlight extends above the baseline', { highlight, first });
+      if (rotate === 270) ok(Math.abs(highlight.x - first.x) < 1e-9 && highlight.x + highlight.width > first.x + first.width, 'rotate 270: highlight extends right of the baseline', { highlight, first });
       const rule = styleBox(helpers.underlinePositionStyle(segment));
       ok(onPage(rule), `rotate ${rotate}: underline stays on the page`, rule);
-      // Horizontal and 180° rules keep the stylesheet contract (`top` is the rule's bottom edge, CSS lifts it); vertical rules stay in place.
-      if (rotate === 0) ok(rule.y <= first.y + first.height + 1e-9 && rule.y >= first.y + first.height * 0.6 && Math.abs(rule.width - first.width) < 1e-9 && rule.height < first.height * 0.5, 'rotate 0: underline sits in the descender slack under the baseline', { rule, first });
-      if (rotate === 90) ok(rule.x >= first.x - 1e-9 && rule.x + rule.width <= first.x + first.width * 0.3 && Math.abs(rule.height - first.height) < 1e-9 && Math.abs(rule.y - first.y) < 1e-9 && rule.width < first.width * 0.5, 'rotate 90: underline runs along the left (descender) edge', { rule, first });
-      if (rotate === 180) ok(rule.y >= first.y - 1e-9 && rule.y <= first.y + first.height * 0.3 && Math.abs(rule.width - first.width) < 1e-9 && rule.height < first.height * 0.5, 'rotate 180: underline sits in the top descender slack (baseline on top)', { rule, first });
-      if (rotate === 270) ok(rule.x + rule.width <= first.x + first.width + 1e-9 && rule.x >= first.x + first.width * 0.7 && Math.abs(rule.height - first.height) < 1e-9 && Math.abs(rule.y - first.y) < 1e-9 && rule.width < first.width * 0.5, 'rotate 270: underline runs along the right (descender) edge', { rule, first });
+      if (rotate === 0) ok(rule.y > first.y + first.height && Math.abs(rule.width - first.width) < 1e-9 && rule.height < first.height * 0.5, 'rotate 0: underline begins below the baseline', { rule, first });
+      if (rotate === 90) ok(rule.x + rule.width < first.x && Math.abs(rule.height - first.height) < 1e-9 && Math.abs(rule.y - first.y) < 1e-9, 'rotate 90: underline sits left of the baseline', { rule, first });
+      if (rotate === 180) ok(rule.y + rule.height < first.y && Math.abs(rule.width - first.width) < 1e-9, 'rotate 180: underline sits above the baseline', { rule, first });
+      if (rotate === 270) ok(rule.x > first.x + first.width && Math.abs(rule.height - first.height) < 1e-9 && Math.abs(rule.y - first.y) < 1e-9, 'rotate 270: underline sits right of the baseline', { rule, first });
       const itemIndex = items.indexOf(first);
       const offsets = [{ itemIndex, startOffset: 0, endOffset: 7 }];
       const ratio = 7 / first.text.length;
@@ -173,10 +202,14 @@ for (const rotate of [0, 90, 180, 270]) {
       if (rotate === 270) { near(slice.y + slice.height, first.y + first.height, 'rotate 270: slice starts at the bottom'); near(slice.height, first.height * ratio, 'rotate 270: slice length'); }
       ok(selection.dominantTextOrientation(items, offsets) === rotate, `rotate ${rotate}: dominant orientation of a native selection`);
       ok(selection.textItemsSeparated(second, first), `rotate ${rotate}: consecutive lines are separated for search`, { first, second });
-      const found = search.findPdfMatches([{ pageNumber: 1, textItems: items }], 'searchable line Second rotated');
+      const found = search.findPdfMatches([{ pageNumber: 1, textItems: items }], 'baseline Second rotated');
       ok(found.matches.length === 1, `rotate ${rotate}: search joins lines with a space`, found);
       const { canvas, context } = await renderPage(page, viewport);
       saveEvidence(`rotate-${rotate}-marks.png`, canvas, context, viewport, items, { highlight: [highlight], underline: [rule] });
+      if (rotate === 0 && evidenceDir) {
+        const before = await renderPage(page, viewport);
+        saveEvidence('rotate-0-before-marks.png', before.canvas, before.context, viewport, items, legacyHorizontalMarks(segment));
+      }
     } finally { await task.destroy(); }
   }
 }
@@ -202,24 +235,24 @@ for (const rotate of [0, 90, 180, 270]) {
     ok(geometry.textOrientationFromTransform(transform) === expected, `orientation from transform ${transform.join(',')}`);
   }
   const highlight90 = styleBox(helpers.highlightPositionStyle({ x: 40, y: 10, width: 2, height: 30, orientation: 90 }));
-  near(highlight90.x, 40.36, 'rotate 90 highlight: descent inset (18%) on the left edge');
-  near(highlight90.width, 1.08, 'rotate 90 highlight: band width');
+  near(highlight90.x, 39.6, 'rotate 90 highlight: descender extension on the left edge');
+  near(highlight90.width, 2.4, 'rotate 90 highlight: full glyph axis plus descender');
   ok(highlight90.y === 10 && highlight90.height === 30, 'rotate 90 highlight keeps the run length', highlight90);
   const highlight270 = styleBox(helpers.highlightPositionStyle({ x: 40, y: 10, width: 2, height: 30, orientation: 270 }));
-  near(highlight270.x, 40.56, 'rotate 270 highlight: ascent inset (28%) on the left edge');
+  near(highlight270.x + highlight270.width, 42.4, 'rotate 270 highlight: descender extension on the right edge');
   const highlight180 = styleBox(helpers.highlightPositionStyle({ x: 10, y: 20, width: 30, height: 2, orientation: 180 }));
-  near(highlight180.y, 20.36, 'rotate 180 highlight: descent inset on top');
-  near(highlight180.height, 1.08, 'rotate 180 highlight: band height');
+  near(highlight180.y, 19.6, 'rotate 180 highlight: descender extension on top');
+  near(highlight180.height, 2.4, 'rotate 180 highlight: full glyph axis plus descender');
   const highlight0 = styleBox(helpers.highlightPositionStyle({ x: 10, y: 20, width: 30, height: 2 }));
-  near(highlight0.y, 20.56, 'horizontal highlight unchanged: top inset');
-  near(highlight0.height, 1.08, 'horizontal highlight unchanged: band');
+  near(highlight0.y, 20, 'horizontal highlight starts at the ascent edge');
+  near(highlight0.height, 2.4, 'horizontal highlight includes descenders');
   ok(highlight0.x === 10 && highlight0.width === 30, 'horizontal highlight unchanged: x/width', highlight0);
   const underline90 = styleBox(helpers.underlinePositionStyle({ x: 40, y: 10, width: 2, height: 30, orientation: 90 }));
-  ok(underline90.x >= 40 && underline90.x + underline90.width <= 40.4 && underline90.y === 10 && underline90.height === 30, 'rotate 90 underline: thin rule inside the left descender strip, full run length', underline90);
+  ok(underline90.x + underline90.width < 40 && underline90.y === 10 && underline90.height === 30, 'rotate 90 underline: thin rule left of the baseline, full run length', underline90);
   const underline270 = styleBox(helpers.underlinePositionStyle({ x: 40, y: 10, width: 2, height: 30, orientation: 270 }));
-  ok(underline270.x >= 41.6 && underline270.x + underline270.width <= 42 && underline270.height === 30, 'rotate 270 underline: thin rule inside the right descender strip', underline270);
+  ok(underline270.x > 42 && underline270.height === 30, 'rotate 270 underline: thin rule right of the baseline', underline270);
   const underline0 = styleBox(helpers.underlinePositionStyle({ x: 10, y: 20, width: 30, height: 2 }));
-  near(underline0.y, Math.min(20 + 2 - 0.4 + 0.12 + 0.16, 22), 'horizontal underline unchanged: rule bottom edge');
+  near(underline0.y, 22.08, 'horizontal underline: top edge below baseline with a 4% gap');
 }
 
 // ---- the text layer must lay rotated runs out along their reading direction ----
@@ -230,10 +263,11 @@ for (const rotate of [0, 90, 180, 270]) {
   assert.match(textLayerSource, /orientation === 180\) return \{ direction: 'rtl', unicodeBidi: 'bidi-override' \}/);
   assert.match(textLayerSource, /data-text-orientation=/);
   const readerCss = await readFile(new URL('../src/ui/styles/reader.css', import.meta.url), 'utf8');
-  assert.match(readerCss, /\.annotation-mark\.underline\.vertical-rule \{[^}]*transform: none/);
+  assert.match(readerCss, /\.annotation-mark\.underline\.vertical-rule \{[^}]*min-width: 1px/);
+  assert.doesNotMatch(readerCss, /\.annotation-mark\.underline(?:\.vertical-rule)? \{[^}]*transform:/);
   const markSource = await readFile(new URL('../src/features/reader/pdf/AnnotationMark.tsx', import.meta.url), 'utf8');
   assert.match(markSource, /segment\.orientation === 90 \|\| segment\.orientation === 270\) \? 'vertical-rule'/);
-  checks += 6;
+  checks += 7;
 }
 
-console.log(`PDF rotated text layer: ${checks} assertions passed${evidenceDir ? ` (evidence in ${evidenceDir})` : ''}`);
+console.log(`PDF rotated text layer: ${checks} assertions passed at ${Math.round(fixtureScale * 100)}%${evidenceDir ? ` (evidence in ${evidenceDir})` : ''}`);

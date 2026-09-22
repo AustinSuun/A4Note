@@ -139,6 +139,11 @@ export default function PdfReader({
   // this keeps PDF.js from starting a render for every wheel tick.
   const displayZoom = zoom;
   const [eraserCursor, setEraserCursor] = useState<{ page: number; x: number; y: number } | null>(null);
+  // Pointer moves can arrive faster than native persistence and React can render the updated
+  // annotation. Keep cumulative geometry so each sample clips the previous sample's result.
+  const eraserPositionsRef = useRef(new Map<string, PositionJson | null>());
+  const eraserPointerIdRef = useRef<number | null>(null);
+  const eraserPointerTargetRef = useRef<HTMLDivElement | null>(null);
   const zoomFrameRef = useRef<number | null>(null);
   const zoomTimerRef = useRef<number | null>(null);
   const zoomGestureAnchorRef = useRef<PdfZoomAnchor | null>(null);
@@ -303,6 +308,15 @@ export default function PdfReader({
     inkPointerTargetRef.current = null;
     inkDraftRef.current = null;
     setInkDraft(null);
+    eraserPositionsRef.current.clear();
+    const eraserPointerId = eraserPointerIdRef.current;
+    const eraserPointerTarget = eraserPointerTargetRef.current;
+    if (eraserPointerId !== null && eraserPointerTarget?.hasPointerCapture(eraserPointerId)) {
+      eraserPointerTarget.releasePointerCapture(eraserPointerId);
+    }
+    eraserPointerIdRef.current = null;
+    eraserPointerTargetRef.current = null;
+    setEraserCursor(null);
     setCommentPopover(null);
     setInlineText(null);
     inlineEditorRef.current = null;
@@ -332,6 +346,14 @@ export default function PdfReader({
   useEffect(() => {
     if (activeTool !== 'eraser') {
       setEraserCursor(null);
+      eraserPositionsRef.current.clear();
+      const pointerId = eraserPointerIdRef.current;
+      const pointerTarget = eraserPointerTargetRef.current;
+      eraserPointerIdRef.current = null;
+      eraserPointerTargetRef.current = null;
+      if (pointerId !== null && pointerTarget?.hasPointerCapture(pointerId)) {
+        pointerTarget.releasePointerCapture(pointerId);
+      }
     }
     if (activeTool !== 'ink') {
       const pointerId = inkPointerIdRef.current;
@@ -344,6 +366,17 @@ export default function PdfReader({
         pointerTarget.releasePointerCapture(pointerId);
       }
     }
+  }, [activeTool]);
+
+  useEffect(() => {
+    if (activeTool !== 'eraser') return;
+    const hideOutsideWindow = () => setEraserCursor(null);
+    window.addEventListener('blur', hideOutsideWindow);
+    document.documentElement.addEventListener('mouseleave', hideOutsideWindow);
+    return () => {
+      window.removeEventListener('blur', hideOutsideWindow);
+      document.documentElement.removeEventListener('mouseleave', hideOutsideWindow);
+    };
   }, [activeTool]);
 
   useEffect(() => {
@@ -920,7 +953,7 @@ export default function PdfReader({
     await saveAnnotationDraft(draft);
   };
 
-  function eraseInkAtPointer(pageNumber: number, event: MouseEvent<HTMLDivElement>) {
+  function eraseInkAtPointer(pageNumber: number, event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>) {
     if (activeTool !== 'eraser') return;
     const rect = pdfCoordinateLayer(event.currentTarget).getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
@@ -940,17 +973,25 @@ export default function PdfReader({
 
     for (const annotation of currentFileAnnotations) {
       if (annotation.page !== pageNumber || annotation.type !== 'ink') continue;
-      const nextPosition = eraseInkPosition(annotation.positionJson, point, radiusX, radiusY, toolSettings.eraserShape);
-      if (nextPosition === annotation.positionJson) continue;
+      const cached = eraserPositionsRef.current.get(annotation.id);
+      if (cached === null) continue;
+      const previousPosition = cached ?? annotation.positionJson;
+      const nextPosition = eraseInkPosition(previousPosition, point, radiusX, radiusY, toolSettings.eraserShape);
+      if (nextPosition === previousPosition) continue;
+      eraserPositionsRef.current.set(annotation.id, nextPosition);
       if (nextPosition) {
-        void saves.run('擦除笔迹', async () => onUpdateAnnotationPosition(annotation.id, nextPosition), undefined, annotation.id);
+        void saves.run('擦除笔迹', async () => onUpdateAnnotationPosition(annotation.id, nextPosition), undefined, annotation.id).then((saved) => {
+          if (saved && eraserPositionsRef.current.get(annotation.id) === nextPosition) eraserPositionsRef.current.delete(annotation.id);
+        });
       } else {
-        void saves.run('删除笔迹', async () => onDeleteAnnotation(annotation.id), undefined, annotation.id);
+        void saves.run('删除笔迹', async () => onDeleteAnnotation(annotation.id), undefined, annotation.id).then((saved) => {
+          if (saved && eraserPositionsRef.current.get(annotation.id) === null) eraserPositionsRef.current.delete(annotation.id);
+        });
       }
     }
   }
 
-  function updateEraserCursor(pageNumber: number, event: MouseEvent<HTMLDivElement>) {
+  function updateEraserCursor(pageNumber: number, event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>) {
     if (activeTool !== 'eraser') {
       setEraserCursor(null);
       return;
@@ -962,19 +1003,25 @@ export default function PdfReader({
     }
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    if (x < -rect.width * 0.15 || x > rect.width * 1.15 || y < -rect.height * 0.15 || y > rect.height * 1.15) {
-      if (x < -rect.width * 0.5 || x > rect.width * 1.5 || y < -rect.height * 0.5 || y > rect.height * 1.5) {
-        setEraserCursor(null);
-      }
+    // Never retain an old in-page ring while the real pointer is over an adjacent panel/window.
+    if (x < 0 || x > rect.width || y < 0 || y > rect.height) {
+      setEraserCursor(null);
       return;
     }
     setEraserCursor({
       page: pageNumber,
-      // Do not clamp: a clamped ring slides along the page border while the real cursor is
-      // elsewhere, which reads as the eraser drifting away from the mouse.
       x,
       y,
     });
+  }
+
+  function finishEraserPointer(event: PointerEvent<HTMLDivElement>) {
+    if (eraserPointerIdRef.current !== event.pointerId) return;
+    const target = eraserPointerTargetRef.current;
+    eraserPointerIdRef.current = null;
+    eraserPointerTargetRef.current = null;
+    if (target?.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
+    if (event.type === 'pointercancel' || event.type === 'lostpointercapture') setEraserCursor(null);
   }
 
   const createTextAnnotationAtPointer = (pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
@@ -1238,43 +1285,49 @@ export default function PdfReader({
   const pageHandlers = (pageNumber: number) => ({
     onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') beginInkStroke(pageNumber, event);
+      else if (activeTool === 'eraser' && event.button === 0) {
+        event.preventDefault();
+        eraserPointerIdRef.current = event.pointerId;
+        eraserPointerTargetRef.current = event.currentTarget;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        updateEraserCursor(pageNumber, event);
+        eraseInkAtPointer(pageNumber, event);
+      }
     },
     onPointerMove: (event: PointerEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') updateInkStroke(pageNumber, event);
+      else if (activeTool === 'eraser') {
+        updateEraserCursor(pageNumber, event);
+        if (eraserPointerIdRef.current === event.pointerId && (event.buttons & 1) === 1) eraseInkAtPointer(pageNumber, event);
+      }
     },
     onPointerUp: (event: PointerEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') finishInkPointer(event);
+      else if (activeTool === 'eraser') finishEraserPointer(event);
     },
     onPointerCancel: (event: PointerEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') finishInkPointer(event);
+      else if (activeTool === 'eraser') finishEraserPointer(event);
     },
     onLostPointerCapture: (event: PointerEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') finishInkPointer(event);
+      else if (activeTool === 'eraser') finishEraserPointer(event);
+    },
+    onPointerLeave: () => {
+      if (activeTool === 'eraser' && eraserPointerIdRef.current === null) setEraserCursor(null);
     },
     onMouseDown: (event: MouseEvent<HTMLDivElement>) => {
-      if (activeTool === 'ink') return;
+      if (activeTool === 'ink' || activeTool === 'eraser') return;
       if (stickyDrag) return;
       if (textSelectionToolsActive && !pageHasSelectableText(pageNumber)) {
         showTextLayerHint();
-        return;
-      }
-      if (activeTool === 'eraser') {
-        updateEraserCursor(pageNumber, event);
-        eraseInkAtPointer(pageNumber, event);
         return;
       }
       if (activeTool === 'comment') return;
       beginAnnotationDrag(pageNumber, event);
     },
     onMouseMove: (event: MouseEvent<HTMLDivElement>) => {
-      if (activeTool === 'ink') return;
-      if (activeTool === 'eraser') {
-        updateEraserCursor(pageNumber, event);
-        if (event.buttons === 1) {
-          eraseInkAtPointer(pageNumber, event);
-        }
-        return;
-      }
+      if (activeTool === 'ink' || activeTool === 'eraser') return;
       updateStickyDrag(pageNumber, event);
       updateAnnotationDrag(pageNumber, event);
     },

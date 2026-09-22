@@ -150,4 +150,23 @@ check('cursor preview is no longer clamped to the page box', () => {
   assert.ok(!/clamp\(x,\s*0,\s*rect\.width\)/.test(cursorBody), 'clamped ring drifts away from the real cursor');
 });
 
+check('cursor preview is cleared immediately outside the page instead of retaining a stale ring', () => {
+  assert.match(cursorBody, /x\s*<\s*0\s*\|\|\s*x\s*>\s*rect\.width/);
+  assert.match(cursorBody, /setEraserCursor\(null\)/);
+  assert.ok(!/rect\.width\s*\*\s*0\.15/.test(cursorBody), 'the old dead zone kept the last cursor position visible');
+});
+
+check('eraser uses pointer capture so a pressed stroke has one coordinate owner across boundaries', () => {
+  assert.match(readerSource, /activeTool === 'eraser'[\s\S]{0,500}setPointerCapture\(event\.pointerId\)/);
+  assert.match(readerSource, /finishEraserPointer\(event\)/);
+  assert.match(readerSource, /onPointerLeave:[\s\S]{0,180}setEraserCursor\(null\)/);
+});
+
+check('rapid eraser samples accumulate from cached geometry rather than stale annotation props', () => {
+  assert.match(eraseBody, /eraserPositionsRef\.current\.get\(annotation\.id\)/);
+  assert.match(eraseBody, /const previousPosition = cached \?\? annotation\.positionJson/);
+  assert.match(eraseBody, /eraseInkPosition\(previousPosition,/);
+  assert.match(eraseBody, /eraserPositionsRef\.current\.set\(annotation\.id, nextPosition\)/);
+});
+
 console.log(`\nverify-pdf-eraser-precision: ${checks} checks passed`);

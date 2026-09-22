@@ -21,6 +21,7 @@ export type PdfPageViewProps = {
     onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
     onPointerCancel: (event: PointerEvent<HTMLDivElement>) => void;
     onLostPointerCapture: (event: PointerEvent<HTMLDivElement>) => void;
+    onPointerLeave: (event: PointerEvent<HTMLDivElement>) => void;
     onMouseDown: (event: MouseEvent<HTMLDivElement>) => void;
     onMouseMove: (event: MouseEvent<HTMLDivElement>) => void;
     onMouseUp: () => void;

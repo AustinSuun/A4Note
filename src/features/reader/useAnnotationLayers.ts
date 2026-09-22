@@ -21,7 +21,7 @@ const defaultAnnotationLayerId = (ownerId: string) => `layer-default-${ownerId}`
 /** Per-owner cache: the layer state plus the layers whose annotations are already in memory. */
 type OwnerCache = { state: AnnotationLayerState; loaded: Set<string>; token: number };
 
-export type CreateLayerOptions = { kind: 'layer' | 'attempt'; name?: string; activate?: boolean; solo?: boolean };
+export type CreateLayerOptions = { kind: 'layer'; name?: string; activate?: boolean; solo?: boolean };
 
 export type AnnotationLayersApi = {
   paperId: string | null;
@@ -51,8 +51,6 @@ export type AnnotationLayersApi = {
   refresh: () => Promise<void>;
   /** Ids of the in-memory annotations of one layer, read from the store (not from a filtered view). */
   annotationIdsInLayer: (layerId: string) => string[];
-  managerOpen: boolean;
-  setManagerOpen: (open: boolean) => void;
   busy: boolean;
   error: string | null;
 };
@@ -71,7 +69,7 @@ function localState(paperId: string): AnnotationLayerState {
   return {
     ownerKind: 'paper',
     ownerId: paperId,
-    layers: [{ id, ownerKind: 'paper', ownerId: paperId, name: '默认图层', sortOrder: 0, kind: 'default', locked: false, archivedAt: null, createdAt: now, updatedAt: now, annotationCount: 0 }],
+    layers: [{ id, ownerKind: 'paper', ownerId: paperId, name: '图层 1', sortOrder: 0, kind: 'default', locked: false, archivedAt: null, createdAt: now, updatedAt: now, annotationCount: 0 }],
     view: { activeLayerId: id, visibleLayerIds: [id] },
   };
 }
@@ -92,7 +90,6 @@ export function useAnnotationLayers({
   const [, setLocalRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [managerOpen, setManagerOpen] = useState(false);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
@@ -240,9 +237,9 @@ export function useAnnotationLayers({
     },
     showOnlyLayer: (layerId) => setView('只显示该图层', layerId, [layerId]),
     createLayer: (options) =>
-      mutate(options.kind === 'attempt' ? '新建学习记录' : '新建图层', async (id, current) => {
+      mutate('新建图层', async (id, current) => {
         const activate = options.activate ?? true;
-        const solo = options.solo ?? options.kind === 'attempt';
+        const solo = options.solo ?? false;
         if (isTauriRuntime()) {
           const next = await createNativeAnnotationLayer({ ownerKind: 'paper', ownerId: id, name: options.name, kind: options.kind, activate, solo });
           const created = next.layers.find((layer) => !current.state.layers.some((known) => known.id === layer.id)) ?? null;
@@ -251,10 +248,9 @@ export function useAnnotationLayers({
           return created;
         }
         const now = new Date().toISOString();
-        const attempts = current.state.layers.filter((layer) => layer.kind === 'attempt').length;
         const created: AnnotationLayer = {
           id: `layer-${Math.random().toString(36).slice(2, 10)}`, ownerKind: 'paper', ownerId: id,
-          name: options.name?.trim() || (options.kind === 'attempt' ? `第 ${attempts + 1} 次学习 · ${now.slice(0, 10)}` : `图层 ${current.state.layers.length + 1}`),
+          name: options.name?.trim() || `图层 ${current.state.layers.length + 1}`,
           sortOrder: current.state.layers.length, kind: options.kind, locked: false, archivedAt: null, createdAt: now, updatedAt: now, annotationCount: 0,
         };
         current.loaded.add(created.id);
@@ -394,8 +390,6 @@ export function useAnnotationLayers({
       });
       return result ?? null;
     },
-    managerOpen,
-    setManagerOpen,
     annotationIdsInLayer: (layerId) => (paperId ? document(paperId)?.annotations ?? [] : []).filter((annotation) => annotation.layerId === layerId).map((annotation) => annotation.id),
     refresh: () =>
       mutate('刷新图层', async (id, current) => {
