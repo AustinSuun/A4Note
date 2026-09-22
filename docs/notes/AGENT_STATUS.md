@@ -1,4 +1,6 @@
 ﻿# A4 Note Agent 状态
+- reader-highlight-underline-baseline-xunzhou：巡舟完成 a35a4c83 阅读器高亮/下划线基线定位修复；按 PDF.js 基线语义对 0°/90°/180°/270° 高亮仅在降部侧扩展 20%，下划线移到基线外并保留 0.04×字形轴间隙，拖选预览与持久标注共用几何。旧标注数据、颜色/混合、重叠交互、文本框/形状/箭头/橡皮保持兼容。实现提交 983f3f7，最新 main d726c5d 已合入任务分支 ae13047；helpers、reader、selection 37、highlight 57、rotate 100/150/200% 各 151、完整 verify 全绿，diagnostics 0。详见 docs/mcp-reader-highlight-underline-baseline-xunzhou-2026-09-22.md。
+
 - windows-package-xingxu：用户授权本地EXE打包完成；0.1.27 windows-x64，main 4b40788，builtAt 2026-09-22T00:37:26.577Z（08:37）。package:windows 退出0/308.491秒，EXE与安装包SHA256独立核验一致，更新签名非空且与latest.json一致，5项前端入口嵌入与浮动工具坞CSS验证通过。Cargo.toml仅打包换行变化，按构建前SHA256逐字节恢复，业务源码哈希无变化。旧latest已归档。未包含23528921色板任务、e5e73f0f未交付图层精简或9230f8ce未完成快捷键；未完整verify、桌面测试、安装、推送、发布。详见 docs/mcp-windows-package-xingxu-2026-09-22.md。
 
 - reader-selection-band-arena：Arena 接管 35496a06 高亮色带任务，保留 b79ba58/6b507e8。拖选期间保留真实 Range，但把浏览器原生色带透明化并通过与持久高亮相同的 textSelectionDraft→方向感知 segments→highlightPositionStyle 管线绘制；forced-colors 恢复系统选区。黄/绿/蓝/紫改为 #ffd54a/#8fd9a3/#8fb9f2/#bf9cf0，未保存配置默认 opacity 22→40、范围 10–60，既有明确保存值不迁移；单 SVG 合成避免重叠 alpha 累积。selection preview 37、highlight 57、reader、rotate 142、crosspage 31、完整 verify（Rust 209/0/5 ignored）全绿，diagnostics 0。指定 2505.13447v1.pdf 当前损坏、译文 PDF 缺失，未冒充样本验证；隔离原生改用有效内置指南与旋转 fixture 复核。详见 docs/mcp-reader-selection-band-highlight-arena-2026-09-21.md。
