@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-22T10:07:09+08:00",
+  "updatedAt": "2026-09-22T10:22:20+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
-      "context-shortcuts-xingxu：星序重新领取9230f8ce的spec2返工（in_progress/revision21）。上轮c0470d0已合入main但用户退回提示层设计；本轮沿用feat/context-shortcuts-xingxu独立工作树，修改范围优先src/shared/shortcuts/ShortcutHints.tsx、shortcuts.css及相关测试。按钮快捷键在按钮旁浮现；无按钮命令以透明背景悬浮，不再用列表框。保留现有分发器、配置与录制保护，不触碰PDF坐标、橡皮擦或色板并行任务。当前仅完成最新需求/反馈读取、原子领取、工作树干净核验；spec2尚未实现或验证。下一步调整布局与定位、补回归和隔离原生证据，验证后合入本地main并重新submit；不安装/打包/发布。",
+      "context-shortcuts-xingxu：星序执行9230f8ce spec2返工，88c64dc改为透明快捷键文字、取消列表框/标题/描述，按实际DOM文字尺寸定位、避开按钮与DEV条，密集工具栏错行但仍邻近；无按钮命令透明悬浮。保留分发器和配置。core52/dispatcher50/布局16、浏览器83、build已通过；旧c0470d0在新增无列表框断言上失败。当前同步main29341cc；待集成完整verify、真实隔离原生取证、main合并并重新submit。未安装/打包/发布。",
+      "reader-eraser-pointer-xunzhou：巡舟完成 ecbf83de PDF 橡皮擦再回归；新增单一 raw client→pdf-render-layer 坐标采样，预览与命中共享 pixel/percent/inside，中心一离页即在接触 ink 前停止，未改精确线段裁剪、指针捕获与累计保存。修复前 Windows/Tauri 118%/DPR1.25 稳定复现“环隐藏但页外 5px 仍擦除”；所报右下偏移在该隔离实例未复现，未虚构，修复后 100%/120%/滚动120% 命中中心误差均小于 0.00008px。真实 WebView 页外/回入、仅接触段、undo/redo、重载持久化、跨页、可写/隐藏/锁定层均通过；22 项 eraser、Reader/helpers、图层 55 项、完整 verify（Rust 215/0/5 ignored）、diagnostics 0、diff check 全绿。仅记录 dev favicon.ico 404，无 pageerror/应用逻辑 console error。详见 docs/mcp-pdf-reader-eraser-pointer-xunzhou-2026-09-22.md。",
       "reader-highlight-underline-baseline-xunzhou：巡舟完成 a35a4c83 阅读器高亮/下划线基线定位修复；按 PDF.js 基线语义对 0°/90°/180°/270° 高亮仅在降部侧扩展 20%，下划线移到基线外并保留 0.04×字形轴间隙，拖选预览与持久标注共用几何。旧标注数据、颜色/混合、重叠交互、文本框/形状/箭头/橡皮保持兼容。实现提交 983f3f7，最新 main d726c5d 已合入任务分支 ae13047；helpers、reader、selection 37、highlight 57、rotate 100/150/200% 各 151、完整 verify 全绿，diagnostics 0。详见 docs/mcp-reader-highlight-underline-baseline-xunzhou-2026-09-22.md。",
       "windows-package-xingxu：用户授权本地EXE打包完成；0.1.27 windows-x64，main 4b40788，builtAt 2026-09-22T00:37:26.577Z（08:37）。package:windows 退出0/308.491秒，EXE与安装包SHA256独立核验一致，更新签名非空且与latest.json一致，5项前端入口嵌入与浮动工具坞CSS验证通过。Cargo.toml仅打包换行变化，按构建前SHA256逐字节恢复，业务源码哈希无变化。旧latest已归档。未包含23528921色板任务、e5e73f0f未交付图层精简或9230f8ce未完成快捷键；未完整verify、桌面测试、安装、推送、发布。详见 docs/mcp-windows-package-xingxu-2026-09-22.md。",
       "post-merge-smoke-arena：Arena 对 main a6b5d22 做合并后集成冒烟（隔离实例 arena-smoke）：F6 提示、F4 Escape、F2 重叠、橡皮拆分/页外隐藏、图层新建学习记录与恢复显示、笔记工作台不重建 canvas、reload 持久化 20/21 通过，唯一未通过为尚未合入的 F5 标注列表入口；F1 62/63、F3 22/22、真实论文选区色带差值 0。详见 docs/mcp-post-merge-smoke-arena-2026-09-21.md。",
@@ -134,7 +135,8 @@
   },
   "lastHandoff": {
     "completed": [
-      "context-shortcuts-xingxu：星序重新领取9230f8ce的spec2返工（in_progress/revision21）。上轮c0470d0已合入main但用户退回提示层设计；本轮沿用feat/context-shortcuts-xingxu独立工作树，修改范围优先src/shared/shortcuts/ShortcutHints.tsx、shortcuts.css及相关测试。按钮快捷键在按钮旁浮现；无按钮命令以透明背景悬浮，不再用列表框。保留现有分发器、配置与录制保护，不触碰PDF坐标、橡皮擦或色板并行任务。当前仅完成最新需求/反馈读取、原子领取、工作树干净核验；spec2尚未实现或验证。下一步调整布局与定位、补回归和隔离原生证据，验证后合入本地main并重新submit；不安装/打包/发布。",
+      "context-shortcuts-xingxu：星序执行9230f8ce spec2返工，88c64dc改为透明快捷键文字、取消列表框/标题/描述，按实际DOM文字尺寸定位、避开按钮与DEV条，密集工具栏错行但仍邻近；无按钮命令透明悬浮。保留分发器和配置。core52/dispatcher50/布局16、浏览器83、build已通过；旧c0470d0在新增无列表框断言上失败。当前同步main29341cc；待集成完整verify、真实隔离原生取证、main合并并重新submit。未安装/打包/发布。",
+      "reader-eraser-pointer-xunzhou：巡舟完成 ecbf83de PDF 橡皮擦再回归；新增单一 raw client→pdf-render-layer 坐标采样，预览与命中共享 pixel/percent/inside，中心一离页即在接触 ink 前停止，未改精确线段裁剪、指针捕获与累计保存。修复前 Windows/Tauri 118%/DPR1.25 稳定复现“环隐藏但页外 5px 仍擦除”；所报右下偏移在该隔离实例未复现，未虚构，修复后 100%/120%/滚动120% 命中中心误差均小于 0.00008px。真实 WebView 页外/回入、仅接触段、undo/redo、重载持久化、跨页、可写/隐藏/锁定层均通过；22 项 eraser、Reader/helpers、图层 55 项、完整 verify（Rust 215/0/5 ignored）、diagnostics 0、diff check 全绿。仅记录 dev favicon.ico 404，无 pageerror/应用逻辑 console error。详见 docs/mcp-pdf-reader-eraser-pointer-xunzhou-2026-09-22.md。",
       "reader-highlight-underline-baseline-xunzhou：巡舟完成 a35a4c83 阅读器高亮/下划线基线定位修复；按 PDF.js 基线语义对 0°/90°/180°/270° 高亮仅在降部侧扩展 20%，下划线移到基线外并保留 0.04×字形轴间隙，拖选预览与持久标注共用几何。旧标注数据、颜色/混合、重叠交互、文本框/形状/箭头/橡皮保持兼容。实现提交 983f3f7，最新 main d726c5d 已合入任务分支 ae13047；helpers、reader、selection 37、highlight 57、rotate 100/150/200% 各 151、完整 verify 全绿，diagnostics 0。详见 docs/mcp-reader-highlight-underline-baseline-xunzhou-2026-09-22.md。",
       "windows-package-xingxu：用户授权本地EXE打包完成；0.1.27 windows-x64，main 4b40788，builtAt 2026-09-22T00:37:26.577Z（08:37）。package:windows 退出0/308.491秒，EXE与安装包SHA256独立核验一致，更新签名非空且与latest.json一致，5项前端入口嵌入与浮动工具坞CSS验证通过。Cargo.toml仅打包换行变化，按构建前SHA256逐字节恢复，业务源码哈希无变化。旧latest已归档。未包含23528921色板任务、e5e73f0f未交付图层精简或9230f8ce未完成快捷键；未完整verify、桌面测试、安装、推送、发布。详见 docs/mcp-windows-package-xingxu-2026-09-22.md。",
       "reader-note-workbench-arena：Arena 执行 24ea34e5（high）完成阅读器笔记工作台四态状态机、唯一入口菜单、比例驱动分屏、悬浮速记卡、专注写作与共享正文列 token；独立 worktree / 分支 feat/reader-note-workbench-arena。",
@@ -440,7 +442,8 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
-      "context-shortcuts-xingxu：星序重新领取9230f8ce的spec2返工（in_progress/revision21）。上轮c0470d0已合入main但用户退回提示层设计；本轮沿用feat/context-shortcuts-xingxu独立工作树，修改范围优先src/shared/shortcuts/ShortcutHints.tsx、shortcuts.css及相关测试。按钮快捷键在按钮旁浮现；无按钮命令以透明背景悬浮，不再用列表框。保留现有分发器、配置与录制保护，不触碰PDF坐标、橡皮擦或色板并行任务。当前仅完成最新需求/反馈读取、原子领取、工作树干净核验；spec2尚未实现或验证。下一步调整布局与定位、补回归和隔离原生证据，验证后合入本地main并重新submit；不安装/打包/发布。",
+      "context-shortcuts-xingxu：星序执行9230f8ce spec2返工，88c64dc改为透明快捷键文字、取消列表框/标题/描述，按实际DOM文字尺寸定位、避开按钮与DEV条，密集工具栏错行但仍邻近；无按钮命令透明悬浮。保留分发器和配置。core52/dispatcher50/布局16、浏览器83、build已通过；旧c0470d0在新增无列表框断言上失败。当前同步main29341cc；待集成完整verify、真实隔离原生取证、main合并并重新submit。未安装/打包/发布。",
+      "reader-eraser-pointer-xunzhou：test:pdf-eraser-precision 22/22、test:reader、test:reader-helpers、test:annotation-layers 55/55、npm run verify（Rust 215 passed/0 failed/5 ignored）、git diff --check 全部通过；Windows/Tauri xunzhou-eraser 原生 CDP 三组几何与隐藏/锁定层验收通过；worktree diagnostics error+warning 0。",
       "reader-highlight-underline-baseline-xunzhou：node scripts/verify-reader-helpers.mjs、npm run test:reader、selection preview 37/37、highlight 57/57、rotated 100%/150%/200% 各151/151、npm run verify（Settings UI 115/115；Rust 215/0/5 ignored；project-task 86 passed/1 skip）及 git diff --check 全部通过；四方向缩放位图证据与测量已生成。",
       "windows-package-xingxu：package:windows exit0；EXE/安装包SHA256、更新签名文本与清单、5项前端嵌入/CSS和业务源码哈希核对通过；未完整verify或桌面功能测试。",
       "npm run test:note-workbench=51/51；npm run test:note-workbench-browser=42/42（隔离 headless Chrome，9 场景截图见 .tmp/shots/note-workbench/）；npm run test:reader / npm run verify / npm run build 见交付说明。",
@@ -814,7 +817,8 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
-      "context-shortcuts-xingxu：星序重新领取9230f8ce的spec2返工（in_progress/revision21）。上轮c0470d0已合入main但用户退回提示层设计；本轮沿用feat/context-shortcuts-xingxu独立工作树，修改范围优先src/shared/shortcuts/ShortcutHints.tsx、shortcuts.css及相关测试。按钮快捷键在按钮旁浮现；无按钮命令以透明背景悬浮，不再用列表框。保留现有分发器、配置与录制保护，不触碰PDF坐标、橡皮擦或色板并行任务。当前仅完成最新需求/反馈读取、原子领取、工作树干净核验；spec2尚未实现或验证。下一步调整布局与定位、补回归和隔离原生证据，验证后合入本地main并重新submit；不安装/打包/发布。",
+      "context-shortcuts-xingxu：星序执行9230f8ce spec2返工，88c64dc改为透明快捷键文字、取消列表框/标题/描述，按实际DOM文字尺寸定位、避开按钮与DEV条，密集工具栏错行但仍邻近；无按钮命令透明悬浮。保留分发器和配置。core52/dispatcher50/布局16、浏览器83、build已通过；旧c0470d0在新增无列表框断言上失败。当前同步main29341cc；待集成完整verify、真实隔离原生取证、main合并并重新submit。未安装/打包/发布。",
+      "reader-eraser-pointer-xunzhou：代码与证据完成后合并本地 main 并提交任务进入 review；由用户检查 100%/120%/滚动及页外回入效果，归档仍仅由用户执行。",
       "windows-package-xingxu：使用 artifacts/windows/latest 的0.1.27 EXE/安装包；本轮未安装。23528921色板/弹窗、e5e73f0f图层精简、9230f8ce快捷键需完成并合入后另行打包；当前包不宣称包含未完成需求。",
       "24ea34e5 待用户验收；验收通过后可考虑把阅读器笔记历史独立成视图，并核对与 shortcuts 分支合并后的键位注册表。",
       "授权弹窗改造已在源码，现有安装版仍是旧系统窗口；待协调并行源码及现有架构门禁后再按标准package:windows生成安装包。详见docs/mcp-browser-consent-dialog-2026-09-16.md。",
@@ -845,6 +849,7 @@
       "依赖更新后保留MDX→js-yaml override直至上游解除旧精确锁；后续升级继续分别执行PDF/Markdown行为回归和audit。"
     ],
     "risks": [
+      "reader-eraser-pointer-xunzhou：修复前隔离实例未复现所报右下偏移，只能证明旧实现该样本已中心对齐；不将其写成已复现。CDP 日志有两次开发服务器 favicon.ico 404，但 pageerror 和应用逻辑 console error 为 0。",
       "0.1.5签名发布与必要CI已完成，但没有真实Windows GUI/论文站点/用户库端到端验收。解压插件不能自动替换自身，仅提供官方检查与下载；下载受理不等于已安装。PDF候选不等于已验证文件，缺失元数据不编造。Tauri签名不是Authenticode。",
       "本轮只做静态构建与随后必要CI；未安装到真实Chrome/Edge、未启动桌面或操作真实库。需完整安装器更新已注册native-host并单独更新0.6.0插件；PDF候选链接不等于下载/验证成功，缺失元数据不编造；Windows GUI最终使用由用户确认。",
       "0.5.0包已生成但未在真实Windows浏览器/用户文献库验收。本轮无测试、无Git提交、无安装和真实资料操作；保留Vite大分块及Rust未使用符号告警，不把构建成功等同功能实测通过。Native注册必须使用安装器，裸EXE不足；保持既有未签名发布和PDF/网络访问限制。",

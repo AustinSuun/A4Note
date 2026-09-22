@@ -1,8 +1,10 @@
 ﻿# A4 Note Agent 状态
+- reader-eraser-pointer-xunzhou：巡舟完成 ecbf83de PDF 橡皮擦再回归；新增单一 raw client→pdf-render-layer 坐标采样，预览与命中共享 pixel/percent/inside，中心一离页即在接触 ink 前停止，未改精确线段裁剪、指针捕获与累计保存。修复前 Windows/Tauri 118%/DPR1.25 稳定复现“环隐藏但页外 5px 仍擦除”；所报右下偏移在该隔离实例未复现，未虚构，修复后 100%/120%/滚动120% 命中中心误差均小于 0.00008px。真实 WebView 页外/回入、仅接触段、undo/redo、重载持久化、跨页、可写/隐藏/锁定层均通过；22 项 eraser、Reader/helpers、图层 55 项、完整 verify（Rust 215/0/5 ignored）、diagnostics 0、diff check 全绿。仅记录 dev favicon.ico 404，无 pageerror/应用逻辑 console error。详见 docs/mcp-pdf-reader-eraser-pointer-xunzhou-2026-09-22.md。
+
 
 ## 当前工作：上下文快捷键任务接手（星序）
 
-- context-shortcuts-xingxu：星序重新领取9230f8ce的spec2返工（in_progress/revision21）。上轮c0470d0已合入main但用户退回提示层设计；本轮沿用feat/context-shortcuts-xingxu独立工作树，修改范围优先src/shared/shortcuts/ShortcutHints.tsx、shortcuts.css及相关测试。按钮快捷键在按钮旁浮现；无按钮命令以透明背景悬浮，不再用列表框。保留现有分发器、配置与录制保护，不触碰PDF坐标、橡皮擦或色板并行任务。当前仅完成最新需求/反馈读取、原子领取、工作树干净核验；spec2尚未实现或验证。下一步调整布局与定位、补回归和隔离原生证据，验证后合入本地main并重新submit；不安装/打包/发布。
+- context-shortcuts-xingxu：星序执行9230f8ce spec2返工，88c64dc改为透明快捷键文字、取消列表框/标题/描述，按实际DOM文字尺寸定位、避开按钮与DEV条，密集工具栏错行但仍邻近；无按钮命令透明悬浮。保留分发器和配置。core52/dispatcher50/布局16、浏览器83、build已通过；旧c0470d0在新增无列表框断言上失败。当前同步main29341cc；待集成完整verify、真实隔离原生取证、main合并并重新submit。未安装/打包/发布。
 - reader-highlight-underline-baseline-xunzhou：巡舟完成 a35a4c83 阅读器高亮/下划线基线定位修复；按 PDF.js 基线语义对 0°/90°/180°/270° 高亮仅在降部侧扩展 20%，下划线移到基线外并保留 0.04×字形轴间隙，拖选预览与持久标注共用几何。旧标注数据、颜色/混合、重叠交互、文本框/形状/箭头/橡皮保持兼容。实现提交 983f3f7，最新 main d726c5d 已合入任务分支 ae13047；helpers、reader、selection 37、highlight 57、rotate 100/150/200% 各 151、完整 verify 全绿，diagnostics 0。详见 docs/mcp-reader-highlight-underline-baseline-xunzhou-2026-09-22.md。
 
 - windows-package-xingxu：用户授权本地EXE打包完成；0.1.27 windows-x64，main 4b40788，builtAt 2026-09-22T00:37:26.577Z（08:37）。package:windows 退出0/308.491秒，EXE与安装包SHA256独立核验一致，更新签名非空且与latest.json一致，5项前端入口嵌入与浮动工具坞CSS验证通过。Cargo.toml仅打包换行变化，按构建前SHA256逐字节恢复，业务源码哈希无变化。旧latest已归档。未包含23528921色板任务、e5e73f0f未交付图层精简或9230f8ce未完成快捷键；未完整verify、桌面测试、安装、推送、发布。详见 docs/mcp-windows-package-xingxu-2026-09-22.md。
@@ -43,7 +45,7 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-22T10:07:09+08:00
+更新时间：2026-09-22T10:22:20+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 

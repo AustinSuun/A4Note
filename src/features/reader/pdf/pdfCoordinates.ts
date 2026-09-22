@@ -27,3 +27,25 @@ export function pdfCoordinateLayer(element: HTMLElement): HTMLElement {
   }
   return element;
 }
+
+/** One raw client-to-page sample shared by cursor previews and hit testing.
+ * Keep the pixel and percentage coordinates together so the two consumers cannot
+ * accidentally measure against different boxes or apply zoom/DPR twice.
+ */
+export function pdfPointerCoordinates(element: HTMLElement, clientX: number, clientY: number) {
+  const layer = pdfCoordinateLayer(element);
+  const rect = layer.getBoundingClientRect();
+  if (!(rect.width > 0 && rect.height > 0)
+    || ![rect.left, rect.top, rect.width, rect.height, clientX, clientY].every(Number.isFinite)) return null;
+  const xPx = clientX - rect.left;
+  const yPx = clientY - rect.top;
+  return {
+    layer,
+    rect,
+    xPx,
+    yPx,
+    xPercent: (xPx / rect.width) * 100,
+    yPercent: (yPx / rect.height) * 100,
+    inside: xPx >= 0 && xPx <= rect.width && yPx >= 0 && yPx <= rect.height,
+  };
+}

@@ -13,6 +13,7 @@ const resolution = registerHooks({
   },
 });
 const { eraseInkPosition, eraserSpanOnSegment, pointInsideEraser } = await import('../src/features/reader/pdf/pdfInk.ts');
+const { pdfPointerCoordinates } = await import('../src/features/reader/pdf/pdfCoordinates.ts');
 resolution.deregister();
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -123,6 +124,40 @@ check('pointInsideEraser matches the round/square contract', () => {
   assert.equal(pointInsideEraser({ x: 4.9, y: 4.9 }, { x: 0, y: 0 }, 5, 5, 'square'), true);
 });
 
+console.log('\nshared pointer coordinates');
+
+const renderRect = { left: 424.2, top: -137.4, width: 731.6, height: 1034.85 };
+const renderLayer = { getBoundingClientRect: () => renderRect };
+const pageElement = {
+  classList: { contains: (name) => name === 'pdf-page' },
+  closest: () => null,
+  querySelector: (selector) => selector === '.pdf-render-layer' ? renderLayer : null,
+};
+
+check('preview pixels and hit percentages come from one fractional scrolled rect', () => {
+  const sample = pdfPointerCoordinates(
+    pageElement,
+    renderRect.left + renderRect.width * 0.75,
+    renderRect.top + renderRect.height * 0.34,
+  );
+  assert.ok(sample?.inside);
+  assert.equal(round(sample.xPx), round(renderRect.width * 0.75));
+  assert.equal(round(sample.yPx), round(renderRect.height * 0.34));
+  assert.equal(round(sample.xPercent), 75);
+  assert.equal(round(sample.yPercent), 34);
+});
+
+check('raw coordinates stay continuous outside and on re-entry without clamping', () => {
+  const inside = pdfPointerCoordinates(pageElement, renderRect.left + renderRect.width - 0.25, 200);
+  const outside = pdfPointerCoordinates(pageElement, renderRect.left + renderRect.width + 5, 200);
+  const returned = pdfPointerCoordinates(pageElement, renderRect.left + renderRect.width - 0.25, 200);
+  assert.equal(inside.inside, true);
+  assert.equal(outside.inside, false);
+  assert.ok(outside.xPercent > 100, 'off-page sample must remain raw instead of snapping to 100%');
+  assert.equal(returned.xPx, inside.xPx, 're-entry must return to the same pixel without a jump');
+  assert.equal(returned.xPercent, inside.xPercent);
+});
+
 console.log('\npointer mapping contract (source)');
 
 const readerSource = readFileSync(resolve(repoRoot, 'src/features/reader/pdf/PdfReader.tsx'), 'utf8');
@@ -140,9 +175,16 @@ check('eraser does not use the clamping pointFromEvent helper', () => {
   assert.ok(!/pointFromEvent\(/.test(eraseBody), 'clamped pointer would smear erasing along the page edge');
 });
 
-check('eraser bails out once the cursor leaves the page plus its radius', () => {
-  assert.ok(/point\.x\s*<\s*-radiusX/.test(eraseBody) && /point\.y\s*>\s*100\s*\+\s*radiusY/.test(eraseBody),
-    'expected an out-of-page early return guarded by the eraser radius');
+check('preview and hit testing use the same raw coordinate sample', () => {
+  assert.match(eraseBody, /pdfPointerCoordinates\(event\.currentTarget, event\.clientX, event\.clientY\)/);
+  assert.match(cursorBody, /pdfPointerCoordinates\(event\.currentTarget, event\.clientX, event\.clientY\)/);
+  assert.ok(!/event\.clientX\s*-\s*rect\.left/.test(eraseBody), 'erase must not duplicate the transform');
+  assert.ok(!/event\.clientX\s*-\s*rect\.left/.test(cursorBody), 'preview must not duplicate the transform');
+});
+
+check('eraser rejects every off-page sample before touching ink', () => {
+  assert.match(eraseBody, /if \(!pointer\?\.inside\) return/);
+  assert.ok(!/100\s*\+\s*radius[XY]/.test(eraseBody), 'one-radius off-page mutations are forbidden');
 });
 
 check('cursor preview is no longer clamped to the page box', () => {
@@ -151,7 +193,7 @@ check('cursor preview is no longer clamped to the page box', () => {
 });
 
 check('cursor preview is cleared immediately outside the page instead of retaining a stale ring', () => {
-  assert.match(cursorBody, /x\s*<\s*0\s*\|\|\s*x\s*>\s*rect\.width/);
+  assert.match(cursorBody, /if \(!pointer\?\.inside\)/);
   assert.match(cursorBody, /setEraserCursor\(null\)/);
   assert.ok(!/rect\.width\s*\*\s*0\.15/.test(cursorBody), 'the old dead zone kept the last cursor position visible');
 });
