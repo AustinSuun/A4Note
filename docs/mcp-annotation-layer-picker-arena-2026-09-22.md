@@ -103,7 +103,15 @@ page.goto: Timeout 30000ms exceeded.
 
 - 契约证据：`.a4-tests/annotation-layer-picker/<run>/result.json`、`stages.log`、`screenshots/`（`picker-1-layer`、`picker-5-layer`、`picker-12-light`、`picker-12-scroll`、`picker-12-dark`、`picker-confirm`、`picker-narrow-z150`、`dock-long-name`）。
 - 夹具为真实组件 + 真实应用 CSS（`tokens.css`、`base.css`、`reader-annotation-dock.css`、`reader-annotation-layers.css`）+ 内存图层 API；不接触真实资料库、不启动原生进程。
-- **未提供原生 `dev:live` 截图（验收第 8 项未满足，如实记录）**：本轮实际尝试过原生取证，被两道硬性约束挡住。其一，仓库内已有的隔离实例（`.tmp/live-dev/*`）都留着 `owner.lock.json`，启动器按 fail-closed 设计直接拒绝复用，也不会清除他人锁（其提示明确要求不得终止他人会话）；其二，新建实例会使用 `.build/live-dev/<instance>/target` 这个全新的 Rust 目标目录，需要完整冷编译，在无人值守窗口内无法可靠完成；此后仍要经系统文件对话框打开 PDF 才会出现阅读器工具坞。这与已归档卡片 `23528921` 记录的限制一致（该卡的弹窗几何同样由隔离 Chrome 回归覆盖并获验收）。本轮没有伪造原生截图；原生复核方式：在具备暖目标目录或交互条件的会话中执行 `npm run dev:live -- --instance <新代号> --port <端口> --cdp-port <端口>`，打开内置指南 PDF 后对照第 2 节的断言点检查 1/5/12 层与浅深主题，并记录 pageerror/console error。
+- **8 dev:live 隔离实例原生取证已完成（1/5/12 层）**：用官方启动器新建隔离实例 `arena-f6`（`app.aster.research.dev.arena-f6.w8cbe287824`，端口 1451/CDP 9261），在真实 Tauri 窗口内打开内置指南 PDF，逐级创建到 5 层与 12 层并取证：
+  - 底部状态条为 `DEV arena-f6 · 独立测试库（原生已核验 app.aster.research.dev.arena-f6.w8cbe287824/AsterData）`，即原生侧已核验隔离身份。
+  - 工具坞入口 1 层时即固定 64px、只显示 `1/1`，`aria-label` 携带完整层名；12 层时为 `12/12`。
+  - 弹窗内 `.annotation-layer-dot` 计数 0；每行删除按钮数量等于行数；活动行以整行底色呈现。
+  - 标题栏「新图层」实测 78×30、未被裁切且在弹窗内；12 层时 `popoverScrollW 280 = popoverClientW 280`（无横向溢出），列表 `scrollHeight 446 > clientHeight 264`（内部滚动）。
+  - 把活动层重命名为「超长图层名称 Long Layer Name 12345 🚀 emoji」后，入口宽度仍为 64px，`aria-label` 同步为该长名称。
+  - 13 项断言 12 项通过，唯一失败项是 `favicon.ico` 404（同一窗口内 `fetch('/favicon.ico') → 404`，而 `/vite.svg`、`/manifest.webmanifest` 均为 200），与应用逻辑无关，与其它卡片记录的 dev favicon 404 一致。无 pageerror、无应用 console error。
+  - 证据：`.tmp/shots/annotation-layer-picker-native/native-2026-09-22T08-51-04-047Z/`（result.json + 7 张截图），已上传任务卡；驱动脚本为 `.tmp/arena-mcp/native-shots.mjs`（临时工具，不入库）。
+  - 复用说明：该实例目录与暖目标 `.build/live-dev/arena-f6/target` 已保留，冷启动首次编译 1m47s、增量 10s；`.tmp/live-dev/arena-f6/owner.lock.json` 按仓库约定保留（ownerPid 已退出，复用前需确认 PID 后清理）。
 - 启动器与探针脚本、日志均留在 `.tmp/` 与 `.a4-tests/`，未进入 `docs/`。
 
 ## 6. 未做与下一步
