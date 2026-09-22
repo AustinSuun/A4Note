@@ -17,6 +17,8 @@ fs.mkdirSync(evidence, { recursive: true });
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'a4-compact-ui-'));
 let browser, ws, web, tasks;
 let seq = 0, checks = 0;
+// Mirrors src/features/taskboard/taskboard.css "Taskboard readability" overrides (206b641); update both together.
+const READABILITY_FONTS = { '.tb-header h1': '27px', '.tb-project-name': '14px', '.tb-column h2': '16px', '.tb-column header p': '14px', '.tb-empty': '15px', '.tb-filters > input': '15px' };
 const pending = new Map(), records = [], errors = [];
 const pause = ms => new Promise(r => setTimeout(r, ms));
 const ok = (value, message) => { assert(value, message); checks++; };
@@ -141,7 +143,10 @@ try {
         const fit = await evaluate(`(()=>{const b=document.querySelector('.tb-board'),cols=[...document.querySelectorAll('.tb-column')],last=cols[cols.length-1].getBoundingClientRect(),br=b.getBoundingClientRect();return{scroll:b.scrollWidth,client:b.clientWidth,lastRight:last.right,boardRight:br.right}})()`);
         ok(fit.scroll <= fit.client + 2 && fit.lastRight <= fit.boardRight + 2, 'columns adapt to window width ' + [width, sidebar]);
       }
-      assert.deepEqual(layout.fonts, { '.tb-header h1': '25px', '.tb-project-name': '13px', '.tb-column h2': '15px', '.tb-column header p': '13px', '.tb-empty': '14px', '.tb-filters > input': '14px' }); checks++;
+      // Font sizes come from the fixed-pixel "Taskboard readability" block at the end of taskboard.css
+      // (`.taskboard .tb-header h1 { font-size: 27px }` …), not from the --ui-* tokens, so the expected values are
+      // spelled out here; they must stay identical across widths, zoom levels and sidebar states.
+      assert.deepEqual(layout.fonts, READABILITY_FONTS, 'taskboard readability font sizes ' + [width, zoom, sidebar]); checks++;
       records.push({ width, zoom, sidebar, headerHeight: layout.rects[0].bottom - layout.rects[0].top });
     }
     await evaluate(`document.documentElement.style.zoom='1';document.documentElement.dataset.sidebar='closed'`);

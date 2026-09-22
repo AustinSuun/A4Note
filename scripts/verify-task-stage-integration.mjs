@@ -315,13 +315,30 @@ export const launchLocalTasks = async (port = 4319, chooseProject = false, expli
   await evaluate(`document.querySelector('.tb-stage-task-title').click()`);
   await until(`!!document.querySelector('.tb-stage-review .tb-review-summary')`);
   ok(!await evaluate(`!!document.querySelector('dialog[open]')`),'Review selection uses large inline evidence workspace');
-  ok(await evaluate(`document.querySelector('.tb-review-summary').textContent.includes('未提供结构化独立验收评价')`),'Developer report is not fabricated independent approval');
+  // The stage evidence summary must present the developer's report as developer-provided evidence and
+  // never as an independent verdict (TaskReviewSummary.tsx): provenance in the meta line, the always-visible
+  // caution note, no verdict wording, and the structured-verdict caveat one disclosure away. The predicate
+  // is also run against a tampered clone so the assertion can never pass vacuously.
+  const reviewHonesty = `(root=>{if(!root)return {ok:false,reason:'summary missing'};const meta=root.querySelector('.tb-review-meta');const caution=root.querySelector('.tb-review-caution[role="note"]');const text=root.textContent;const disclosure=[...root.querySelectorAll('.tb-secondary-disclosure')].find(b=>b.textContent.includes('证据说明与限制'));const reasons=[];if(!meta||!meta.textContent.includes('开发 Agent'))reasons.push('no developer provenance');if(!caution||!caution.textContent.includes('开发自述不等于独立验收'))reasons.push('caution note missing');if(/独立验收通过|验收通过|验收已通过|已通过验收/.test(text))reasons.push('verdict wording present');if(!disclosure)reasons.push('provenance disclosure missing');return {ok:reasons.length===0,reasons,meta:meta?.textContent,caution:caution?.textContent};})`;
+  const honest = await evaluate(`(${reviewHonesty})(document.querySelector('.tb-stage-review .tb-review-summary'))`);
+  ok(honest.ok,'Developer report is labelled as developer-provided evidence, not independent approval '+JSON.stringify(honest));
+  const tampered = await evaluate(`(()=>{const clone=document.querySelector('.tb-stage-review .tb-review-summary').cloneNode(true);clone.querySelector('.tb-review-caution')?.remove();const verdict=document.createElement('p');verdict.textContent='独立验收通过';clone.appendChild(verdict);return (${reviewHonesty})(clone);})()`);
+  ok(!tampered.ok&&tampered.reasons.includes('caution note missing')&&tampered.reasons.includes('verdict wording present'),'Honesty predicate rejects a fabricated approval '+JSON.stringify(tampered));
+  await evaluate(`[...document.querySelectorAll('.tb-stage-review .tb-review-summary .tb-secondary-disclosure')].find(b=>b.textContent.includes('证据说明与限制')).click()`);
+  await until(`document.querySelector('.tb-stage-review .tb-review-summary').textContent.includes('未提供结构化独立验收评价')`);
+  ok(true,'Provenance notes still state that no structured independent verdict exists');
+  await evaluate(`[...document.querySelectorAll('.tb-stage-review .tb-review-summary .tb-secondary-disclosure')].find(b=>b.textContent.includes('证据说明与限制')).click()`);
+  await until(`!document.querySelector('.tb-stage-review .tb-review-summary').textContent.includes('未提供结构化独立验收评价')`);
   await screenshot('stage-review-evidence.png');
   await click('打开完整详情与人工审核');
-  await until(`!!document.querySelector('dialog[open] textarea[aria-label="调整意见"]')`);
+  await until(`!!document.querySelector('dialog[open] .tb-review-buttons button[aria-expanded]')`);
   ok(await evaluate(`document.querySelector('.tb-detail-tabs button[aria-pressed="true"]').textContent==='验收与证据'`),'Review opens on evidence rather than long requirements');
   ok(await evaluate(`document.querySelectorAll('.tb-detail-tabs button').length===4`),'Four explicit detail sections without a plan tab');
   await screenshot('review-evidence-first.png');
+  // The feedback textarea sits behind the explicit「需要调整」toggle (TaskBoard.tsx tb-feedback-panel); open it first.
+  ok(!await evaluate(`!!document.querySelector('dialog[open] textarea[aria-label="调整意见"]')`),'Feedback textarea stays collapsed until requested');
+  await click('需要调整');
+  await until(`!!document.querySelector('dialog[open] textarea[aria-label="调整意见"]')`);
   await input('textarea[aria-label="调整意见"]','保留我的反馈');
   await click('任务要求');
   ok(await evaluate(`!document.querySelector('section[aria-label="任务要求与验收标准"]').hidden`),'Requirements section reachable');

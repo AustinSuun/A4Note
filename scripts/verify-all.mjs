@@ -20,6 +20,8 @@ const steps = [
   ['node', ['scripts/verify-annotation-history.mjs']],
   ['node', ['scripts/verify-reader-priority-fixes.mjs']],
   ['node', ['scripts/verify-task-binding-guide.mjs']],
+  ['node', ['scripts/verify-taskboard-compact.mjs']],
+  ['node', ['scripts/verify-task-stage-integration.mjs']],
   ...(isWindows ? [['node', ['scripts/prepare-native-host.mjs', '--debug']]] : []),
   ['npm', ['run', 'build']],
   ['npm', ['run', 'test:dev-live']],
