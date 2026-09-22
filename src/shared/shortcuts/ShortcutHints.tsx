@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { canDispatchShortcut, formatBinding, resolveShortcuts } from '../../core/shortcuts';
+import { canDispatchShortcut, resolveShortcuts } from '../../core/shortcuts';
 import { elementIsVisible, eventTargetIsEditable, modalIsOpen } from './dispatcher';
 import { layoutShortcutHints, type HintPosition, type HintRect } from './hintLayout';
+import { hintKeycaps } from './hintKeycaps';
 import type { ShortcutStore } from './store';
 
-type Hint = { id: string; label: string; enabled: boolean; anchor?: Element };
+type Hint = { id: string; keys: string[]; title: string; group: string; enabled: boolean; anchor?: Element };
 const rectOf = (element: Element): HintRect => {
   const { left, top, right, bottom } = element.getBoundingClientRect();
   return { left, top, right, bottom };
@@ -57,7 +58,7 @@ export function ShortcutHints({ store }: { store: ShortcutStore }) {
         // One primary effective binding keeps the overlay compact. All alternatives
         // remain in the existing button tooltip, aria-keyshortcuts and editor.
         const node = nodes.find(node => node.dataset.shortcutId === command.id);
-        return [{ id: command.id, label: formatBinding(bindings[0]), enabled: canDispatchShortcut(command, context), anchor: node ? sceneTileIcon(node) ?? node : undefined }];
+        return [{ id: command.id, keys: hintKeycaps(bindings[0]), title: command.title.replace(/^笔记工作台：/, ''), group: command.group, enabled: canDispatchShortcut(command, context), anchor: node ? sceneTileIcon(node) ?? node : undefined }];
       }));
     };
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(refresh); };
@@ -84,19 +85,24 @@ export function ShortcutHints({ store }: { store: ShortcutStore }) {
 
   useLayoutEffect(() => {
     if (!store.hintVisible || !root.current) return;
-    const elements = [...root.current.querySelectorAll<HTMLElement>('[data-hint-id]')];
+    const elements = [...root.current.querySelectorAll<HTMLElement>('[data-measure-id]')];
+    const keyWidth = Math.max(0, ...elements.map(node => node.querySelector('.shortcut-hint-keys')!.getBoundingClientRect().width));
+    root.current.style.setProperty('--shortcut-key-column', `${Math.ceil(keyWidth)}px`);
     const controls = [...document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role="button"], [role="menuitemradio"], #a4note-live-dev-badge')].filter(visibleControl).flatMap(controlRects);
     const measurements = hints.map(hint => {
-      const node = elements.find(element => element.dataset.hintId === hint.id)!;
+      const node = elements.find(element => element.dataset.measureId === hint.id)!;
       const rect = node.getBoundingClientRect();
-      return { id: hint.id, width: Math.ceil(rect.width), height: Math.ceil(rect.height), anchor: hint.anchor ? rectOf(hint.anchor) : undefined };
+      const keys = node.querySelector('.shortcut-hint-keys')!.getBoundingClientRect();
+      return { id: hint.id, width: Math.ceil(keys.width), height: Math.ceil(keys.height), floatingWidth: Math.ceil(rect.width), floatingHeight: Math.ceil(rect.height), group: hint.group, beside: hint.anchor?.tagName.toLowerCase() === 'svg', anchor: hint.anchor ? rectOf(hint.anchor) : undefined };
     });
     setPositions(layoutShortcutHints(measurements, { left: 8, top: 8, right: innerWidth - 8, bottom: innerHeight - 8 }, controls));
   }, [hints, store, store.hintVisible]);
 
+  const keys = (hint: Hint) => <span className="shortcut-hint-keys">{hint.keys.map((key, i) => <span className="shortcut-hint-key-part" key={i}>{i > 0 && <span className="shortcut-hint-plus">+</span>}<kbd>{key}</kbd></span>)}</span>;
   return createPortal(<div ref={root} className={`shortcut-hints ${store.hintVisible ? 'is-visible' : ''}`} aria-hidden="true">
-    {hints.map(hint => <kbd key={hint.id} data-hint-id={hint.id} data-hint-placement={positions[hint.id]?.placement}
-      className={`shortcut-key-hint ${hint.enabled ? '' : 'is-disabled'}`}
-      style={{ left: positions[hint.id]?.left ?? 0, top: positions[hint.id]?.top ?? 0, visibility: positions[hint.id] ? 'visible' : 'hidden' }}>{hint.label}</kbd>)}
+    {hints.map(hint => <span key={hint.id} data-hint-id={hint.id} data-hint-placement={positions[hint.id]?.placement}
+      className={`shortcut-key-hint ${positions[hint.id]?.placement === 'floating' ? 'shortcut-floating-hint' : ''} ${hint.enabled ? '' : 'is-disabled'}`}
+      style={{ left: positions[hint.id]?.left ?? 0, top: positions[hint.id]?.top ?? 0, visibility: positions[hint.id] ? 'visible' : 'hidden' }}>{keys(hint)}{positions[hint.id]?.placement === 'floating' && <span className="shortcut-hint-label">{hint.title}</span>}</span>)}
+    <div className="shortcut-hint-measures">{hints.map(hint => <span key={hint.id} data-measure-id={hint.id} className="shortcut-floating-hint">{keys(hint)}<span className="shortcut-hint-label">{hint.title}</span></span>)}</div>
   </div>, document.body);
 }

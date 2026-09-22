@@ -1,6 +1,6 @@
 /** Viewport CSS-pixel layout; no knowledge of PDF zoom, DPR or shortcut dispatch. */
 export type HintRect = { left: number; top: number; right: number; bottom: number };
-export type HintMeasurement = { id: string; width: number; height: number; anchor?: HintRect };
+export type HintMeasurement = { id: string; width: number; height: number; floatingWidth?: number; floatingHeight?: number; group?: string; beside?: boolean; anchor?: HintRect };
 export type HintPosition = { left: number; top: number; placement: 'adjacent' | 'floating' };
 
 export function hintRectsOverlap(a: HintRect, b: HintRect, gap = 0) {
@@ -11,7 +11,9 @@ export function layoutShortcutHints(items: HintMeasurement[], bounds: HintRect, 
   const result: Record<string, HintPosition> = {};
   const occupied = [...controls];
   const place = (item: HintMeasurement, left: number, top: number, placement: HintPosition['placement']) => {
-    const box = { left, top, right: left + item.width, bottom: top + item.height };
+    const width = placement === 'floating' ? item.floatingWidth ?? item.width : item.width;
+    const height = placement === 'floating' ? item.floatingHeight ?? item.height : item.height;
+    const box = { left, top, right: left + width, bottom: top + height };
     if (box.left < bounds.left || box.top < bounds.top || box.right > bounds.right || box.bottom > bounds.bottom) return false;
     if (occupied.some(other => hintRectsOverlap(box, other, 4))) return false;
     occupied.push(box); result[item.id] = { left, top, placement }; return true;
@@ -23,31 +25,61 @@ export function layoutShortcutHints(items: HintMeasurement[], bounds: HintRect, 
     if (!anchor) continue;
     const centered = Math.max(bounds.left, Math.min(bounds.right - item.width, (anchor.left + anchor.right - item.width) / 2));
     const top = Math.max(bounds.top, Math.min(bounds.bottom - item.height, (anchor.top + anchor.bottom - item.height) / 2));
-    if (place(item, centered, anchor.top - 8 - item.height, 'adjacent')
-      || place(item, centered, anchor.bottom + 8, 'adjacent')
-      || place(item, anchor.right + 8, top, 'adjacent')
-      || place(item, anchor.left - item.width - 8, top, 'adjacent')) continue;
-    for (let row = 1; row < 5; row += 1) {
-      const distance = 8 + row * (item.height + 8);
-      // Subtract from TOP, not bottom: the old bottom-30 formula covered icons.
-      if (place(item, centered, anchor.top - distance - item.height, 'adjacent')
-        || place(item, centered, anchor.bottom + distance, 'adjacent')) break;
+    if (item.beside && (place(item, anchor.right + 6, top, 'adjacent') || place(item, anchor.left - item.width - 6, top, 'adjacent'))) continue;
+    const bottomDock = anchor.top > bounds.top + (bounds.bottom - bounds.top) * .6;
+    const nearTop = anchor.top < bounds.top + 64;
+    for (let row = 0; row < 5 && !result[item.id]; row += 1) {
+      const distance = 7 + row * (item.height + 6);
+      const above = anchor.top - distance - item.height, below = anchor.bottom + distance;
+      // Keep a bottom dock's keys in coherent rows ABOVE it, rather than a
+      // zigzag across both sides. Top-bar controls use rows below the bar.
+      if (bottomDock) place(item, centered, above, 'adjacent');
+      else if (nearTop) place(item, centered, below, 'adjacent');
+      else if (!place(item, centered, above, 'adjacent')) place(item, centered, below, 'adjacent');
     }
+    if (!result[item.id]) place(item, anchor.right + 7, top, 'adjacent') || place(item, anchor.left - item.width - 7, top, 'adjacent');
+    if (!result[item.id]) place(item, centered, bottomDock ? anchor.bottom + 7 : anchor.top - item.height - 7, 'adjacent');
   }
-  // Unanchored commands are individual transparent text hints in free space,
-  // not rows inside a panel. Wrap into another column rather than clipping.
+  // Free-floating key + action rows share an aligned left edge and move
+  // monotonically down each column. Group spacing, not a card or headings,
+  // separates related commands. Never backfill earlier gaps with later groups.
   const floating = items.filter(item => !result[item.id]);
-  const column = Math.max(96, ...floating.map(item => item.width + 20));
+  const columnWidth = Math.max(1, ...floating.map(item => item.floatingWidth ?? item.width));
+  const start = Math.min(bounds.top + 64, bounds.bottom - 24);
+  let right = bounds.right, cursor = start;
+  const groups: HintMeasurement[][] = [];
   for (const item of floating) {
-    for (let right = bounds.right; right - item.width >= bounds.left && !result[item.id]; right -= column) {
-      for (let top = Math.min(88, bounds.top + 56); top + item.height <= bounds.bottom; top += item.height + 12) {
-        if (place(item, right - item.width, top, 'floating')) break;
+    const last = groups.at(-1);
+    if (item.group && last?.[0].group === item.group) last.push(item);
+    else groups.push([item]);
+  }
+  for (const [index, group] of groups.entries()) {
+    if (index > 0) cursor += 10;
+    let placed = false;
+    for (; right - columnWidth >= bounds.left; right -= columnWidth + 20, cursor = start) {
+      const occupiedBefore = occupied.length, cursorBefore = cursor;
+      for (const item of group) {
+        const height = item.floatingHeight ?? item.height;
+        for (; cursor + height <= bounds.bottom; cursor += 6) {
+          if (place(item, right - columnWidth, cursor, 'floating')) { cursor += height + 8; break; }
+        }
+        if (!result[item.id]) break;
       }
+      if (group.every(item => result[item.id])) { placed = true; break; }
+      // Keep a related group (e.g. zoom in/out/reset) together when wrapping.
+      // Trial reservations are rolled back, including their collision boxes.
+      occupied.length = occupiedBefore; cursor = cursorBefore;
+      group.forEach(item => { delete result[item.id]; });
     }
-    // Tiny windows may have little room beneath the titlebar; try all free rows.
-    if (!result[item.id]) for (let top = bounds.top; top + item.height <= bounds.bottom && !result[item.id]; top += item.height + 6) {
-      for (let left = bounds.left; left + item.width <= bounds.right; left += 12) {
-        if (place(item, left, top, 'floating')) break;
+    if (placed) continue;
+    // Extremely cramped/custom registries may not fit a complete group in any
+    // remaining column. Split only as a last resort, never into the titlebar.
+    for (const item of group) {
+      const width = item.floatingWidth ?? item.width, height = item.floatingHeight ?? item.height;
+      for (let top = start; top + height <= bounds.bottom && !result[item.id]; top += height + 6) {
+        for (let left = bounds.right - width; left >= bounds.left; left -= 12) {
+          if (place(item, left, top, 'floating')) break;
+        }
       }
     }
   }

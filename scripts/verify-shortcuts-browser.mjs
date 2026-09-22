@@ -15,8 +15,8 @@ const baselinePlugin={name:'baseline-shortcut-hints',enforce:'pre',resolveId(id,
 }};
 if(baseline){
   fs.mkdirSync('.tmp/shortcuts-baseline',{recursive:true});
-  for(const file of ['ShortcutHints.tsx','shortcuts.css']) {
-    let content=execFileSync('git',['show',`c0470d0:src/shared/shortcuts/${file}`],{encoding:'utf8'});
+  for(const file of ['ShortcutHints.tsx','shortcuts.css','hintLayout.ts']) {
+    let content=execFileSync('git',['show',`d6d70d8:src/shared/shortcuts/${file}`],{encoding:'utf8'});
     if(file.endsWith('.tsx')) content=content.replaceAll('../../core/','/src/core/').replaceAll("'./dispatcher'","'/src/shared/shortcuts/dispatcher'").replaceAll("'./store'","'/src/shared/shortcuts/store'");
     fs.writeFileSync(`.tmp/shortcuts-baseline/${file}`,content);
   }
@@ -42,8 +42,10 @@ try {
   check(await page.locator('.shortcut-hints').evaluate(n=>getComputedStyle(n).pointerEvents),'none','hints never intercept pointers');
   check(await page.locator('.shortcut-hints').getAttribute('aria-hidden'),'true','hints do not duplicate accessible controls');
   check(await page.locator('.shortcut-hint-panel').count(),0,'spec2: boxed command list removed');
-  check(await page.locator('.shortcut-hints > :not(kbd)').count(),0,'spec2: only floating key text, no headings or descriptions');
-  check(await page.locator('[data-hint-id="reader.tool.highlight"]').innerText(),'Ctrl+H','primary effective binding by its button');
+  check(await page.locator('[data-hint-id] .shortcut-hint-keys kbd').count()>30,true,'spec3: real keycaps instead of plain text');
+  check(await page.locator('[data-hint-placement="adjacent"] .shortcut-hint-label').count(),0,'spec3: button hints do not repeat action names');
+  check(await page.locator('[data-hint-id="reader.undo"] .shortcut-hint-label').innerText(),'撤销标注','spec3: unanchored keys have real action on their right');
+  check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-keys').textContent(),'Ctrl+H','primary effective binding by its button');
   check(await page.locator('[data-hint-id="reader.zoomIn"]').getAttribute('data-hint-placement'),'adjacent','right-side zoom no longer relegated to panel');
   await page.screenshot({path:path.join(evidence,'01-reader-hints.png')});
   await page.keyboard.up('Control');await page.waitForTimeout(180);
@@ -102,17 +104,22 @@ try {
       return {viewport:[innerWidth,innerHeight],outside:badges.filter(r=>r.left<0||r.top<0||r.right>innerWidth+1||r.bottom>innerHeight+1).length,
         hidden:nodes.filter(n=>getComputedStyle(n).visibility==='hidden').length,
         backgrounds:nodes.filter(n=>getComputedStyle(n).backgroundColor!=='rgba(0, 0, 0, 0)'||getComputedStyle(n).boxShadow!=='none'||getComputedStyle(n).borderTopWidth!=='0px').length,
+        bareKeys:nodes.flatMap(n=>[...n.querySelectorAll('kbd')]).filter(k=>getComputedStyle(k).borderBottomWidth==='0px'||getComputedStyle(k).borderRadius==='0px').length,
+        wrongLabels:nodes.filter(n=>{const label=n.querySelector('.shortcut-hint-label'),keys=n.querySelector('.shortcut-hint-keys');if(n.dataset.hintPlacement==='adjacent')return !!label;return !label||!label.textContent.trim()||label.getBoundingClientRect().left<keys.getBoundingClientRect().right;}).length,
         overlaps:badges.some((r,i)=>badges.slice(i+1).some(s=>overlap(r,s))),
         coversControl:badges.some(r=>controls.some(s=>overlap(r,s))),
         dockFloating:[...document.querySelectorAll('#tool-dock [data-shortcut-id]')].filter(n=>document.querySelector(`[data-hint-id="${n.dataset.shortcutId}"]`)?.dataset.hintPlacement!=='adjacent').length};
     });
-    if(geometry.dockFloating){
+    if(geometry.dockFloating||geometry.hidden){
+      console.log('MEASURE',JSON.stringify(await page.evaluate(()=>[...document.querySelectorAll('[data-measure-id]')].map(n=>({id:n.dataset.measureId,w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height,keys:n.querySelector('.shortcut-hint-keys').getBoundingClientRect().width})))));
       console.log('FAILED GEOMETRY',JSON.stringify(await page.evaluate(()=>[...document.querySelectorAll('#tool-dock [data-shortcut-id]')].map(n=>{const r=n.getBoundingClientRect();const h=document.querySelector(`[data-hint-id="${n.dataset.shortcutId}"]`);return {id:n.dataset.shortcutId,rect:r.toJSON(),hint:h?.outerHTML,hit:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.outerHTML?.slice(0,180)};}))));
       await page.screenshot({path:path.join(evidence,'failure.png')});
     }
     check(geometry.outside,0,`${width}x${height} zoom ${zoom}: hints inside viewport`);
     check(geometry.hidden,0,`${width}x${height} zoom ${zoom}: every bound command displayed`);
     check(geometry.backgrounds,0,`${width}x${height} zoom ${zoom}: transparent text without boxes`);
+    check(geometry.bareKeys,0,`${width} zoom ${zoom}: individual keys have keycap edges`);
+    check(geometry.wrongLabels,0,`${width} zoom ${zoom}: only floating rows have right-hand action labels`);
     check(geometry.overlaps,false,`${width}x${height} zoom ${zoom}: hints do not overlap`);
     check(geometry.coversControl,false,`${width}x${height} zoom ${zoom}: no icons or DEV strip covered`);
     check(geometry.dockFloating,0,`${width}x${height} zoom ${zoom}: every dense toolbar button has adjacent key`);
@@ -127,7 +134,11 @@ try {
   const after=await page.locator('[data-hint-id="reader.tool.highlight"]').boundingBox();
   const movedControl=await page.locator('[data-shortcut-id="reader.tool.highlight"]').boundingBox();
   check(after.y<before.y,true,'anchor reflow followed while Ctrl held');
-  check(Math.min(Math.abs(after.y+after.height-movedControl.y),Math.abs(after.y-movedControl.y-movedControl.height))<=32,true,'reflow hint stays next to current control bounds');
+  check(Math.min(Math.abs(after.y+after.height-movedControl.y),Math.abs(after.y-movedControl.y-movedControl.height))<=after.height+15,true,'reflow hint stays next to current control bounds');
+  await page.locator('#tool-dock [data-shortcut-id="reader.tool.highlight"]').evaluate(n=>{n.style.display='none';});await page.waitForTimeout(180);
+  check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-label').innerText(),'高亮','hidden button becomes a floating named action');
+  await page.locator('#tool-dock [data-shortcut-id="reader.tool.highlight"]').evaluate(n=>{n.style.display='';});await page.waitForTimeout(180);
+  check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-label').count(),0,'restored button removes duplicate action name');
   await page.locator('[data-shortcut-id="reader.tool.highlight"]').evaluate(n=>n.style.display='none');await page.waitForTimeout(120);
   check(await page.locator('[data-hint-id="reader.tool.highlight"]').getAttribute('data-hint-placement'),'floating','hidden control becomes bare floating hint');
   await page.locator('[data-shortcut-id="reader.tool.highlight"]').evaluate(n=>n.style.display='');await page.waitForTimeout(120);

@@ -1,9 +1,17 @@
 .shortcut-hints { position: fixed; inset: 0; z-index: 10000; pointer-events: none; opacity: 0; transition: opacity 140ms ease; zoom: calc(1 / var(--ui-zoom, 1)); color: var(--ink, #243b31); }
 .shortcut-hints.is-visible { opacity: 1; }
 .shortcut-hints *, .shortcut-hints kbd { pointer-events: none !important; }
-/* Only the shortcut text floats over the current scene: no panel, card, border,
-   heading or command list. Text halo keeps keys readable over PDF/image content. */
-.shortcut-hints .shortcut-key-hint { position: fixed; display: block; box-sizing: border-box; max-width: min(220px, calc(100vw - 16px)); margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font: 600 12px/20px var(--font-ui, sans-serif); white-space: normal; overflow-wrap: anywhere; text-shadow: 0 0 2px var(--surface, #fff), 0 0 4px var(--surface, #fff), 0 0 6px var(--surface, #fff); }
+/* The overall layer stays transparent. Only individual keys have a light keycap;
+   unanchored commands get an aligned action label to the right, never a card. */
+.shortcut-hints .shortcut-key-hint { position: fixed; display: inline-flex; align-items: center; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; font: 12px/20px var(--font-ui, sans-serif); }
+.shortcut-hints .shortcut-hint-keys { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; width: max-content; max-width: min(190px, calc(100vw - 24px)); justify-self: start; }
+.shortcut-hints .shortcut-hint-key-part { display: inline-flex; gap: 3px; align-items: center; }
+.shortcut-hints .shortcut-hint-plus { font-size: 10px; color: var(--muted, #617267); text-shadow: 0 0 3px var(--surface, #fff); }
+.shortcut-hints kbd { display: inline-block; box-sizing: border-box; min-width: 18px; max-width: 160px; margin: 0; padding: 0 4px; border: 1px solid var(--line, #ccd8ce); border-bottom-width: 2px; border-radius: 4px; background: color-mix(in srgb, var(--surface, #fff) 92%, transparent); box-shadow: 0 1px 2px #0000000d; font: 600 11px/18px var(--font-ui, sans-serif); text-align: center; overflow-wrap: anywhere; }
+.shortcut-hints .shortcut-floating-hint { display: grid; grid-template-columns: var(--shortcut-key-column, 106px) minmax(0, 1fr); align-items: center; column-gap: 10px; width: min(232px, calc(100vw - 24px)); box-sizing: border-box; }
+.shortcut-hints .shortcut-hint-label { min-width: 0; font: 12px/19px var(--font-ui, sans-serif); color: var(--ink, #243b31); overflow-wrap: anywhere; text-shadow: 0 0 3px var(--surface, #fff), 0 0 5px var(--surface, #fff); }
+.shortcut-hints .shortcut-hint-measures { position: fixed; left: 0; top: 0; visibility: hidden; }
+.shortcut-hints .shortcut-hint-measures > span { position: absolute; top: 0; left: 0; }
 .shortcut-hints .is-disabled { opacity: .45; }
 .shortcut-editor { color: var(--ink); min-width: 0; font-size: var(--ui-control-font-size, 13px); }
 .shortcut-editor p { margin: 8px 0; line-height: 1.6; }
