@@ -3152,3 +3152,8 @@ the final visual check still needs a manual refresh of the dev preview.
 ## 阅读器笔记侧栏重构（青岚，2026-09-22）
 
 完成任务 bcd4de7e spec9：移除笔记面板顶部标签整行、标题输入、文档计数/新增按钮和 Markdown 冗余状态行；标题改为当前论文文档下拉，统一提供切换、新建、重命名与总览入口。切换/新建先排空保存并防重复，正文继续复用 MarkdownLiveEditor、Library note session 与标注引用。静态回归16/16、真实组件浏览器交互（12文档/键盘/重命名/新建/深色125%）通过且零页面错误，note 51/51、note browser 42/42、reader、tsc、build、diagnostics 及完整 verify（Rust 215 passed / 5 ignored）通过。dev:live 后台未保持 CDP，因此未冒充原生截图。未打包、安装、推送或发布。详见 docs/mcp-reader-note-sidebar-qinglan-2026-09-22.md。
+
+
+## 目录树彩虹层级线退回恢复（青岚，2026-09-22）
+
+rainbow-tree-recovery-qinglan：用户退回 7876734f 后完成恢复修订。审计确认被退回版新增水平连接臂并让父级竖线提前截止，破坏原有纯竖线和完整子树连续性；现删除 branch DOM/CSS/API，恢复父 rail 覆盖完整可见子树，同时保留 CSS zoom 局部坐标反变换与共享深度轴归一化。Explorer/Library 真实 React DOM 24 组（1–6级、UI80/100/125/150%、DPR1/1.25/1.5）零水平线，最大轴误差0.03125px、步长0、完整子树末端0.203125px，pageerror/console error 0；library、note51/51、note browser42/42、reader、tsc、build通过。完整 verify 通过（A4Note verification passed；Rust 215 passed / 5 ignored）。未打包安装推送发布。详见 docs/mcp-rainbow-tree-qinglan-2026-09-22.md。

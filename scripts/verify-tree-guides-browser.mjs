@@ -41,17 +41,16 @@ try {
   for(const zoom of [.8,1,1.25,1.5]){
    await page.evaluate(z=>{document.documentElement.style.zoom=String(z)},zoom); await page.waitForTimeout(100);
    for(const kind of ['explorer','library']){
-    const metric=await page.evaluate(kind=>{const host=document.querySelector('[data-kind="'+kind+'"]');const rows=[...host.querySelectorAll('[data-tree-row]')];const rails=[...host.querySelectorAll('.file-tree-guide-rail')];const branches=[...host.querySelectorAll('.file-tree-guide-branch')];const center=e=>{const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,left:r.left,right:r.right,top:r.top,bottom:r.bottom}};return {rowAxes:rows.map(r=>center(r.querySelector('[data-tree-caret]')).x),rowIds:rows.map(r=>r.dataset.treeRow),rowDepths:rows.map(r=>Number(r.dataset.treeDepth)),railAxes:rails.map(center).map(x=>x.x),railIds:rails.map(r=>r.dataset.guideId),railBottoms:rails.map(center).map(x=>x.bottom),branch:branches.map(center),rowCenters:rows.map(center).map(x=>x.y),errors:[]}},kind);
+    const metric=await page.evaluate(kind=>{const host=document.querySelector('[data-kind="'+kind+'"]');const rows=[...host.querySelectorAll('[data-tree-row]')];const rails=[...host.querySelectorAll('.file-tree-guide-rail')];const branches=[...host.querySelectorAll('.file-tree-guide-branch')];const center=e=>{const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,left:r.left,right:r.right,top:r.top,bottom:r.bottom}};return {rowAxes:rows.map(r=>center(r.querySelector('[data-tree-caret]')).x),rowIds:rows.map(r=>r.dataset.treeRow),rowDepths:rows.map(r=>Number(r.dataset.treeDepth)),railAxes:rails.map(center).map(x=>x.x),railIds:rails.map(r=>r.dataset.guideId),railBottoms:rails.map(center).map(x=>x.bottom),branchCount:branches.length,rowBottoms:rows.map(center).map(x=>x.bottom),errors:[]}},kind);
     const axisError=Math.max(...metric.railAxes.map((x,i)=>Math.abs(x-metric.rowAxes[metric.rowIds.indexOf(metric.railIds[i])])));
     const depthAxis=new Map();metric.rowDepths.forEach((depth,i)=>{if(!depthAxis.has(depth))depthAxis.set(depth,metric.rowAxes[i])});
     const stepErrors=[1,2,3,4,5].map(depth=>Math.abs((depthAxis.get(depth)-depthAxis.get(depth-1))-20*zoom));
     const maxStepError=Math.max(...stepErrors);
-    const crossing=metric.branch.some((b,i)=>b.right>metric.rowAxes[i+1]-7*zoom+0.75);
-    // Root direct children are rows 1,2,3,9; its rail ends at row 9 centre, not row 8 bottom.
+    // Preserve the original vertical-only visual language: no connector arms.
     const rootIndex=metric.railIds.indexOf('论文');
-    const rootEndError=Math.abs(metric.railBottoms[rootIndex]-metric.rowCenters[9]);
-    const record={dpr,zoom,kind,axisError,maxStepError,rootEndError,crossing,branches:metric.branch.length,rails:metric.railAxes.length,errors};results.push(record);
-    if(axisError>.55||maxStepError>.55||rootEndError>.75||crossing||metric.branch.length!==9||errors.length) throw Error('tree geometry regression '+JSON.stringify(record));
+    const rootEndError=Math.abs(metric.railBottoms[rootIndex]-(metric.rowBottoms[9]-3*zoom));
+    const record={dpr,zoom,kind,axisError,maxStepError,rootEndError,branchCount:metric.branchCount,rails:metric.railAxes.length,errors};results.push(record);
+    if(axisError>.55||maxStepError>.55||rootEndError>.75||metric.branchCount!==0||errors.length) throw Error('tree geometry regression '+JSON.stringify(record));
    }
   }
   if(dpr===1.25) await page.screenshot({path:path.join(evidence,'tree-guides-125pct-dpr125.png'),fullPage:true});
