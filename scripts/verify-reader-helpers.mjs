@@ -72,6 +72,17 @@ const defaultHeights = unevenSegments.map((segment) => helpers.underlinePosition
 assert.ok(new Set(defaultHeights).size > 1, 'without an override the thickness still follows each segment');
 assert.equal(helpers.underlineThicknessForSegments([]), undefined);
 
+// A text-item box ends at the baseline. Highlights extend 20% onto the descender side, while
+// underlines start beyond the baseline with a 4% gap instead of being translated through glyphs.
+assert.deepEqual(helpers.highlightPositionStyle({ x: 10, y: 20, width: 30, height: 2 }), { left: '10%', top: '20%', width: '30%', height: '2.4%' });
+assert.deepEqual(helpers.highlightPositionStyle({ x: 10, y: 20, width: 30, height: 2, orientation: 180 }), { left: '10%', top: '19.6%', width: '30%', height: '2.4%' });
+assert.deepEqual(helpers.highlightPositionStyle({ x: 40, y: 10, width: 2, height: 30, orientation: 90 }), { left: '39.6%', top: '10%', width: '2.4%', height: '30%' });
+assert.deepEqual(helpers.highlightPositionStyle({ x: 40, y: 10, width: 2, height: 30, orientation: 270 }), { left: '40%', top: '10%', width: '2.4%', height: '30%' });
+assert.ok(Math.abs(parseFloat(helpers.underlinePositionStyle({ x: 10, y: 20, width: 30, height: 2 }).top) - 22.08) < 1e-9);
+assert.ok(Math.abs(parseFloat(helpers.underlinePositionStyle({ x: 10, y: 20, width: 30, height: 2, orientation: 180 }).top) - 19.76) < 1e-9);
+assert.ok(Math.abs(parseFloat(helpers.underlinePositionStyle({ x: 40, y: 10, width: 2, height: 30, orientation: 90 }).left) - 39.76) < 1e-9);
+assert.ok(Math.abs(parseFloat(helpers.underlinePositionStyle({ x: 40, y: 10, width: 2, height: 30, orientation: 270 }).left) - 42.08) < 1e-9);
+
 let prevented = false;
 let stopped = false;
 const point = interaction.pointFromEvent({

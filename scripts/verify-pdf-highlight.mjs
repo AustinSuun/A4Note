@@ -31,7 +31,7 @@ eq(h.compositedHighlightColor('#ffd54a','#000000',h.DEFAULT_HIGHLIGHT_OPACITY),'
 eq(h.compositedHighlightColor('#ffd54a','#ffffff',100),'#ffd54a');
 eq(h.compositedHighlightColor('#ffd54a','#ffffff',0),'#ffffff');
 eq(h.compositedHighlightColor('#ffd54a','#ffffff',50,'normal'),'#ffeaa5');
-const position={x:10,y:20,width:30,height:2};const copy=JSON.stringify(position);eq(h.highlightRects(position),[{x:10,y:20.56,width:30,height:1.08}]);eq(JSON.stringify(position),copy);
+const position={x:10,y:20,width:30,height:2};const copy=JSON.stringify(position);eq(h.highlightRects(position),[{x:10,y:20,width:30,height:2.4}]);eq(JSON.stringify(position),copy);
 eq(h.highlightRects({segments:[null,3,{x:1,y:2,width:-1,height:2}]}),[]);
 eq(h.highlightRects({segments:[position,position]}).length,2); // Preserve distinct segments, alpha is applied to the entire SVG only.
 console.log(`PDF highlight appearance: ${checks} assertions passed`);

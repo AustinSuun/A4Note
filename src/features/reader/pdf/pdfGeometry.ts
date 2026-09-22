@@ -17,6 +17,9 @@ export async function extractTextItemBoxes(page: pdfjsLib.PDFPageProxy, viewport
         const x = transformed[4];
         const y = transformed[5];
         const height = Math.max(Math.abs(transformed[3]), item.height * viewport.scale, 6);
+        // `y` is the PDF text baseline. Keep the selectable/run box as ascent→baseline so hit
+        // testing, offsets and old annotation data stay stable; highlight/underline helpers add
+        // descender coverage on the baseline side instead of pretending this box contains it.
         return textItemBox(item.str, x, y - height, runLength, height, height, viewport, orientation);
       }
       // `getViewport` already folds the page's /Rotate into `transform`, so a rotated run's
