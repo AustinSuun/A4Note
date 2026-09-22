@@ -1,4 +1,9 @@
 ﻿# A4 Note Agent 状态
+
+## 当前工作：上下文快捷键任务接手（星序）
+
+- context-shortcuts-xingxu：星序按用户明确授权接管 9230f8ce（in_progress），takeover 后已确认 spec 1。原负责人青砚离线，原独立工作树干净；基于 main 311049b 新建 feat/context-shortcuts-xingxu / .worktrees/shortcuts-xingxu，将原核心 8c847d3 继承为 e17fc7f。核心30项、UI状态、Reader优先级60项、Reader回归和build通过；尚未接入顶层分发器、Ctrl引导层和共享录制设置UI，未完成全量verify或桌面实测，未合并main/submit。见 docs/mcp-context-shortcuts-takeover-xingxu-2026-09-22.md。
+
 - reader-selection-band-arena：Arena 接管 35496a06 高亮色带任务，保留 b79ba58/6b507e8。拖选期间保留真实 Range，但把浏览器原生色带透明化并通过与持久高亮相同的 textSelectionDraft→方向感知 segments→highlightPositionStyle 管线绘制；forced-colors 恢复系统选区。黄/绿/蓝/紫改为 #ffd54a/#8fd9a3/#8fb9f2/#bf9cf0，未保存配置默认 opacity 22→40、范围 10–60，既有明确保存值不迁移；单 SVG 合成避免重叠 alpha 累积。selection preview 37、highlight 57、reader、rotate 142、crosspage 31、完整 verify（Rust 209/0/5 ignored）全绿，diagnostics 0。指定 2505.13447v1.pdf 当前损坏、译文 PDF 缺失，未冒充样本验证；隔离原生改用有效内置指南与旋转 fixture 复核。详见 docs/mcp-reader-selection-band-highlight-arena-2026-09-21.md。
 
 
@@ -35,7 +40,7 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-21T22:02:02+08:00
+更新时间：2026-09-22T08:18:46+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 
