@@ -158,6 +158,23 @@ check('raw coordinates stay continuous outside and on re-entry without clamping'
   assert.equal(returned.xPercent, inside.xPercent);
 });
 
+for (const scale of [0.8, 1.18, 1.4, 2]) {
+  check(`viewport-to-local dimensions stay distinct at CSS scale ${scale}`, () => {
+    const layer = {
+      classList: { contains: name => name === 'pdf-render-layer' },
+      getBoundingClientRect: () => ({ left: 320, top: -150, width: 612.25 * scale, height: 792.5 * scale }),
+      ownerDocument: { defaultView: { getComputedStyle: () => ({ width: '612.25px', height: '792.5px' }) } },
+    };
+    const sample = pdfPointerCoordinates(layer, 320 + 306.125 * scale, -150 + 396.25 * scale);
+    assert.ok(Math.abs(sample.xPercent - 50) < 1e-10);
+    assert.ok(Math.abs(sample.yPercent - 50) < 1e-10);
+    assert.equal(sample.layoutWidth, 612.25);
+    assert.equal(sample.layoutHeight, 792.5);
+    const visibleRadius = 18 * scale / 2;
+    assert.ok(Math.abs((18 / sample.layoutWidth * 50) * sample.rect.width / 100 - visibleRadius) < 1e-9);
+  });
+}
+
 console.log('\npointer mapping contract (source)');
 
 const readerSource = readFileSync(resolve(repoRoot, 'src/features/reader/pdf/PdfReader.tsx'), 'utf8');

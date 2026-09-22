@@ -310,3 +310,10 @@ later   明确不在阶段 2 做
 - 不做完整 Zotero 级标注管理、筛选、分类和导出。
 - 不做完整 Obsidian 双链、全局反链和知识图谱。
 - 不把 AI 做成自动阅读代理。
+
+## 橡皮擦坐标契约
+
+- 位图、文字层和标注层共用 `.pdf-render-layer`。原始 client 点先减该层实际 DOM rect，再除以 rect 尺寸，得到未钳制页百分比；预览与擦除使用同一采样。中心在页外时不擦除，不把坐标夹到页边。
+- `getBoundingClientRect()` 已包含界面 CSS zoom/transform 和滚动；预览中心必须用百分比，不能把 viewport 像素偏移再次当作 local CSS left/top。
+- 工具尺寸是 local CSS 直径；命中半径以该层 computed layout width/height 换成百分比，不能除以已缩放的 DOM rect。DPR 不参与 CSS 坐标换算。
+- `npm run test:pdf-eraser-alignment` 使用真实 PdfReader 与文字层，联合覆盖 UI zoom、PDF zoom、DPR、侧栏、滚动、窄窗和 compositor scale；与 `test:pdf-eraser-precision` 的精确线段裁剪/页外契约共同防回归。

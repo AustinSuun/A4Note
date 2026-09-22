@@ -37,6 +37,11 @@ export function pdfPointerCoordinates(element: HTMLElement, clientX: number, cli
   const rect = layer.getBoundingClientRect();
   if (!(rect.width > 0 && rect.height > 0)
     || ![rect.left, rect.top, rect.width, rect.height, clientX, clientY].every(Number.isFinite)) return null;
+  // The DOM rect is in viewport CSS pixels (already zoomed), while the
+  // cursor diameter is a local CSS length. Keep both spaces explicit.
+  const style = layer.ownerDocument?.defaultView?.getComputedStyle(layer);
+  const layoutWidth = Number.parseFloat(style?.width ?? '') || layer.clientWidth || rect.width;
+  const layoutHeight = Number.parseFloat(style?.height ?? '') || layer.clientHeight || rect.height;
   const xPx = clientX - rect.left;
   const yPx = clientY - rect.top;
   return {
@@ -44,6 +49,8 @@ export function pdfPointerCoordinates(element: HTMLElement, clientX: number, cli
     rect,
     xPx,
     yPx,
+    layoutWidth,
+    layoutHeight,
     xPercent: (xPx / rect.width) * 100,
     yPercent: (yPx / rect.height) * 100,
     inside: xPx >= 0 && xPx <= rect.width && yPx >= 0 && yPx <= rect.height,

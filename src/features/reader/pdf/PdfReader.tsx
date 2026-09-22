@@ -142,7 +142,7 @@ export default function PdfReader({
   // gesture the existing layout is painted through a temporary transform;
   // this keeps PDF.js from starting a render for every wheel tick.
   const displayZoom = zoom;
-  const [eraserCursor, setEraserCursor] = useState<{ page: number; x: number; y: number } | null>(null);
+  const [eraserCursor, setEraserCursor] = useState<{ page: number; xPercent: number; yPercent: number } | null>(null);
   // Pointer moves can arrive faster than native persistence and React can render the updated
   // annotation. Keep cumulative geometry so each sample clips the previous sample's result.
   const eraserPositionsRef = useRef(new Map<string, PositionJson | null>());
@@ -1010,10 +1010,10 @@ export default function PdfReader({
     const pointer = pdfPointerCoordinates(event.currentTarget, event.clientX, event.clientY);
     // A hidden off-page preview must never leave a still-active eraser footprint at the page edge.
     if (!pointer?.inside) return;
-    const { rect } = pointer;
+    const { layoutWidth, layoutHeight } = pointer;
     const point = { x: pointer.xPercent, y: pointer.yPercent };
-    const radiusX = Math.max((toolSettings.eraserSize / rect.width) * 50, 0.05);
-    const radiusY = Math.max((toolSettings.eraserSize / rect.height) * 50, 0.05);
+    const radiusX = Math.max((toolSettings.eraserSize / layoutWidth) * 50, 0.05);
+    const radiusY = Math.max((toolSettings.eraserSize / layoutHeight) * 50, 0.05);
 
     for (const annotation of currentFileAnnotations) {
       if (annotation.page !== pageNumber || annotation.type !== 'ink') continue;
@@ -1048,8 +1048,8 @@ export default function PdfReader({
     }
     setEraserCursor({
       page: pageNumber,
-      x: pointer.xPx,
-      y: pointer.yPx,
+      xPercent: pointer.xPercent,
+      yPercent: pointer.yPercent,
     });
   }
 
@@ -1445,7 +1445,7 @@ export default function PdfReader({
               textToolsUnavailable={textSelectionToolsActive && page.textItems.length === 0}
               commentPopover={commentPopover?.page === page.pageNumber ? commentPopover : null}
               eraserPreview={activeTool === 'eraser' && eraserCursor?.page === page.pageNumber
-                ? { x: eraserCursor.x, y: eraserCursor.y, size: toolSettings.eraserSize, shape: toolSettings.eraserShape }
+                ? { xPercent: eraserCursor.xPercent, yPercent: eraserCursor.yPercent, size: toolSettings.eraserSize, shape: toolSettings.eraserShape }
                 : null}
               pageHandlers={pageHandlers(page.pageNumber)}
               flashKind={flash?.page === page.pageNumber ? flash.kind : null}
