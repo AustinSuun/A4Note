@@ -56,6 +56,8 @@ const steps = [
   ['npm', ['run', 'test:ai-toolbar']],
   ['npm', ['run', 'test:ui-state']],
   ['npm', ['run', 'test:note-workbench']],
+  ['npm', ['run', 'test:reader-note-sidebar']],
+  ['npm', ['run', 'test:reader-note-sidebar-browser']],
   ['npm', ['run', 'test:settings-ui']],
   ['node', ['scripts/verify-brand-update.mjs']],
 

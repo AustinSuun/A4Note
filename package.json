@@ -40,6 +40,8 @@
     "test:ai-toolbar": "node scripts/verify-ai-toolbar.mjs",
     "test:ui-state": "node scripts/verify-ui-state.mjs",
     "test:note-workbench": "node scripts/verify-note-workbench.mjs",
+    "test:reader-note-sidebar": "node scripts/verify-reader-note-sidebar.mjs",
+    "test:reader-note-sidebar-browser": "node scripts/verify-reader-note-sidebar-browser.mjs",
     "test:settings-ui": "node scripts/verify-settings-ui.mjs",
     "test:architecture": "node scripts/verify-architecture-boundaries.mjs",
     "test:scene-plugins": "node scripts/verify-scene-plugin-wiring.mjs",

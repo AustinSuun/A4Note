@@ -125,7 +125,7 @@ export function ReaderSideDrawer({
 
   return (
     <aside
-      className="reader-workspace-drawer"
+      className={`reader-workspace-drawer${notesActive ? ' notes-active' : ''}`}
       data-reader-layer="sidebar"
       aria-label="阅读工作面板" hidden={!open} inert={!open} aria-hidden={!open}
       style={{ width: expanded || compact ? '100%' : width, display: open ? undefined : 'none' }}
@@ -136,7 +136,7 @@ export function ReaderSideDrawer({
       onKeyDown={event => { if (event.key === 'Escape' && addMenuOpen && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); setAddMenuOpen(false); } }}
     >
       {open && !expanded && !compact && <ReaderDrawerResizer width={width} maximum={maximumWidth} onChange={onWidthChange} />}
-      <header className="reader-workspace-header">
+      {!notesActive && <header className="reader-workspace-header">
         <div className="reader-workspace-tabs" role="tablist" aria-label={zh.reader.openPanel}>
           {openTabs.map((tab) => {
             const panel = panelById.get(tab);
@@ -193,7 +193,7 @@ export function ReaderSideDrawer({
             <SidebarIcon />
           </button>
         </div>
-      </header>
+      </header>}
 
       <div className="workspace-panel-content">
         {retainNotes && notesPanel && notesView && <RetainedReaderNote key={paper.paperId} active={notesActive}>

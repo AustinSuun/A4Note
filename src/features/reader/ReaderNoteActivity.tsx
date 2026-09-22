@@ -16,7 +16,7 @@ export function RetainedReaderNote({ active, children }: { active: boolean; chil
         else scroll.current.delete(element);
       }
       if (!document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]')) {
-        const target = focus.current?.isConnected && root.current?.contains(focus.current) ? focus.current : root.current?.querySelector<HTMLElement>('.cm-content, textarea, .note-title-input, button');
+        const target = focus.current?.isConnected && root.current?.contains(focus.current) ? focus.current : root.current?.querySelector<HTMLElement>('.cm-content, textarea, .note-document-trigger, button');
         target?.focus({ preventScroll: true });
       }
     }
