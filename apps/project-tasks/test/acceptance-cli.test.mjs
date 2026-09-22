@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createTaskServer } from '../server.mjs';
+import { testEnv } from './test-env.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const cli = path.join(here, '..', 'cli.mjs');
@@ -27,19 +28,12 @@ test('acceptance CLI: human configuration, independent claim, fixtures and evide
   await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
   const url = 'http://127.0.0.1:' + app.server.address().port;
   const admin = app.store.access.operatorToken, enroll = app.store.access.enrollmentToken;
-  const base = {
-    ...process.env,
-    TASKS_SESSION_TOKEN: undefined,
-    TASKS_SESSION_FILE: undefined,
+  const base = testEnv({
     TASKS_PROJECT_ROOT: projectRoot,
     TASKS_EXPECTED_PROJECT_ID: app.store.access.projectId,
     TASKS_URL: url,
     TASKS_DATA_DIR: dataDir,
-    PATH: process.env.PATH,
-    SystemRoot: process.env.SystemRoot,
-    HOME: process.env.HOME,
-    USERPROFILE: process.env.USERPROFILE,
-  };
+  });
   // The service runs in this process, so the CLI must be spawned asynchronously.
   const run = (args, env = {}) => new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [cli, ...args], { cwd: projectRoot, env: { ...base, ...env } });

@@ -11,6 +11,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { registerAgentGuide } from '../lib/project-onboarding.mjs';
 import { checkService } from '../lib/agent-client.mjs';
+import { testEnv } from './test-env.mjs';
 const runtimeDir = fileURLToPath(new URL('../', import.meta.url));
 const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'a4-onboarding-'));
 const cleanup = (dir) => fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 25, retryDelay: 100 });
@@ -83,8 +84,7 @@ test('fresh project: explicit bootstrap creates instructions; real CLI and MCP d
   const home = temp(), root = path.join(home, '项目 with spaces');
   fs.mkdirSync(root);
   const dataDir = path.join(home, '.a4note-project-tasks', dataDirName(root));
-  const env = { ...process.env, HOME: home, USERPROFILE: home };
-  for (const name of Object.keys(env)) if (name.startsWith('TASKS_')) delete env[name];
+  const env = testEnv({ HOME: home, USERPROFILE: home });
   const socket = http.createServer(), port = await listen(socket);
   await close(socket);
   const run = (file, args, options = {}) => promisify(execFile)(process.execPath, [file, ...args], { env, cwd: root, windowsHide: true, timeout: 20000, ...options });
