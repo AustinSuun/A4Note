@@ -381,7 +381,9 @@ assert.match(annotationMarkSource, /void onDeleteAnnotation\?\.\(annotationId\)/
 assert.match(readerConstantsSource, /export const toolColorPresets = \[/);
 assert.match(annotationMarkSource, /toolColorPresets\.map\(\(color\) =>/);
 assert.match(annotationMarkSource, /className="annotation-color-custom-choice"/);
-assert.match(annotationMarkSource, /annotationColorInputValue\(annotation\.color\) === color/);
+assert.match(annotationMarkSource, /const actionColor = textLayout\?\.textColor \?\? annotation\.color/);
+assert.match(annotationMarkSource, /annotationColorInputValue\(actionColor\) === color/);
+assert.match(annotationMarkSource, /onUpdateTextStyle\(targetId, \{ textColor: color \}\)/);
 assert.doesNotMatch(annotationMarkSource, /annotationPresetColors\.map\(\(color\) =>/);
 assert.match(annotationMarkSource, /className="annotation-color-palette"/);
 assert.doesNotMatch(annotationMarkSource, /nextAnnotationColor\(annotation\.color as AnnotationColor\)/);
@@ -395,7 +397,7 @@ assert.match(annotationMarkSource, /const arrowHeadSize = Math\.min\(Math\.max\(
 assert.match(annotationMarkSource, /className="annotation-arrow-head" d="M1\.5 1\.5 10\.5 6 1\.5 10\.5"/);
 assert.match(annotationMarkSource, /vectorEffect="non-scaling-stroke"/);
 assert.doesNotMatch(annotationMarkSource, /annotation-arrow-vector[^>]*preserveAspectRatio="none"/);
-assert.match(annotationMarkSource, /style=\{\{ background: colorToCss\(annotation\.color\) \}\}/);
+assert.match(annotationMarkSource, /style=\{\{ background: colorToCss\(actionColor\) \}\}/);
 assert.match(annotationMarkSource, /fill=\{color\}/);
 assert.doesNotMatch(annotationMarkSource, /<circle cx="12" cy="12" r="8\.7"/);
 assert.doesNotMatch(styles, /\.annotation-color-pill circle:first-child \{ fill: currentColor; \}/);

@@ -90,7 +90,7 @@ export function ShortcutHints({ store }: { store: ShortcutStore }) {
     const controls = [...document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role="button"], [role="menuitemradio"], #a4note-live-dev-badge')].filter(visibleControl).flatMap(controlRects);
     // Protect whole popup surfaces, not just their buttons. A higher stacking
     // layer can otherwise hide a keycap in apparently empty inter-button space.
-    controls.push(...[...document.querySelectorAll<HTMLElement>('[role="menu"], [role="listbox"], [role="tooltip"], [role="dialog"], [popover], [data-shortcut-obstacle]')].filter(elementIsVisible).map(rectOf));
+    controls.push(...[...document.querySelectorAll<HTMLElement>('[role="menu"], [role="listbox"], [role="tooltip"], [role="dialog"], [popover], [data-shortcut-obstacle], .annotation-inline-actions, .annotation-color-palette')].filter(elementIsVisible).map(rectOf));
     const measureAndPlace = (compact: boolean) => {
       const layer = root.current!;
       layer.dataset.floatingDensity = compact ? 'compact' : 'regular';

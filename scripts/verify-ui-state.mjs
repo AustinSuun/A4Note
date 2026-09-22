@@ -419,9 +419,10 @@ assert.match(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, 
 assert.match(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, arrowEnding:/);
 assert.match(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, textBold:/);
 assert.match(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, textItalic:/);
-assert.match(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, textFontSize:/);
+// The accepted text-controls task removes these inputs, not their stored fields.
+assert.doesNotMatch(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, textFontSize:/);
 assert.match(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, textColor \}\)/);
-assert.match(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, textBorderColor \}\)/);
+assert.doesNotMatch(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, textBorderColor \}\)/);
 assert.match(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, textBackgroundColor \}\)/);
 assert.match(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, shapeKind:/);
 assert.match(readerToolbarSource, /onToolSettingsChange\(\{ \.\.\.toolSettings, shapeFillEnabled:/);

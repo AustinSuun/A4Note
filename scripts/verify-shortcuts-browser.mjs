@@ -179,12 +179,15 @@ try {
   await page.keyboard.down('Control');await page.keyboard.up('Control');await page.waitForTimeout(200);
   check(await page.locator('.shortcut-hints').evaluate(n=>getComputedStyle(n).opacity),'0','quick Ctrl tap never leaves overlay visible');
   await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(180);
+  for (const surface of ['tooltip','annotation-inline-actions','annotation-color-palette']) {
   const oldHint=await page.locator('[data-hint-id="reader.tool.highlight"]').boundingBox();
-  await page.evaluate(rect=>{const n=document.createElement('div');n.id='hint-obstacle';n.role='tooltip';Object.assign(n.style,{position:'fixed',left:(rect.x-8)+'px',top:(rect.y-2)+'px',width:(rect.width+16)+'px',height:(rect.height+4)+'px',zIndex:'20000',background:'red'});document.body.append(n);},oldHint);
+  await page.evaluate(({rect,surface})=>{const n=document.createElement('div');n.id='hint-obstacle';if(surface==='tooltip')n.role='tooltip';else n.className=surface;Object.assign(n.style,{position:'fixed',left:(rect.x-8)+'px',top:(rect.y-2)+'px',width:(rect.width+16)+'px',height:(rect.height+4)+'px',zIndex:'20000',background:'red'});document.body.append(n);},{rect:oldHint,surface});
   await page.waitForTimeout(180);
   const avoidsPopup=await page.evaluate(()=>{const o=document.getElementById('hint-obstacle').getBoundingClientRect();return [...document.querySelectorAll('[data-hint-id]')].every(n=>{const r=n.getBoundingClientRect();return r.right<=o.left||r.left>=o.right||r.bottom<=o.top||r.top>=o.bottom;});});
-  check(avoidsPopup,true,'higher-z popup surface does not cover keycaps after reflow');
-  await page.locator('#hint-obstacle').evaluate(n=>n.remove());await page.keyboard.up('Control');await page.waitForTimeout(180);
+  check(avoidsPopup,true,`${surface}: whole higher-z popup surface avoids keycaps after reflow`);
+  await page.locator('#hint-obstacle').evaluate(n=>n.remove());await page.waitForTimeout(180);
+  }
+  await page.keyboard.up('Control');await page.waitForTimeout(180);
   check(errors,[],'no browser console/page errors');
 } finally {
   fs.writeFileSync(path.join(evidence,'result.json'),JSON.stringify({checks,errors,kind:'real-browser-component-harness-not-native-desktop'},null,2));
