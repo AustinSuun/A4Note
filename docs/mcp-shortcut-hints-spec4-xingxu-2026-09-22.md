@@ -2,7 +2,7 @@
 
 - 任务 `9230f8ce-beef-4157-8771-014c4aee48c4`；执行者星序；2026-09-22。
 - 实现 `98bb2385fde5974212a869b2b2543c5fe1b0d0c8`；已整合 main `c22a5e0713b6d6caefad045415aa85bcaba116c5`，合并提交 `e905ec937ffd559cc017f36ee2771b0f25eb0e48`。
-- 最终经验证的代码/脚本 `0bacf9616b44b8090b068f36ca38891287ba5b7e`；后续为交付文档。最终 main 包含关系、delivery SHA 和任务提交状态见任务卡交付记录。
+- 随后主线新增行内录制 `ae5896c7e843067d861826231fac215303564e2b`，已合并为最终经验证代码/脚本 `7a09d09c0ae98ac601cecb60fe6e80ac817d7f61`；后续为交付文档。最终 main 包含关系、delivery SHA 和任务提交状态见任务卡交付记录。
 
 ## 用户反馈与实现
 
@@ -14,14 +14,14 @@
 4. 紧凑键帽和浮动完整行分别测量，按最终 placement 渲染，避免用大尺寸挤走单键或小尺寸漏算完整行。
 5. menu/listbox/tooltip/dialog/popover 及显式 obstacle 整体进入避让范围，不能只保护弹窗内的按钮而把键帽放在弹窗空白区；保留所有普通控件、侧栏图标/文字、DEV条与提示之间的碰撞保护。
 
-保留最新主线的快捷键设置 UI 重构 `9c64b03` 和 PDF 查找按钮移除 `bb020ee`；搜索无按钮后自动成为完整 Ctrl+F +“搜索当前PDF”的浮动行。本任务不修改这些业务代码。
+保留最新主线的快捷键设置 UI 重构/行内录制 `9c64b03` / `ae5896c` 和 PDF 查找按钮移除 `bb020ee`；搜索无按钮后自动成为完整 Ctrl+F +“搜索当前PDF”的浮动行。本任务不修改这些业务代码。
 
 ## 验证结果
 
 | 验证 | 结果 |
 | --- | --- |
-| 完整 `npm run verify`（整合源码） | 退出0，175.121秒；cmd_3e0017f409f3bc1dfa70e3f4e32d53182203efca42e3b2c0；含新 PDF find-entry 验证 |
-| core / dispatcher / hint layout / settings UI | 52 / 50 / 33 / 17 通过 |
+| 完整 `npm run verify`（整合源码） | 退出0，136.066秒；cmd_e481fe2a6c8e748a10dd559ae1f7e2cf004bcb06bdb450f4；含新 PDF find-entry 验证 |
+| core / dispatcher / hint layout / settings UI | 52 / 50 / 33 / 22 通过 |
 | 浏览器组件回归 | 110通过；包含6种窗口/缩放组合、顶部绘制采样、尺寸/控件/提示碰撞、动态锚点转换和高层弹窗避让 |
 | 真实旧版回放 | 加载 spec3 c056588 组件/CSS/布局/键帽，在 Ctrl+H ≠ H 的新断言上预期失败 |
 | 整合后 Windows/Tauri 交互 | 40通过；包含实际设置改绑/冲突取消和替换/侧键、完整设置键位、按钮省略Ctrl，以及无搜索按钮时仍显示Ctrl+F |
@@ -30,7 +30,7 @@
 | 正常关闭重启 / Ctrl按住松开 | 4 / 4通过；自定义CtrlJ持久化，截图后正常关闭自有实例 |
 | shortcuts源码诊断 | 0错误/警告 |
 
-完整verify之后仅同步浏览器夹具，110项再次独立通过；没有改变已验证的产品源码。浏览器夹具更新新设置文案/ARIA定位，并在编辑阶段暂时隐藏夹具中同时渲染的固定工具坞，reload后再次隐藏，几何阶段恢复；真实原生模态设置未做此隐藏，40项仍以真实点击验证。夹具独立 Vite cacheDir，避免与实际开发入口共用预构建缓存。
+最终合并ae5896c只在浏览器夹具发生冲突，已保留其行内录制测试，并保留本轮紧凑提示/避让断言、ARIA定位和独立缓存；110项、完整verify和原生全部重新运行通过，没有回退并行UI实现。最终verify之后仅交付文档，产品源码不变。浏览器夹具更新新设置文案/ARIA定位，并在编辑阶段暂时隐藏夹具中同时渲染的固定工具坞，reload后再次隐藏，几何阶段恢复；真实原生模态设置未做此隐藏，40项仍以真实点击验证。夹具独立 Vite cacheDir，避免与实际开发入口共用预构建缓存。
 
 ## 中断与测试环境记录
 
@@ -47,7 +47,7 @@
 - `06-after-native-restart.png` 自定义绑定重启保持；`12-current-ctrl-on.png` / `13-current-ctrl-off.png` 同场景连续状态。
 - native/layout/popover/restart/final-pair JSON以及重启前后session记录。
 
-日志：`.tmp/shortcuts/spec4-verify-integrated.log`、`spec4-browser-final.log`、`spec4-unit-integrated-final.log`、`spec4-native-delivery.log`、`spec4-native-layout-delivery.log`、`spec4-popover-delivery.log`、`spec4-restart-delivery.log`、`spec4-pair-delivery.log`。
+日志：`.tmp/shortcuts/spec4-verify-inline-final.log`、`spec4-browser-inline-final.log`、`spec4-units-inline-final.log`、`spec4-native-inline-final.log`、`spec4-layout-inline-final.log`、`spec4-popover-inline-final.log`、`spec4-restart-inline-final.log`、`spec4-pair-inline-final.log`。
 
 1280×820/DPR1.25/UI100% 为实际原生视口；800×600/UI140%为真实WebView CDP视口覆盖加实际UI快捷键，不是OS拖窗或硬件DPI全矩阵。鼠标侧键也是CDP事件，非实体驱动全覆盖。保留既有23条Rust警告与5项忽略测试；不宣称人工屏幕阅读器或macOS/Linux验收。
 
