@@ -24,7 +24,8 @@ use uuid::Uuid;
 use crate::app_paths::app_data_root;
 use crate::database::{current_timestamp_ms, initialize_database};
 
-pub(crate) const DEFAULT_LAYER_NAME: &str = "默认图层";
+pub(crate) const DEFAULT_LAYER_NAME: &str = "图层 1";
+const LEGACY_DEFAULT_LAYER_NAME: &str = "默认图层";
 pub(crate) const OWNER_PAPER: &str = "paper";
 pub(crate) const OWNER_RESOURCE: &str = "resource";
 pub(crate) const KIND_DEFAULT: &str = "default";
@@ -806,6 +807,13 @@ fn local_date(timestamp_ms: i64) -> String {
 /// and executed inside the caller's schema transaction so a failure leaves nothing half-applied.
 pub(crate) fn backfill_layers(connection: &Connection) -> Result<(), String> {
     let now = current_timestamp_ms();
+    // Rename only the untouched legacy default. A user-renamed default layer is never overwritten.
+    connection
+        .execute(
+            "UPDATE annotation_layers SET name = ?1, updated_at = ?2 WHERE kind = 'default' AND name = ?3",
+            params![DEFAULT_LAYER_NAME, now, LEGACY_DEFAULT_LAYER_NAME],
+        )
+        .map_err(db)?;
     connection
         .execute(
             "INSERT OR IGNORE INTO annotation_layers (id, owner_kind, owner_id, name, sort_order, kind, locked, archived_at, created_at, updated_at)
@@ -895,6 +903,11 @@ mod tests {
             let connection = Connection::open(&db).unwrap();
             connection.execute("DELETE FROM annotation_layers", []).unwrap();
             connection.execute(
+                "INSERT INTO annotation_layers (id, owner_kind, owner_id, name, sort_order, kind, locked, archived_at, created_at, updated_at)
+                 VALUES ('layer-default-paper-a', 'paper', 'paper-a', '默认图层', 0, 'default', 0, NULL, 1, 1)",
+                [],
+            ).unwrap();
+            connection.execute(
                 "INSERT INTO annotations (id, paper_id, file_id, page, type, quote, comment, color, position_json, created_at, updated_at, layer_id)
                  VALUES ('anno-legacy', 'paper-a', 'paper-a-file', 3, 'underline', 'q', 'c', 'blue', '{\"x\":5}', 1234, 1234, '')",
                 [],
@@ -907,6 +920,7 @@ mod tests {
             let state = layer_state(&connection, &owner).unwrap();
             assert_eq!(state.layers.len(), 1, "repeated backfill never duplicates the default layer");
             assert_eq!(state.layers[0].id, "layer-default-paper-a");
+            assert_eq!(state.layers[0].name, DEFAULT_LAYER_NAME, "the untouched legacy name is migrated idempotently");
             assert_eq!(state.layers[0].kind, KIND_DEFAULT);
             assert_eq!(state.layers[0].annotation_count, 1);
             assert_eq!(state.view.active_layer_id, "layer-default-paper-a");

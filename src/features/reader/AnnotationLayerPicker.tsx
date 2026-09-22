@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Eye, EyeOff, Layers, Lock, LockOpen, Plus, Settings2, Sparkles } from 'lucide-react';
-import { useReaderContext } from './ReaderContext';
+import { Eye, EyeOff, Layers, Plus } from 'lucide-react';
 import { ReaderToolPopover } from './ReaderToolPopover';
 import { useAnnotationLayersContext, type AnnotationLayersApi } from './useAnnotationLayers';
 import './reader-annotation-layers.css';
@@ -36,18 +35,22 @@ export function AnnotationLayerPicker() {
         <span className="annotation-layer-btn-count" aria-hidden="true">{visibleCount}/{usable.length}</span>
       </button>
       {open && (
-        <ReaderToolPopover title="标注图层" onClose={() => setOpen(false)}>
-          <AnnotationLayerQuickPicker layers={layers} onClose={() => setOpen(false)} />
+        <ReaderToolPopover
+          title="标注图层"
+          onClose={() => setOpen(false)}
+          headerAction={<button type="button" className="annotation-layer-action" onClick={() => void layers.createLayer({ kind: 'layer', activate: true, solo: false })}><Plus size={14} aria-hidden="true" /> 新图层</button>}
+        >
+          <AnnotationLayerQuickPicker layers={layers} />
         </ReaderToolPopover>
       )}
     </div>
   );
 }
 
-function AnnotationLayerQuickPicker({ layers, onClose }: { layers: AnnotationLayersApi; onClose: () => void }) {
-  const reader = useReaderContext();
+function AnnotationLayerQuickPicker({ layers }: { layers: AnnotationLayersApi }) {
   const listRef = useRef<HTMLDivElement>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   const usable = layers.layers.filter((layer) => !layer.archivedAt);
   const activeId = layers.activeLayer?.id ?? null;
   useEffect(() => {
@@ -64,11 +67,14 @@ function AnnotationLayerQuickPicker({ layers, onClose }: { layers: AnnotationLay
     radios[(index + (event.key === 'ArrowDown' ? 1 : radios.length - 1)) % radios.length]?.focus();
   };
   const announce = (text: string) => setMessage(text);
-  const openManager = () => {
-    layers.setManagerOpen(true);
-    reader.setSidePanelTab('annotations');
-    reader.setSidePanelOpen(true);
-    onClose();
+  const commitRename = async () => {
+    if (!renaming) return;
+    const layer = usable.find((item) => item.id === renaming.id);
+    const name = renaming.value.trim();
+    setRenaming(null);
+    if (!layer || !name || name === layer.name) return;
+    await layers.renameLayer(layer.id, name);
+    announce(`已重命名为「${name}」`);
   };
   return (
     <div className="annotation-layer-picker" data-reader-layer="layer-picker">
@@ -79,19 +85,29 @@ function AnnotationLayerQuickPicker({ layers, onClose }: { layers: AnnotationLay
           const visible = layers.isLayerVisible(layer.id);
           return (
             <div key={layer.id} className={`annotation-layer-row ${isActive ? 'active' : ''} ${visible ? '' : 'hidden-layer'}`.trim()} data-layer-id={layer.id}>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={isActive}
-                className="annotation-layer-select"
-                onClick={() => { if (!isActive) void layers.setActiveLayer(layer.id).then(() => announce(`已将「${layer.name}」设为活动图层`)); }}
-                title={isActive ? '当前活动图层' : `设为活动图层：${layer.name}`}
-              >
-                <span className="annotation-layer-dot" aria-hidden="true" />
-                <span className="annotation-layer-name">{layer.name}</span>
-                {layer.kind === 'attempt' && <span className="annotation-layer-kind">学习记录</span>}
-                <span className="annotation-layer-count" aria-label={`${layer.annotationCount} 条标注`}>{layer.annotationCount}</span>
-              </button>
+              {renaming?.id === layer.id ? (
+                <input
+                  className="annotation-layer-rename"
+                  value={renaming.value}
+                  autoFocus
+                  aria-label={`图层名称：${layer.name}`}
+                  onChange={(event) => setRenaming({ id: layer.id, value: event.target.value })}
+                  onBlur={() => void commitRename()}
+                  onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void commitRename(); } if (event.key === 'Escape') { event.preventDefault(); setRenaming(null); } }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={isActive}
+                  className="annotation-layer-select"
+                  onClick={() => { if (!isActive) void layers.setActiveLayer(layer.id).then(() => announce(`已将「${layer.name}」设为活动图层`)); }}
+                  title={isActive ? '当前活动图层；双击名称可重命名' : `设为活动图层：${layer.name}；双击名称可重命名`}
+                >
+                  <span className="annotation-layer-dot" aria-hidden="true" />
+                  <span className="annotation-layer-name" onDoubleClick={(event) => { event.stopPropagation(); setRenaming({ id: layer.id, value: layer.name }); }}>{layer.name}</span>
+                </button>
+              )}
               <button
                 type="button"
                 className="annotation-layer-icon-btn"
@@ -103,30 +119,9 @@ function AnnotationLayerQuickPicker({ layers, onClose }: { layers: AnnotationLay
               >
                 {visible ? <Eye size={15} aria-hidden="true" /> : <EyeOff size={15} aria-hidden="true" />}
               </button>
-              <button
-                type="button"
-                className="annotation-layer-icon-btn"
-                aria-pressed={layer.locked}
-                aria-label={layer.locked ? `解锁图层「${layer.name}」` : `锁定图层「${layer.name}」（禁止新增、编辑和删除）`}
-                title={layer.locked ? '已锁定：点击解锁' : '锁定'}
-                onClick={() => void layers.setLayerLocked(layer.id, !layer.locked).then(() => announce(`${layer.locked ? '已解锁' : '已锁定'}「${layer.name}」`))}
-              >
-                {layer.locked ? <Lock size={15} aria-hidden="true" /> : <LockOpen size={15} aria-hidden="true" />}
-              </button>
             </div>
           );
         })}
-      </div>
-      <div className="annotation-layer-actions">
-        <button type="button" className="annotation-layer-action" onClick={() => void layers.createLayer({ kind: 'layer', activate: true, solo: false }).then((layer) => layer && announce(`已新建图层「${layer.name}」`))}>
-          <Plus size={14} aria-hidden="true" /> 新建空白图层
-        </button>
-        <button type="button" className="annotation-layer-action primary" onClick={() => void layers.createLayer({ kind: 'attempt', activate: true, solo: true }).then((layer) => layer && announce(`已开始「${layer.name}」，只显示新图层`))} title="新建一次学习记录：空白图层设为活动层，并暂时隐藏其他图层">
-          <Sparkles size={14} aria-hidden="true" /> 新建学习记录
-        </button>
-        <button type="button" className="annotation-layer-action" onClick={openManager}>
-          <Settings2 size={14} aria-hidden="true" /> 管理图层…
-        </button>
       </div>
       <p className="annotation-layer-status" role="status" aria-live="polite">{message ?? ''}</p>
     </div>
