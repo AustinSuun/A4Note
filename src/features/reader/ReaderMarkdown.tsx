@@ -1,11 +1,11 @@
 import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
-import { useReaderNoteActive, useReaderNoteRequests } from './ReaderNoteActivity';
+import { useReaderNoteActive, useReaderNoteRequests, useReaderNoteLayoutActions } from './ReaderNoteActivity';
 import { preferredNoteIdFor, rememberPreferredNoteId } from './noteWorkbench';
 import { OverviewNoteBadge } from './OverviewNoteBadge';
 import { createSummaryNote, editSummary, loadSummary } from '../../platform/library/summaries';
 import { acquireLibraryNoteSession, existingLibraryNoteSession } from '../../platform/library/noteDocuments';
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { BookOpen, Check, Files, LoaderCircle, Pencil, Plus } from 'lucide-react';
+import { BookOpen, Check, ChevronDown, LoaderCircle, Pencil, Plus } from 'lucide-react';
 import type { Note, PaperDocument } from '../../core/types';
 import { zh } from '../../ui/zh';
 import { noteSaveStateText } from './readerHelpers';
@@ -63,6 +63,7 @@ export function MarkdownNotePanel({
 }) {
   const endSpaceRef = useMarkdownEndSpace<HTMLElement>();
   const surfaceActive = useReaderNoteActive();
+  const noteLayoutActions = useReaderNoteLayoutActions();
   const acceptsRequests = useReaderNoteRequests();
   const surfaceActiveRef = useRef(surfaceActive); surfaceActiveRef.current = surfaceActive;
   const [session, setSession] = useState(() => {
@@ -73,12 +74,16 @@ export function MarkdownNotePanel({
   const { noteId: selectedNoteId, title, content, status: saveState, error: saveError } = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const [mode, setMode] = useState<'edit' | 'read'>('edit');
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
   const [creating, setCreating] = useState(false);
   const [actionError, setActionError] = useState('');
   const [summaryNoteId, setSummaryNoteId] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const editorRef = useRef<MarkdownLiveEditorHandle | null>(null);
   const historyRef = useRef<HTMLDivElement | null>(null);
+  const historyTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const historyOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const switchingRef = useRef(false);
   session.setWriter(onSave);
   useEffect(() => { if (surfaceActive) rememberPreferredNoteId(paper.paperId, selectedNoteId); }, [paper.paperId, selectedNoteId, surfaceActive]);
@@ -94,7 +99,7 @@ export function MarkdownNotePanel({
 
   useEffect(() => {
     const handlePointerDown = (event: globalThis.MouseEvent) => {
-      if (!historyRef.current?.contains(event.target as Node)) setHistoryOpen(false);
+      if (!historyRef.current?.contains(event.target as Node)) { setHistoryOpen(false); setRenameOpen(false); }
     };
     window.addEventListener('mousedown', handlePointerDown);
     return () => window.removeEventListener('mousedown', handlePointerDown);
@@ -122,14 +127,27 @@ export function MarkdownNotePanel({
     if (session.getSnapshot().status !== 'error') void session.flush().catch(() => {});
   }, [surfaceActive, session]);
   const saveCurrent = () => session.flush().catch(() => {});
+  const openHistory = () => {
+    setHistoryOpen(true);
+    setRenameOpen(false);
+    requestAnimationFrame(() => {
+      const selectedIndex = Math.max(0, paper.notes.findIndex(note => note.id === selectedNoteId));
+      historyOptionRefs.current[selectedIndex]?.focus();
+    });
+  };
+  const closeHistory = (restoreFocus = false) => {
+    setHistoryOpen(false);
+    setRenameOpen(false);
+    if (restoreFocus) requestAnimationFrame(() => historyTriggerRef.current?.focus());
+  };
   const selectNote = async (note: Note, edit = false) => {
     if (switchingRef.current) return;
-    if (note.id === selectedNoteId) { if (edit) setMode('edit'); return; }
+    if (note.id === selectedNoteId) { closeHistory(true); if (edit) setMode('edit'); return; }
     switchingRef.current = true; setCreating(true); setActionError('');
     try {
       await session.flush();
       setSession(acquireLibraryNoteSession(paper.paperId, note, onSave, zh.reader.noteDefaultTitle));
-      setHistoryOpen(false); setMode(edit ? 'edit' : 'read');
+      closeHistory(); setMode(edit ? 'edit' : 'read');
     } catch { /* Keep the current draft and show its error; never switch on failure. */ }
     finally { switchingRef.current = false; setCreating(false); }
   };
@@ -144,7 +162,7 @@ export function MarkdownNotePanel({
       const nextTitle = number === 1 ? zh.reader.noteDefaultTitle : zh.reader.noteNumberedTitle(number);
       const next = paper.notes.find((note) => note.id === noteId) ?? { id: noteId, title: nextTitle, content: `# ${nextTitle}\n\n` };
       setSession(acquireLibraryNoteSession(paper.paperId, next, onSave, zh.reader.noteDefaultTitle));
-      setHistoryOpen(false); setMode('edit');
+      closeHistory(); setMode('edit');
       requestAnimationFrame(() => { if (surfaceActiveRef.current) editorRef.current?.focus(); });
     } catch (error) { setActionError(String(error)); }
     finally { switchingRef.current = false; setCreating(false); }
@@ -177,6 +195,17 @@ export function MarkdownNotePanel({
   };
   const updateTitle = (next: string) => session.update(next, session.getSnapshot().content);
   const updateContent = (next: string) => session.update(session.getSnapshot().title, next);
+  const renameCurrent = async () => {
+    const nextTitle = renameValue.trim();
+    if (!nextTitle) { setActionError('文档名称不能为空'); return; }
+    setCreating(true); setActionError('');
+    try {
+      updateTitle(nextTitle);
+      await session.flush();
+      closeHistory(true);
+    } catch (error) { setActionError(String(error)); }
+    finally { setCreating(false); }
+  };
   const exportDraft = () => {
     const snapshot = session.getSnapshot();
     const url = URL.createObjectURL(new Blob([snapshot.content], { type: 'text/markdown;charset=utf-8' }));
@@ -188,7 +217,7 @@ export function MarkdownNotePanel({
     <div
       className="note-workspace"
       onKeyDownCapture={(event) => {
-        if (event.key === 'Escape' && historyOpen && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); setHistoryOpen(false); return; }
+        if (event.key === 'Escape' && historyOpen && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); closeHistory(true); return; }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
           event.preventDefault();
           void saveCurrent();
@@ -196,51 +225,55 @@ export function MarkdownNotePanel({
       }}
     >
       <header className="note-document-header">
-        <input
-          className="note-title-input"
-          value={title}
-          onChange={(event) => updateTitle(event.target.value)}
-          onBlur={() => void saveCurrent()}
-          placeholder={zh.reader.noteTitlePlaceholder}
-          aria-label={zh.reader.noteTitlePlaceholder}
-        />
-        <div className="note-document-actions">
-          <div className="note-history-shell" ref={historyRef}>
-            <button
-              type="button"
-              className={historyOpen ? 'note-icon-button active' : 'note-icon-button'}
-              onClick={() => setHistoryOpen((current) => !current)}
-              title={`论文笔记 · ${paper.notes.length}`}
-              aria-label={`论文笔记 · ${paper.notes.length}`}
-              aria-expanded={historyOpen}
-            >
-              <Files aria-hidden="true" />
-              <span className="note-count-badge">{paper.notes.length}</span>
-            </button>
-            {historyOpen && (
-              <div className="note-history-popover">
-                <div className="note-history-heading">
-                  <strong>论文笔记</strong>
-                  <span>{paper.notes.length} 篇</span>
-                </div>
-                <div className="note-history-list">
-                  {paper.notes.length ? paper.notes.map((note) => (
-                    <button key={note.id} type="button" className={note.id === selectedNoteId ? 'active' : ''} onClick={() => void selectNote(note)} disabled={creating}>
-                      <span className="note-history-title note-history-title-with-badge">
-                        {note.id === summaryNoteId && <OverviewNoteBadge />}
-                        <span className="note-history-title-text">{note.title || zh.reader.noteDefaultTitle}</span>
-                      </span>
-                      <span className="note-history-excerpt">{noteExcerpt(note.content)}</span>
-                      <time>{formatNoteUpdatedAt(note.updatedAt)}</time>
-                    </button>
-                  )) : <div className="note-history-empty">{zh.reader.noteEmpty}</div>}
-                </div>
-              </div>
-            )}
-          </div>
-          <button type="button" className="note-icon-button" onClick={() => void createNote()} disabled={creating} title={zh.reader.noteNew} aria-label={zh.reader.noteNew}>
-            {creating ? <LoaderCircle className="spin" aria-hidden="true" /> : <Plus aria-hidden="true" />}
+        <div className="note-history-shell" ref={historyRef}>
+          <button ref={historyTriggerRef} type="button" className={historyOpen ? 'note-document-trigger active' : 'note-document-trigger'}
+            onClick={() => historyOpen ? closeHistory() : openHistory()}
+            aria-label={`切换论文文档，当前：${title || zh.reader.noteDefaultTitle}`} aria-haspopup="listbox" aria-expanded={historyOpen}>
+            <span>{title || zh.reader.noteDefaultTitle}</span><ChevronDown aria-hidden="true" />
           </button>
+          {historyOpen && <div className="note-history-popover" onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+            const options = historyOptionRefs.current.filter((item): item is HTMLButtonElement => Boolean(item && !item.disabled));
+            if (!options.length) return;
+            event.preventDefault();
+            const current = options.indexOf(document.activeElement as HTMLButtonElement);
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : event.key === 'ArrowDown'
+              ? (current + 1 + options.length) % options.length : (current - 1 + options.length) % options.length;
+            options[next]?.focus();
+          }}>
+            <div className="note-history-heading"><strong>论文文档</strong><span>{paper.notes.length} 篇</span></div>
+            <div className="note-history-list" role="listbox" aria-label="当前论文的文档">
+              {paper.notes.length ? paper.notes.map((note, index) => (
+                <button key={note.id} ref={element => { historyOptionRefs.current[index] = element; }} type="button" role="option"
+                  aria-selected={note.id === selectedNoteId} className={note.id === selectedNoteId ? 'active' : ''}
+                  onClick={() => void selectNote(note)} disabled={creating}>
+                  <span className="note-history-title note-history-title-with-badge">
+                    {note.id === summaryNoteId && <OverviewNoteBadge />}
+                    <span className="note-history-title-text">{note.title || zh.reader.noteDefaultTitle}</span>
+                  </span>
+                  <span className="note-history-excerpt">{noteExcerpt(note.content)}</span>
+                  <time>{formatNoteUpdatedAt(note.updatedAt)}</time>
+                </button>
+              )) : <div className="note-history-empty">当前论文还没有文档</div>}
+            </div>
+            {renameOpen ? <form className="note-history-rename" onSubmit={(event) => { event.preventDefault(); void renameCurrent(); }}>
+              <label htmlFor="reader-note-rename">重命名当前文档</label>
+              <input id="reader-note-rename" value={renameValue} onChange={event => setRenameValue(event.target.value)} autoFocus disabled={creating} />
+              <div><button type="button" onClick={() => setRenameOpen(false)}>取消</button><button type="submit" disabled={creating || !renameValue.trim()}>保存</button></div>
+            </form> : <div className="note-history-actions">
+              <button type="button" onClick={() => void createNote()} disabled={creating}><Plus aria-hidden="true" /><span>新建文档</span></button>
+              <button type="button" onClick={() => { setRenameValue(title); setRenameOpen(true); }} disabled={creating}><Pencil aria-hidden="true" /><span>重命名当前文档</span></button>
+              <button type="button" onClick={() => void openSummary()} disabled={creating || summaryLoading}><BookOpen aria-hidden="true" /><span>{summaryLoading ? '读取总览关系…' : summaryNoteId ? '打开总览笔记' : '新建总览笔记'}</span></button>
+            </div>}
+          </div>}
+        </div>
+        <div className="note-document-actions">
+          <button type="button" className="note-icon-button" onClick={() => void createNote()} disabled={creating} title="新建文档" aria-label="新建文档"><Plus aria-hidden="true" /></button>
+          {noteLayoutActions}
+          <span className={`note-save-state ${saveState}`} title={noteSaveStateText(saveState)}>
+            {saveState === 'saving' ? <LoaderCircle className="spin" aria-hidden="true" /> : saveState === 'saved' ? <Check aria-hidden="true" /> : null}
+            {noteSaveStateText(saveState)}
+          </span>
           <div className="note-view-switch" role="group" aria-label={zh.reader.noteReadingMode}>
             <button type="button" className={mode === 'edit' ? 'active' : ''} onClick={() => setMode('edit')} title={zh.reader.noteEditingMode} aria-label={zh.reader.noteEditingMode}>
               <Pencil aria-hidden="true" />
@@ -251,18 +284,6 @@ export function MarkdownNotePanel({
           </div>
         </div>
       </header>
-      <div className="note-meta-row">
-        <span className="note-overview-identity">{selectedNoteId === summaryNoteId
-          ? <><OverviewNoteBadge /><span>与总览字段关联</span></>
-          : 'Markdown · 普通笔记'}</span>
-        <button type="button" className="summary-note-entry" disabled={creating || summaryLoading} onClick={() => void openSummary()}>
-          {summaryLoading ? '读取总览关系…' : summaryNoteId ? '打开总览笔记' : '新建总览笔记'}
-        </button>
-        <span className={`note-save-state ${saveState}`}>
-          {saveState === 'saving' ? <LoaderCircle className="spin" aria-hidden="true" /> : saveState === 'saved' ? <Check aria-hidden="true" /> : null}
-          {noteSaveStateText(saveState)}
-        </span>
-      </div>
       {(saveError || actionError) && <div className="note-save-error" role="alert">
         <span>{saveError || actionError}</span>
         <button type="button" onClick={() => void saveCurrent()}>重试保存</button>

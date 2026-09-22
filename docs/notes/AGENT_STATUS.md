@@ -1,5 +1,6 @@
 ﻿# A4 Note Agent 状态
 - reader-note-edge-xingxu：星序领取9b69c4b5 spec3高优先级任务，独立feat/note-edge-xingxu/worktree .worktrees/note-edge-xingxu，基线main38fe2e1。按已选方案C实现内容区边界书签把手、阈值拖宽、模式菜单与头部紧凑切换；保留四态/按论文偏好/快捷键，不改PDF/底部图层/标注。拟占用ReaderScene、ReaderSideDrawer、ReaderNoteWorkbenchMenu、ReaderDrawerResizer及专属布局/交互hook与回归。原生隔离实例note-edge-xingxu1477/CDP9277；先取旧入口证据再修改。未打包安装发布。
+- task-titlebar-drag-jingxing：竞行完成 8cc3cc88 任务场景标题栏空白区不能拖动。根因是 TaskStageSwitcher 把 data-window-no-drag 放在会 flex:1 生长的 nav.tb-stage-nav 上，标题栏里整段空白的 elementFromPoint 都命中 no-drag。现在属性移到 .tb-stage-switch，标题栏内 nav 改 flex:0 1 auto（窄窗仍收缩/横向滚动），删除无效 -webkit-app-region 规则；不新增手势监听，.tb-filters 页面内布局不变。verify-task-stage-integration 夹具改为真实 workbench-topbar 壳并新增三点坐标 + 真实 CDP 指针断言（旧代码红测命中 nav no-drag，新代码通过），verify-taskboard-compact 边界断言同步；两脚本后段在未修改 main 同样失败（评审文案、字号快照），另记既有问题。原生 dev:live jingxing 隔离实例（临时 createTaskServer 手动连接，不碰 4319）2400/1568 宽三点 mousedown→start_dragging、双击→toggle_maximize 真实最大化/还原，系统鼠标拖动窗口位移 (180,60)，1280/1050 无空白带属既有窄窗布局，未连接态/midnight/125%/150%/其他场景标题栏均可拖。build 退出 0，verify 见记录。未打包安装推送发布。详见 docs/mcp-task-titlebar-drag-jingxing-2026-09-22.md。
 - shortcut-hint-size-xingxu：星序完成63b530ee spec2实现与验证，095a3ae放大16px键帽/15px功能名、M4/M5，受限时仅浮动行14px；末键对齐长组合、整体避让文本浮动栏/色板。28f9cd8整合最新main文本B/I，1be6c62补色板与同步已验收UI测试契约，不修改图层/文本产品文件。浏览器461/32组合、原生153+87及严格同场景配对通过；11→16px、键帽20.4→28.4px，工具坞444.6×69.6与按钮矩形完全不变、最小间隙9px。完整verify退出0/211.647秒（Rust215/0/5 ignored）、diagnostics0。附加文本浏览器东侧resize断言在本分支及未修改main均失败，另记既有问题，不声称全绿；app UI上限140，125/150为受控CSS压力场景。交付与main包含SHA见任务卡，下一步用户验收；未打包安装推送发布。详见docs/mcp-shortcut-hint-size-xingxu-2026-09-22.md。
 - text-annotation-controls-qinglan：青岚完成任务 54576b3e spec4 核心实现。修复根因是悬浮颜色沿用 annotation.color，而文本字形实际使用 positionJson.textColor；现在文本快捷色点、预设色和自定义色均读写 textColor，非文本标注仍使用原通用颜色。悬浮 Aa/二级字号样式面板改为直接 B/I（aria-pressed、tooltip、键盘可达）；文本工具面板删除外框色与字号 UI，保留文字色、背景及 B/I；内部 fontSize、borderColor 兼容字段和缩放逻辑未改。清理失效组件/CSS。build、静态回归 33/33、真实 PdfReader 浏览器交互 97/97（含直接 B/I、文字色与通用色隔离、缩放/编辑/边缘/IME、pageerror 0）通过。未打包/安装/推送/发布。详见 docs/mcp-text-annotation-controls-qinglan-2026-09-22.md。
 - windows-package-arena：用户指示「代码合并了，直接打包一下」，Arena 对已合并 main 打包 Windows 0.1.28。按仓库约定（chore: release 0.1.26/0.1.27）把 0.1.27 递增到 0.1.28——已发布的 0.1.27 需要更高版本号才能通过 latest.json 收到更新，改动 package.json / src-tauri/Cargo.toml / Cargo.lock / tauri.conf.json 各 1 行，提交 76a6cb2（基线 38d9977）。npm run package:windows 退出 0、约 202 秒；产物 artifacts/windows/latest/a4note.exe（37687296 字节，SHA-256 20FB3F6DC851A27B65E680A3CC50E5F051F89E87E203A98EEC021AF18B567CF7）与 A4 Note_x64-setup.exe（22831212 字节，FA5A1EE17FBE24E9CEECC1D99826D01E7AF174D1D5300BF09752DA6F8381BB29），两者独立重算哈希与 build-info.json 一致，.sig 与 latest.json 签名一致；上一份 0.1.27 latest 归档至 artifacts/windows/archive/0.1.28-20260922-180501-20328。脚本自带核验通过（exe 内 5 项前端入口资源、浮动工具坞 CSS、签名非空）；另从打包提交重跑前端构建确认包内含 annotation-layer-delete / data-layer-confirm-move / annotation-layer-row 标记。首跑因父会话结束收到 STATUS_CONTROL_C_EXIT 已改独立进程重跑，784MB 半成品目录已清理。未运行完整 verify、未安装/实测、未推送/发布；sourceDirty 仅因既有未跟踪文件，已跟踪源码零改动。详见 docs/mcp-windows-package-arena-2026-09-22.md。
@@ -61,7 +62,7 @@ annotation-popover-swatch-chengchuan：澄川完成 23528921 标注工具弹窗�
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-22T18:47:15+08:00
+更新时间：2026-09-22T21:08:00+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 
@@ -3147,3 +3148,7 @@ the final visual check still needs a manual refresh of the dev preview.
 ## 目录树彩虹层级线修复（青岚，2026-09-22）
 
 完成任务 `7876734f-ed8d-4a06-a103-f4af379a785a`：修复 CSS zoom 下 `getBoundingClientRect` 视口坐标被再次缩放导致的深层轴线漂移；共享几何现在统一局部坐标与层级轴，竖线只连直接子项并在末项中心收尾，短横线在箭头前结束。全仓彩虹线使用点仅 Markdown/笔记文件树与 Library 文件类树，均复用该实现。真实 React DOM 24 组缩放/DPR/DOM 适配回归最大轴误差 0.03125px、步长误差 0、末端误差 0.1875px；定向测试、TypeScript、build 与完整 `npm run verify` 通过（Rust 215 通过/5 ignored）。未打包、安装、推送或发布。详见 `docs/mcp-rainbow-tree-qinglan-2026-09-22.md`。
+
+## 阅读器笔记侧栏重构（青岚，2026-09-22）
+
+完成任务 bcd4de7e spec9：移除笔记面板顶部标签整行、标题输入、文档计数/新增按钮和 Markdown 冗余状态行；标题改为当前论文文档下拉，统一提供切换、新建、重命名与总览入口。切换/新建先排空保存并防重复，正文继续复用 MarkdownLiveEditor、Library note session 与标注引用。静态回归16/16、真实组件浏览器交互（12文档/键盘/重命名/新建/深色125%）通过且零页面错误，note 51/51、note browser 42/42、reader、tsc、build、diagnostics 及完整 verify（Rust 215 passed / 5 ignored）通过。dev:live 后台未保持 CDP，因此未冒充原生截图。未打包、安装、推送或发布。详见 docs/mcp-reader-note-sidebar-qinglan-2026-09-22.md。

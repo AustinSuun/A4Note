@@ -2490,3 +2490,25 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .note-save-error > span { flex: 1 1 180px; overflow-wrap: anywhere; }
 .pdf-render-error { position: absolute; z-index: 12; top: 8px; left: 8px; right: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; font-size: var(--ui-caption-font-size); }
 .pdf-render-error > span { flex: 1 1 160px; overflow-wrap: anywhere; }
+
+/* Reader note document picker: shares the compact Markdown workbench language. */
+.note-document-header > .note-history-shell { min-width: 0; flex: 1 1 0; }
+.note-document-trigger { display:flex; align-items:center; width:100%; min-width:0; height:32px; gap:6px; padding:0 8px; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--ink); box-shadow:none; font:inherit; font-size:var(--ui-control-font-size,14px); font-weight:700; text-align:left; }
+.note-document-trigger > span { min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.note-document-trigger > svg { width:15px; height:15px; flex:none; color:var(--muted); transition:transform .15s ease; }
+.note-document-trigger:hover,.note-document-trigger.active { border-color:var(--line); background:var(--surface-soft); }
+.note-document-trigger.active > svg { transform:rotate(180deg); }
+.note-document-trigger:focus-visible { outline:2px solid var(--accent-strong); outline-offset:1px; }
+.note-document-header > .note-history-shell .note-history-popover { left:0; right:auto; width:min(360px,calc(100vw - 36px)); max-width:max(280px,100%); background:var(--surface); border-color:var(--line); }
+.note-history-actions { display:grid; gap:2px; padding:5px; border-top:1px solid var(--line); }
+.note-history-actions button { display:flex; align-items:center; gap:8px; min-height:32px; padding:6px 8px; border:0; border-radius:5px; background:transparent; color:var(--ink); box-shadow:none; text-align:left; }
+.note-history-actions button:hover:not(:disabled) { background:var(--accent-soft); }
+.note-history-actions svg { width:15px; height:15px; color:var(--accent-strong); }
+.note-history-rename { display:grid; gap:7px; padding:10px; border-top:1px solid var(--line); }
+.note-history-rename label { color:var(--muted); font-size:var(--ui-caption-font-size,11px); }
+.note-history-rename input { box-sizing:border-box; width:100%; min-width:0; height:32px; padding:0 8px; border:1px solid var(--line); border-radius:5px; background:var(--surface); color:var(--ink); font:inherit; }
+.note-history-rename > div { display:flex; justify-content:flex-end; gap:6px; }
+.note-history-rename button { min-height:28px; padding:4px 10px; border:1px solid var(--line); border-radius:5px; background:var(--surface); color:var(--ink); }
+.note-history-rename :is(input,button):focus-visible,.note-history-actions button:focus-visible,.note-history-list > button:focus-visible { outline:2px solid var(--accent-strong); outline-offset:-2px; }
+.reader-workspace-drawer.notes-active { grid-template-rows:minmax(0,1fr); }
+@media (prefers-reduced-motion:reduce) { .note-document-trigger > svg { transition:none; } }

@@ -44,7 +44,7 @@
   .reader-workspace-drawer .reader-workspace-header { grid-template-columns: minmax(0, 1fr) auto; }
   .reader-workspace-drawer .reader-workspace-actions { display: flex; gap: 3px; padding: 0; }
   .reader-workspace-drawer .note-document-header { flex-wrap: nowrap; gap: 4px; }
-  .reader-workspace-drawer .note-title-input { min-width: 0; width: 0; flex: 1 1 0; }
+  .reader-workspace-drawer .note-history-shell { min-width: 0; width: 0; flex: 1 1 0; }
   .reader-workspace-drawer .workspace-panel-content { padding: 4px 8px; }
   .reader-workspace-drawer .note-document-actions { gap: 2px; }
 }
@@ -141,3 +141,10 @@
 
 /* The bookmark replaces the painted grip, not the full-height keyboard separator. */
 .reader-workspace-shell:has(.reader-note-edge-entry[data-note-docked="true"]) .reader-drawer-resize-handle:not(:focus-visible)::after { opacity: 0; }
+
+/* Keep the newly streamlined note header: no restored workspace tabs or close row. */
+@container (max-width: 360px) {
+  .reader-workspace-drawer.notes-active .note-save-state.saved { font-size: 0; gap: 0; }
+  .reader-workspace-drawer.notes-active .note-save-state.saved svg { width: 12px; height: 12px; }
+  .reader-workspace-drawer.notes-active .reader-note-mode-switch button { width: 20px; }
+}

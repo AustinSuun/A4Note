@@ -6,14 +6,12 @@
   width: 64px;
   min-width: 64px;
   max-width: 64px;
-  flex: 0 0 64px;
   padding: 0;
   gap: 4px;
   justify-content: center;
   overflow: hidden;
-  border-left: 1px solid var(--border-soft, rgba(60, 80, 70, 0.14));
-  border-radius: 8px;
-  margin-left: 3px;
+  /* No flex-basis here: the dock slot is a flex container, and a basis would size the
+     slot's main axis. Width is pinned by width/min-width/max-width above. */
   flex-direction: row;
 }
 :root .reader-annotation-dock .annotation-toolbar .annotation-layer-btn > svg { width: 20px; height: 20px; flex: 0 0 20px; }

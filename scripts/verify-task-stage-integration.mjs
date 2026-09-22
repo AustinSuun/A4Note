@@ -121,7 +121,9 @@ import { bindWindowTitlebarGestures } from '/src/workbench/windowTitlebarGesture
 import '/src/ui/styles/tokens.css';
 import '/src/ui/styles/base.css';
 import '/src/ui/styles/workbench.css';
-function Host(){const t=useDocumentToolbar();return <div className="workbench-document-controls" ref={t.setControlsHost}/>;}
+// Mirror the real shell structure (WorkbenchTopBar inside the titlebar projectbar) so the
+// document-controls host stretches exactly like production and the blank strip is real.
+function Host(){const t=useDocumentToolbar();return <header className="workbench-topbar"><div className="workbench-breadcrumb"><span className="workbench-breadcrumb-project">A4 Note</span></div><div className="workbench-document-controls" ref={t.setControlsHost}/><div className="workbench-topbar-actions"/></header>;}
 function Fixture(){const [active,setActive]=useState(true);window.__setSceneActive=setActive;
 useEffect(()=>{window.__gestures=[];return bindWindowTitlebarGestures(document.querySelector('.window-titlebar'),command=>window.__gestures.push(command));},[]);
 return <DocumentToolbarProvider enabled={active}><DocumentToolbarActiveContext.Provider value={active}>
@@ -237,7 +239,7 @@ export const launchLocalTasks = async (port = 4319, chooseProject = false, expli
   await until(`!!document.querySelector('.tb-connect')`,12000);
   await click('打开项目文件夹并启动看板');
   await until(`document.querySelectorAll('.tb-card').length===3`);
-  const beforeLayout = await evaluate(`({top:document.querySelector('.tb-workspace').getBoundingClientRect().top,height:document.querySelector('.tb-workspace').getBoundingClientRect().height})`);
+  const beforeLayout = await evaluate(`({top:document.querySelector('.tb-workspace').getBoundingClientRect().top,height:document.querySelector('.tb-workspace').getBoundingClientRect().height,titlebar:document.querySelector('.window-titlebar').getBoundingClientRect().height})`);
   await screenshot('review-before-1568.png');
   await rpc('Page.navigate',{url:webOrigin});
   await until(`!!document.querySelector('.tb-connect')`,12000);
@@ -250,13 +252,40 @@ export const launchLocalTasks = async (port = 4319, chooseProject = false, expli
   ok(await evaluate(`window.__gestures.length===0`),'Action buttons do not start drag or maximize');
   await evaluate(`document.querySelector('.window-titlebar-drag-zone').dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));document.querySelector('.window-titlebar-drag-zone').dispatchEvent(new MouseEvent('dblclick',{bubbles:true,button:0}));`);
   ok(await evaluate(`window.__gestures.join(',')==='start_dragging,toggle_maximize'`),'Blank titlebar retains drag and double click');
+  // Real blank strip between the stage switch and the first control to its right: the
+  // gesture must fire from actual pointer coordinates, not only from the dedicated
+  // drag zone (8cc3cc88 regression: the growing nav carried data-window-no-drag).
+  const strip = await evaluate(`(()=>{const sw=document.querySelector('.window-titlebar .tb-stage-switch').getBoundingClientRect();const box=document.querySelector('.window-titlebar .tb-titlebar-actions');const next=[...box.querySelectorAll('button,.tb-titlebar-project,.tb-connection')].map(e=>e.getBoundingClientRect()).filter(r=>r.width>0&&r.left>=sw.right-1).sort((a,b)=>a.left-b.left)[0];return {left:sw.right,right:next?next.left:box.getBoundingClientRect().right,y:(sw.top+sw.bottom)/2}})()`);
+  ok(strip.right-strip.left>=80,'Stage switch leaves a real blank strip before the next titlebar control '+JSON.stringify(strip));
+  const dispatchDoubleClick = async (x,y) => {
+    await evaluate(`window.__gestures=[]`);
+    await rpc('Input.dispatchMouseEvent',{type:'mouseMoved',x,y});
+    await rpc('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',buttons:1,clickCount:1});
+    await rpc('Input.dispatchMouseEvent',{type:'mouseReleased',x,y,button:'left',buttons:0,clickCount:1});
+    await rpc('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',buttons:1,clickCount:2});
+    await rpc('Input.dispatchMouseEvent',{type:'mouseReleased',x,y,button:'left',buttons:0,clickCount:2});
+    await pause(30);
+    return evaluate(`window.__gestures.join(',')`);
+  };
+  for (const x of [strip.left+6,(strip.left+strip.right)/2,strip.right-6]) {
+    const hit = await evaluate(`(()=>{const e=document.elementFromPoint(${x},${strip.y});return {tag:e.tagName,cls:e.className,noDrag:!!e.closest('[data-window-no-drag]'),control:!!e.closest('button,[role="tab"],nav')}})()`);
+    ok(!hit.noDrag&&!hit.control,'Titlebar blank strip at x='+Math.round(x)+' is plain container, not a no-drag/interactive box '+JSON.stringify(hit));
+    ok(await dispatchDoubleClick(x,strip.y)==='start_dragging,toggle_maximize','Real pointer on blank strip x='+Math.round(x)+' starts drag and toggles maximize');
+  }
+  // Use the already-active overview button so the real click keeps the board on 'all'.
+  const switchBtn = await evaluate(`(()=>{const r=document.querySelector('.window-titlebar .tb-stage-switch button[aria-pressed="true"]').getBoundingClientRect();return {x:(r.left+r.right)/2,y:(r.top+r.bottom)/2}})()`);
+  ok(await dispatchDoubleClick(switchBtn.x,switchBtn.y)==='','Real pointer on a stage button never starts drag or maximize');
+  await until(`document.querySelector('.tb-stage-switch').dataset.stage==='all'`);
+  const gapInSwitch = await evaluate(`(()=>{const b=document.querySelectorAll('.window-titlebar .tb-stage-switch button');const a=b[0].getBoundingClientRect(),c=b[1].getBoundingClientRect();return {x:(a.right+c.left)/2,y:a.top-1}})()`);
+  ok(await dispatchDoubleClick(gapInSwitch.x,gapInSwitch.y)==='','Padding inside the stage switch stays part of the control (no drag)');
+  await evaluate(`window.__gestures=[]`);
   await evaluate(`window.__setSceneActive(false)`);await pause(60);
   ok(!await evaluate(`!!document.querySelector('.tb-titlebar-actions')`),'Inactive scene does not contribute controls');
   await evaluate(`window.__setSceneActive(true)`);await pause(60);
   await screenshot('review-titlebar-1568.png');
   const metrics = await evaluate(`({viewport:innerWidth,titlebar:document.querySelector('.window-titlebar').getBoundingClientRect().height,boardTop:document.querySelector('.tb-stage-workspace').getBoundingClientRect().top,boardHeight:document.querySelector('.tb-stage-workspace').getBoundingClientRect().height})`);
   records.push({before:beforeLayout,after:metrics});
-  ok(metrics.boardTop<=beforeLayout.top,'Direct queue board keeps the compact workspace position');
+  ok(metrics.boardTop<=beforeLayout.top,'Direct queue board keeps the compact workspace position '+JSON.stringify({before:beforeLayout,after:metrics}));
   const columns = await evaluate(`[...document.querySelectorAll('.tb-column')].map(e=>{const r=e.getBoundingClientRect();return {left:r.left,width:r.width,right:r.right}})`);
   ok(columns.length===3,'Overview keeps the three direct workflow stages');
   ok(await evaluate(`![...document.querySelectorAll('.tb-board .tb-column')].some(e=>e.classList.contains('tb-archived'))`),'Archived tasks stay out of the overview board');

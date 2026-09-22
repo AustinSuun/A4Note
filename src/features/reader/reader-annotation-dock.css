@@ -33,7 +33,7 @@
   pointer-events: none;
 }
 
-.reader-annotation-dock .annotation-tool-slot { display: flex; align-items: center; }
+.reader-annotation-dock .annotation-tool-slot { display: flex; flex-direction: row; align-items: center; }
 .reader-tool-popover { box-sizing: border-box; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; font-family: var(--font-ui, sans-serif); font-size: var(--ui-control-font-size, 13px); }
 .reader-tool-popover { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(30,45,38,.16); }
 .reader-tool-popover-heading { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
