@@ -1,13 +1,10 @@
-.shortcut-hints { position: fixed; inset: 0; z-index: 10000; pointer-events: none; opacity: 0; transition: opacity 140ms ease; zoom: calc(1 / var(--ui-zoom, 1)); font: 12px/1.5 var(--font-ui, sans-serif); color: var(--ink, #243b31); }
+.shortcut-hints { position: fixed; inset: 0; z-index: 10000; pointer-events: none; opacity: 0; transition: opacity 140ms ease; zoom: calc(1 / var(--ui-zoom, 1)); color: var(--ink, #243b31); }
 .shortcut-hints.is-visible { opacity: 1; }
 .shortcut-hints *, .shortcut-hints kbd { pointer-events: none !important; }
-.shortcut-anchor-hint { position: fixed; max-width: min(156px, calc(100vw - 16px)); padding: 2px 6px; border: 1px solid var(--accent, #54866b); border-radius: 5px; background: var(--surface, #fff); box-shadow: 0 2px 8px #0002; overflow-wrap: anywhere; }
-.shortcut-hint-panel { position: fixed; top: 52px; right: 12px; max-height: calc(100vh - 72px); width: min(410px, calc(100vw - 24px)); padding: 12px; box-sizing: border-box; background: var(--surface, #fff); border: 1px solid var(--line, #ccd8ce); border-radius: 10px; box-shadow: 0 4px 20px #0002; overflow: hidden; columns: 2; column-gap: 16px; }
-.shortcut-hint-panel > strong, .shortcut-hint-panel > small { display: block; column-span: all; }
-.shortcut-hint-panel section { break-inside: avoid; }
-.shortcut-hint-panel h3 { margin: 9px 0 3px; font-size: 12px; }
-.shortcut-hint-panel section > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; margin: 3px 0; }
-.shortcut-hints .is-disabled { opacity: .55; }
+/* Only the shortcut text floats over the current scene: no panel, card, border,
+   heading or command list. Text halo keeps keys readable over PDF/image content. */
+.shortcut-hints .shortcut-key-hint { position: fixed; display: block; box-sizing: border-box; max-width: min(220px, calc(100vw - 16px)); margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font: 600 12px/20px var(--font-ui, sans-serif); white-space: normal; overflow-wrap: anywhere; text-shadow: 0 0 2px var(--surface, #fff), 0 0 4px var(--surface, #fff), 0 0 6px var(--surface, #fff); }
+.shortcut-hints .is-disabled { opacity: .45; }
 .shortcut-editor { color: var(--ink); min-width: 0; font-size: var(--ui-control-font-size, 13px); }
 .shortcut-editor p { margin: 8px 0; line-height: 1.6; }
 .shortcut-editor-note { color: var(--muted); font-size: var(--ui-caption-font-size, 12px); }
@@ -24,8 +21,7 @@
 .shortcut-reader-settings > section { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; padding: 18px; box-sizing: border-box; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 .shortcut-reader-settings header { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 .shortcut-reader-settings h2 { margin: 0; font-size: 17px; }
-@media (max-width: 760px) { .shortcut-editor-row { grid-template-columns: minmax(0,1fr) auto; } .shortcut-editor-row .shortcut-editor-actions { grid-column: 1 / -1; } .shortcut-hint-panel { top: 40px; font-size: 11px; } }
-@media (max-height: 650px) { .shortcut-hint-panel { top: 8px; max-height: calc(100vh - 16px); columns: 2; font-size: 10px; line-height: 1.3; } .shortcut-hint-panel h3 { margin-top: 4px; } }
+@media (max-width: 760px) { .shortcut-editor-row { grid-template-columns: minmax(0,1fr) auto; } .shortcut-editor-row .shortcut-editor-actions { grid-column: 1 / -1; } }
 @media (prefers-reduced-motion: reduce) { .shortcut-hints { transition: none; } }
 
 .shortcut-editor > label.shortcut-editor-note { display: flex; flex-direction: row; align-items: center; gap: 8px; }

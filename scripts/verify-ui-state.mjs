@@ -489,7 +489,10 @@ assert.match(readerStylesSource, /\.tool-option-transparent-toggle/);
 assert.match(readerStylesSource, /\.tool-option-chip/);
 assert.match(readerStylesSource, /\.reader-tool-options-bar > :last-child \{\s*border-right: 0;\s*\}/);
 assert.doesNotMatch(readerConstantsSource, /id: 'comment'/);
-assert.match(readerStylesSource, /\.tool-option-color-group \{[\s\S]*?grid-template-columns: auto auto max-content;[\s\S]*?min-width: 0;/);
+// Main's palette-alignment change uses a shared flex row under each heading.
+assert.match(readerStylesSource, /\.tool-option-color-group \{\s*display: flex;\s*flex-direction: column;\s*align-items: stretch;\s*min-width: 0;/);
+assert.match(readerStylesSource, /\.tool-option-color-heading \{\s*display: flex;[\s\S]*?justify-content: space-between;/);
+assert.match(readerStylesSource, /\.tool-option-color-row \{\s*display: flex;\s*align-items: center;[\s\S]*?min-width: 0;/);
 assert.doesNotMatch(readerStylesSource, /\.tool-option-color-group \{[\s\S]*?minmax\(170px, 1fr\)/);
 assert.match(readerStylesSource, /\.annotation-tool-range \{[\s\S]*?padding: 0;[\s\S]*?background: transparent;/);
 assert.match(readerStylesSource, /\.annotation-tool-range::-webkit-slider-runnable-track \{[\s\S]*?background: linear-gradient\(to right, var\(--accent\) 0%, var\(--accent\) var\(--range-progress, 0%\), rgba\(36,45,39,\.14\) var\(--range-progress, 0%\), rgba\(36,45,39,\.14\) 100%\);/);
