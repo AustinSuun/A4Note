@@ -1,4 +1,7 @@
 import { createContext, useContext, useLayoutEffect, useRef, type ReactNode } from 'react';
+export type ReaderNoteCreateBridge = { pending: boolean; create?: () => void };
+export const ReaderNoteCreateAction = createContext<ReaderNoteCreateBridge | null>(null);
+export const useReaderNoteCreateAction = () => useContext(ReaderNoteCreateAction);
 export const ReaderNoteLayoutActions = createContext<ReactNode>(null);
 export const useReaderNoteLayoutActions = () => useContext(ReaderNoteLayoutActions);
 export const ReaderNoteActivity = createContext(true);

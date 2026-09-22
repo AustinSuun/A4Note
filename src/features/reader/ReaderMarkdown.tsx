@@ -1,5 +1,5 @@
 import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
-import { useReaderNoteActive, useReaderNoteRequests, useReaderNoteLayoutActions } from './ReaderNoteActivity';
+import { useReaderNoteActive, useReaderNoteRequests, useReaderNoteLayoutActions, useReaderNoteCreateAction } from './ReaderNoteActivity';
 import { preferredNoteIdFor, rememberPreferredNoteId } from './noteWorkbench';
 import { OverviewNoteBadge } from './OverviewNoteBadge';
 import { createSummaryNote, editSummary, loadSummary } from '../../platform/library/summaries';
@@ -64,6 +64,7 @@ export function MarkdownNotePanel({
   const endSpaceRef = useMarkdownEndSpace<HTMLElement>();
   const surfaceActive = useReaderNoteActive();
   const noteLayoutActions = useReaderNoteLayoutActions();
+  const createBridge = useReaderNoteCreateAction();
   const acceptsRequests = useReaderNoteRequests();
   const surfaceActiveRef = useRef(surfaceActive); surfaceActiveRef.current = surfaceActive;
   const [session, setSession] = useState(() => {
@@ -206,6 +207,14 @@ export function MarkdownNotePanel({
     } catch (error) { setActionError(String(error)); }
     finally { setCreating(false); }
   };
+  useEffect(() => {
+    if (!createBridge || !surfaceActive) return;
+    const create = () => { void createNote(); };
+    createBridge.create = create;
+    if (createBridge.pending) { createBridge.pending = false; create(); }
+    return () => { if (createBridge.create === create) createBridge.create = undefined; };
+  });
+
   const exportDraft = () => {
     const snapshot = session.getSnapshot();
     const url = URL.createObjectURL(new Blob([snapshot.content], { type: 'text/markdown;charset=utf-8' }));
@@ -268,7 +277,6 @@ export function MarkdownNotePanel({
           </div>}
         </div>
         <div className="note-document-actions">
-          <button type="button" className="note-icon-button" onClick={() => void createNote()} disabled={creating} title="新建文档" aria-label="新建文档"><Plus aria-hidden="true" /></button>
           {noteLayoutActions}
           <span className={`note-save-state ${saveState}`} title={noteSaveStateText(saveState)}>
             {saveState === 'saving' ? <LoaderCircle className="spin" aria-hidden="true" /> : saveState === 'saved' ? <Check aria-hidden="true" /> : null}

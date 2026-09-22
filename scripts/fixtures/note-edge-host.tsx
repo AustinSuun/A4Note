@@ -98,7 +98,7 @@ function Host() {
       >
         <ReaderNoteWorkbenchMenu mode={mode} temporary={workbench.temporary}
           onToggle={() => mode === 'writing' ? workbench.restoreMode() : runCommand(NOTE_WORKBENCH_COMMANDS.toggle)}
-          onSelectMode={workbench.setMode} docked={mode === 'split'} drawerWidth={drawerWidth}
+          onNewNote={() => { setDraft('');workbench.setMode('split'); }} onSelectMode={workbench.setMode} docked={mode === 'split'} drawerWidth={drawerWidth}
           resize={mode === 'split' ? { width: drawerWidth, maximum: containerWidth - 332, onChange: next => workbench.setSplitRatio(next / containerWidth) } : undefined} />
         <div className="reader-main-workspace" inert={writingExpanded} aria-hidden={writingExpanded}>
           <div className="wb-harness-pdf pdf-document" style={{ width: mode==='split' ? containerWidth - drawerWidth - 12 : containerWidth, overflow:'auto' }}><div style={{height:1800,flex:'0 0 auto'}}>PDF scroll surface</div></div>
@@ -121,7 +121,7 @@ function Host() {
               </div>
             </header>
             <div className="reader-retained-note">
-              <div className="note-workspace"><div className="note-document-actions"><button aria-label="新建论文笔记" onClick={() => setDraft('')}>新建</button><button aria-label="笔记历史" onClick={() => setHistoryOpen(true)}>历史</button></div>
+              <div className="note-workspace"><div className="note-document-actions"><button aria-label="笔记历史" onClick={() => setHistoryOpen(true)}>历史</button></div>
                 <textarea className="md-body markdown-live-codemirror" data-note-editor="1" value={draft} onChange={(event) => setDraft(event.target.value)} />
                 <div className="note-meta-row"><button type="button" className="wb-harness-note" onClick={() => workbench.setActiveNote((NOTES[paperId] || [])[0] || null)}>选择笔记</button></div>
               </div>

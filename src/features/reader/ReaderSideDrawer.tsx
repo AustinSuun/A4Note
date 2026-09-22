@@ -203,9 +203,11 @@ export function ReaderSideDrawer({
       </header>}
 
       <div className="workspace-panel-content">
-        {retainNotes && notesPanel && notesView && <ReaderNoteLayoutActions.Provider value={noteMode && onSelectNoteMode ? <ReaderNoteModeSwitch mode={noteMode} onSelectMode={onSelectNoteMode} /> : null}><RetainedReaderNote key={paper.paperId} active={notesActive}>
+        {retainNotes && notesPanel && notesView && <RetainedReaderNote key={paper.paperId} active={notesActive}>
+          <ReaderNoteLayoutActions.Provider value={noteMode && onSelectNoteMode ? <ReaderNoteModeSwitch mode={noteMode} onSelectMode={onSelectNoteMode} /> : null}>
           {notesView.render({ panel: notesPanel.panel, sceneId: 'reader', selectedPaper: paper })}
-        </RetainedReaderNote></ReaderNoteLayoutActions.Provider>}
+                  </ReaderNoteLayoutActions.Provider>
+        </RetainedReaderNote>}
         {open && sidePanelTab !== 'notes' && activePanel && activePanelView
           ? activePanelView.render({ panel: activePanel.panel, sceneId: 'reader', selectedPaper: paper })
           : null}

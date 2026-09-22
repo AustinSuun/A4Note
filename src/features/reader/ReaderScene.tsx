@@ -1,6 +1,6 @@
 import { ReaderSaveErrorNotice } from './ReaderSaveErrorNotice';
 import { ReaderPageControl } from './ReaderPageControl';
-import { ReaderNoteActivity, ReaderNoteRequests } from './ReaderNoteActivity';
+import { ReaderNoteActivity, ReaderNoteRequests, ReaderNoteCreateAction, type ReaderNoteCreateBridge } from './ReaderNoteActivity';
 import { BookOpenText, ChevronLeft } from 'lucide-react';
 import { useReaderLayoutPosition } from './useReaderLayoutPosition';
 import { useReaderWritingShortcuts } from './useReaderWritingShortcuts';
@@ -9,7 +9,7 @@ import { NOTE_WORKBENCH_COMMANDS, modeForNoteWorkbenchCommand, splitWidthPx, typ
 import { useNoteWorkbench } from './useNoteWorkbench';
 import { useReaderDrawerLayout } from './useReaderDrawerLayout';
 import './reader-writing-layout.css';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { AnnotationColor, PaperDocument, PositionJson } from '../../core/types';
 import type { ObjectNavigationTarget } from '../../core/relations';
 import { ReaderDocumentPane } from './ReaderDocumentPane';
@@ -70,6 +70,7 @@ export function ReaderScene({
   const currentTranslatedFileId = preferredTranslatedFileId(paper, translatedFileId);
   const activeFileKind = fileMode === 'parallel' ? activeParallelFileKind : fileMode;
   const drawer = useReaderDrawerLayout();
+  const noteCreate = useRef<ReaderNoteCreateBridge>({ pending: false });
   const workbench = useNoteWorkbench(paper.paperId, drawer.available);
   const notesVisible = sidePanelOpen && sidePanelTab === 'notes';
   const visibleNoteMode = notesVisible ? workbench.mode : 'reading';
@@ -299,6 +300,7 @@ export function ReaderScene({
               temporary={notesVisible && workbench.temporary}
               onToggle={() => visibleNoteMode === 'writing' ? exitNoteMode() : runWorkbenchCommand(NOTE_WORKBENCH_COMMANDS.toggle)}
               onSelectMode={applyNoteMode}
+              onNewNote={() => { if (noteCreate.current.create) noteCreate.current.create(); else noteCreate.current.pending = true; applyNoteMode(visibleNoteMode === 'reading' ? workbench.prefs.wideMode : visibleNoteMode); }}
               docked={sidePanelOpen && !floatingActive && !writingExpanded}
               overlay={overlay}
               drawerWidth={drawer.width}
@@ -380,7 +382,7 @@ export function ReaderScene({
             </div>
           </div>
           </ReaderNoteRequests.Provider></ReaderNoteActivity.Provider>
-          <ReaderSideDrawer
+          <ReaderNoteCreateAction.Provider value={noteCreate.current}><ReaderSideDrawer
             open={sidePanelOpen}
             noteMode={workbench.mode}
             onSelectNoteMode={applyNoteMode}
@@ -415,7 +417,7 @@ export function ReaderScene({
             onAppendAnnotationToNote={onAppendAnnotationToNote}
             onNavigateAnnotation={navigateAnnotationId}
             onNavigateRelationTarget={navigateRelationTarget}
-          />
+          /></ReaderNoteCreateAction.Provider>
         </div>
       </section>
     </ReaderProvider>
