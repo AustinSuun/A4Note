@@ -115,22 +115,90 @@ export function quoteFromTextItemSelections(textItems: TextItemBox[], selections
   return quote.replace(/\s+/g, ' ').trim();
 }
 
+/** Character span of a selection inside one run with the whitespace at both ends dropped, so
+ * bands and rules never start or end on a blank. `null` when nothing visible remains. */
+export function visibleTextItemSelection(item: TextItemBox, selection: TextItemSelection) {
+  if (!item.text.length) return null;
+  const start = clampOffset(selection.startOffset, item.text.length);
+  const end = clampOffset(selection.endOffset, item.text.length);
+  const selectedText = item.text.slice(start, end);
+  const leadingWhitespace = selectedText.length - selectedText.trimStart().length;
+  const trailingWhitespace = selectedText.length - selectedText.trimEnd().length;
+  const visibleStart = Math.min(start + leadingWhitespace, end);
+  const visibleEnd = Math.max(visibleStart, end - trailingWhitespace);
+  return visibleEnd > visibleStart ? { start: visibleStart, end: visibleEnd } : null;
+}
+
 export function textSelectionRectsFromOffsets(textItems: TextItemBox[], selections: TextItemSelection[]): RectBox[] {
   return selections.flatMap((selection) => {
     const item = textItems[selection.itemIndex];
     if (!item?.text.length) return [];
-    const start = clampOffset(selection.startOffset, item.text.length);
-    const end = clampOffset(selection.endOffset, item.text.length);
-    const selectedText = item.text.slice(start, end);
-    const leadingWhitespace = selectedText.length - selectedText.trimStart().length;
-    const trailingWhitespace = selectedText.length - selectedText.trimEnd().length;
-    const visibleStart = Math.min(start + leadingWhitespace, end);
-    const visibleEnd = Math.max(visibleStart, end - trailingWhitespace);
-    if (visibleEnd <= visibleStart) return [];
-    const startRatio = visibleStart / item.text.length;
-    const endRatio = visibleEnd / item.text.length;
-    return [sliceTextItemBox(item, startRatio, endRatio)];
+    const visible = visibleTextItemSelection(item, selection);
+    if (!visible) return [];
+    return [sliceTextItemBox(item, visible.start / item.text.length, visible.end / item.text.length)];
   });
+}
+
+/** Measures the extent of a character span of one text-layer run along its reading direction,
+ * in the same client pixels `layerRect` uses. Returns `null` when the run cannot be measured. */
+export type TextRunExtentMeasurer = (itemIndex: number, start: number, end: number) => { left: number; top: number; width: number; height: number } | null;
+
+/** Selection rects that follow the pointer along each run: the extent along the reading
+ * direction comes from the live glyphs of the (run-fitted) text layer, the extent across it
+ * from the pdf.js run box, so partial runs start and end exactly under the caret while bands
+ * keep one even height per font size. Runs the browser cannot measure fall back to the
+ * proportional slice. Requires a text layer whose runs are fitted onto the PDF boxes
+ * (pdfTextLayerFit); otherwise the glyph extents drift away from the bitmap. */
+export function textSelectionRectsFromLayer(
+  textItems: TextItemBox[],
+  selections: TextItemSelection[],
+  layerRect: { left: number; top: number; width: number; height: number },
+  measure: TextRunExtentMeasurer,
+): RectBox[] {
+  if (!(layerRect.width > 0 && layerRect.height > 0)) return textSelectionRectsFromOffsets(textItems, selections);
+  return selections.flatMap((selection) => {
+    const item = textItems[selection.itemIndex];
+    if (!item?.text.length) return [];
+    const visible = visibleTextItemSelection(item, selection);
+    if (!visible) return [];
+    const fallback = sliceTextItemBox(item, visible.start / item.text.length, visible.end / item.text.length);
+    const glyphs = measure(selection.itemIndex, visible.start, visible.end);
+    if (!glyphs || !(glyphs.width > 0) || !(glyphs.height > 0)) return [fallback];
+    if (isVerticalTextOrientation(textItemOrientation(item))) {
+      const top = ((glyphs.top - layerRect.top) / layerRect.height) * 100;
+      const height = (glyphs.height / layerRect.height) * 100;
+      const y = Math.max(item.y, Math.min(top, item.y + item.height));
+      const bottom = Math.max(y, Math.min(top + height, item.y + item.height));
+      return [{ x: item.x, y, width: item.width, height: bottom - y }];
+    }
+    const left = ((glyphs.left - layerRect.left) / layerRect.width) * 100;
+    const width = (glyphs.width / layerRect.width) * 100;
+    // Clamp to the run box: a fitted run never exceeds it, but a still-loading font could.
+    const x = Math.max(item.x, Math.min(left, item.x + item.width));
+    const right = Math.max(x, Math.min(left + width, item.x + item.width));
+    return [{ x, y: item.y, width: right - x, height: item.height }];
+  });
+}
+
+/** Measurer over a real text layer: the run span with `data-text-index` and its single text node. */
+export function textRunExtentMeasurer(textLayer: ParentNode & { ownerDocument: Document | null }): TextRunExtentMeasurer {
+  const document = textLayer.ownerDocument;
+  if (!document) return () => null;
+  const range = document.createRange();
+  return (itemIndex, start, end) => {
+    const span = textLayer.querySelector<HTMLElement>(`span[data-text-index="${itemIndex}"]`);
+    const text = span?.firstChild;
+    if (!text || text.nodeType !== Node.TEXT_NODE) return null;
+    const length = text.textContent?.length ?? 0;
+    try {
+      range.setStart(text, clampOffset(start, length));
+      range.setEnd(text, clampOffset(end, length));
+    } catch {
+      return null;
+    }
+    const rect = range.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+  };
 }
 
 /** Slice a run box along its reading direction: x for horizontal runs, y for rotated ones. */

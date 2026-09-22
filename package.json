@@ -30,6 +30,8 @@
     "test:pdf-crosspage-selection": "node --experimental-strip-types scripts/verify-pdf-crosspage-selection.mjs",
     "test:annotation-layers": "node scripts/verify-annotation-layers.mjs",
     "test:pdf-selection-preview": "node --experimental-strip-types scripts/verify-pdf-selection-preview.mjs",
+    "test:pdf-text-layer-offset": "node --experimental-strip-types scripts/verify-pdf-text-layer-offset.mjs",
+    "test:pdf-text-layer-offset-browser": "node scripts/verify-pdf-text-layer-offset-browser.mjs",
     "test:pdf-eraser-precision": "node --experimental-strip-types scripts/verify-pdf-eraser-precision.mjs",
     "test:pdf-text-annotation": "node --experimental-strip-types scripts/verify-pdf-text-annotation.mjs",
     "test:ai-toolbar": "node scripts/verify-ai-toolbar.mjs",
