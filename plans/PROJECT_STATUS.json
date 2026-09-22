@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-22T15:38:22+08:00",
+  "updatedAt": "2026-09-22T15:52:03+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
+      "eraser-alignment-xingxu：星序已领取 fcd4d8d6-a1bb-46cb-b960-469127d50437（high/spec2）；分支 fix/eraser-alignment-xingxu，独立 .worktrees/eraser-xingxu，基线 main 9bcc068。范围为 PdfReader 橡皮指针/圆环、pdfCoordinates、ink裁剪与专项回归；保留页外停止、图层和保存语义，不改并行图层弹窗/侧栏样式。当前仅建立工作区，未改业务代码、未启动原生复现；原始附件159c653e下载返回404“附件不存在”，尚未查看，需恢复或用户重传。下一步使用当前main真实原生实例同一采样记录pointer/DOM圆环/render rect/ink gap并量化，不用旧卡通过结果或固定偏移代替复现。",
       "reader-annotation-toast-drag-xunzhou：任务 20b183cd 完成；fa49614 统一移除高亮/下划线/画笔/橡皮擦/文本框/图形/箭头正常操作期间的 role=status 与“正在…”提示，同时以带 revision 的乐观几何稳定文本框移动/缩放，避免 pointerup 后被旧异步几何回写。Windows/Tauri DPR 1.25 在 100%/118%/140%/190%、滚动、侧栏、边缘、快慢拖动、pointerleave、undo/redo/reopen 与原生回读均通过；持久化拒绝仍保留重试/放弃反馈。实现已由 4c918db 合入本地 main。",
       "reader-find-trigger-arena-two：arena-two 完成 6a2240f7 移除阅读器常驻「查找」按钮，PDF 搜索仅由 reader.search 快捷键（默认 Ctrl+F，可改绑）与命令面板「搜索当前 PDF」触发。PdfFindBar 未打开时 return null（DOM 无 .pdf-find-trigger、无 display:none 隐藏），删除对应死 CSS 与按钮上的 useShortcutProps 锚点；打开/重选聚焦改为 focusRequest + useEffect（原 rAF 与 canvas 焦点竞争）；打开态行为未改，未新增任何入口。fix bb020ee（基线 c056588）。验证：tsc 0、build 过；新增 test:pdf-find-entry 35 断言（旧代码在「no .pdf-find-trigger control or style remains」失败）覆盖关闭态渲染为空、reader-find 事件打开、reader.search 注册且默认 Ctrl+F、再按重选、非 PDF 模式不打开且无错误、Ctrl 提示层 floating 提示；shortcuts/shortcuts-browser/reader/ui-state/architecture/verify-reader-priority-fixes 全过；npm run verify 全量通过。独立身份 app.aster.research.dev.arena-two-find.wcb085547e0 的 tauri debug 二进制真机取证 18/18（无按钮、Ctrl+F 开/聚焦/1/60/Enter/Shift+Enter/重选/Esc、命令面板、Ctrl 提示层 reader.search floating + zoomIn adjacent、pageerror 0；非 PDF 分支合成夹具无译文记 NOTE，由浏览器回归覆盖）。详见 docs/mcp-reader-find-trigger-arena-two-2026-09-22.md。",
       "reader-text-layer-offset-arena-two：arena-two 完成 9222954f 高缩放+侧栏下鼠标位置与标注预览/选中效果左偏修复。根因不是容器/侧栏偏移，而是透明文本层以替代字体自然宽度（0.86–0.89×）渲染、选区却按 PDF run 宽度线性切片，误差 ∝ 缩放×字符序号（原生窗口实测 100% 行尾 −33px、150% −57px、370% −120px，侧栏横滚时整条标注可被推出可视区）。修复：PdfTextLayer 按 pdf.js 方式量测每个 run 并用 --pdf-run-scale 拟合到 PDF 盒（0/90/180/270，fonts.ready+ResizeObserver 复测、不叠乘）；新增 textSelectionRectsFromLayer 从真实字形 Range 取起止，预览/最终标注/命中共用一条几何，比例切片仅作回退；无按工具或 370% 的硬编码补偿，自由笔/图形/箭头管线未改。fix 2aba6ba，合并 main 4c918db 得 4d50ded。验证：tsc 0、build 过；新增 test:pdf-text-layer-offset 55 断言（旧代码失败）与浏览器回归 113/113（旧 48/106）；reader/selection 37/rotated 151/crosspage 31/layers 55/ui-state 全过；合并后 npm run verify 全量通过（Rust 215/0/5 ignored）。独立身份 app.aster.research.dev.arena-two.w15eca3720d 的 tauri debug 二进制 before/after 真机取证（CDP 真实鼠标、合成 PDF、独立 profile、DEV 状态条）：修复前 33/61 通过，修复后 62/62；370%+侧栏起止 Δ 由 −8.4/−120.5px 变为 ≤0.02px，resize 与 reload 后仍对齐，pageerror/console error 0。证据 .tmp/native/evidence/{before,after}。详见 docs/mcp-reader-text-layer-offset-arena-two-2026-09-22.md。",
@@ -126,6 +127,7 @@
     ]
   },
   "tracks": {
+    "eraserAlignmentXingxu": {"status": "in_progress", "taskId": "fcd4d8d6-a1bb-46cb-b960-469127d50437", "owner": "星序", "branch": "fix/eraser-alignment-xingxu", "summary": "领取完成，待参考附件恢复及原生复现；未改业务代码"},
     "workbench": "done",
     "resources": "done",
     "reader": "done",
@@ -139,6 +141,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "eraser-alignment-xingxu：已领取spec2并建立独立工作区，未修改业务代码。",
       "reader-annotation-toast-drag-xunzhou：任务 20b183cd 完成；fa49614 统一移除高亮/下划线/画笔/橡皮擦/文本框/图形/箭头正常操作期间的 role=status 与“正在…”提示，同时以带 revision 的乐观几何稳定文本框移动/缩放，避免 pointerup 后被旧异步几何回写。Windows/Tauri DPR 1.25 在 100%/118%/140%/190%、滚动、侧栏、边缘、快慢拖动、pointerleave、undo/redo/reopen 与原生回读均通过；持久化拒绝仍保留重试/放弃反馈。实现已由 4c918db 合入本地 main。",
       "reader-find-trigger-arena-two：arena-two 完成 6a2240f7 移除阅读器常驻「查找」按钮，PDF 搜索仅由 reader.search 快捷键（默认 Ctrl+F，可改绑）与命令面板「搜索当前 PDF」触发。PdfFindBar 未打开时 return null（DOM 无 .pdf-find-trigger、无 display:none 隐藏），删除对应死 CSS 与按钮上的 useShortcutProps 锚点；打开/重选聚焦改为 focusRequest + useEffect（原 rAF 与 canvas 焦点竞争）；打开态行为未改，未新增任何入口。fix bb020ee（基线 c056588）。验证：tsc 0、build 过；新增 test:pdf-find-entry 35 断言（旧代码在「no .pdf-find-trigger control or style remains」失败）覆盖关闭态渲染为空、reader-find 事件打开、reader.search 注册且默认 Ctrl+F、再按重选、非 PDF 模式不打开且无错误、Ctrl 提示层 floating 提示；shortcuts/shortcuts-browser/reader/ui-state/architecture/verify-reader-priority-fixes 全过；npm run verify 全量通过。独立身份 app.aster.research.dev.arena-two-find.wcb085547e0 的 tauri debug 二进制真机取证 18/18（无按钮、Ctrl+F 开/聚焦/1/60/Enter/Shift+Enter/重选/Esc、命令面板、Ctrl 提示层 reader.search floating + zoomIn adjacent、pageerror 0；非 PDF 分支合成夹具无译文记 NOTE，由浏览器回归覆盖）。详见 docs/mcp-reader-find-trigger-arena-two-2026-09-22.md。",
       "reader-text-layer-offset-arena-two：arena-two 完成 9222954f 高缩放+侧栏下鼠标位置与标注预览/选中效果左偏修复。根因不是容器/侧栏偏移，而是透明文本层以替代字体自然宽度（0.86–0.89×）渲染、选区却按 PDF run 宽度线性切片，误差 ∝ 缩放×字符序号（原生窗口实测 100% 行尾 −33px、150% −57px、370% −120px，侧栏横滚时整条标注可被推出可视区）。修复：PdfTextLayer 按 pdf.js 方式量测每个 run 并用 --pdf-run-scale 拟合到 PDF 盒（0/90/180/270，fonts.ready+ResizeObserver 复测、不叠乘）；新增 textSelectionRectsFromLayer 从真实字形 Range 取起止，预览/最终标注/命中共用一条几何，比例切片仅作回退；无按工具或 370% 的硬编码补偿，自由笔/图形/箭头管线未改。fix 2aba6ba，合并 main 4c918db 得 4d50ded。验证：tsc 0、build 过；新增 test:pdf-text-layer-offset 55 断言（旧代码失败）与浏览器回归 113/113（旧 48/106）；reader/selection 37/rotated 151/crosspage 31/layers 55/ui-state 全过；合并后 npm run verify 全量通过（Rust 215/0/5 ignored）。独立身份 app.aster.research.dev.arena-two.w15eca3720d 的 tauri debug 二进制 before/after 真机取证（CDP 真实鼠标、合成 PDF、独立 profile、DEV 状态条）：修复前 33/61 通过，修复后 62/62；370%+侧栏起止 Δ 由 −8.4/−120.5px 变为 ≤0.02px，resize 与 reload 后仍对齐，pageerror/console error 0。证据 .tmp/native/evidence/{before,after}。详见 docs/mcp-reader-text-layer-offset-arena-two-2026-09-22.md。",
@@ -827,6 +830,7 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
+      "eraser-alignment-xingxu：恢复返回404的本轮参考图后，基于当前main进行真实原生坐标采样复现。",
       "reader-annotation-toast-drag-xunzhou：代码与证据已完成并合入本地 main；提交任务进入 review 后由用户验收全部工具不再出现正常进度提示、文本框拖动连续性及失败反馈，归档仍仅由用户执行。",
       "context-shortcuts-xingxu：星序完成9230f8ce spec4实现及验证：按钮旁省略已按住的Ctrl，保留必要Alt/Shift/Meta；浮动行完整键位+功能名，紧凑/完整两套测量，整体避让弹窗。实现98bb238，最终整合main ae5896c得7a09d09，保留最新设置UI/行内录制及查找按钮移除。最终verify退出0/136.066秒，core52/dispatcher50/layout33/settings22/browser110、原生40+布局49+弹窗14+重启4+显隐4通过，diagnostics0。main最终整合与提交SHA见任务卡交付记录，下一步用户验收；按授权备份并保留并行修改，不代提交其他任务。未打包/安装/推送/发布。详见docs/mcp-shortcut-hints-spec4-xingxu-2026-09-22.md。",
       "reader-eraser-pointer-xunzhou：代码与证据完成后合并本地 main 并提交任务进入 review；由用户检查 100%/120%/滚动及页外回入效果，归档仍仅由用户执行。",
