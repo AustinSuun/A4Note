@@ -23,11 +23,17 @@ export function layoutShortcutHints(items: HintMeasurement[], bounds: HintRect, 
   for (const item of items) {
     const anchor = item.anchor;
     if (!anchor) continue;
-    const centered = Math.max(bounds.left, Math.min(bounds.right - item.width, (anchor.left + anchor.right - item.width) / 2));
+    let centered = Math.max(bounds.left, Math.min(bounds.right - item.width, (anchor.left + anchor.right - item.width) / 2));
     const top = Math.max(bounds.top, Math.min(bounds.bottom - item.height, (anchor.top + anchor.bottom - item.height) / 2));
     if (item.beside && (place(item, anchor.right + 6, top, 'adjacent') || place(item, anchor.left - item.width - 6, top, 'adjacent'))) continue;
     const bottomDock = anchor.top > bounds.top + (bounds.bottom - bounds.top) * .6;
     const nearTop = anchor.top < bounds.top + 64;
+    // A wide chord belongs to its trailing action key, not to the midpoint of
+    // its modifiers. Extend it leftwards so the next dock buttons retain room
+    // for their own keys, especially in the single row below an open popup.
+    if (bottomDock && item.width > (anchor.right - anchor.left) * 2) {
+      centered = Math.max(bounds.left, Math.min(bounds.right - item.width, anchor.right - item.width - 4));
+    }
     for (let row = 0; row < 5 && !result[item.id]; row += 1) {
       const distance = 7 + row * (item.height + 6);
       const above = anchor.top - distance - item.height, below = anchor.bottom + distance;

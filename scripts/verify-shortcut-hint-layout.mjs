@@ -33,7 +33,7 @@ check(new Set(Object.values(named).map(p=>p.left)).size===1,'named rows align th
 check(JSON.stringify(hintKeycaps({type:'keyboard',key:'+',ctrl:true,shift:true}))===JSON.stringify(['Ctrl','Shift','+']),'Plus key preserved as a real keycap, not split as a separator');
 check(JSON.stringify(hintKeycaps({type:'keyboard',key:'q',code:'KeyA',semantics:'code',ctrl:true}))===JSON.stringify(['Ctrl','A']),'physical key hint uses effective code');
 check(hintKeycaps({type:'keyboard',key:'enter',alt:true,ctrl:true}).at(-1)==='Enter','named keys use readable casing');
-check(hintKeycaps({type:'mouse',button:4})[0]==='鼠标前进','side button keycap');
+check(hintKeycaps({type:'mouse',button:4})[0]==='M5','side button keycap');
 const twoGroups=floatingItems.slice(0,6).map((item,i)=>({...item,group:i<3?'A':'B'}));
 const wrapped=layoutShortcutHints(twoGroups,{left:8,top:8,right:536,bottom:200},[]);
 check(new Set(twoGroups.slice(3).map(t=>wrapped[t.id]?.left)).size===1&&wrapped['named-3'].left<wrapped['named-0'].left,'related actions wrap as a complete group');
@@ -43,6 +43,12 @@ check(JSON.stringify(hintKeycaps({type:'keyboard',key:'h',ctrl:true},true))==='[
 check(JSON.stringify(hintKeycaps({type:'keyboard',key:'n',ctrl:true,alt:true},true))==='["Alt","N"]','button keycap keeps required Alt modifier');
 check(JSON.stringify(hintKeycaps({type:'keyboard',key:'+',ctrl:true,shift:true},true))==='["Shift","+"]','compact Plus binding preserves Shift and Plus');
 check(JSON.stringify(hintKeycaps({type:'keyboard',key:'q',code:'KeyA',semantics:'code',ctrl:true,meta:true},true))==='["Meta","A"]','compact physical key keeps Meta');
-check(JSON.stringify(hintKeycaps({type:'mouse',button:3},true))==='["鼠标后退"]','compact mouse binding unchanged');
+check(JSON.stringify(hintKeycaps({type:'mouse',button:3},true))==='["M4"]','compact back side key M4 keeps button 3 mapping');
 check(JSON.stringify(hintKeycaps({type:'keyboard',key:'h',ctrl:true}))==='["Ctrl","H"]','full display remains the default for settings and floating hints');
+const chord={id:'chord',width:139,height:29,anchor:{left:400,right:432,top:700,bottom:732}};
+const nextKey={id:'next',width:35,height:29,anchor:{left:437,right:469,top:700,bottom:732}};
+const popup={left:350,right:720,top:100,bottom:692};
+const underPopup=layoutShortcutHints([chord,nextKey],{left:8,top:8,right:992,bottom:790},[chord.anchor,nextKey.anchor,popup]);
+check(underPopup.chord?.placement==='adjacent'&&underPopup.next?.placement==='adjacent','wide dock chord and side-key both fit below popup');
+check(underPopup.chord.left+chord.width<chord.anchor.right,'trailing action key alignment leaves room for next button');
 console.log(`Shortcut hint layout verification passed: ${checks.length} checks`);

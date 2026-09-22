@@ -87,20 +87,31 @@ export function ShortcutHints({ store }: { store: ShortcutStore }) {
     if (!store.hintVisible || !root.current) return;
     const elements = [...root.current.querySelectorAll<HTMLElement>('[data-measure-id]')];
     const compactElements = [...root.current.querySelectorAll<HTMLElement>('[data-compact-measure-id]')];
-    const keyWidth = Math.max(0, ...elements.map(node => node.querySelector('.shortcut-hint-keys')!.getBoundingClientRect().width));
-    root.current.style.setProperty('--shortcut-key-column', `${Math.ceil(keyWidth)}px`);
     const controls = [...document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role="button"], [role="menuitemradio"], #a4note-live-dev-badge')].filter(visibleControl).flatMap(controlRects);
     // Protect whole popup surfaces, not just their buttons. A higher stacking
     // layer can otherwise hide a keycap in apparently empty inter-button space.
     controls.push(...[...document.querySelectorAll<HTMLElement>('[role="menu"], [role="listbox"], [role="tooltip"], [role="dialog"], [popover], [data-shortcut-obstacle]')].filter(elementIsVisible).map(rectOf));
-    const measurements = hints.map(hint => {
-      const node = elements.find(element => element.dataset.measureId === hint.id)!;
-      const rect = node.getBoundingClientRect();
-      const compact = compactElements.find(element => element.dataset.compactMeasureId === hint.id)!;
-      const keys = compact.querySelector('.shortcut-hint-keys')!.getBoundingClientRect();
-      return { id: hint.id, width: Math.ceil(keys.width), height: Math.ceil(keys.height), floatingWidth: Math.ceil(rect.width), floatingHeight: Math.ceil(rect.height), group: hint.group, beside: hint.anchor?.tagName.toLowerCase() === 'svg', anchor: hint.anchor ? rectOf(hint.anchor) : undefined };
-    });
-    setPositions(layoutShortcutHints(measurements, { left: 8, top: 8, right: innerWidth - 8, bottom: innerHeight - 8 }, controls));
+    const measureAndPlace = (compact: boolean) => {
+      const layer = root.current!;
+      layer.dataset.floatingDensity = compact ? 'compact' : 'regular';
+      // Reset before measuring percentage-constrained keys; never feed a stale
+      // shrunken column back into itself. Long chords wrap without losing keys.
+      const cap = compact ? 128 : 144;
+      layer.style.setProperty('--shortcut-key-column', `${cap}px`);
+      const measurements = hints.map(hint => {
+        const node = elements.find(element => element.dataset.measureId === hint.id)!;
+        const rect = node.getBoundingClientRect();
+        const compact = compactElements.find(element => element.dataset.compactMeasureId === hint.id)!;
+        const keys = compact.querySelector('.shortcut-hint-keys')!.getBoundingClientRect();
+        return { id: hint.id, width: Math.ceil(keys.width), height: Math.ceil(keys.height), floatingWidth: Math.ceil(rect.width), floatingHeight: Math.ceil(rect.height), group: hint.group, beside: hint.anchor?.tagName.toLowerCase() === 'svg', anchor: hint.anchor ? rectOf(hint.anchor) : undefined };
+      });
+      return layoutShortcutHints(measurements, { left: 8, top: 8, right: innerWidth - 8, bottom: innerHeight - 8 }, controls);
+    };
+    let next = measureAndPlace(false);
+    // Keep large dock keycaps in every viewport. Compact only the free-floating
+    // action rows if the measured large layout cannot display all commands.
+    if (Object.keys(next).length < hints.length) next = measureAndPlace(true);
+    setPositions(next);
   }, [hints, store, store.hintVisible]);
 
   const keys = (hint: Hint, compact = false) => <span className="shortcut-hint-keys">{(compact ? hint.compactKeys : hint.keys).map((key, i) => <span className="shortcut-hint-key-part" key={i}>{i > 0 && <span className="shortcut-hint-plus">+</span>}<kbd>{key}</kbd></span>)}</span>;

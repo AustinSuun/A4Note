@@ -6,7 +6,7 @@ import { createServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { chromium } from 'playwright-core';
 const root = process.cwd();
-const evidence = path.join(root,'.tmp/shots/shortcuts-browser'); fs.mkdirSync(evidence,{recursive:true});
+const evidence = path.join(root,process.env.SHORTCUT_EVIDENCE_DIR || '.tmp/shots/shortcuts-browser'); fs.mkdirSync(evidence,{recursive:true});
 const baseline=process.argv.includes('--baseline-hints');
 const baselinePlugin={name:'baseline-shortcut-hints',enforce:'pre',resolveId(id,importer){
   if(!baseline || !importer?.endsWith('/ShortcutProvider.tsx')) return;
@@ -25,7 +25,7 @@ let browser, server; const errors=[],checks=[];
 const check=(value,expected,label)=>{assert.deepEqual(value,expected,label);checks.push(label);if(process.env.SHORTCUT_TEST_TRACE)console.log('PASS',checks.length,label);};
 try {
   // Static harness: scan only its entry and avoid watching parallel worktrees/build outputs.
-  server=await createServer({root,cacheDir:path.join(root,'.tmp/shortcuts-browser-vite'),configFile:false,optimizeDeps:{entries:['scripts/fixtures/shortcuts.tsx']},plugins:[baselinePlugin,react(),{name:'shortcut-harness',configureServer(s){s.middlewares.use('/__shortcuts',async (_req,res)=>{res.setHeader('Content-Type','text/html');res.end(await s.transformIndexHtml('/__shortcuts','<html><head><link rel="icon" href="data:,"><style>:root{--ink:#243b31;--surface:#fff;--muted:#64746c;--line:#bbc8bf;--accent:#48835d}body{margin:0;font:14px sans-serif}button{margin:3px}</style></head><body><div id="root"></div><script type="module" src="/scripts/fixtures/shortcuts.tsx"></script></body></html>'));});}}],server:{host:'127.0.0.1',port:0,watch:null},logLevel:'error'});
+  server=await createServer({root,cacheDir:path.join(root,'.tmp/shortcuts-browser-vite'),configFile:false,optimizeDeps:{entries:['scripts/fixtures/shortcuts.tsx']},plugins:[baselinePlugin,react(),{name:'shortcut-harness',configureServer(s){s.middlewares.use('/__shortcuts',async (_req,res)=>{res.setHeader('Content-Type','text/html');res.end(await s.transformIndexHtml('/__shortcuts','<html><head><link rel="icon" href="data:,"><style>:root{--ink:#243b31;--surface:#fff;--muted:#64746c;--line:#bbc8bf;--accent:#48835d}body{margin:0;font:14px Georgia,serif}button{margin:3px}</style></head><body><div id="root"></div><script type="module" src="/scripts/fixtures/shortcuts.tsx"></script></body></html>'));});}}],server:{host:'127.0.0.1',port:0,watch:null},logLevel:'error'});
   await server.listen(); const port=server.httpServer.address().port;
   const exe = process.env.SHORTCUT_CHROME || ['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);
   assert.ok(exe,'Set SHORTCUT_CHROME to an installed browser executable');
@@ -50,6 +50,9 @@ try {
   check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-keys').textContent(),'H','primary effective binding by its button');
   check(await page.locator('[data-hint-id="reader.zoomIn"]').getAttribute('data-hint-placement'),'adjacent','right-side zoom no longer relegated to panel');
   await page.screenshot({path:path.join(evidence,'01-reader-hints.png')});
+  const initialSize=await page.locator('[data-hint-id="reader.tool.highlight"] kbd').evaluate(n=>({font:parseFloat(getComputedStyle(n).fontSize),height:n.getBoundingClientRect().height}));
+  fs.writeFileSync(path.join(evidence,'initial-size.json'),JSON.stringify(initialSize));
+  check(initialSize.font>=16 && initialSize.height>=28,true,'size regression: readable 16px / >=28px dock keycap');
   check(await page.locator('[data-hint-placement="adjacent"] kbd').allTextContents().then(keys=>keys.includes('Ctrl')),false,'spec4: no repeated Ctrl on button hints');
   check(await page.locator('[data-hint-id="reader.undo"] .shortcut-hint-keys').textContent(),'Ctrl+Z','floating hints keep full combination');
   await page.keyboard.up('Control');await page.waitForTimeout(180);
@@ -83,6 +86,7 @@ try {
   const side=async()=>{await cdp.send('Input.dispatchMouseEvent',{type:'mousePressed',x:60,y:140,button:'back',buttons:8,clickCount:1});await cdp.send('Input.dispatchMouseEvent',{type:'mouseReleased',x:60,y:140,button:'back',buttons:0,clickCount:1});};
   await row.getByRole('button',{name:'更改',exact:true}).click();await side();await row.getByRole('button',{name:/保存/}).click();
   check(await row.locator('.shortcut-keycaps').getAttribute('aria-label'),'鼠标后退键','side mouse recorded in real DOM');
+  check(await row.locator('.shortcut-keycaps kbd').innerText(),'M4','settings use the shared short side-key label');
   await page.locator('#canvas').focus();await side();check(await events(),['highlight'],'side mouse executes once');
   await cdp.detach();
   await page.getByRole('button',{name:'恢复本组默认'}).click();await page.getByRole('button',{name:'确认恢复'}).click();check(await key('Control+h'),['highlight'],'group reset');check(await key('Control+u'),['underline'],'reset restores conflict victim');
@@ -99,9 +103,11 @@ try {
   await page.locator('#tool-dock').evaluate(n=>n.style.visibility='');
   // Geometry is checked on the actual rendered hints at both CSS viewport sizes
   // and application zoom levels; no synthetic screenshot composition.
-  for (const [width,height] of [[800,600],[1280,800]]) for (const zoom of [1,1.25,1.5]) {
+  for (const variant of ['default','long-mouse']) for (const theme of ['light','dark']) for (const [width,height] of [[800,600],[1280,800]]) for (const zoom of [.8,1,1.25,1.5]) {
+    await page.evaluate(({variant,theme})=>{const s=window.__shortcutsTest.store; s.save({schemaVersion:1,bindings:variant==='default'?{}:{'reader.tool.highlight':[{type:'keyboard',key:'F9',ctrl:true,alt:true,shift:true}],'reader.tool.underline':[{type:'mouse',button:3}],'reader.tool.area':[{type:'mouse',button:4}]}});const r=document.documentElement;r.dataset.theme=theme;r.style.setProperty('--surface',theme==='dark'?'#202b27':'#fff');r.style.setProperty('--ink',theme==='dark'?'#e6ede8':'#243b31');}, {variant,theme});
     await page.setViewportSize({width,height});
     await page.evaluate(z=>{document.documentElement.style.zoom=String(z);document.documentElement.style.setProperty('--ui-zoom',String(z));},zoom);
+    const dockBefore=await page.locator('#tool-dock').boundingBox();
     await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(180);
     const geometry=await page.evaluate(()=>{
       const paintStyle=document.createElement('style');paintStyle.textContent='.shortcut-hints [data-hint-id] kbd { pointer-events: auto !important; }';document.head.append(paintStyle);
@@ -113,7 +119,7 @@ try {
         const r=n.getBoundingClientRect();return r.width>0&&r.height>0&&r.top<innerHeight&&r.bottom>0&&r.left<innerWidth&&r.right>0;
       }).map(n=>n.getBoundingClientRect());
       const overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
-      return {coveredKeys,viewport:[innerWidth,innerHeight],outside:badges.filter(r=>r.left<0||r.top<0||r.right>innerWidth+1||r.bottom>innerHeight+1).length,
+      return {coveredKeys,positions:nodes.map(n=>({id:n.dataset.hintId,placement:n.dataset.hintPlacement,visible:getComputedStyle(n).visibility,rect:n.getBoundingClientRect().toJSON(),keys:[...n.querySelectorAll('kbd')].map(k=>({text:k.textContent,rect:k.getBoundingClientRect().toJSON()}))})), density:document.querySelector('.shortcut-hints').dataset.floatingDensity,minDockFont:Math.min(...nodes.filter(n=>n.dataset.hintPlacement==='adjacent').flatMap(n=>[...n.querySelectorAll('kbd')]).map(n=>parseFloat(getComputedStyle(n).fontSize))), minFont:Math.min(...nodes.flatMap(n=>[...n.querySelectorAll('kbd')]).map(n=>parseFloat(getComputedStyle(n).fontSize))),minLabelFont:Math.min(...nodes.flatMap(n=>[...n.querySelectorAll('.shortcut-hint-label')]).map(n=>parseFloat(getComputedStyle(n).fontSize))),viewport:[innerWidth,innerHeight],outside:badges.filter(r=>r.left<0||r.top<0||r.right>innerWidth+1||r.bottom>innerHeight+1).length,
         hidden:nodes.filter(n=>getComputedStyle(n).visibility==='hidden').length,
         backgrounds:nodes.filter(n=>getComputedStyle(n).backgroundColor!=='rgba(0, 0, 0, 0)'||getComputedStyle(n).boxShadow!=='none'||getComputedStyle(n).borderTopWidth!=='0px').length,
         bareKeys:nodes.flatMap(n=>[...n.querySelectorAll('kbd')]).filter(k=>getComputedStyle(k).borderBottomWidth==='0px'||getComputedStyle(k).borderRadius==='0px').length,
@@ -122,6 +128,15 @@ try {
         coversControl:badges.some(r=>controls.some(s=>overlap(r,s))),
         dockFloating:[...document.querySelectorAll('#tool-dock [data-shortcut-id]')].filter(n=>document.querySelector(`[data-hint-id="${n.dataset.shortcutId}"]`)?.dataset.hintPlacement!=='adjacent').length};
     });
+    fs.writeFileSync(path.join(evidence,'geometry-current.json'),JSON.stringify({variant,theme,width,zoom,...geometry},null,2));
+    if(geometry.coveredKeys)await page.screenshot({path:path.join(evidence,'failure.png')});
+    check(geometry.minDockFont>=16 && geometry.minFont>=(geometry.density==='compact'?14:16) && geometry.minLabelFont>=(geometry.density==='compact'?14:15),true,`${variant}/${theme}/${width}/${zoom}: enlarged keys and action labels`);
+    check(await page.locator('#tool-dock').boundingBox(),dockBefore,'overlay never changes dock geometry');
+    if(variant==='long-mouse'){
+      check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-keys').textContent(),'Alt+Shift+F9','long adjacent chord remains complete, no held Ctrl');
+      check(await page.locator('[data-hint-id="reader.tool.underline"] kbd').innerText(),'M4','back short name');
+      check(await page.locator('[data-hint-id="reader.tool.area"] kbd').innerText(),'M5','forward short name');
+    }
     if(geometry.dockFloating||geometry.hidden){
       console.log('MEASURE',JSON.stringify(await page.evaluate(()=>[...document.querySelectorAll('[data-measure-id]')].map(n=>({id:n.dataset.measureId,w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height,keys:n.querySelector('.shortcut-hint-keys').getBoundingClientRect().width})))));
       console.log('FAILED GEOMETRY',JSON.stringify(await page.evaluate(()=>[...document.querySelectorAll('#tool-dock [data-shortcut-id]')].map(n=>{const r=n.getBoundingClientRect();const h=document.querySelector(`[data-hint-id="${n.dataset.shortcutId}"]`);return {id:n.dataset.shortcutId,rect:r.toJSON(),hint:h?.outerHTML,hit:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.outerHTML?.slice(0,180)};}))));
@@ -136,8 +151,10 @@ try {
     check(geometry.overlaps,false,`${width}x${height} zoom ${zoom}: hints do not overlap`);
     check(geometry.coversControl,false,`${width}x${height} zoom ${zoom}: no icons or DEV strip covered`);
     check(geometry.dockFloating,0,`${width}x${height} zoom ${zoom}: every dense toolbar button has adjacent key`);
-    await page.screenshot({path:path.join(evidence,`geometry-${width}-${zoom}.png`)});await page.keyboard.up('Control');
+    await page.screenshot({path:path.join(evidence,`geometry-${variant}-${theme}-${width}-${zoom}.png`)});await page.keyboard.up('Control');
   }
+  check(await key('Control+Alt+Shift+F9'),['highlight'],'enlarged long chord dispatch unchanged');
+  await page.evaluate(()=>window.__shortcutsTest.store.save({schemaVersion:1,bindings:{}}));
   // While Ctrl stays down, reflow and dynamic anchors must remeasure without a
   // new keydown, including non-window resize and portal/menu visibility changes.
   await page.evaluate(()=>{document.documentElement.style.zoom='1';document.documentElement.style.setProperty('--ui-zoom','1');});
