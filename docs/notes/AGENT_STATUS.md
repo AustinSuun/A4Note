@@ -1,4 +1,5 @@
 ﻿# A4 Note Agent 状态
+- annotation-layer-picker-arena：Arena 完成 f6b927bb（high）阅读器标注图层弹窗 UI 优化与底部图层入口解耦。去掉每行左侧单选圆点，活动图层改为整行 --accent-soft 底色 + 内描边 + 名称加粗（role=radio/aria-checked 语义保留）；“新图层”此前被通用 reader-tool-popover-heading button 的 26×26 方块规则裁切，改为内容驱动按钮（min-height 30px、文案完整）；每行新增垃圾桶删除按钮（唯一图层禁用，含标注/引用时 alertdialog 提供“移动并删除 / 连同标注删除 / 取消”，取消不改数据且焦点回到删除按钮，删除活动层按相邻顺序接管）；底部工具坞入口固定 64px，只显示叠层图标 + 可见/总数，与可编辑图层名彻底解耦，完整名称保留在 aria-label/title/弹窗内。新增 npm run test:annotation-layer-picker（隔离浏览器契约 43/43：无圆点、整行选中态与对比度 ≥4.5、删除保护与确认流、12 层滚动、460px@150%、深色主题、pageerror 0），首跑即捕获并修复 460px@150% 弹窗横向溢出（min-width 300→280）；test:annotation-layers 55 项、tsc 0、build 0、diagnostics 0。npm run verify（PowerShell）30 步中 28 通过：test:annotation-layers 因新按钮源码写法不匹配既有文本契约而失败，改用保留 “/> 新图层” 写法的兼容实现（不改他人脚本）后单跑 PASS 55；test:pdf-find-entry（他人卡脚本，与本轮文件无交集）为宿主高负载下 30s page.goto 超时，已如实记录、未改该脚本。未提供原生 dev:live 截图（无人值守无法经文件对话框打开 PDF，限制与已验收卡 23528921 一致）。未打包/安装/推送/发布，未触碰他人未提交改动。详见 docs/mcp-annotation-layer-picker-arena-2026-09-22.md。
 - reader-selection-outline-xunzhou：巡舟完成 7ef5d0fd 阅读器“正在阅读”鼠标选中外框修复。Reader 行内原本广泛的 `button:active` inset shadow 同时命中标题按钮，现仅展开与移除按钮保留 active 反馈；整行 `li.active` 背景是唯一鼠标选中层，键盘 `:focus-visible` 轮廓保持。实现 `36d9e6a`，任务分支已合入最新本地 main `9bcc068`。旧 CSS 红测 25/26 且只失败预期断言，修复及合并后 26/26；`dev:live` 官方运行时 21/21、真实应用 raw-CDP 20/20，pageerror/console error 0；build、完整 verify（Rust 215/0/5 ignored）、diagnostics 0 全绿。鼠标/键盘截图和 JSON 已上传任务卡；未打包、安装、发布或写入生产资料库。详见 `docs/mcp-reader-selection-outline-xunzhou-2026-09-22.md`。
 
 - reader-annotation-toast-drag-xunzhou：任务 20b183cd 完成；fa49614 统一移除高亮/下划线/画笔/橡皮擦/文本框/图形/箭头正常操作期间的 role=status 与“正在…”提示，同时以带 revision 的乐观几何稳定文本框移动/缩放，避免 pointerup 后被旧异步几何回写。Windows/Tauri DPR 1.25 在 100%/118%/140%/190%、滚动、侧栏、边缘、快慢拖动、pointerleave、undo/redo/reopen 与原生回读均通过；持久化拒绝仍保留重试/放弃反馈。实现已由 4c918db 合入本地 main。
@@ -54,7 +55,7 @@ annotation-popover-swatch-chengchuan：澄川完成 23528921 标注工具弹窗�
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-22T15:51:00+08:00
+更新时间：2026-09-22T16:22:00+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 
