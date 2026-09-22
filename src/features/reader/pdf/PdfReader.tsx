@@ -18,6 +18,8 @@ import { zh } from '../../../ui/zh';
 import { annotationLabel, buildAnnotationDraft } from './pdfAnnotationHelpers';
 import type { PdfDocumentSource } from './pdfSource';
 import { AnnotationOverlay } from './AnnotationOverlay';
+import { createOptimisticAnnotationPosition, discardOptimisticAnnotationPosition, reconcileOptimisticAnnotationPosition } from './annotationPositionOptimism';
+import type { OptimisticAnnotationPosition } from './annotationPositionOptimism';
 import {
   clamp,
   clonePositionJson,
@@ -131,6 +133,8 @@ export default function PdfReader({
   const [stickyDrag, setStickyDrag] = useState<StickyDrag | null>(null);
   const [annotationResize, setAnnotationResize] = useState<AnnotationResize | null>(null);
   const [stickyDragPreview, setStickyDragPreview] = useState<StickyDragPreview | null>(null);
+  const [optimisticAnnotationPositions, setOptimisticAnnotationPositions] = useState<Map<string, OptimisticAnnotationPosition>>(() => new Map());
+  const optimisticAnnotationRevisionRef = useRef(0);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [visiblePage, setVisiblePage] = useState(1);
   const [focusedAnnotationId, setFocusedAnnotationId] = useState<string | null>(null);
@@ -179,14 +183,32 @@ export default function PdfReader({
     [activeFileId, activeResourceId, annotations],
   );
   const displayedAnnotations = useMemo(
-    () =>
-      stickyDragPreview
-        ? currentFileAnnotations.map((annotation) =>
-            annotation.id === stickyDragPreview.annotationId ? { ...annotation, positionJson: stickyDragPreview.positionJson } : annotation,
-          )
-        : currentFileAnnotations,
-    [currentFileAnnotations, stickyDragPreview],
+    () => currentFileAnnotations.map((annotation) => {
+      const optimistic = optimisticAnnotationPositions.get(annotation.id);
+      const previewPosition = stickyDragPreview?.annotationId === annotation.id
+        ? stickyDragPreview.positionJson
+        : optimistic?.positionJson;
+      return previewPosition ? { ...annotation, positionJson: previewPosition } : annotation;
+    }),
+    [currentFileAnnotations, optimisticAnnotationPositions, stickyDragPreview],
   );
+
+  useEffect(() => {
+    setOptimisticAnnotationPositions((current) => {
+      if (!current.size) return current;
+      const committedById = new Map(currentFileAnnotations.map((annotation) => [annotation.id, annotation.positionJson]));
+      let changed = false;
+      const next = new Map(current);
+      for (const [annotationId, optimistic] of current) {
+        const committed = committedById.get(annotationId);
+        if (!committed || !reconcileOptimisticAnnotationPosition(optimistic, committed)) {
+          next.delete(annotationId);
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [currentFileAnnotations]);
   const textSelectionToolsActive = activeTool === 'highlight' || activeTool === 'underline';
   const shapeToolsActive = activeTool === 'area' || activeTool === 'rect' || activeTool === 'arrow';
   const selectableText = activeTool === 'cursor' || textSelectionToolsActive;
@@ -324,6 +346,8 @@ export default function PdfReader({
     setStickyDrag(null);
     setAnnotationResize(null);
     setStickyDragPreview(null);
+    setOptimisticAnnotationPositions(new Map());
+    optimisticAnnotationRevisionRef.current = 0;
   }, [source.key]);
 
   useLayoutEffect(() => {
@@ -705,7 +729,7 @@ export default function PdfReader({
   };
 
   const beginStickyDrag = (annotationId: string, pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
-    const annotation = currentFileAnnotations.find((item) => item.id === annotationId);
+    const annotation = displayedAnnotations.find((item) => item.id === annotationId);
     if (!annotation || (annotation.type !== 'comment' && annotation.type !== 'text' && annotation.type !== 'rect')) return;
     event.preventDefault();
     event.stopPropagation();
@@ -741,7 +765,7 @@ export default function PdfReader({
     handle: AnnotationResizeHandle,
     event: MouseEvent<HTMLElement>,
   ) => {
-    const annotation = currentFileAnnotations.find((item) => item.id === annotationId);
+    const annotation = displayedAnnotations.find((item) => item.id === annotationId);
     if (!annotation || (annotation.type !== 'rect' && annotation.type !== 'text')) return;
     event.preventDefault();
     event.stopPropagation();
@@ -784,7 +808,7 @@ export default function PdfReader({
 
   const updateStickyDrag = (pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
     if (annotationResize?.page === pageNumber) {
-      const annotation = currentFileAnnotations.find((item) => item.id === annotationResize.annotationId);
+      const annotation = displayedAnnotations.find((item) => item.id === annotationResize.annotationId);
       if (!annotation) return;
       const point = pointFromEvent(event);
       if (!point) return;
@@ -796,7 +820,7 @@ export default function PdfReader({
       return;
     }
     if (!stickyDrag || stickyDrag.page !== pageNumber) return;
-    const annotation = currentFileAnnotations.find((item) => item.id === stickyDrag.annotationId);
+    const annotation = displayedAnnotations.find((item) => item.id === stickyDrag.annotationId);
     if (!annotation) return;
     const point = pointFromEvent(event);
     if (!point) return;
@@ -813,15 +837,39 @@ export default function PdfReader({
     const base = annotationResize?.positionJson ?? stickyDrag?.positionJson ?? null;
     setStickyDrag(null);
     setAnnotationResize(null);
-    setStickyDragPreview(null);
-    if (!preview) return;
+    if (!preview) {
+      setStickyDragPreview(null);
+      return;
+    }
     // A plain click on a box or a handle is not a move: persisting it would only add history noise and,
     // for auto-sized text boxes, silently freeze their width.
     const moved = !base || (['x', 'y', 'width', 'height'] as const).some(
       (key) => Math.abs(numberValue(preview.positionJson[key], 0) - numberValue(base[key], 0)) > 0.02,
     );
-    if (!moved) return;
-    void saves.run('移动标注', async () => onUpdateAnnotationPosition(preview.annotationId, preview.positionJson), undefined, preview.annotationId);
+    if (!moved) {
+      setStickyDragPreview(null);
+      return;
+    }
+    const optimistic = createOptimisticAnnotationPosition(
+      ++optimisticAnnotationRevisionRef.current,
+      clonePositionJson(preview.positionJson),
+    );
+    setOptimisticAnnotationPositions((current) => new Map(current).set(preview.annotationId, optimistic));
+    // These state updates are batched: the durable optimistic entry replaces the pointer preview atomically.
+    setStickyDragPreview(null);
+    const discard = () => setOptimisticAnnotationPositions((current) => {
+      const existing = current.get(preview.annotationId);
+      if (discardOptimisticAnnotationPosition(existing, optimistic.revision) === existing) return current;
+      const next = new Map(current);
+      next.delete(preview.annotationId);
+      return next;
+    });
+    void saves.run(
+      '移动标注',
+      async () => onUpdateAnnotationPosition(preview.annotationId, optimistic.positionJson),
+      discard,
+      preview.annotationId,
+    );
   };
 
   const finishTextSelection = async (pageNumber: number, container: HTMLElement, overrideTool?: ReaderTool) => {
