@@ -1,3 +1,5 @@
+import { useShortcutProps } from '../../shared/shortcuts';
+import { ReaderShortcutSettings } from './ReaderShortcutSettings';
 import { useEffect, useRef, useState, type CSSProperties, type WheelEvent as ReactWheelEvent } from 'react';
 import { HighlightAppearanceControl } from './HighlightAppearanceControl';
 import { ReaderToolbarPortal } from './ReaderToolbarPortal';
@@ -77,6 +79,7 @@ export function ReaderToolbar({
   onZoomChange: (zoom: number, anchor?: PdfZoomAnchor) => void;
   onFitWidth: () => void;
 }) {
+  const shortcutProps = useShortcutProps();
   const hasTranslatedPdf = Boolean(paper.translatedPdfs.length);
   const [toolColors, setToolColors] = useState<Record<ReaderTool, AnnotationColor>>(() => ({ ...defaultToolColors }));
   const [toolSettingsOpenFor, setToolSettingsOpenFor] = useState<ReaderTool | null>(null);
@@ -224,20 +227,20 @@ export function ReaderToolbar({
             <button
               type="button"
               onClick={() => onZoomChange(Math.max(0.2, Number((zoom - 0.1).toFixed(2))))}
-              title={zh.reader.zoomOut}
+              {...shortcutProps('reader.zoomOut', zh.reader.zoomOut)}
             >
               <ZoomOutIcon />
             </button>
             <button type="button" className="zoom-pct-btn" onClick={() => onZoomChange(1)} title="Reset to 100%">
               {Math.round(zoom * 100)}%
             </button>
-            <button type="button" onClick={onFitWidth} title={zh.reader.fitWidth}>
+            <button type="button" onClick={onFitWidth} {...shortcutProps('reader.fitWidth', zh.reader.fitWidth)}>
               <FitWidthIcon />
             </button>
             <button
               type="button"
               onClick={() => onZoomChange(Math.min(5, Number((zoom + 0.1).toFixed(2))))}
-              title={zh.reader.zoomIn}
+              {...shortcutProps('reader.zoomIn', zh.reader.zoomIn)}
             >
               <ZoomInIcon />
             </button>
@@ -261,7 +264,7 @@ export function ReaderToolbar({
                     className={`annotation-tool-btn ${isActive ? 'active' : ''} ${isContextual ? 'contextual' : ''}`.trim()}
                     type="button"
                     onClick={() => handleSelectTool(tool.id)}
-                    title={tool.id === 'hand' ? '手形拖动：按住左键移动；空格＋左键可临时拖动' : isContextual ? `${tool.label}（点击打开所选标注的设置）` : toolHasSettings(tool.id) ? `${tool.label}（再次点击打开设置）` : tool.label}
+                    {...shortcutProps(`reader.tool.${tool.id}`, tool.id === 'hand' ? '手形拖动：按住左键移动；空格＋左键可临时拖动' : isContextual ? `${tool.label}（点击打开所选标注的设置）` : toolHasSettings(tool.id) ? `${tool.label}（再次点击打开设置）` : tool.label)}
                     aria-label={tool.label}
                     aria-pressed={isActive}
                     aria-haspopup={toolHasSettings(tool.id) ? 'dialog' : undefined}
@@ -289,6 +292,7 @@ export function ReaderToolbar({
               );
             })}
             <AnnotationLayerPicker />
+            <ReaderShortcutSettings />
           </div>
         </div>}
 

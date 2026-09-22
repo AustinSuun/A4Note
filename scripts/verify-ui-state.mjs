@@ -205,11 +205,14 @@ assert.match(appSource, /const annotationFileMode = readerFileMode === 'parallel
 assert.match(appSource, /append: `\\n\\n@annotation\(\$\{annotation\.id\}\)\\n`/);
 assert.doesNotMatch(appSource, /append: `\\n\\n## Page/);
 assert.doesNotMatch(readerToolbarSource, /onClick=\{\(\) => onZoomChange\(1\.18\)\}/);
-assert.match(appSource, /activeScene === 'reader' && readerContentMode === 'pdf'/);
-assert.match(appSource, /const toolByKey: Partial<Record<string, ReaderTool>>/);
-assert.match(appSource, /m: 'cursor'/);
-assert.match(appSource, /h: 'highlight'/);
-assert.doesNotMatch(appSource, /\b[ck]: 'comment'/);
+// Scope is now enforced by the shared resolver; retain source wiring guard plus
+// behavioral mode/editable coverage in verify-shortcut-dispatcher and reader-priority.
+assert.match(appSource, /pdfMode: readerContentMode === 'pdf'/);
+assert.match(appSource, /useAppShortcuts\(settingsOpen \? 'settings' : activeScene/);
+const shortcutCommandSource = await readFile('src/ui/shortcuts/appShortcutCommands.ts', 'utf8');
+assert.match(shortcutCommandSource, /\['cursor', 'm'/);
+assert.match(shortcutCommandSource, /\['highlight', 'h'/);
+assert.doesNotMatch(shortcutCommandSource, /\['comment', '[ck]'/);
 assert.match(zhSource, /Ctrl\+=\/- .*Ctrl\+0 .*Ctrl\+M\/H\/U\/T\/P\/E\/R\/A/);
 assert.doesNotMatch(zhSource, /Ctrl\+M\/H\/U\/K\/T\/P\/E\/R\/A/);
 assert.match(appSource, /type ConfirmDialogState =/);
@@ -253,7 +256,7 @@ assert.match(readerHelpersSource, /function readerPanelTabFromWorkbenchId\(panel
 assert.match(readerHelpersSource, /export function readerPanelCommandTitle\(tab: ReaderSidePanelTab\)/);
 assert.match(appSource, /const \[commandPaletteOpen, setCommandPaletteOpen\] = useState\(false\)/);
 assert.match(appSource, /const openCommandPalette = \(\) =>/);
-assert.match(appSource, /readerKey === 'k' \|\| \(readerKey === 'p' && event\.shiftKey\)/);
+assert.match(shortcutCommandSource, /key\('k'\), key\('p', \{ shift: true \}\)/);
 assert.match(appSource, /const appCommands = useMemo<CommandPaletteItem\[\]>/);
 assert.match(appSource, /\.\.\.workbenchPanelCommandDefinitions\.map<CommandPaletteItem>/);
 assert.match(appSource, /id: definition\.commandId/);
@@ -263,7 +266,7 @@ assert.match(appSource, /id: `registered\.\$\{command\.id\}`/);
 assert.match(appSource, /command\.source\?\.startsWith\('plugin:'\) \? '插件' : zh\.command\.groupWorkspace/);
 assert.match(appSource, /aster\.commands\.execute\(command\.id, undefined\)/);
 assert.match(appSource, /console\.error\('Palette command failed', error\)/);
-assert.match(appSource, /<CommandPalette commands=\{appCommands\}[\s\S]*labels=\{zh\.command\}/);
+assert.match(appSource, /<CommandPalette commands=\{\[\.\.\.appCommands,[\s\S]*resolveShortcuts[\s\S]*labels=\{zh\.command\}/);
 assert.doesNotMatch(appSource, /function CommandPalette/);
 assert.match(commandPaletteSource, /export function CommandPalette/);
 assert.match(appSource, /<CommandIcon \/>/);

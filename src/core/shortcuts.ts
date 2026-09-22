@@ -40,6 +40,9 @@ export type ShortcutCommand = {
   defaultBindings: ShortcutBinding[];
   allowInEditable?: boolean;
   anchorId?: string;
+  allowRepeat?: boolean;
+  inactiveSceneIds?: string[];
+  execute?: () => boolean | void;
   isVisible?: (context: ShortcutContext) => boolean;
   isEnabled?: (context: ShortcutContext) => boolean;
 };
@@ -66,7 +69,7 @@ const EMPTY_OVERRIDES: ShortcutOverrides = {
 };
 
 function normalizedKey(key: string) {
-  return key.length === 1 ? key.toLocaleLowerCase() : key.toLocaleLowerCase();
+  return key === ' ' ? 'space' : key.toLowerCase();
 }
 
 export function normalizeBinding(binding: ShortcutBinding): ShortcutBinding {
@@ -115,9 +118,9 @@ export function formatBinding(binding: ShortcutBinding) {
 export function ariaKeyShortcut(binding: ShortcutBinding) {
   const normalized = normalizeBinding(binding);
   if (normalized.type === 'mouse') return undefined;
-  const key = normalized.semantics === 'code' && normalized.code
-    ? normalized.code.replace(/^Key/, '')
-    : normalized.key.length === 1 ? normalized.key.toUpperCase() : normalized.key;
+  // aria-keyshortcuts uses logical key names, not KeyboardEvent.code identifiers.
+  const canonical: Record<string, string> = { enter: 'Enter', escape: 'Escape', backspace: 'Backspace', delete: 'Delete', space: 'Space', tab: 'Tab', arrowup: 'ArrowUp', arrowdown: 'ArrowDown', arrowleft: 'ArrowLeft', arrowright: 'ArrowRight', '+': 'Plus' };
+  const key = canonical[normalized.key] ?? (normalized.key.length === 1 ? normalized.key.toUpperCase() : normalized.key.replace(/^f(\d+)$/, 'F$1'));
   return [
     normalized.ctrl ? 'Control' : '',
     normalized.alt ? 'Alt' : '',
@@ -133,21 +136,28 @@ function validBinding(value: unknown): value is ShortcutBinding {
   if (candidate.type === 'mouse') return candidate.button === 3 || candidate.button === 4;
   if (candidate.type !== 'keyboard' || typeof candidate.key !== 'string' || !candidate.key) return false;
   if (candidate.semantics && candidate.semantics !== 'key' && candidate.semantics !== 'code') return false;
-  return !candidate.code || typeof candidate.code === 'string';
+  if (['ctrl', 'alt', 'shift', 'meta'].some((name) => {
+    const value = (candidate as unknown as Record<string, unknown>)[name];
+    return value !== undefined && typeof value !== 'boolean';
+  })) return false;
+  if (candidate.key.length > 64 || (candidate.code !== undefined && (typeof candidate.code !== 'string' || !candidate.code || candidate.code.length > 64))) return false;
+  if (candidate.semantics === 'code' && !candidate.code) return false;
+  return !['control', 'shift', 'alt', 'meta', 'altgraph', 'dead', 'unidentified'].includes(candidate.key.toLowerCase());
 }
 
 export function parseShortcutOverrides(raw: string | null | undefined): ShortcutOverrides {
   if (!raw) return EMPTY_OVERRIDES;
   try {
     const value = JSON.parse(raw) as Partial<ShortcutOverrides>;
-    if (value.schemaVersion !== SHORTCUT_SCHEMA_VERSION || !value.bindings || typeof value.bindings !== 'object') {
+    if (value.schemaVersion !== SHORTCUT_SCHEMA_VERSION || !value.bindings || typeof value.bindings !== 'object' || Array.isArray(value.bindings)) {
       return EMPTY_OVERRIDES;
     }
-    const bindings: ShortcutOverrides['bindings'] = {};
-    for (const [commandId, commandBindings] of Object.entries(value.bindings)) {
+    const bindings: ShortcutOverrides['bindings'] = Object.create(null);
+    for (const [commandId, commandBindings] of Object.entries(value.bindings).slice(0, 2000)) {
+      if (['__proto__', 'constructor', 'prototype'].includes(commandId)) continue;
       if (commandBindings === null) {
         bindings[commandId] = null;
-      } else if (Array.isArray(commandBindings) && commandBindings.every(validBinding)) {
+      } else if (Array.isArray(commandBindings) && commandBindings.length <= 8 && commandBindings.every(validBinding)) {
         bindings[commandId] = commandBindings.map(normalizeBinding);
       }
     }
@@ -184,7 +194,7 @@ export function resolveShortcuts(
   context: ShortcutContext,
 ): ResolvedShortcut[] {
   return commands
-    .filter((command) => scopeIsActive(command.scope, context) && (command.isVisible?.(context) ?? true))
+    .filter((command) => scopeIsActive(command.scope, context) && !command.inactiveSceneIds?.includes(context.activeSceneId) && (command.isVisible?.(context) ?? true))
     .map((command) => ({
       command,
       bindings: bindingsForCommand(command, overrides),
@@ -229,15 +239,6 @@ export function keyboardBindingMatches(binding: KeyboardShortcutBinding, event: 
     && normalized.alt === event.altKey
     && normalized.shift === event.shiftKey
     && normalized.meta === event.metaKey;
-}
-
-export function eventTargetIsEditable(target: EventTarget | null) {
-  if (!(target instanceof Element)) return false;
-  return target instanceof HTMLInputElement
-    || target instanceof HTMLTextAreaElement
-    || target instanceof HTMLSelectElement
-    || (target instanceof HTMLElement && target.isContentEditable)
-    || Boolean(target.closest('[contenteditable="true"], [role="textbox"]'));
 }
 
 export function canDispatchShortcut(command: ShortcutCommand, context: ShortcutContext) {
@@ -318,4 +319,44 @@ export class ShortcutRegistry {
   get(id: string) {
     return this.#commands.get(id);
   }
+}
+
+/** Scopes can be active together unless they belong to distinct scenes. */
+export function shortcutScopesOverlap(a: ShortcutScope, b: ShortcutScope) {
+  return a.kind !== 'scene' || b.kind !== 'scene' || a.sceneId === b.sceneId;
+}
+
+/** Physical and logical bindings may collide on a different keyboard layout.
+ * Conservatively require confirmation rather than silently assuming US keys. */
+export function shortcutBindingsOverlap(a: ShortcutBinding, b: ShortcutBinding) {
+  if (a.type !== b.type) return false;
+  if (a.type === 'mouse' && b.type === 'mouse') return a.button === b.button;
+  if (a.type !== 'keyboard' || b.type !== 'keyboard') return false;
+  const x = normalizeBinding(a) as KeyboardShortcutBinding, y = normalizeBinding(b) as KeyboardShortcutBinding;
+  if (x.ctrl !== y.ctrl || x.alt !== y.alt || x.shift !== y.shift || x.meta !== y.meta) return false;
+  if (x.semantics !== y.semantics) return true;
+  return bindingIdentity(x) === bindingIdentity(y);
+}
+
+export function shortcutBindingConflicts(commands: readonly ShortcutCommand[], overrides: ShortcutOverrides, command: ShortcutCommand, bindings: ShortcutBinding[]) {
+  return commands.filter((other) => other.id !== command.id && shortcutScopesOverlap(command.scope, other.scope)
+    && !(command.scope.kind === 'scene' && other.inactiveSceneIds?.includes(command.scope.sceneId))
+    && !(other.scope.kind === 'scene' && command.inactiveSceneIds?.includes(other.scope.sceneId))
+    && bindingsForCommand(other, overrides).some((old) => bindings.some((next) => shortcutBindingsOverlap(old, next))));
+}
+
+export function replaceShortcutBinding(commands: readonly ShortcutCommand[], current: ShortcutOverrides, command: ShortcutCommand, bindings: ShortcutBinding[]) {
+  let next = setShortcutOverride(current, command.id, bindings);
+  for (const other of shortcutBindingConflicts(commands, current, command, bindings)) {
+    next = setShortcutOverride(next, other.id, bindingsForCommand(other, current).filter((old) => !bindings.some((value) => shortcutBindingsOverlap(old, value))));
+  }
+  return next;
+}
+
+export function reservedShortcutReason(binding: ShortcutBinding): string | null {
+  if (binding.type !== 'keyboard') return null;
+  const b = normalizeBinding(binding) as KeyboardShortcutBinding;
+  if (b.meta || (b.alt && ['tab', 'f4', 'escape'].includes(b.key)) || (b.ctrl && b.alt && b.key === 'delete')) return '系统或辅助技术保留组合，应用可能收不到此按键。';
+  if (b.key === 'f5' || b.key === 'f11' || b.key === 'f12' || (b.ctrl && ['r', 'w', 'l', 't', 'n'].includes(b.key))) return '浏览器/WebView 保留组合；请确认可能覆盖刷新、关闭或导航行为。';
+  return null;
 }

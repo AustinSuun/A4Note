@@ -26,7 +26,7 @@ export type PluginMarketSettingsState = { url: string; fetchedAt?: string; gener
 
 /* Section identity is data, not a view concern: the shell, the search index and
    the section modules all agree on one ordered list. */
-export const SETTINGS_SECTIONS = ['general', 'appearance', 'library', 'plugins', 'sync', 'updates', 'about'] as const;
+export const SETTINGS_SECTIONS = ['general', 'appearance', 'shortcuts', 'library', 'plugins', 'sync', 'updates', 'about'] as const;
 export type Section = (typeof SETTINGS_SECTIONS)[number];
 export const DEFAULT_SECTION: Section = 'general';
 

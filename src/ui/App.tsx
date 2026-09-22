@@ -1,3 +1,6 @@
+import { ShortcutProvider } from '../shared/shortcuts';
+import { formatBinding, resolveShortcuts } from '../core/shortcuts';
+import { useAppShortcuts } from './shortcuts/useAppShortcuts';
 import { withProjectTasksDefaultOff } from '../platform/projectTasksPreference';
 import { useNoteFolderWorkspaces } from '../features/markdown';
 import { capturePdfCenterAnchor, restorePdfPageAnchor, requestPdfFind } from '../features/reader';
@@ -432,6 +435,10 @@ function workbenchPanelCommandTitle(panel: WorkbenchPanelContribution) {
 }
 
 export default function App() {
+  return <ShortcutProvider><AppContent /></ShortcutProvider>;
+}
+
+function AppContent() {
   const initialDocuments = aster.documents.list();
   const [settings, setSettings] = useState<AppSettings>(() => loadAppSettings());
   const [pluginRuntimeVersion, setPluginRuntimeVersion] = useState(0);
@@ -1479,152 +1486,24 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    const handleGlobalKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.defaultPrevented || event.isComposing) return;
-      const target = event.target as HTMLElement | null;
-      const isEditable =
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        Boolean(target?.isContentEditable);
-
-      const readerKey = event.key.toLowerCase();
-
-      if ((event.ctrlKey || event.metaKey) && !importOpen && !metadataEditOpen && !tagsEditOpen && !bulkTagsEditOpen) {
-        if (readerKey === 'k' || (readerKey === 'p' && event.shiftKey)) {
-          event.preventDefault();
-          openCommandPalette();
-          return;
-        }
-      }
-
-      if (commandPaletteOpen) return;
-
-      if (!isEditable && !importOpen && !metadataEditOpen && !tagsEditOpen && !bulkTagsEditOpen && activeScene === 'reader') {
-        if (readerKey === 'delete' || readerKey === 'backspace') {
-          if (readerFocusedAnnotationId) {
-            event.preventDefault();
-            void deleteAnnotation(readerFocusedAnnotationId);
-          }
-          return;
-        }
-        if (readerKey === 'escape') {
-          event.preventDefault();
-          setReaderFocusedAnnotationId(null);
-          return;
-        }
-      }
-
-      if (!event.ctrlKey && !event.metaKey) return;
-
-      // Match VS Code's global UI zoom shortcuts. These run before reader
-      // zoom so the same shortcut is predictable in every scene.
-      if (readerKey === '=' || readerKey === '+') {
-        event.preventDefault();
-        setUiZoom((current) => clampNumber(Number((current + 0.1).toFixed(2)), 0.8, 1.4));
-        return;
-      }
-      if (readerKey === '-' || readerKey === '_') {
-        event.preventDefault();
-        setUiZoom((current) => clampNumber(Number((current - 0.1).toFixed(2)), 0.8, 1.4));
-        return;
-      }
-      if (readerKey === '0') {
-        event.preventDefault();
-        setUiZoom(1);
-        return;
-      }
-
-      // Editors and form fields own their undo/redo and text shortcuts.
-      if (isEditable) return;
-
-      if (readerKey === 'z') {
-        if (activeScene === 'reader' && event.shiftKey) {
-          event.preventDefault();
-          redoAnnotationAction();
-        } else if (activeScene === 'reader') {
-          event.preventDefault();
-          undoAnnotationAction();
-        }
-        return;
-      }
-      if (readerKey === 'y') {
-        if (activeScene === 'reader') {
-          event.preventDefault();
-          redoAnnotationAction();
-        }
-        return;
-      }
-
-      if (activeScene === 'reader' && readerContentMode === 'pdf') {
-        if (readerKey === '=' || readerKey === '+') {
-          event.preventDefault();
-          changeReaderZoom(Math.min(5, Number((readerZoom + 0.1).toFixed(2))));
-          return;
-        }
-        if (readerKey === '-' || readerKey === '_') {
-          event.preventDefault();
-          changeReaderZoom(Math.max(0.2, Number((readerZoom - 0.1).toFixed(2))));
-          return;
-        }
-        if (readerKey === '0') {
-          event.preventDefault();
-          fitReaderToWidth();
-          return;
-        }
-        const toolByKey: Partial<Record<string, ReaderTool>> = {
-          m: 'cursor',
-          h: 'highlight',
-          u: 'underline',
-          b: 'area',
-          t: 'text',
-          p: 'ink',
-          e: 'eraser',
-          r: 'rect',
-          a: 'arrow',
-        };
-        const nextTool = toolByKey[readerKey];
-        if (nextTool) {
-          event.preventDefault();
-          setActiveAnnotationTool(nextTool);
-          return;
-        }
-      }
-
-      const sceneShortcut = aster.scenes.list().find((scene) => scene.key === event.key
-        && visibleSceneIds.includes(scene.id)
-        && (!scene.pluginId || aster.plugins.has(scene.pluginId)));
-      if (sceneShortcut) {
-        event.preventDefault();
-        if (sceneShortcut.id === 'reader' && selectedPaper) openReaderForPaper(selectedPaper.paperId);
-        else setScene(sceneShortcut.id);
-        return;
-      }
-
-      if (isEditable || importOpen || metadataEditOpen || tagsEditOpen || bulkTagsEditOpen) return;
-
-      if (event.key.toLowerCase() === 'o') {
-        event.preventDefault();
-        openImportDialog();
-        return;
-      }
-      if (event.key.toLowerCase() === 'f') {
-        event.preventDefault();
-        if (activeScene === 'reader') { requestPdfFind(); return; }
-        setScene('library');
-        requestAnimationFrame(() => librarySearchRef.current?.focus());
-        return;
-      }
-      if (event.key === 'Enter' && selectedPaper) {
-        event.preventDefault();
-        openReaderForPaper(selectedPaper.paperId);
-      }
-    };
-
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [activeScene, annotationRedoStack, annotationUndoStack, bulkTagsEditOpen, commandPaletteOpen, visibleSceneIds, importOpen, metadataEditOpen, readerContentMode, readerFocusedAnnotationId, readerZoom, selectedPaper?.paperId, tagsEditOpen, deleteAnnotation, fitReaderToWidth, openReaderForPaper, redoAnnotationAction, undoAnnotationAction]);
+  const shortcutStore = useAppShortcuts(settingsOpen ? 'settings' : activeScene ?? '',
+    commandPaletteOpen || importOpen || metadataEditOpen || tagsEditOpen || bulkTagsEditOpen || Boolean(confirmDialog) || Boolean(restoreRestartPath),
+    {
+      scenes: sceneCatalog.filter((scene) => visibleSceneIds.includes(scene.id) && (!scene.pluginId || aster.plugins.has(scene.pluginId))),
+      hasPaper: Boolean(selectedPaper), pdfMode: readerContentMode === 'pdf', focusedAnnotation: Boolean(readerFocusedAnnotationId),
+      canUndo: annotationUndoStack.length > 0, canRedo: annotationRedoStack.length > 0,
+      palette: openCommandPalette,
+      openScene: (id) => { if (id === 'reader' && selectedPaper) openReaderForPaper(selectedPaper.paperId); else setScene(id); },
+      importPdf: openImportDialog,
+      librarySearch: () => { setScene('library'); requestAnimationFrame(() => librarySearchRef.current?.focus()); },
+      pdfSearch: requestPdfFind, undo: undoAnnotationAction, redo: redoAnnotationAction,
+      deleteAnnotation: () => { if (readerFocusedAnnotationId) void deleteAnnotation(readerFocusedAnnotationId); },
+      cancel: () => { if (!readerFocusedAnnotationId) return false; setReaderFocusedAnnotationId(null); return true; },
+      selectTool: setActiveAnnotationTool,
+      pdfZoom: (delta) => changeReaderZoom(clampNumber(Number((readerZoom + delta).toFixed(2)), .2, 5)),
+      fitWidth: fitReaderToWidth,
+      uiZoom: (delta) => setUiZoom((current) => delta === null ? 1 : clampNumber(Number((current + delta).toFixed(2)), .8, 1.4)),
+    });
 
   const saveNote = async ({ noteId, title, content, expected }: NoteSaveInput) => {
     if (!selectedPaper) throw new Error('未选择文献，笔记尚未保存');
@@ -1925,14 +1804,15 @@ export default function App() {
         id: 'library.importPdf',
         title: zh.command.importPdf,
         group: zh.command.groupLibrary,
-        shortcut: 'Ctrl+O',
+        shortcut: shortcutStore.bindings('library.importPdf').map(formatBinding).join(' / '),
         run: openImportDialog,
       },
       {
-        id: 'library.search',
+        id: activeScene === 'reader' ? 'reader.search' : 'library.search',
+        disabled: activeScene === 'reader' && (!selectedPaper || readerContentMode !== 'pdf'),
         title: activeScene === 'reader' ? '搜索当前 PDF' : zh.command.searchLibrary,
         group: zh.command.groupLibrary,
-        shortcut: 'Ctrl+F',
+        shortcut: shortcutStore.bindings(activeScene === 'reader' ? 'reader.search' : 'library.search').map(formatBinding).join(' / '),
         run: () => {
           if (activeScene === 'reader') { requestPdfFind(); return; }
           setScene('library');
@@ -1945,7 +1825,7 @@ export default function App() {
           id: `scene.${scene.id}`,
           title: `打开${scene.label}`,
           group: zh.command.groupScenes,
-          shortcut: scene.key ? `Ctrl+${scene.key}` : undefined,
+          shortcut: shortcutStore.bindings(`scene.${scene.id}`).map(formatBinding).join(' / '),
           disabled: scene.id === 'reader' && !selectedPaper,
           run: () => {
             if (scene.id === 'reader' && selectedPaper) {
@@ -1986,13 +1866,13 @@ export default function App() {
           },
         })),
     ],
-    [activeScene, visibleSceneIds, openImportDialog, pluginRuntimeVersion, sceneCatalog, selectedPaper?.paperId, workbenchPanelCommandDefinitions, commandPaletteOpen],
+    [activeScene, readerContentMode, visibleSceneIds, openImportDialog, pluginRuntimeVersion, sceneCatalog, selectedPaper?.paperId, workbenchPanelCommandDefinitions, commandPaletteOpen, shortcutStore.snapshot()],
   );
 
   const sidebarScenes: SidebarSceneItem[] = aster.scenes.list().filter((scene) => visibleSceneIds.includes(scene.id) && (!scene.pluginId || aster.plugins.has(scene.pluginId))).map((scene) => ({
     id: scene.id,
     label: scene.label || sceneLabelFor(scene.id),
-    hint: `${scene.label || sceneLabelFor(scene.id)} Ctrl+${scene.key}`,
+    hint: scene.label || sceneLabelFor(scene.id),
     scope: scene.scope,
     source: scene.source,
     icon: <SceneIcon id={scene.id} />,
@@ -2822,7 +2702,7 @@ export default function App() {
         <BulkTagsDialog papers={bulkSelectedPapers} suggestions={tags} onClose={() => setBulkTagsEditOpen(false)} onSave={saveBulkPaperTags} />
       )}
       {commandPaletteOpen && (
-        <CommandPalette commands={appCommands} query={commandPaletteQuery} onQueryChange={setCommandPaletteQuery} onClose={closeCommandPalette} labels={zh.command} />
+        <CommandPalette commands={[...appCommands, ...resolveShortcuts(shortcutStore.commands(), shortcutStore.overrides, { ...shortcutStore.context, modalOpen: false }).filter(({ command }) => command.id !== 'global.palette' && !appCommands.some(c => c.id === command.id)).map(({ command, bindings, enabled }) => ({ id: command.id, title: command.title, group: command.group, shortcut: bindings.map(formatBinding).join(' / '), disabled: !enabled, run: () => { command.execute?.(); } }))]} query={commandPaletteQuery} onQueryChange={setCommandPaletteQuery} onClose={closeCommandPalette} labels={zh.command} />
       )}
       {confirmDialog && <ConfirmDialog dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />}
       {restoreRestartPath && <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,.4)' }} onKeyDownCapture={(event) => event.stopPropagation()}>

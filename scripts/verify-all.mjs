@@ -25,6 +25,7 @@ const steps = [
   ['npm', ['run', 'test:dev-live']],
   ['npm', ['run', 'test:dev-admission']],
   ['npm', ['run', 'test:core']],
+  ['npm', ['run', 'test:shortcuts']],
   ['npm', ['run', 'test:project-tasks']],
   ['npm', ['run', 'test:capture']],
   ['npm', ['run', 'test:extension-updates']],

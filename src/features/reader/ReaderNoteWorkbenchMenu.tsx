@@ -1,6 +1,8 @@
+import { useShortcutProps, useShortcuts } from '../../shared/shortcuts';
+import { formatBinding } from '../../core/shortcuts';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { BookOpenText, ChevronDown, Feather, History, Layers, Plus, ScanEye } from 'lucide-react';
-import { NOTE_WORKBENCH_COMMAND_LIST, NOTE_WORKBENCH_COMMANDS, type NoteWorkbenchCommand, type NoteWorkbenchMode } from './noteWorkbench';
+import { NOTE_WORKBENCH_COMMANDS, type NoteWorkbenchCommand, type NoteWorkbenchMode } from './noteWorkbench';
 
 /* Reader-side labels stay local: the workbench is a reader surface, and keeping them
    here avoids touching the shared zh table for an experimental feature name. */
@@ -26,7 +28,7 @@ const MODE_COMMAND: Record<NoteWorkbenchMode, NoteWorkbenchCommand> = {
   writing: NOTE_WORKBENCH_COMMANDS.focus,
   reading: NOTE_WORKBENCH_COMMANDS.pdfFocus,
 };
-const COMMAND_KEYS = new Map(NOTE_WORKBENCH_COMMAND_LIST.map(item => [item.id, item.default]));
+
 
 /** The single reader entry point: one button that resumes the last mode plus a menu
     for the four modes, new note and history. Replaces the old vertical ear and the
@@ -46,6 +48,8 @@ export function ReaderNoteWorkbenchMenu({
   onOpenHistory?: () => void;
   temporary?: boolean;
 }) {
+  const shortcutProps = useShortcutProps();
+  const shortcuts = useShortcuts();
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -92,8 +96,7 @@ export function ReaderNoteWorkbenchMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={open ? menuId : undefined}
-        aria-keyshortcuts="Control+Alt+N"
-        title={`笔记工作台：${MODE_LABELS[mode]}（Ctrl+Alt+N）`}
+        {...shortcutProps(NOTE_WORKBENCH_COMMANDS.toggle, `笔记工作台：${MODE_LABELS[mode]}`)}
         onClick={onToggle}
         onKeyDown={(event) => {
           if (event.key === 'ArrowDown') { event.preventDefault(); openMenu(event.currentTarget, 0); }
@@ -148,13 +151,12 @@ export function ReaderNoteWorkbenchMenu({
                 aria-checked={candidate === mode}
                 ref={(node) => { itemRefs.current[index] = node; }}
                 className={`reader-note-workbench-item${candidate === mode ? ' current' : ''}`}
-                title={MODE_HINTS[candidate]}
-                aria-keyshortcuts={COMMAND_KEYS.get(MODE_COMMAND[candidate])}
+                {...shortcutProps(MODE_COMMAND[candidate], MODE_HINTS[candidate])}
                 onClick={() => select(candidate)}
               >
                 <Icon size={14} aria-hidden="true" />
                 <span className="reader-note-workbench-item-label">{MODE_LABELS[candidate]}</span>
-                <kbd className="reader-note-workbench-item-key">{COMMAND_KEYS.get(MODE_COMMAND[candidate])}</kbd>
+                <kbd className="reader-note-workbench-item-key">{shortcuts.bindings(MODE_COMMAND[candidate]).map(formatBinding).join(' / ')}</kbd>
                 <span className="reader-note-workbench-item-hint">{MODE_HINTS[candidate]}</span>
               </button>
             );

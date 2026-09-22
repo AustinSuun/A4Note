@@ -111,6 +111,7 @@ ok(scene.includes('exitNoteMode()'), '专注写作可经 Escape 返回进入前�
 const hookSource = fs.readFileSync('src/features/reader/useNoteWorkbench.ts', 'utf8');
 ok(hookSource.includes('restoreMode') && hookSource.includes('previousMode'), '退出宽屏模式回到进入前的模式且保留宽屏偏好');
 const menuSource = fs.readFileSync('src/features/reader/ReaderNoteWorkbenchMenu.tsx', 'utf8');
-ok(menuSource.includes('aria-keyshortcuts'), '菜单项通过 aria-keyshortcuts 反映绑定');
+const shortcutPropsSource = fs.readFileSync('src/shared/shortcuts/ShortcutProvider.tsx', 'utf8');
+ok(menuSource.includes('shortcutProps(MODE_COMMAND[candidate]') && shortcutPropsSource.includes("'aria-keyshortcuts': aria"), '菜单项通过共享绑定的 aria-keyshortcuts 反映配置');
 
 console.log(`note workbench checks passed: ${checks.length}/${checks.length}`);

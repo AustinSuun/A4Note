@@ -1,3 +1,4 @@
+import { shortcutTestRuntime } from './shortcut-test-runtime.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -43,30 +44,21 @@ function find(node, predicate) {
 }
 const zh = { reader: { pageStatus: (p, t) => `${p}/${t}`, fitWidth: 'FIT', zoomOut: 'OUT', zoomReset: 'RESET', zoomIn: 'IN' }, workbench: {} };
 
-// Run the real app keyboard function, not a reimplementation of its branching.
+// Run the actual registry and application dispatcher (previously extracted App's removed listener).
 {
-  const src = fs.readFileSync('src/ui/App.tsx', 'utf8');
-  const start = src.indexOf('    const handleGlobalKeyDown =');
-  const end = src.indexOf("    window.addEventListener('keydown', handleGlobalKeyDown)", start);
-  const code = ts.transpileModule(src.slice(start, end) + ';globalThis.handle=handleGlobalKeyDown;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-  class Input {}; class Textarea {}; class Select {}; const events = [];
-  const context = { HTMLInputElement: Input, HTMLTextAreaElement: Textarea, HTMLSelectElement: Select,
-    importOpen: false, metadataEditOpen: false, tagsEditOpen: false, bulkTagsEditOpen: false, commandPaletteOpen: false,
-    activeScene: 'reader', readerContentMode: 'pdf', readerFocusedAnnotationId: null,
-    aster: { scenes: { list: () => [] } }, visibleSceneIds: [],
-    requestPdfFind: () => events.push('find-pdf'), undoAnnotationAction: () => events.push('undo'), redoAnnotationAction: () => events.push('redo'),
-    setScene: s => events.push(s), requestAnimationFrame: fn => fn(), librarySearchRef: { current: { focus: () => events.push('library-search') } },
-  };
-  vm.createContext(context); vm.runInContext(code, context);
-  function key(key, target = {}, extras = {}) { events.length = 0; context.handle({ key, target, ctrlKey: true, metaKey: false, shiftKey: false, preventDefault() {}, ...extras }); return [...events]; }
-  for (const target of [new Input(), new Textarea(), new Select(), { isContentEditable: true }]) {
-    check(key('z', target), [], 'text field owns undo'); check(key('y', target), [], 'text field owns redo');
+  const runtime = shortcutTestRuntime();
+  const { Element, key, store } = runtime;
+  for (const kind of ['input', 'textarea', 'select', 'contenteditable', 'cm']) {
+    check(key('z', new Element(kind)).events, [], 'text field owns undo');
+    check(key('y', new Element(kind)).events, [], 'text field owns redo');
   }
-  check(key('z', {}, { defaultPrevented: true }), [], 'respect handled events');
-  check(key('z', {}, { isComposing: true }), [], 'respect IME');
-  check(key('z'), ['undo'], 'canvas undo'); check(key('y'), ['redo'], 'canvas redo');
-  check(key('f'), ['find-pdf'], 'reader search remains in reader');
-  context.activeScene = 'library'; check(key('f'), ['library', 'library-search'], 'library search preserved');
+  check(key('z', undefined, { defaultPrevented: true }).events, [], 'respect handled events');
+  check(key('z', undefined, { isComposing: true }).events, [], 'respect IME');
+  check(key('z').events, ['undo'], 'canvas undo'); check(key('y').events, ['redo'], 'canvas redo');
+  check(key('f').events, ['find-pdf'], 'reader search remains in reader');
+  store.setContext('library', false);
+  check(key('f').events, ['library', 'library-search'], 'library search preserved');
+  runtime.dispose();
 }
 
 // Page entry: focus protects draft; Enter commits once; Escape cancels; a different paper resets.

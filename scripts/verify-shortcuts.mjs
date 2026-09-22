@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import {
+  shortcutBindingConflicts,
+  replaceShortcutBinding,
+  reservedShortcutReason,
+  shortcutBindingsOverlap,
   SHORTCUT_SCHEMA_VERSION,
   ShortcutRegistry,
   ariaKeyShortcut,
@@ -76,4 +80,31 @@ assert.throws(() => registry.register(commands[0]), /Duplicate/); checks += 1;
 unregister();
 check(registry.list().length, 0, 'registry unregister');
 
+
+// Configuration evolution and conflicts use the same helpers as the recorder.
+const empty = parseShortcutOverrides(null);
+const changed = setShortcutOverride(empty, 'reader.highlight', [keyboard('j')]);
+check(bindingsForCommand({...commands[3], id:'new.command'}, changed)[0].key, 'h', 'new command inherits default');
+check(resolveShortcuts(commands, parseShortcutOverrides('{"schemaVersion":1,"bindings":{"deleted.id":null}}'), context()).length, 5, 'deleted command ignored');
+check(shortcutBindingConflicts(commands, empty, commands[3], [keyboard('k')]).map(c=>c.id), ['global.palette'], 'global/scene conflict');
+check(shortcutBindingConflicts(commands, empty, commands[3], [keyboard('h')]).length, 0, 'exclusive scenes share keys');
+const replaced = replaceShortcutBinding(commands, empty, commands[3], [keyboard('k')]);
+check(bindingsForCommand(commands[0], replaced), [], 'replacement removes conflicting default');
+check(bindingsForCommand(commands[3], replaced)[0].key, 'k', 'replacement installs candidate');
+check(bindingsForCommand(commands[0], empty)[0].key, 'k', 'cancel/preview cannot mutate original');
+const disjoint = commands.map(c=> c.id === 'workbench.search' ? {...c,inactiveSceneIds:['reader']} : c);
+check(shortcutBindingConflicts(disjoint, empty, disjoint[2], [keyboard('f')]).length,0,'explicit visibility excludes false conflicts');
+check(resolveShortcuts(disjoint, empty, context()).some(c=>c.command.id==='workbench.search'),false,'excluded scene not dispatched');
+check(shortcutBindingsOverlap(keyboard('h'), keyboard('j',{code:'KeyH',semantics:'code'})),true,'physical/logical ambiguity warns conservatively');
+check(keyboardBindingMatches(keyboard('j',{code:'KeyH',semantics:'code'}),{...keyEvent,key:'j',code:'KeyH'}),true,'physical key uses code');
+check(keyboardBindingMatches(keyboard('h'),{...keyEvent,key:'j',code:'KeyH'}),false,'logical key uses key');
+for (const binding of [keyboard('h',{ctrl:'yes'}),keyboard('h',{semantics:'code'}),keyboard('Control'),{type:'mouse',button:1}]) {
+  check(parseShortcutOverrides(JSON.stringify({schemaVersion:1,bindings:{invalid:[binding]}})).bindings.invalid,undefined,'invalid binding rejected');
+}
+check(Object.keys(parseShortcutOverrides('{"schemaVersion":1,"bindings":{"__proto__":null,"constructor":null}}').bindings),[],'prototype keys rejected');
+check(ariaKeyShortcut(keyboard('Enter',{alt:true})), 'Control+Alt+Enter', 'ARIA canonical Enter');
+check(ariaKeyShortcut(keyboard('+',{shift:true})), 'Control+Shift+Plus', 'ARIA canonical Plus');
+check(!!reservedShortcutReason(keyboard('F4',{ctrl:false,alt:true})),true,'OS reserved warning');
+check(!!reservedShortcutReason(keyboard('r')),true,'WebView reserved warning');
+check(reservedShortcutReason({type:'mouse',button:3}),null,'mouse is not a keyboard reservation');
 console.log(`Shortcut core verification passed: ${checks} checks`);
