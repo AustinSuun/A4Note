@@ -15,8 +15,8 @@ const baselinePlugin={name:'baseline-shortcut-hints',enforce:'pre',resolveId(id,
 }};
 if(baseline){
   fs.mkdirSync('.tmp/shortcuts-baseline',{recursive:true});
-  for(const file of ['ShortcutHints.tsx','shortcuts.css','hintLayout.ts']) {
-    let content=execFileSync('git',['show',`d6d70d8:src/shared/shortcuts/${file}`],{encoding:'utf8'});
+  for(const file of ['ShortcutHints.tsx','shortcuts.css','hintLayout.ts','hintKeycaps.ts']) {
+    let content=execFileSync('git',['show',`c056588:src/shared/shortcuts/${file}`],{encoding:'utf8'});
     if(file.endsWith('.tsx')) content=content.replaceAll('../../core/','/src/core/').replaceAll("'./dispatcher'","'/src/shared/shortcuts/dispatcher'").replaceAll("'./store'","'/src/shared/shortcuts/store'");
     fs.writeFileSync(`.tmp/shortcuts-baseline/${file}`,content);
   }
@@ -45,9 +45,11 @@ try {
   check(await page.locator('[data-hint-id] .shortcut-hint-keys kbd').count()>30,true,'spec3: real keycaps instead of plain text');
   check(await page.locator('[data-hint-placement="adjacent"] .shortcut-hint-label').count(),0,'spec3: button hints do not repeat action names');
   check(await page.locator('[data-hint-id="reader.undo"] .shortcut-hint-label').innerText(),'撤销标注','spec3: unanchored keys have real action on their right');
-  check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-keys').textContent(),'Ctrl+H','primary effective binding by its button');
+  check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-keys').textContent(),'H','primary effective binding by its button');
   check(await page.locator('[data-hint-id="reader.zoomIn"]').getAttribute('data-hint-placement'),'adjacent','right-side zoom no longer relegated to panel');
   await page.screenshot({path:path.join(evidence,'01-reader-hints.png')});
+  check(await page.locator('[data-hint-placement="adjacent"] kbd').allTextContents().then(keys=>keys.includes('Ctrl')),false,'spec4: no repeated Ctrl on button hints');
+  check(await page.locator('[data-hint-id="reader.undo"] .shortcut-hint-keys').textContent(),'Ctrl+Z','floating hints keep full combination');
   await page.keyboard.up('Control');await page.waitForTimeout(180);
   check(await page.locator('.shortcut-hints').evaluate(n=>getComputedStyle(n).opacity),'0','release hides hints');
   const row=page.locator('[data-shortcut-row="reader.tool.highlight"]');
@@ -95,13 +97,16 @@ try {
     await page.evaluate(z=>{document.documentElement.style.zoom=String(z);document.documentElement.style.setProperty('--ui-zoom',String(z));},zoom);
     await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(180);
     const geometry=await page.evaluate(()=>{
+      const paintStyle=document.createElement('style');paintStyle.textContent='.shortcut-hints [data-hint-id] kbd { pointer-events: auto !important; }';document.head.append(paintStyle);
+      const coveredKeys=[...document.querySelectorAll('[data-hint-id] kbd')].filter(n=>{const r=n.getBoundingClientRect();return [[r.left+4,r.top+4],[r.right-4,r.bottom-4],[r.left+r.width/2,r.top+r.height/2]].some(([x,y])=>document.elementFromPoint(x,y)!==n);}).length;
+      paintStyle.remove();
       const nodes=[...document.querySelectorAll('.shortcut-key-hint')];
       const badges=nodes.map(n=>n.getBoundingClientRect());
       const controls=[...document.querySelectorAll('[data-shortcut-id],#a4note-live-dev-badge')].filter(n=>{
         const r=n.getBoundingClientRect();return r.width>0&&r.height>0&&r.top<innerHeight&&r.bottom>0&&r.left<innerWidth&&r.right>0;
       }).map(n=>n.getBoundingClientRect());
       const overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
-      return {viewport:[innerWidth,innerHeight],outside:badges.filter(r=>r.left<0||r.top<0||r.right>innerWidth+1||r.bottom>innerHeight+1).length,
+      return {coveredKeys,viewport:[innerWidth,innerHeight],outside:badges.filter(r=>r.left<0||r.top<0||r.right>innerWidth+1||r.bottom>innerHeight+1).length,
         hidden:nodes.filter(n=>getComputedStyle(n).visibility==='hidden').length,
         backgrounds:nodes.filter(n=>getComputedStyle(n).backgroundColor!=='rgba(0, 0, 0, 0)'||getComputedStyle(n).boxShadow!=='none'||getComputedStyle(n).borderTopWidth!=='0px').length,
         bareKeys:nodes.flatMap(n=>[...n.querySelectorAll('kbd')]).filter(k=>getComputedStyle(k).borderBottomWidth==='0px'||getComputedStyle(k).borderRadius==='0px').length,
@@ -115,6 +120,7 @@ try {
       console.log('FAILED GEOMETRY',JSON.stringify(await page.evaluate(()=>[...document.querySelectorAll('#tool-dock [data-shortcut-id]')].map(n=>{const r=n.getBoundingClientRect();const h=document.querySelector(`[data-hint-id="${n.dataset.shortcutId}"]`);return {id:n.dataset.shortcutId,rect:r.toJSON(),hint:h?.outerHTML,hit:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.outerHTML?.slice(0,180)};}))));
       await page.screenshot({path:path.join(evidence,'failure.png')});
     }
+    check(geometry.coveredKeys,0,`${width}x${height} zoom ${zoom}: keycaps are top-painted and not occluded`);
     check(geometry.outside,0,`${width}x${height} zoom ${zoom}: hints inside viewport`);
     check(geometry.hidden,0,`${width}x${height} zoom ${zoom}: every bound command displayed`);
     check(geometry.backgrounds,0,`${width}x${height} zoom ${zoom}: transparent text without boxes`);
@@ -137,8 +143,10 @@ try {
   check(Math.min(Math.abs(after.y+after.height-movedControl.y),Math.abs(after.y-movedControl.y-movedControl.height))<=after.height+15,true,'reflow hint stays next to current control bounds');
   await page.locator('#tool-dock [data-shortcut-id="reader.tool.highlight"]').evaluate(n=>{n.style.display='none';});await page.waitForTimeout(180);
   check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-label').innerText(),'高亮','hidden button becomes a floating named action');
+  check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-keys').textContent(),'Ctrl+H','hidden anchor restores full Ctrl binding');
   await page.locator('#tool-dock [data-shortcut-id="reader.tool.highlight"]').evaluate(n=>{n.style.display='';});await page.waitForTimeout(180);
   check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-label').count(),0,'restored button removes duplicate action name');
+  check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-keys').textContent(),'H','restored anchor uses compact binding again');
   await page.locator('[data-shortcut-id="reader.tool.highlight"]').evaluate(n=>n.style.display='none');await page.waitForTimeout(120);
   check(await page.locator('[data-hint-id="reader.tool.highlight"]').getAttribute('data-hint-placement'),'floating','hidden control becomes bare floating hint');
   await page.locator('[data-shortcut-id="reader.tool.highlight"]').evaluate(n=>n.style.display='');await page.waitForTimeout(120);
@@ -146,6 +154,13 @@ try {
   await page.keyboard.up('Control');await page.waitForTimeout(180);
   await page.keyboard.down('Control');await page.keyboard.up('Control');await page.waitForTimeout(200);
   check(await page.locator('.shortcut-hints').evaluate(n=>getComputedStyle(n).opacity),'0','quick Ctrl tap never leaves overlay visible');
+  await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(180);
+  const oldHint=await page.locator('[data-hint-id="reader.tool.highlight"]').boundingBox();
+  await page.evaluate(rect=>{const n=document.createElement('div');n.id='hint-obstacle';n.role='tooltip';Object.assign(n.style,{position:'fixed',left:(rect.x-8)+'px',top:(rect.y-2)+'px',width:(rect.width+16)+'px',height:(rect.height+4)+'px',zIndex:'20000',background:'red'});document.body.append(n);},oldHint);
+  await page.waitForTimeout(180);
+  const avoidsPopup=await page.evaluate(()=>{const o=document.getElementById('hint-obstacle').getBoundingClientRect();return [...document.querySelectorAll('[data-hint-id]')].every(n=>{const r=n.getBoundingClientRect();return r.right<=o.left||r.left>=o.right||r.bottom<=o.top||r.top>=o.bottom;});});
+  check(avoidsPopup,true,'higher-z popup surface does not cover keycaps after reflow');
+  await page.locator('#hint-obstacle').evaluate(n=>n.remove());await page.keyboard.up('Control');await page.waitForTimeout(180);
   check(errors,[],'no browser console/page errors');
 } finally {
   fs.writeFileSync(path.join(evidence,'result.json'),JSON.stringify({checks,errors,kind:'real-browser-component-harness-not-native-desktop'},null,2));

@@ -6,7 +6,7 @@ import { layoutShortcutHints, type HintPosition, type HintRect } from './hintLay
 import { hintKeycaps } from './hintKeycaps';
 import type { ShortcutStore } from './store';
 
-type Hint = { id: string; keys: string[]; title: string; group: string; enabled: boolean; anchor?: Element };
+type Hint = { id: string; keys: string[]; compactKeys: string[]; title: string; group: string; enabled: boolean; anchor?: Element };
 const rectOf = (element: Element): HintRect => {
   const { left, top, right, bottom } = element.getBoundingClientRect();
   return { left, top, right, bottom };
@@ -58,7 +58,7 @@ export function ShortcutHints({ store }: { store: ShortcutStore }) {
         // One primary effective binding keeps the overlay compact. All alternatives
         // remain in the existing button tooltip, aria-keyshortcuts and editor.
         const node = nodes.find(node => node.dataset.shortcutId === command.id);
-        return [{ id: command.id, keys: hintKeycaps(bindings[0]), title: command.title.replace(/^笔记工作台：/, ''), group: command.group, enabled: canDispatchShortcut(command, context), anchor: node ? sceneTileIcon(node) ?? node : undefined }];
+        return [{ id: command.id, keys: hintKeycaps(bindings[0]), compactKeys: hintKeycaps(bindings[0], true), title: command.title.replace(/^笔记工作台：/, ''), group: command.group, enabled: canDispatchShortcut(command, context), anchor: node ? sceneTileIcon(node) ?? node : undefined }];
       }));
     };
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(refresh); };
@@ -86,23 +86,28 @@ export function ShortcutHints({ store }: { store: ShortcutStore }) {
   useLayoutEffect(() => {
     if (!store.hintVisible || !root.current) return;
     const elements = [...root.current.querySelectorAll<HTMLElement>('[data-measure-id]')];
+    const compactElements = [...root.current.querySelectorAll<HTMLElement>('[data-compact-measure-id]')];
     const keyWidth = Math.max(0, ...elements.map(node => node.querySelector('.shortcut-hint-keys')!.getBoundingClientRect().width));
     root.current.style.setProperty('--shortcut-key-column', `${Math.ceil(keyWidth)}px`);
     const controls = [...document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role="button"], [role="menuitemradio"], #a4note-live-dev-badge')].filter(visibleControl).flatMap(controlRects);
+    // Protect whole popup surfaces, not just their buttons. A higher stacking
+    // layer can otherwise hide a keycap in apparently empty inter-button space.
+    controls.push(...[...document.querySelectorAll<HTMLElement>('[role="menu"], [role="listbox"], [role="tooltip"], [role="dialog"], [popover], [data-shortcut-obstacle]')].filter(elementIsVisible).map(rectOf));
     const measurements = hints.map(hint => {
       const node = elements.find(element => element.dataset.measureId === hint.id)!;
       const rect = node.getBoundingClientRect();
-      const keys = node.querySelector('.shortcut-hint-keys')!.getBoundingClientRect();
+      const compact = compactElements.find(element => element.dataset.compactMeasureId === hint.id)!;
+      const keys = compact.querySelector('.shortcut-hint-keys')!.getBoundingClientRect();
       return { id: hint.id, width: Math.ceil(keys.width), height: Math.ceil(keys.height), floatingWidth: Math.ceil(rect.width), floatingHeight: Math.ceil(rect.height), group: hint.group, beside: hint.anchor?.tagName.toLowerCase() === 'svg', anchor: hint.anchor ? rectOf(hint.anchor) : undefined };
     });
     setPositions(layoutShortcutHints(measurements, { left: 8, top: 8, right: innerWidth - 8, bottom: innerHeight - 8 }, controls));
   }, [hints, store, store.hintVisible]);
 
-  const keys = (hint: Hint) => <span className="shortcut-hint-keys">{hint.keys.map((key, i) => <span className="shortcut-hint-key-part" key={i}>{i > 0 && <span className="shortcut-hint-plus">+</span>}<kbd>{key}</kbd></span>)}</span>;
+  const keys = (hint: Hint, compact = false) => <span className="shortcut-hint-keys">{(compact ? hint.compactKeys : hint.keys).map((key, i) => <span className="shortcut-hint-key-part" key={i}>{i > 0 && <span className="shortcut-hint-plus">+</span>}<kbd>{key}</kbd></span>)}</span>;
   return createPortal(<div ref={root} className={`shortcut-hints ${store.hintVisible ? 'is-visible' : ''}`} aria-hidden="true">
     {hints.map(hint => <span key={hint.id} data-hint-id={hint.id} data-hint-placement={positions[hint.id]?.placement}
       className={`shortcut-key-hint ${positions[hint.id]?.placement === 'floating' ? 'shortcut-floating-hint' : ''} ${hint.enabled ? '' : 'is-disabled'}`}
-      style={{ left: positions[hint.id]?.left ?? 0, top: positions[hint.id]?.top ?? 0, visibility: positions[hint.id] ? 'visible' : 'hidden' }}>{keys(hint)}{positions[hint.id]?.placement === 'floating' && <span className="shortcut-hint-label">{hint.title}</span>}</span>)}
-    <div className="shortcut-hint-measures">{hints.map(hint => <span key={hint.id} data-measure-id={hint.id} className="shortcut-floating-hint">{keys(hint)}<span className="shortcut-hint-label">{hint.title}</span></span>)}</div>
+      style={{ left: positions[hint.id]?.left ?? 0, top: positions[hint.id]?.top ?? 0, visibility: positions[hint.id] ? 'visible' : 'hidden' }}>{keys(hint, positions[hint.id]?.placement === 'adjacent')}{positions[hint.id]?.placement === 'floating' && <span className="shortcut-hint-label">{hint.title}</span>}</span>)}
+    <div className="shortcut-hint-measures">{hints.map(hint => <span key={hint.id} data-measure-id={hint.id} className="shortcut-floating-hint">{keys(hint)}<span className="shortcut-hint-label">{hint.title}</span></span>)}{hints.map(hint => <span key={`compact-${hint.id}`} data-compact-measure-id={hint.id}>{keys(hint, true)}</span>)}</div>
   </div>, document.body);
 }
