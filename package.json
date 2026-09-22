@@ -23,6 +23,7 @@
     "test:pdfjs": "node scripts/verify-pdfjs.mjs",
     "test:reader": "node scripts/verify-reader-rendering.mjs",
     "test:reader-helpers": "node --experimental-strip-types scripts/verify-reader-helpers.mjs",
+    "test:reader-popover-layout": "node scripts/verify-reader-popover-layout-browser.mjs",
     "test:pdf-rotated-text": "node --experimental-strip-types scripts/verify-pdf-rotated-text-layer.mjs",
     "test:pdf-crosspage-selection": "node --experimental-strip-types scripts/verify-pdf-crosspage-selection.mjs",
     "test:annotation-layers": "node scripts/verify-annotation-layers.mjs",

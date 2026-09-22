@@ -1434,18 +1434,30 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .shape-preview.rect { border-radius: 2px; }
 .shape-preview.ellipse { border-radius: 999px; }
 .tool-option-color-group {
-  grid-template-columns: auto auto max-content;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   min-width: 0;
   gap: 6px;
 }
-.tool-option-color-group .tool-option-label {
-  grid-column: 1 / -1;
+.tool-option-color-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.tool-option-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 .tool-option-transparent-toggle {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 34px;
+  height: 24px;
   padding: 0 7px;
   border-radius: 4px;
   background: rgba(238,243,239,.72);
@@ -1522,6 +1534,9 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .tool-option-color-presets button.active {
   border-color: var(--accent-strong, #35624f);
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(77,131,107,.62);
+}
+@media (max-width: 480px) {
+  .tool-option-color-presets { grid-template-columns: repeat(5, var(--annotation-swatch-size)); }
 }
 .text-style-picker button {
   min-width: 28px;
