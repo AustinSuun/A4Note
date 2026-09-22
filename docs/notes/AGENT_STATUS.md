@@ -1,5 +1,7 @@
 ﻿# A4 Note Agent 状态
 - reader-eraser-pointer-xunzhou：巡舟完成 ecbf83de PDF 橡皮擦再回归；新增单一 raw client→pdf-render-layer 坐标采样，预览与命中共享 pixel/percent/inside，中心一离页即在接触 ink 前停止，未改精确线段裁剪、指针捕获与累计保存。修复前 Windows/Tauri 118%/DPR1.25 稳定复现“环隐藏但页外 5px 仍擦除”；所报右下偏移在该隔离实例未复现，未虚构，修复后 100%/120%/滚动120% 命中中心误差均小于 0.00008px。真实 WebView 页外/回入、仅接触段、undo/redo、重载持久化、跨页、可写/隐藏/锁定层均通过；22 项 eraser、Reader/helpers、图层 55 项、完整 verify（Rust 215/0/5 ignored）、diagnostics 0、diff check 全绿。仅记录 dev favicon.ico 404，无 pageerror/应用逻辑 console error。详见 docs/mcp-pdf-reader-eraser-pointer-xunzhou-2026-09-22.md。
+annotation-popover-swatch-chengchuan：澄川完成 23528921 标注工具弹窗色板裁切与文本框色板对齐修复。ToolColorPalette 重构为「标题行（label + 无背景开关）+ 色块行（自定义色 + 预设网格）」两行结构，「无背景」不再占色板列、开/关不跳位；.tool-option-color-group 改纵向 flex 并新增 heading/row 契约；弹窗宽度内容驱动（色板工具 ≈396px、无色板 300px），≤480px 预设 5 列换行；不缩色块、不删颜色、不用 overflow:hidden 掩盖、未 reintroduce 关闭 ×。修复提交 9a180c4 已合并本地 main 29341cc（基线 59ca336）。验证：build 通过；新增布局回归 verify-reader-popover-layout-browser 166/166（6 工具 × {1280×800@100/125/150%、800×600、460×700}：无横向溢出、20 预设+选中描边完整、三组文本色板左缘差 ≤1px、无背景无跳位）；焦点回归合并前 367/367，合并后放宽数量假设至 >=9 复跑 367 过、4 项失败均为快捷键卡片新增「阅读器快捷键设置」按钮的脚本预期（该卡入 main 后的既有待同步项，本卡不代改）；诊断 0；上游 bd77244 对齐 ui-state 断言后 main 全量 verify 全绿（Rust 215/0/5 ignored）。dev:live 隔离实例 chengchuan（app.aster.research.dev.chengchuan.w8cbe287824，5210/CDP 9231）verify-dev-live-runtime 21/21，badge「DEV chengchuan · 独立测试库（原生已核验 …）」、mode isolated，证据 .tmp/live-evidence/chengchuan-1790045515076；无人值守受系统文件对话框所限未开 PDF，弹窗几何由隔离 Chrome 回归（真实组件+应用 CSS）覆盖。详见 docs/mcp-annotation-popover-swatch-chengchuan-2026-09-22.md。
+
 
 
 ## 当前工作：上下文快捷键任务接手（星序）
@@ -45,7 +47,7 @@
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-22T10:38:51+08:00
+更新时间：2026-09-22T10:58:38+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 
