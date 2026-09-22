@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-22T19:40:36+08:00",
+  "updatedAt": "2026-09-22T19:53:15+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
+      "reader-note-edge-xingxu：星序领取9b69c4b5 spec3高优先级任务，独立feat/note-edge-xingxu/worktree .worktrees/note-edge-xingxu，基线main38fe2e1。按已选方案C实现内容区边界书签把手、阈值拖宽、模式菜单与头部紧凑切换；保留四态/按论文偏好/快捷键，不改PDF/底部图层/标注。拟占用ReaderScene、ReaderSideDrawer、ReaderNoteWorkbenchMenu、ReaderDrawerResizer及专属布局/交互hook与回归。原生隔离实例note-edge-xingxu1471/CDP9271；先取旧入口证据再修改。未打包安装发布。",
       "shortcut-hint-size-xingxu：星序完成63b530ee spec2实现与验证，095a3ae放大16px键帽/15px功能名、M4/M5，受限时仅浮动行14px；末键对齐长组合、整体避让文本浮动栏/色板。28f9cd8整合最新main文本B/I，1be6c62补色板与同步已验收UI测试契约，不修改图层/文本产品文件。浏览器461/32组合、原生153+87及严格同场景配对通过；11→16px、键帽20.4→28.4px，工具坞444.6×69.6与按钮矩形完全不变、最小间隙9px。完整verify退出0/211.647秒（Rust215/0/5 ignored）、diagnostics0。附加文本浏览器东侧resize断言在本分支及未修改main均失败，另记既有问题，不声称全绿；app UI上限140，125/150为受控CSS压力场景。交付与main包含SHA见任务卡，下一步用户验收；未打包安装推送发布。详见docs/mcp-shortcut-hint-size-xingxu-2026-09-22.md。",
       "text-annotation-controls-qinglan：青岚完成任务 54576b3e spec4 核心实现。修复根因是悬浮颜色沿用 annotation.color，而文本字形实际使用 positionJson.textColor；现在文本快捷色点、预设色和自定义色均读写 textColor，非文本标注仍使用原通用颜色。悬浮 Aa/二级字号样式面板改为直接 B/I（aria-pressed、tooltip、键盘可达）；文本工具面板删除外框色与字号 UI，保留文字色、背景及 B/I；内部 fontSize、borderColor 兼容字段和缩放逻辑未改。清理失效组件/CSS。build、静态回归 33/33、真实 PdfReader 浏览器交互 97/97（含直接 B/I、文字色与通用色隔离、缩放/编辑/边缘/IME、pageerror 0）通过。未打包/安装/推送/发布。详见 docs/mcp-text-annotation-controls-qinglan-2026-09-22.md。",
       "windows-package-arena：用户指示对已合并 main 打包；版本按约定 0.1.27→0.1.28（package.json/Cargo.toml/Cargo.lock/tauri.conf.json 各 1 行，提交 76a6cb2，基线 38d9977）。npm run package:windows 退出 0（约 202 秒）；artifacts/windows/latest/ 内 a4note.exe 37687296 字节 SHA-256 20FB3F6DC851A27B65E680A3CC50E5F051F89E87E203A98EEC021AF18B567CF7、A4 Note_x64-setup.exe 22831212 字节 SHA-256 FA5A1EE17FBE24E9CEECC1D99826D01E7AF174D1D5300BF09752DA6F8381BB29，独立重算与 build-info.json 一致，更新签名与 latest.json 一致；上一份 0.1.27 latest 已归档。包内前端含本轮图层弹窗标记（前端构建复核）。未完整 verify、未安装、未推送/发布。详见 docs/mcp-windows-package-arena-2026-09-22.md。",
