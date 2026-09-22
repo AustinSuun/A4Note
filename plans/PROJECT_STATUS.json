@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-22T09:43:11+08:00",
+  "updatedAt": "2026-09-22T09:48:23+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
-      "context-shortcuts-xingxu：星序执行9230f8ce，完整实现已提交fd35859：单一分发器、Ctrl150ms提示、共享录制/冲突/恢复设置、侧栏及Reader命令接线与独立配置。核心52、dispatcher50、Reader优先级62、浏览器56（含6组视口/缩放几何）、Settings116、隔离Windows/Tauri25和真实进程重启持久化4项通过。当前同步main59ca336并准备集成后完整verify；未合并到main/未submit，保留其他Agent的主树Cargo.toml改动。",
+      "context-shortcuts-xingxu：星序完成9230f8ce功能与验证，fd35859实现、b99f471同步main59ca336。统一dispatcher、Ctrl150ms提示、共享录制/冲突/恢复、Settings与Reader分区、侧栏与Reader接线全部落地。完整PowerShell verify退出0（Rust215通过/5忽略）、核心52、dispatcher50、Reader62、浏览器56、Settings116、隔离原生25及正常关闭后重启4项通过，src诊断0。本地main交付以任务卡integration审计记录为准；未安装、打包或发布。见docs/mcp-context-shortcuts-delivery-xingxu-2026-09-22.md。",
       "reader-highlight-underline-baseline-xunzhou：巡舟完成 a35a4c83 阅读器高亮/下划线基线定位修复；按 PDF.js 基线语义对 0°/90°/180°/270° 高亮仅在降部侧扩展 20%，下划线移到基线外并保留 0.04×字形轴间隙，拖选预览与持久标注共用几何。旧标注数据、颜色/混合、重叠交互、文本框/形状/箭头/橡皮保持兼容。实现提交 983f3f7，最新 main d726c5d 已合入任务分支 ae13047；helpers、reader、selection 37、highlight 57、rotate 100/150/200% 各 151、完整 verify 全绿，diagnostics 0。详见 docs/mcp-reader-highlight-underline-baseline-xunzhou-2026-09-22.md。",
       "windows-package-xingxu：用户授权本地EXE打包完成；0.1.27 windows-x64，main 4b40788，builtAt 2026-09-22T00:37:26.577Z（08:37）。package:windows 退出0/308.491秒，EXE与安装包SHA256独立核验一致，更新签名非空且与latest.json一致，5项前端入口嵌入与浮动工具坞CSS验证通过。Cargo.toml仅打包换行变化，按构建前SHA256逐字节恢复，业务源码哈希无变化。旧latest已归档。未包含23528921色板任务、e5e73f0f未交付图层精简或9230f8ce未完成快捷键；未完整verify、桌面测试、安装、推送、发布。详见 docs/mcp-windows-package-xingxu-2026-09-22.md。",
       "post-merge-smoke-arena：Arena 对 main a6b5d22 做合并后集成冒烟（隔离实例 arena-smoke）：F6 提示、F4 Escape、F2 重叠、橡皮拆分/页外隐藏、图层新建学习记录与恢复显示、笔记工作台不重建 canvas、reload 持久化 20/21 通过，唯一未通过为尚未合入的 F5 标注列表入口；F1 62/63、F3 22/22、真实论文选区色带差值 0。详见 docs/mcp-post-merge-smoke-arena-2026-09-21.md。",
@@ -134,7 +134,7 @@
   },
   "lastHandoff": {
     "completed": [
-      "context-shortcuts-xingxu：星序执行9230f8ce，完整实现已提交fd35859：单一分发器、Ctrl150ms提示、共享录制/冲突/恢复设置、侧栏及Reader命令接线与独立配置。核心52、dispatcher50、Reader优先级62、浏览器56（含6组视口/缩放几何）、Settings116、隔离Windows/Tauri25和真实进程重启持久化4项通过。当前同步main59ca336并准备集成后完整verify；未合并到main/未submit，保留其他Agent的主树Cargo.toml改动。",
+      "context-shortcuts-xingxu：星序完成9230f8ce功能与验证，fd35859实现、b99f471同步main59ca336。统一dispatcher、Ctrl150ms提示、共享录制/冲突/恢复、Settings与Reader分区、侧栏与Reader接线全部落地。完整PowerShell verify退出0（Rust215通过/5忽略）、核心52、dispatcher50、Reader62、浏览器56、Settings116、隔离原生25及正常关闭后重启4项通过，src诊断0。本地main交付以任务卡integration审计记录为准；未安装、打包或发布。见docs/mcp-context-shortcuts-delivery-xingxu-2026-09-22.md。",
       "reader-highlight-underline-baseline-xunzhou：巡舟完成 a35a4c83 阅读器高亮/下划线基线定位修复；按 PDF.js 基线语义对 0°/90°/180°/270° 高亮仅在降部侧扩展 20%，下划线移到基线外并保留 0.04×字形轴间隙，拖选预览与持久标注共用几何。旧标注数据、颜色/混合、重叠交互、文本框/形状/箭头/橡皮保持兼容。实现提交 983f3f7，最新 main d726c5d 已合入任务分支 ae13047；helpers、reader、selection 37、highlight 57、rotate 100/150/200% 各 151、完整 verify 全绿，diagnostics 0。详见 docs/mcp-reader-highlight-underline-baseline-xunzhou-2026-09-22.md。",
       "windows-package-xingxu：用户授权本地EXE打包完成；0.1.27 windows-x64，main 4b40788，builtAt 2026-09-22T00:37:26.577Z（08:37）。package:windows 退出0/308.491秒，EXE与安装包SHA256独立核验一致，更新签名非空且与latest.json一致，5项前端入口嵌入与浮动工具坞CSS验证通过。Cargo.toml仅打包换行变化，按构建前SHA256逐字节恢复，业务源码哈希无变化。旧latest已归档。未包含23528921色板任务、e5e73f0f未交付图层精简或9230f8ce未完成快捷键；未完整verify、桌面测试、安装、推送、发布。详见 docs/mcp-windows-package-xingxu-2026-09-22.md。",
       "reader-note-workbench-arena：Arena 执行 24ea34e5（high）完成阅读器笔记工作台四态状态机、唯一入口菜单、比例驱动分屏、悬浮速记卡、专注写作与共享正文列 token；独立 worktree / 分支 feat/reader-note-workbench-arena。",
@@ -440,7 +440,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
-      "context-shortcuts-xingxu：星序执行9230f8ce，完整实现已提交fd35859：单一分发器、Ctrl150ms提示、共享录制/冲突/恢复设置、侧栏及Reader命令接线与独立配置。核心52、dispatcher50、Reader优先级62、浏览器56（含6组视口/缩放几何）、Settings116、隔离Windows/Tauri25和真实进程重启持久化4项通过。当前同步main59ca336并准备集成后完整verify；未合并到main/未submit，保留其他Agent的主树Cargo.toml改动。",
+      "context-shortcuts-xingxu：星序完成9230f8ce功能与验证，fd35859实现、b99f471同步main59ca336。统一dispatcher、Ctrl150ms提示、共享录制/冲突/恢复、Settings与Reader分区、侧栏与Reader接线全部落地。完整PowerShell verify退出0（Rust215通过/5忽略）、核心52、dispatcher50、Reader62、浏览器56、Settings116、隔离原生25及正常关闭后重启4项通过，src诊断0。本地main交付以任务卡integration审计记录为准；未安装、打包或发布。见docs/mcp-context-shortcuts-delivery-xingxu-2026-09-22.md。",
       "reader-highlight-underline-baseline-xunzhou：node scripts/verify-reader-helpers.mjs、npm run test:reader、selection preview 37/37、highlight 57/57、rotated 100%/150%/200% 各151/151、npm run verify（Settings UI 115/115；Rust 215/0/5 ignored；project-task 86 passed/1 skip）及 git diff --check 全部通过；四方向缩放位图证据与测量已生成。",
       "windows-package-xingxu：package:windows exit0；EXE/安装包SHA256、更新签名文本与清单、5项前端嵌入/CSS和业务源码哈希核对通过；未完整verify或桌面功能测试。",
       "npm run test:note-workbench=51/51；npm run test:note-workbench-browser=42/42（隔离 headless Chrome，9 场景截图见 .tmp/shots/note-workbench/）；npm run test:reader / npm run verify / npm run build 见交付说明。",
@@ -814,7 +814,7 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
-      "context-shortcuts-xingxu：星序执行9230f8ce，完整实现已提交fd35859：单一分发器、Ctrl150ms提示、共享录制/冲突/恢复设置、侧栏及Reader命令接线与独立配置。核心52、dispatcher50、Reader优先级62、浏览器56（含6组视口/缩放几何）、Settings116、隔离Windows/Tauri25和真实进程重启持久化4项通过。当前同步main59ca336并准备集成后完整verify；未合并到main/未submit，保留其他Agent的主树Cargo.toml改动。",
+      "context-shortcuts-xingxu：星序完成9230f8ce功能与验证，fd35859实现、b99f471同步main59ca336。统一dispatcher、Ctrl150ms提示、共享录制/冲突/恢复、Settings与Reader分区、侧栏与Reader接线全部落地。完整PowerShell verify退出0（Rust215通过/5忽略）、核心52、dispatcher50、Reader62、浏览器56、Settings116、隔离原生25及正常关闭后重启4项通过，src诊断0。本地main交付以任务卡integration审计记录为准；未安装、打包或发布。见docs/mcp-context-shortcuts-delivery-xingxu-2026-09-22.md。",
       "windows-package-xingxu：使用 artifacts/windows/latest 的0.1.27 EXE/安装包；本轮未安装。23528921色板/弹窗、e5e73f0f图层精简、9230f8ce快捷键需完成并合入后另行打包；当前包不宣称包含未完成需求。",
       "24ea34e5 待用户验收；验收通过后可考虑把阅读器笔记历史独立成视图，并核对与 shortcuts 分支合并后的键位注册表。",
       "授权弹窗改造已在源码，现有安装版仍是旧系统窗口；待协调并行源码及现有架构门禁后再按标准package:windows生成安装包。详见docs/mcp-browser-consent-dialog-2026-09-16.md。",
