@@ -28,9 +28,9 @@
 .annotation-layer-row.hidden-layer .annotation-layer-name { opacity: 0.55; }
 .annotation-layer-select { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
 .annotation-layer-select:hover { background: rgba(77, 131, 107, 0.08); }
-.annotation-layer-select:focus-visible, .annotation-layer-icon-btn:focus-visible, .annotation-layer-action:focus-visible, .annotation-layer-manager-name:focus-visible { outline: 2px solid var(--accent-strong, #4d836b); outline-offset: 1px; }
+.annotation-layer-select:focus-visible, .annotation-layer-icon-btn:focus-visible, .annotation-layer-action:focus-visible { outline: 2px solid var(--accent-strong, #4d836b); outline-offset: 1px; }
 .annotation-layer-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--accent-strong, #4d836b); flex: 0 0 10px; box-sizing: border-box; }
-[aria-checked="true"] > .annotation-layer-dot, .annotation-layer-manager-name[aria-pressed="true"] > .annotation-layer-dot { background: var(--accent-strong, #4d836b); }
+[aria-checked="true"] > .annotation-layer-dot { background: var(--accent-strong, #4d836b); }
 .annotation-layer-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .annotation-layer-kind { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: rgba(77, 131, 107, 0.14); color: var(--accent-strong, #4d836b); white-space: nowrap; }
 .annotation-layer-kind.active { background: var(--accent-strong, #4d836b); color: #fff; }
@@ -40,7 +40,6 @@
 .annotation-layer-icon-btn[aria-pressed="true"] { color: var(--accent-strong, #4d836b); opacity: 1; }
 .annotation-layer-icon-btn:disabled { opacity: 0.35; cursor: default; }
 .annotation-layer-icon-btn.danger:hover:not(:disabled) { background: rgba(200, 60, 60, 0.12); color: #b23b3b; }
-.annotation-layer-actions, .annotation-layer-manager-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .annotation-layer-action { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-soft, rgba(60, 80, 70, 0.18)); background: var(--surface, #fff); color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
 .annotation-layer-action:hover:not(:disabled) { border-color: var(--accent-strong, #4d836b); }
 .annotation-layer-action.primary { background: var(--accent-strong, #4d836b); border-color: var(--accent-strong, #4d836b); color: #fff; font-weight: 600; }
@@ -48,32 +47,7 @@
 .annotation-layer-action:disabled { opacity: 0.5; cursor: default; }
 .annotation-layer-status { margin: 0; min-height: 1.2em; font-size: 12px; opacity: 0.75; }
 
-.annotation-layer-manager { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; font-size: 13px; }
-.annotation-layer-manager-header { display: flex; align-items: center; justify-content: space-between; }
-.annotation-layer-manager-header h3 { margin: 0; font-size: 14px; }
-.annotation-layer-hint { margin: 0; font-size: 12px; opacity: 0.75; line-height: 1.5; }
-.annotation-layer-manager-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.annotation-layer-manager-row { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-soft, rgba(60, 80, 70, 0.14)); }
-.annotation-layer-manager-row.active { border-color: var(--accent-strong, #4d836b); background: var(--accent-soft, rgba(77, 131, 107, 0.08)); }
-.annotation-layer-manager-row.archived { opacity: 0.75; }
-.annotation-layer-manager-main { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
-.annotation-layer-manager-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; padding: 2px 4px; border-radius: 6px; text-align: left; }
-.annotation-layer-manager-name.muted { cursor: default; font-weight: 500; }
-.annotation-layer-manager-name > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .annotation-layer-rename { flex: 1 1 auto; min-width: 0; font: inherit; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--accent-strong, #4d836b); }
-.annotation-layer-manager-controls { display: flex; flex-wrap: wrap; gap: 2px; }
-.annotation-layer-move { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; padding: 8px; border-radius: 8px; background: rgba(77, 131, 107, 0.06); }
-.annotation-layer-move label { display: inline-flex; align-items: center; gap: 4px; }
-.annotation-layer-move select, .annotation-layer-dialog select { font: inherit; font-size: 12px; padding: 3px 4px; border-radius: 6px; max-width: 160px; }
-.annotation-layer-dialog-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(20, 30, 26, 0.35); }
-.annotation-layer-dialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; background: var(--surface, #fff); color: var(--ink, #1e2a24); border-radius: 12px; padding: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; gap: 12px; font-size: 13px; }
-.annotation-layer-dialog h4 { margin: 0; font-size: 15px; }
-.annotation-layer-dialog-body p { margin: 0 0 8px; line-height: 1.5; }
-.annotation-layer-dialog-options { display: flex; flex-direction: column; gap: 8px; }
-.annotation-layer-dialog-options label { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; line-height: 1.4; }
-.annotation-layer-dialog-options label.disabled { opacity: 0.5; }
-.annotation-layer-arm { font-size: 12px; color: #b23b3b; }
-.annotation-layer-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 .annotation-list-toolbar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; font-size: 12px; border-bottom: 1px solid var(--border-soft, rgba(60, 80, 70, 0.12)); }
 .annotation-list-toolbar select { font: inherit; font-size: 12px; padding: 3px 4px; border-radius: 6px; max-width: 180px; }
