@@ -1,4 +1,6 @@
 ﻿# A4 Note Agent 状态
+- reader-selection-outline-xunzhou：巡舟完成 7ef5d0fd 阅读器“正在阅读”鼠标选中外框修复。Reader 行内原本广泛的 `button:active` inset shadow 同时命中标题按钮，现仅展开与移除按钮保留 active 反馈；整行 `li.active` 背景是唯一鼠标选中层，键盘 `:focus-visible` 轮廓保持。实现 `36d9e6a`，并合入本地 main `c22a5e0`（分支合并提交 `4f6482c`）。旧 CSS 红测 25/26 且只失败预期断言，修复及合并后 26/26；`dev:live` 官方运行时 21/21、真实应用 raw-CDP 20/20，pageerror/console error 0；build、完整 verify（Rust 215/0/5 ignored）、diagnostics 0 全绿。鼠标/键盘截图和 JSON 已上传任务卡；未打包、安装、发布或写入生产资料库。详见 `docs/mcp-reader-selection-outline-xunzhou-2026-09-22.md`。
+
 - reader-annotation-toast-drag-xunzhou：任务 20b183cd 完成；fa49614 统一移除高亮/下划线/画笔/橡皮擦/文本框/图形/箭头正常操作期间的 role=status 与“正在…”提示，同时以带 revision 的乐观几何稳定文本框移动/缩放，避免 pointerup 后被旧异步几何回写。Windows/Tauri DPR 1.25 在 100%/118%/140%/190%、滚动、侧栏、边缘、快慢拖动、pointerleave、undo/redo/reopen 与原生回读均通过；持久化拒绝仍保留重试/放弃反馈。实现已由 4c918db 合入本地 main。
 
 - reader-find-trigger-arena-two：arena-two 完成 6a2240f7 移除阅读器常驻「查找」按钮，PDF 搜索仅由 reader.search 快捷键（默认 Ctrl+F，可改绑）与命令面板「搜索当前 PDF」触发。PdfFindBar 未打开时 return null（DOM 无 .pdf-find-trigger、无 display:none 隐藏），删除对应死 CSS 与按钮上的 useShortcutProps 锚点；打开/重选聚焦改为 focusRequest + useEffect（原 rAF 与 canvas 焦点竞争）；打开态行为未改，未新增任何入口。fix bb020ee（基线 c056588）。验证：tsc 0、build 过；新增 test:pdf-find-entry 35 断言（旧代码在「no .pdf-find-trigger control or style remains」失败）覆盖关闭态渲染为空、reader-find 事件打开、reader.search 注册且默认 Ctrl+F、再按重选、非 PDF 模式不打开且无错误、Ctrl 提示层 floating 提示；shortcuts/shortcuts-browser/reader/ui-state/architecture/verify-reader-priority-fixes 全过；npm run verify 全量通过。独立身份 app.aster.research.dev.arena-two-find.wcb085547e0 的 tauri debug 二进制真机取证 18/18（无按钮、Ctrl+F 开/聚焦/1/60/Enter/Shift+Enter/重选/Esc、命令面板、Ctrl 提示层 reader.search floating + zoomIn adjacent、pageerror 0；非 PDF 分支合成夹具无译文记 NOTE，由浏览器回归覆盖）。详见 docs/mcp-reader-find-trigger-arena-two-2026-09-22.md。
@@ -52,7 +54,7 @@ annotation-popover-swatch-chengchuan：澄川完成 23528921 标注工具弹窗�
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-22T14:19:37+08:00
+更新时间：2026-09-22T15:47:00+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 
