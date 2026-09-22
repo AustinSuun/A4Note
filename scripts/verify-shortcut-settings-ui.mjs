@@ -15,7 +15,12 @@ has(editor, /className="shortcut-keycap-plus"/, 'key combinations have visual pl
 has(editor, />更改<\/button>/, 'main rebinding action uses 更改');
 lacks(editor, />录制<\/button>/, 'ambiguous 录制 action is removed');
 has(editor, /请按下新快捷键或鼠标侧键/, 'capture mode provides a direct prompt');
-has(editor, /按 Esc 取消，Delete 或 Backspace 清除/, 'capture mode exposes cancel and clear help');
+has(editor, /shortcut-editor-binding-capture/, 'capture happens inside the original binding cell');
+has(editor, /shortcut-inline-capture/, 'inline capture replaces the current key display');
+lacks(editor, /className="shortcut-recorder"/, 'no detached recorder panel is rendered');
+has(editor, /window\.addEventListener\('blur', cancel\)/, 'window blur safely cancels capture');
+has(editor, /document\.addEventListener\('visibilitychange', cancel\)/, 'hidden windows safely cancel capture');
+has(editor, /Esc 取消 · Delete \/ Backspace 清除/, 'capture mode exposes cancel and clear help');
 has(editor, /aria-label={`清除“\$\{c\.title\}”快捷键`}/, 'row clear action has a command-specific accessible name');
 has(editor, /aria-label={`恢复“\$\{c\.title\}”默认快捷键`}/, 'row reset action has a command-specific accessible name');
 has(editor, /shortcut-editor-note-badge">实验性/, 'experimental information has a visible status badge');
