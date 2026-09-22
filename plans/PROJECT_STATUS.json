@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-22T18:54:00+08:00",
+  "updatedAt": "2026-09-22T19:40:36+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
-      "shortcut-hint-size-xingxu：星序已领取63b530ee spec2，独立分支fix/shortcut-hint-size-xingxu/worktree .worktrees/hint-size-xingxu，基线main9714b06。范围仅共享快捷键提示字号/键帽、实际测量避让与鼠标侧键短标签及回归；不改图层入口/文本标注并行任务。先在隔离dev:live测量当前11px键帽和底部密集锚点，再增大并验证缩放/长组合键/侧键/弹窗。未修改产品、未打包安装发布。",
+      "shortcut-hint-size-xingxu：星序完成63b530ee spec2实现与验证，095a3ae放大16px键帽/15px功能名、M4/M5，受限时仅浮动行14px；末键对齐长组合、整体避让文本浮动栏/色板。28f9cd8整合最新main文本B/I，1be6c62补色板与同步已验收UI测试契约，不修改图层/文本产品文件。浏览器461/32组合、原生153+87及严格同场景配对通过；11→16px、键帽20.4→28.4px，工具坞444.6×69.6与按钮矩形完全不变、最小间隙9px。完整verify退出0/211.647秒（Rust215/0/5 ignored）、diagnostics0。附加文本浏览器东侧resize断言在本分支及未修改main均失败，另记既有问题，不声称全绿；app UI上限140，125/150为受控CSS压力场景。交付与main包含SHA见任务卡，下一步用户验收；未打包安装推送发布。详见docs/mcp-shortcut-hint-size-xingxu-2026-09-22.md。",
       "text-annotation-controls-qinglan：青岚完成任务 54576b3e spec4 核心实现。修复根因是悬浮颜色沿用 annotation.color，而文本字形实际使用 positionJson.textColor；现在文本快捷色点、预设色和自定义色均读写 textColor，非文本标注仍使用原通用颜色。悬浮 Aa/二级字号样式面板改为直接 B/I（aria-pressed、tooltip、键盘可达）；文本工具面板删除外框色与字号 UI，保留文字色、背景及 B/I；内部 fontSize、borderColor 兼容字段和缩放逻辑未改。清理失效组件/CSS。build、静态回归 33/33、真实 PdfReader 浏览器交互 97/97（含直接 B/I、文字色与通用色隔离、缩放/编辑/边缘/IME、pageerror 0）通过。未打包/安装/推送/发布。详见 docs/mcp-text-annotation-controls-qinglan-2026-09-22.md。",
       "windows-package-arena：用户指示对已合并 main 打包；版本按约定 0.1.27→0.1.28（package.json/Cargo.toml/Cargo.lock/tauri.conf.json 各 1 行，提交 76a6cb2，基线 38d9977）。npm run package:windows 退出 0（约 202 秒）；artifacts/windows/latest/ 内 a4note.exe 37687296 字节 SHA-256 20FB3F6DC851A27B65E680A3CC50E5F051F89E87E203A98EEC021AF18B567CF7、A4 Note_x64-setup.exe 22831212 字节 SHA-256 FA5A1EE17FBE24E9CEECC1D99826D01E7AF174D1D5300BF09752DA6F8381BB29，独立重算与 build-info.json 一致，更新签名与 latest.json 一致；上一份 0.1.27 latest 已归档。包内前端含本轮图层弹窗标记（前端构建复核）。未完整 verify、未安装、未推送/发布。详见 docs/mcp-windows-package-arena-2026-09-22.md。",
       "eraser-alignment-xingxu：星序完成 fcd4d8d6 spec2。先在真实隔离 Windows/Tauri Mean Flows 蓝色笔迹上复现 UI80/PDF370 圆环偏移(-134.94,-164.11)px；根因是 viewport CSS 偏移被当作 local CSS 二次缩放，且预览直径与命中半径混用坐标空间。现中心用页百分比、半径用未缩放布局尺寸，无固定补偿/DPR叠乘，保留页外停止、乐观保存和失败反馈。四组原生前后对照中心误差≤0.0063px；追加原生118%/140%/fit-width/侧栏/窄窗、45项原生持久化/连续帧/图层/undo/redo/reopen通过。precision26、真实PdfReader浏览器217/24场景、PowerShell完整verify（Rust215/0/5 ignored）、diagnostics0通过；旧实现浏览器红测110.316px。正常场景console/pageerror0，锁定负测保留1条预期拒绝日志。原生配对实测DPR1.25，另模拟DPR1/1.25/1.5，不冒充物理多屏认证。交付/合并SHA与截图见任务记录，下一步用户验收；未打包/安装/推送/发布。详见 docs/mcp-pdf-eraser-alignment-xingxu-2026-09-22.md。",
