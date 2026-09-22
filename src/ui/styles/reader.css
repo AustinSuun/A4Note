@@ -462,6 +462,15 @@
   transform-origin: 0 0;
   line-height: 1;
   cursor: text;
+  /* Each run is laid out at its natural advance and scaled onto the box pdf.js measured for it
+     (--pdf-run-scale, set by pdfTextLayerFit). Native caret/hit positions, Range rects and the
+     selection preview then follow the painted glyphs at every zoom and layout instead of drifting
+     along the run with the substitute font. Rotated runs flow vertically and scale along y. */
+  transform: scaleX(var(--pdf-run-scale, 1));
+}
+.pdf-text-layer span[data-text-orientation="90"],
+.pdf-text-layer span[data-text-orientation="270"] {
+  transform: scaleY(var(--pdf-run-scale, 1));
 }
 .pdf-text-layer.selectable span {
   box-sizing: content-box;

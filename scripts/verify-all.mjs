@@ -47,6 +47,8 @@ const steps = [
   ['npm', ['run', 'test:pdf-crosspage-selection']],
   ['npm', ['run', 'test:annotation-layers']],
   ['npm', ['run', 'test:pdf-selection-preview']],
+  ['npm', ['run', 'test:pdf-text-layer-offset']],
+  ['npm', ['run', 'test:pdf-text-layer-offset-browser']],
   ['npm', ['run', 'test:pdf-eraser-precision']],
   ['npm', ['run', 'test:pdf-text-annotation']],
   ['npm', ['run', 'test:ai-toolbar']],

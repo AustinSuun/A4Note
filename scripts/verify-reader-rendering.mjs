@@ -145,7 +145,7 @@ assert.match(pdfSelectionSource, /export function mergeRectsIntoLineSegments/);
 assert.match(pdfSelectionSource, /export function textSelectionFromDrag/);
 assert.match(pdfSelectionSource, /export function textItemSelectionsFromRange/);
 assert.match(pdfSelectionSource, /export function textSelectionRectsFromOffsets/);
-assert.match(readerSource, /const preciseRects = page \? textSelectionRectsFromOffsets\(page\.textItems, textItemSelections\) : \[\]/);
+assert.match(readerSource, /const preciseRects = page \? textSelectionRectsFromLayer\(page\.textItems, textItemSelections, layer\.getBoundingClientRect\(\), textRunExtentMeasurer\(textLayer\)\) : \[\]/);
 assert.match(pdfSelectionSource, /groupTextItemsIntoLines\(textItems\)/);
 assert.match(pdfSelectionSource, /lineSelectionScore\(segment, box\) >= 0\.18/);
 assert.match(pdfSelectionSource, /export function intersectionBox/);

@@ -31,7 +31,7 @@ import { TEXT_EDGE_MARGIN_PERCENT, TEXT_FONT_UNIT_PAGE, clampTextBoxToPage, perc
 import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
 import { SELECTION_PREVIEW_COLOR } from './pdfHighlightAppearance';
-import { boundingBox, clipRangeToNode, dominantTextOrientation, mergeRectsIntoLineSegments, quoteFromTextItemSelections, textItemSelectionsFromRange, textSelectionFromDrag, textSelectionPageElements, textSelectionRectsFromOffsets, withSegmentOrientation } from './pdfSelection';
+import { boundingBox, clipRangeToNode, dominantTextOrientation, mergeRectsIntoLineSegments, quoteFromTextItemSelections, textItemSelectionsFromRange, textRunExtentMeasurer, textSelectionFromDrag, textSelectionPageElements, textSelectionRectsFromLayer, withSegmentOrientation } from './pdfSelection';
 import type {
   AnnotationMarkModel,
   AnnotationResize,
@@ -848,7 +848,8 @@ export default function PdfReader({
 
   const textSelectionDraft = (pageElement: HTMLElement, range: Range, tool: AnnotationType) => {
     const pageNumber = Number(pageElement.dataset.page);
-    const textLayer = pdfCoordinateLayer(pageElement).querySelector('.pdf-text-layer');
+    const layer = pdfCoordinateLayer(pageElement);
+    const textLayer = layer.querySelector('.pdf-text-layer');
     if (!textLayer || !Number.isFinite(pageNumber) || !pageElement.getBoundingClientRect().width) return null;
     const pageRange = clipRangeToNode(range, textLayer);
     const page = pages.find((candidate) => candidate.pageNumber === pageNumber);
@@ -858,20 +859,19 @@ export default function PdfReader({
       ? quoteFromTextItemSelections(page.textItems, textItemSelections)
       : pageRange.toString().replace(/\s+/g, ' ').trim();
     if (!selectionText) return null;
-    const preciseRects = page ? textSelectionRectsFromOffsets(page.textItems, textItemSelections) : [];
-    // Use the selected glyphs' live client rects in this page's rendering layer.
-    // Only fall back when the browser provides no rectangles at all, never when
-    // it reports invalid/out-of-page geometry that the filter rejects.
+    // Along each run the band follows the live glyphs of the run-fitted text layer (the same
+    // boxes the caret and hit testing use, so the start and end sit exactly under the pointer at
+    // every zoom, scroll offset and sidebar width); across the run it takes the pdf.js run box,
+    // which trims whitespace at both ends and keeps one height per font size so multi-line
+    // highlights/underlines stay even instead of following ragged substitute-font line boxes.
+    const preciseRects = page ? textSelectionRectsFromLayer(page.textItems, textItemSelections, layer.getBoundingClientRect(), textRunExtentMeasurer(textLayer)) : [];
+    // Only fall back to the browser's own selection rects when the run boxes yield nothing at all,
+    // never when they report invalid/out-of-page geometry that the filter rejects.
     const clientRects = Array.from(pageRange.getClientRects());
     const liveRects = clientRects
       .map((rect) => normalizeClientRect(rect, pageElement))
       .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
     const textOrientation = page ? dominantTextOrientation(page.textItems, textItemSelections) : 0;
-    // The browser's live rects follow the substitute font of the transparent text layer:
-    // full lines overflow past the painted glyphs, ends land unevenly and line boxes vary
-    // in height, which made multi-line highlights/underlines ragged and uneven. The run
-    // boxes sliced by character offsets follow the PDF glyphs on every orientation, trim
-    // whitespace at both ends and keep one height per font size, so bands and rules stay even.
     const rects = preciseRects.length ? preciseRects : liveRects;
     if (!rects.length) return null;
     // Merge along the run direction and keep it on each segment so highlight/underline marks
