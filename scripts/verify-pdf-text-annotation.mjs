@@ -63,12 +63,17 @@ check(reader.includes("void saves.run('删除标注', async () => onDeleteAnnota
 check(reader.includes('autoWidth: false'), 'manual resize turns the box into a fixed width');
 const mark = read('src/features/reader/pdf/AnnotationMark.tsx');
 check(mark.includes('<InlineTextEditor') && mark.includes('textBoxStyle(segment, textLayout)'), 'AnnotationMark renders the inline editor and the content-sized box');
+check(!mark.includes('>Aa<') && !mark.includes('AnnotationFontSizeDropdown') && !mark.includes('annotation-text-style-panel'), 'selected text toolbar removes Aa and the secondary size/style panel');
+check(mark.includes('aria-label="加粗"') && mark.includes('aria-pressed={textLayout.bold}') && mark.includes('aria-label="倾斜"') && mark.includes('aria-pressed={textLayout.italic}'), 'selected text toolbar exposes direct accessible bold and italic toggles');
+check(mark.includes('const actionColor = textLayout?.textColor ?? annotation.color') && mark.includes("onUpdateTextStyle(targetId, { textColor: color })"), 'selected text colour reads and writes persisted glyph colour rather than generic mark colour');
 const editor = read('src/features/reader/pdf/InlineTextEditor.tsx');
 check(editor.includes('contentEditable="plaintext-only"') && editor.includes("event.key === 'Escape'") && editor.includes('isComposing'), 'editor is plain text, Escape finishes, IME composition is respected');
 check(!/onKeyDown[\s\S]*?event\.key === 'Enter' && !\(/.test(editor), 'plain Enter keeps inserting a line break');
 const toolbar = read('src/features/reader/ReaderToolbar.tsx');
 check(!toolbar.includes('contextAnnotationTool ?? toolSettingsOpenFor'), 'selecting an annotation no longer auto-opens the tool settings popover');
 check(toolbar.includes("contextAnnotationId && contextAnnotationTool === tool && toolHasSettings(tool)"), 'the lit tool button opens the selected annotation settings on demand');
+check(!toolbar.includes('label="外边框"') && !toolbar.includes('text-size-option') && !toolbar.includes('FontSizeDropdown'), 'text tool settings remove border colour and font-size controls');
+check(toolbar.includes('label="文字颜色"') && toolbar.includes('label="背景"') && toolbar.includes('textBold') && toolbar.includes('textItalic'), 'text tool settings retain glyph colour, background, bold and italic controls');
 const pageView = read('src/features/reader/pdf/PdfPageView.tsx');
 check(pageView.includes("'--pdf-display-zoom': displayZoom"), 'render layer publishes the zoom for page-unit fonts');
 const types = read('src/features/reader/pdf/types.ts');

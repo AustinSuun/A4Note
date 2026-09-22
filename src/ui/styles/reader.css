@@ -1558,15 +1558,6 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .text-style-picker button:nth-child(2) {
   font-style: italic;
 }
-.text-size-option select { width: 58px; height: 28px; min-height: 28px; padding: 0 22px 0 8px; border-radius: 4px; background-color: rgba(255,255,255,.9); font-size: var(--ui-body-small-font-size); }
-.font-size-dropdown { position: relative; display: inline-flex; }
-.font-size-dropdown .font-size-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; width: 64px; height: 28px; min-height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,0.92); color: var(--ink); font-size: var(--ui-body-small-font-size); cursor: pointer; }
-.font-size-dropdown .font-size-trigger:hover { border-color: var(--accent-strong); }
-.font-size-dropdown .dropdown-arrow { font-size: 10px; opacity: 0.7; }
-.font-size-dropdown .font-size-list { position: absolute; top: calc(100% + 4px); left: 0; z-index: 50; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; max-height: 200px; overflow-y: auto; min-width: 140px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface, #fff); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-.font-size-dropdown .font-size-list button { height: 28px; min-height: 28px; padding: 0 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--ink); font-size: var(--ui-body-small-font-size); cursor: pointer; text-align: center; }
-.font-size-dropdown .font-size-list button:hover { background: var(--accent-soft); border-color: var(--accent-strong); }
-.font-size-dropdown .font-size-list button.active { background: var(--accent-strong); color: white; border-color: var(--accent-strong); }
 .reader-toolbar-colors .color-dot {
   width: 22px;
   height: 22px;

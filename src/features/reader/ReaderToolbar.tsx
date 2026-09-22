@@ -6,7 +6,6 @@ import { ReaderToolbarPortal } from './ReaderToolbarPortal';
 import { ReaderAnnotationDock } from './ReaderAnnotationDock';
 import { AnnotationLayerPicker } from './AnnotationLayerPicker';
 import { ReaderToolPopover } from './ReaderToolPopover';
-import { TEXT_FONT_SIZE_OPTIONS } from './pdf/pdfTextAnnotation';
 import './reader-file-switch.css';
 import type { AnnotationColor, PaperDocument, ReaderTool } from '../../core/types';
 import { zh } from '../../ui/zh';
@@ -499,26 +498,8 @@ function ToolOptionsBar({
               >
                 I
               </button>
-              <button
-                type="button"
-                className={toolSettings.textBorderColor !== 'transparent' ? 'active' : ''}
-                title="文字外框"
-                aria-label="文字外框"
-                onClick={() =>
-                  onToolSettingsChange({
-                    ...toolSettings,
-                    textBorderColor: toolSettings.textBorderColor === 'transparent' ? '#ffffff' : 'transparent',
-                  })
-                }
-              >
-                <span className="text-outline-preview" aria-hidden="true">T</span>
-              </button>
             </div>
             <span className="tool-option-hint">点击页面后直接输入；Esc 或点击外部完成，框随文字扩展</span>
-          </div>
-          <div className="tool-option-block compact text-size-option">
-            <span className="tool-option-label">字号</span>
-            <FontSizeDropdown value={toolSettings.textFontSize} onChange={(textFontSize) => onToolSettingsChange({ ...toolSettings, textFontSize: textFontSize })} />
           </div>
           <ToolColorPalette
             label="文字颜色"
@@ -526,13 +507,6 @@ function ToolOptionsBar({
             customColor={toolSettings.textColor}
             onChange={(textColor) => onToolSettingsChange({ ...toolSettings, textColor })}
             onCustomColorChange={(textColor) => onToolSettingsChange({ ...toolSettings, textColor })}
-          />
-          <ToolColorPalette
-            label="外边框"
-            value={toolSettings.textBorderColor}
-            customColor={toolSettings.textBorderColor === 'transparent' ? '#ffffff' : toolSettings.textBorderColor}
-            onChange={(textBorderColor) => onToolSettingsChange({ ...toolSettings, textBorderColor })}
-            onCustomColorChange={(textBorderColor) => onToolSettingsChange({ ...toolSettings, textBorderColor })}
           />
           <ToolColorPalette
             label="背景"
@@ -759,85 +733,4 @@ function toolColorToCss(color: AnnotationColor): string {
     purple: 'rgba(151,112,219,.9)',
   };
   return map[color] ?? '#f2c94c';
-}
-
-function FontSizeDropdown({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside as any);
-    return () => document.removeEventListener('mousedown', handleClickOutside as any);
-  }, []);
-
-  useEffect(() => {
-    if (open && listRef.current) {
-      const active = listRef.current.querySelector('.active') as HTMLElement;
-      active?.scrollIntoView({ block: 'nearest' });
-    }
-  }, [open]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      setOpen(false);
-      return;
-    }
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (!open) {
-        setOpen(true);
-        return;
-      }
-      const idx = TEXT_FONT_SIZE_OPTIONS.indexOf(value);
-      let nextIdx = idx;
-      if (e.key === 'ArrowDown') nextIdx = Math.min(idx + 1, TEXT_FONT_SIZE_OPTIONS.length - 1);
-      else nextIdx = Math.max(idx - 1, 0);
-      if (nextIdx !== idx) onChange(TEXT_FONT_SIZE_OPTIONS[nextIdx]);
-    }
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      setOpen((o) => !o);
-    }
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    if (!open) return;
-    e.preventDefault();
-    const idx = TEXT_FONT_SIZE_OPTIONS.indexOf(value);
-    if (e.deltaY < 0 && idx > 0) onChange(TEXT_FONT_SIZE_OPTIONS[idx - 1]);
-    if (e.deltaY > 0 && idx < TEXT_FONT_SIZE_OPTIONS.length - 1) onChange(TEXT_FONT_SIZE_OPTIONS[idx + 1]);
-  };
-
-  return (
-    <div className="font-size-dropdown" ref={ref} onKeyDown={handleKeyDown}>
-      <button type="button" className="font-size-trigger" aria-label="文本字号" onClick={() => setOpen((o) => !o)}>
-        <span>{value}</span>
-        <span className="dropdown-arrow" aria-hidden>▾</span>
-      </button>
-      {open && (
-        <div className="font-size-list" ref={listRef} onWheel={handleWheel}>
-          {TEXT_FONT_SIZE_OPTIONS.map((size) => (
-            <button
-              key={size}
-              type="button"
-              className={size === value ? 'active' : ''}
-              onClick={() => {
-                onChange(size);
-                setOpen(false);
-              }}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
