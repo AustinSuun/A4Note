@@ -24,6 +24,17 @@ try{
    check(await ev(`document.querySelector('#fixture-sidebar').scrollWidth<=${width}`),`No overflow ${width}`);
   }
   await ev(`document.querySelector('#fixture-sidebar').style.width='320px'`);
+  const titleVisual=()=>ev(`(()=>{const button=document.querySelector('.scene-context-item');const row=button.closest('li');const style=getComputedStyle(button);return {boxShadow:style.boxShadow,outlineStyle:style.outlineStyle,outlineWidth:style.outlineWidth,borderTopWidth:style.borderTopWidth,borderRightWidth:style.borderRightWidth,borderBottomWidth:style.borderBottomWidth,borderLeftWidth:style.borderLeftWidth,rowBackground:getComputedStyle(row).backgroundColor,buttonBackground:style.backgroundColor}})()`);
+  const titlePoint=()=>ev(`(()=>{const e=document.querySelector('.scene-context-item');const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+  await ev('window.resetFixture()');await pause(100);await click('.scene-context-item');
+  const selectedRest=await titleVisual();
+  const titleP=await titlePoint();await rpc('Input.dispatchMouseEvent',{type:'mouseMoved',...titleP});await rpc('Input.dispatchMouseEvent',{type:'mousePressed',...titleP,button:'left',clickCount:1});await pause(100);
+  const selectedPressed=await titleVisual();check(baseline||(selectedPressed.boxShadow==='none'&&(selectedPressed.outlineStyle==='none'||selectedPressed.outlineWidth==='0px')&&['borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth'].every(key=>selectedPressed[key]==='0px')),'Mouse press keeps selected title borderless',{selectedRest,selectedPressed});await shot(`${baseline?'before':'after'}-title-pressed`);
+  await rpc('Input.dispatchMouseEvent',{type:'mouseReleased',...titleP,button:'left',clickCount:1});await pause(100);
+  const selectedReleased=await titleVisual();check(baseline||(selectedReleased.boxShadow==='none'&&(selectedReleased.outlineStyle==='none'||selectedReleased.outlineWidth==='0px')),'Mouse release keeps selected title borderless',selectedReleased);check(baseline||selectedReleased.rowBackground!==selectedReleased.buttonBackground,'Selected row uses one background layer',selectedReleased);await shot(`${baseline?'before':'after'}-title-selected`);
+  await key('Tab','Tab',9);await rpc('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,modifiers:8});await rpc('Input.dispatchKeyEvent',{type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,modifiers:8});await pause(100);
+  const keyboardFocus=await titleVisual();check(baseline||(await ev(`document.activeElement.classList.contains('scene-context-item')`))&&keyboardFocus.outlineStyle!=='none'&&keyboardFocus.outlineWidth!=='0px','Keyboard title focus remains visible',keyboardFocus);await shot(`${baseline?'before':'after'}-title-keyboard-focus`);
+  await ev('window.resetFixture()');await pause(100);
   if(!baseline){
    check(await ev(`Array.from(document.querySelectorAll('.reader-file-type')).map(e=>e.textContent).join(',')==='PDF,Markdown,未知类型'`),'Explicit types, unknown title does not guess PDF');
    await click('.reader-paper-expand');check(await ev(`window.events.length===0&&document.querySelector('.reader-paper-expand').getAttribute('aria-expanded')==='true'`),'Expand does not select or close');await shot('expanded');
