@@ -1,61 +1,82 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { canDispatchShortcut, formatBinding, resolveShortcuts } from '../../core/shortcuts';
 import { elementIsVisible, eventTargetIsEditable, modalIsOpen } from './dispatcher';
+import { layoutShortcutHints, type HintPosition, type HintRect } from './hintLayout';
 import type { ShortcutStore } from './store';
 
-type Hint = { id: string; title: string; group: string; label: string; enabled: boolean; anchor?: { left: number; top: number } };
+type Hint = { id: string; label: string; enabled: boolean; anchor?: HTMLElement };
+const rectOf = (element: Element): HintRect => {
+  const { left, top, right, bottom } = element.getBoundingClientRect();
+  return { left, top, right, bottom };
+};
+function visibleControl(node: HTMLElement) {
+  if (!elementIsVisible(node) || getComputedStyle(node).opacity === '0') return false;
+  const rect = node.getBoundingClientRect();
+  if (rect.bottom <= 0 || rect.right <= 0 || rect.top >= innerHeight || rect.left >= innerWidth) return false;
+  const hit = document.elementFromPoint(Math.max(0, Math.min(innerWidth - 1, (rect.left + rect.right) / 2)), Math.max(0, Math.min(innerHeight - 1, (rect.top + rect.bottom) / 2)));
+  return hit === node || Boolean(hit && node.contains(hit));
+}
+
 export function ShortcutHints({ store }: { store: ShortcutStore }) {
   const revision = useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot);
+  const root = useRef<HTMLDivElement>(null);
   const [hints, setHints] = useState<Hint[]>([]);
-  useEffect(() => {
+  const [positions, setPositions] = useState<Record<string, HintPosition>>({});
+
+  useLayoutEffect(() => {
     if (!store.hintVisible) return;
-    const measure = () => {
+    let frame = 0;
+    const refresh = () => {
       const context = { ...store.context, editable: eventTargetIsEditable(document.activeElement), modalOpen: store.context.modalOpen || modalIsOpen(document) };
-      const nodes = [...document.querySelectorAll<HTMLElement>('[data-shortcut-id]')].filter(node => {
-        if (!elementIsVisible(node)) return false;
-        const rect = node.getBoundingClientRect();
-        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        return hit === node || Boolean(hit && node.contains(hit));
-      });
+      if (context.modalOpen) { store.setHint(false); return; }
+      const nodes = [...document.querySelectorAll<HTMLElement>('[data-shortcut-id]')].filter(visibleControl);
       const seen = new Set<string>();
-      const occupied: { left: number; top: number; right: number; bottom: number }[] = [];
-      const panelLeft = innerWidth - Math.min(410, innerWidth - 24) - 12;
-      const canvas = document.createElement('canvas').getContext('2d');
-      if (canvas) canvas.font = '12px sans-serif';
-      setHints(resolveShortcuts(store.commands(), store.overrides, context).filter(({ command }) => {
-        if (seen.has(command.id)) return false; seen.add(command.id); return true;
-      }).map(({ command, bindings }) => {
-        const node = nodes.find((n) => n.dataset.shortcutId === command.id);
-        const rect = node?.getBoundingClientRect();
-        const within = rect && rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth;
-        const label = bindings.map(formatBinding).join(' / ') || '未绑定';
-        const enabled = canDispatchShortcut(command, context);
-        const width = Math.min(156, (canvas?.measureText(label + (enabled ? '' : ' · 不可用')).width ?? label.length * 8) + 16);
-        let anchor: Hint['anchor'];
-        if (within) {
-          const left = Math.max(8, Math.min(innerWidth - width - 8, rect.left));
-          // Keep badges next to their control, never on top of another badge or the
-          // right-hand fallback panel. Crowded controls join the labelled panel.
-          for (const offset of (rect.top > 64 ? [-30, -58, 2, 30] : [2, 30])) {
-            const top = Math.max(8, rect.bottom + offset);
-            const box = { left, top, right: left + width, bottom: top + 26 };
-            if (box.right >= panelLeft - 8 || box.bottom > innerHeight - 8) continue;
-            if (occupied.some(other => box.left < other.right + 4 && box.right + 4 > other.left && box.top < other.bottom + 2 && box.bottom + 2 > other.top)) continue;
-            occupied.push(box); anchor = { left, top }; break;
-          }
-        }
-        return { id: command.id, title: command.title, group: command.group, label, enabled, anchor };
+      setHints(resolveShortcuts(store.commands(), store.overrides, context).flatMap(({ command, bindings }): Hint[] => {
+        if (seen.has(command.id) || !bindings.length) return [];
+        seen.add(command.id);
+        // One primary effective binding keeps the overlay compact. All alternatives
+        // remain in the existing button tooltip, aria-keyshortcuts and editor.
+        return [{ id: command.id, label: formatBinding(bindings[0]), enabled: canDispatchShortcut(command, context), anchor: nodes.find(node => node.dataset.shortcutId === command.id) }];
       }));
     };
-    measure(); window.addEventListener('resize', measure); window.addEventListener('scroll', measure, true); document.addEventListener('focusin', measure);
-    return () => { window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure, true); document.removeEventListener('focusin', measure); };
+    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(refresh); };
+    refresh();
+    window.addEventListener('resize', schedule);
+    window.addEventListener('scroll', schedule, true);
+    document.addEventListener('focusin', schedule);
+    document.addEventListener('transitionend', schedule);
+    document.addEventListener('animationend', schedule);
+    const observer = new MutationObserver(records => {
+      // Our own positioning/text writes must not feed an observer/render loop.
+      if (records.some(record => !root.current?.contains(record.target))) schedule();
+    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'data-shortcut-id', 'disabled'] });
+    const resize = new ResizeObserver(schedule);
+    resize.observe(document.documentElement);
+    document.querySelectorAll('[data-shortcut-id]').forEach(node => resize.observe(node));
+    return () => {
+      cancelAnimationFrame(frame); observer.disconnect(); resize.disconnect();
+      window.removeEventListener('resize', schedule); window.removeEventListener('scroll', schedule, true);
+      document.removeEventListener('focusin', schedule); document.removeEventListener('transitionend', schedule); document.removeEventListener('animationend', schedule);
+    };
   }, [store, revision]);
-  const unanchored = hints.filter((h) => !h.anchor);
-  return createPortal(<div className={`shortcut-hints ${store.hintVisible ? 'is-visible' : ''}`} aria-hidden="true">
-    {hints.filter((h) => h.anchor).map((h) => <kbd key={h.id} className={`shortcut-anchor-hint ${h.enabled ? '' : 'is-disabled'}`} style={h.anchor}>{h.label}{!h.enabled && ' · 不可用'}</kbd>)}
-    {unanchored.length > 0 && <aside className="shortcut-hint-panel"><strong>当前快捷键</strong><small>松开 Ctrl 隐藏 · 灰色项当前不可用</small>
-      {[...new Set(unanchored.map((h) => h.group))].map((group) => <section key={group}><h3>{group}</h3>{unanchored.filter((h) => h.group === group).map((h) => <div key={h.id} className={h.enabled ? '' : 'is-disabled'}><span>{h.title}</span><kbd>{h.label}</kbd></div>)}</section>)}
-    </aside>}
+
+  useLayoutEffect(() => {
+    if (!store.hintVisible || !root.current) return;
+    const elements = [...root.current.querySelectorAll<HTMLElement>('[data-hint-id]')];
+    const controls = [...document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role="button"], [role="menuitemradio"], #a4note-live-dev-badge')].filter(visibleControl).map(rectOf);
+    const measurements = hints.map(hint => {
+      const node = elements.find(element => element.dataset.hintId === hint.id)!;
+      const rect = node.getBoundingClientRect();
+      return { id: hint.id, width: Math.ceil(rect.width), height: Math.ceil(rect.height), anchor: hint.anchor ? rectOf(hint.anchor) : undefined };
+    });
+    setPositions(layoutShortcutHints(measurements, { left: 8, top: 8, right: innerWidth - 8, bottom: innerHeight - 8 }, controls));
+  }, [hints, store, store.hintVisible]);
+
+  return createPortal(<div ref={root} className={`shortcut-hints ${store.hintVisible ? 'is-visible' : ''}`} aria-hidden="true">
+    {hints.map(hint => <kbd key={hint.id} data-hint-id={hint.id} data-hint-placement={positions[hint.id]?.placement}
+      className={`shortcut-key-hint ${hint.enabled ? '' : 'is-disabled'}`}
+      style={{ left: positions[hint.id]?.left ?? 0, top: positions[hint.id]?.top ?? 0, visibility: positions[hint.id] ? 'visible' : 'hidden' }}>{hint.label}</kbd>)}
   </div>, document.body);
 }
