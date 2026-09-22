@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const editor = fs.readFileSync('src/shared/shortcuts/ShortcutEditor.tsx', 'utf8');
+const dialog = fs.readFileSync('src/features/reader/ReaderShortcutSettings.tsx', 'utf8');
+const css = fs.readFileSync('src/shared/shortcuts/shortcuts.css', 'utf8');
+const checks = [];
+const has = (value, pattern, label) => { assert.match(value, pattern, label); checks.push(label); };
+const lacks = (value, pattern, label) => { assert.doesNotMatch(value, pattern, label); checks.push(label); };
+
+has(editor, /function ShortcutKeycaps/, 'editor uses a reusable semantic keycap renderer');
+has(editor, /hintKeycaps\(binding\)/, 'key labels share the shortcut hint mapping');
+has(editor, /<kbd>\{key\}<\/kbd>/, 'each modifier and primary key is a real kbd element');
+has(editor, /className="shortcut-keycap-plus"/, 'key combinations have visual plus separators');
+has(editor, />更改<\/button>/, 'main rebinding action uses 更改');
+lacks(editor, />录制<\/button>/, 'ambiguous 录制 action is removed');
+has(editor, /请按下新快捷键或鼠标侧键/, 'capture mode provides a direct prompt');
+has(editor, /按 Esc 取消，Delete 或 Backspace 清除/, 'capture mode exposes cancel and clear help');
+has(editor, /aria-label={`清除“\$\{c\.title\}”快捷键`}/, 'row clear action has a command-specific accessible name');
+has(editor, /aria-label={`恢复“\$\{c\.title\}”默认快捷键`}/, 'row reset action has a command-specific accessible name');
+has(editor, /shortcut-editor-note-badge">实验性/, 'experimental information has a visible status badge');
+has(dialog, /className="shortcut-reader-done"/, 'reader completion action has a dedicated primary style');
+has(dialog, /aria-describedby="reader-shortcut-summary"/, 'reader dialog summary is exposed to assistive technology');
+has(css, /\.shortcut-reader-header\s*\{[\s\S]*position:\s*sticky/, 'reader header remains visible while scrolling');
+has(css, /\.shortcut-keycaps kbd\s*\{[\s\S]*font:[^;]*var\(--font-ui/, 'keycaps use the application UI font');
+has(css, /@media \(max-width: 520px\)/, 'narrow shortcut layout has a dedicated breakpoint');
+has(css, /prefers-reduced-motion:\s*reduce/, 'shortcut controls respect reduced motion');
+console.log(`Shortcut settings UI verification passed: ${checks.length} checks`);
