@@ -55,12 +55,33 @@ try{
    await rpc('Input.dispatchMouseEvent',{type:'mouseMoved',...p});await pause(100);
    check(await ev(`getComputedStyle(document.querySelector('.scene-context-item-close')).backgroundColor`)!==rest,'Visible hover background');await shot('hover');
    await rpc('Input.dispatchMouseEvent',{type:'mousePressed',...p,button:'left',clickCount:1});
-   check(await ev(`getComputedStyle(document.querySelector('.scene-context-item-close')).boxShadow!=='none'`),'Visible pressed state');await shot('pressed');
+   const closePressed=await ev(`(()=>{const s=getComputedStyle(document.querySelector('.scene-context-item-close'));return {backgroundColor:s.backgroundColor,boxShadow:s.boxShadow,outlineStyle:s.outlineStyle,borderColor:s.borderTopColor}})()`);check(closePressed.backgroundColor!==rest&&closePressed.boxShadow==='none'&&closePressed.borderColor==='rgba(0, 0, 0, 0)','Visible pressed state is background only',closePressed);await shot('pressed');
    await rpc('Input.dispatchMouseEvent',{type:'mouseReleased',...p,button:'left',clickCount:1});
    await ev('window.resetFixture()');await pause(100);
    await ev(`document.querySelector('.scene-context-item-close').focus()`);await key('Tab','Tab',9);await rpc('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,modifiers:8});await rpc('Input.dispatchKeyEvent',{type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,modifiers:8});
    check(await ev(`document.activeElement.classList.contains('scene-context-item-close')&&getComputedStyle(document.activeElement).outlineStyle!=='none'`),'Keyboard close focus visible');await shot('close-focus');
    await key('Enter','Enter',13);check(await ev(`window.events.length===1&&window.events[0].type==='close'`),'Keyboard close no select');
+    // 3580532a: expand/close mouse feedback is background-only. Border, inset shadow and outline must stay invisible on hover, press, release with the pointer still over, after leaving and in the expanded state; keyboard focus-visible stays.
+    const frameOf=sel=>ev(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});const s=getComputedStyle(e);const r=e.getBoundingClientRect();const clear=c=>c==='rgba(0, 0, 0, 0)'||c==='transparent';const widths=[s.borderTopWidth,s.borderRightWidth,s.borderBottomWidth,s.borderLeftWidth];const colors=[s.borderTopColor,s.borderRightColor,s.borderBottomColor,s.borderLeftColor];return {width:r.width,height:r.height,backgroundColor:s.backgroundColor,boxShadow:s.boxShadow,outlineStyle:s.outlineStyle,outlineWidth:s.outlineWidth,borderWidth:widths.join(' '),borderColor:colors.join(' '),ariaExpanded:e.getAttribute('aria-expanded'),hover:e.matches(':hover'),focusVisible:e.matches(':focus-visible'),frameless:s.boxShadow==='none'&&(s.outlineStyle==='none'||s.outlineWidth==='0px')&&(widths.every(w=>w==='0px')||colors.every(clear))}})()`);
+    const pointOf=sel=>ev(`(()=>{const r=document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+    const away={x:800,y:700};const geometryOk=m=>!m||(Math.abs(m.width-34)<=1&&Math.abs(m.height-34)<=1);
+    const sweep=async(label,sel,{release=true}={})=>{
+     await rpc('Input.dispatchMouseEvent',{type:'mouseMoved',...away});await pause(100);const rest=await frameOf(sel);const p=await pointOf(sel);
+     await rpc('Input.dispatchMouseEvent',{type:'mouseMoved',...p});await pause(100);const hover=await frameOf(sel);check(hover.hover&&hover.frameless&&hover.backgroundColor!==rest.backgroundColor,`${label}: hover shows background only`,{rest,hover});
+     await rpc('Input.dispatchMouseEvent',{type:'mousePressed',...p,button:'left',clickCount:1});await pause(100);const pressed=await frameOf(sel);check(pressed.frameless&&pressed.backgroundColor!==rest.backgroundColor,`${label}: press shows background only`,pressed);await shot(label.replace(/\s+/g,'-').toLowerCase()+'-pressed');
+     let released=null;if(release){await rpc('Input.dispatchMouseEvent',{type:'mouseReleased',...p,button:'left',clickCount:1});await pause(150);released=await frameOf(sel);check(released.frameless&&!released.focusVisible,`${label}: released with pointer still over shows no frame`,released);await shot(label.replace(/\s+/g,'-').toLowerCase()+'-released');}
+     else{await rpc('Input.dispatchMouseEvent',{type:'mouseMoved',...away,button:'left',buttons:1});await rpc('Input.dispatchMouseEvent',{type:'mouseReleased',...away,button:'left',clickCount:1});}
+     await rpc('Input.dispatchMouseEvent',{type:'mouseMoved',...away});await pause(150);const left=await frameOf(sel);check(left.frameless&&!left.focusVisible&&left.backgroundColor===rest.backgroundColor,`${label}: no residue after the pointer leaves`,left);
+     check([rest,hover,pressed,released,left].every(geometryOk),`${label}: 34px geometry unchanged through the sweep`,{rest,hover,pressed,released,left});
+     return {rest,hover,pressed,released,left};
+    };
+    await ev('window.resetFixture()');await pause(100);if(await ev(`document.querySelector('.reader-paper-expand').getAttribute('aria-expanded')==='true'`)){await click('.reader-paper-expand');await pause(100);}
+    const expandSweep=await sweep('Expand chevron','.reader-paper-expand');check(expandSweep.released.ariaExpanded==='true'&&await ev(`!!document.querySelector('.paper-note-list,.paper-notes-empty')`),'Expand click still toggles the note list',expandSweep.released);
+    const expandedRest=await frameOf('.reader-paper-expand');check(expandedRest.frameless&&expandedRest.ariaExpanded==='true','Expanded state is marked by the chevron only',expandedRest);await shot('expanded-rest');
+    const collapseSweep=await sweep('Expanded chevron','.reader-paper-expand');check(collapseSweep.released.ariaExpanded==='false','Second click collapses without a frame',collapseSweep.released);
+    await sweep('Close button','.scene-context-item-close',{release:false});
+    await ev(`document.querySelector('.reader-paper-expand').focus()`);await key('Tab','Tab',9);await rpc('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,modifiers:8});await rpc('Input.dispatchKeyEvent',{type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,modifiers:8});await pause(100);
+    const expandKeyboard=await frameOf('.reader-paper-expand');check(expandKeyboard.focusVisible&&expandKeyboard.outlineStyle!=='none'&&expandKeyboard.outlineWidth!=='0px','Keyboard expand focus stays visible after the mouse sweep',expandKeyboard);await shot('expand-keyboard-focus');
    await ev('window.resetFixture()');await pause(100);
    check(await ev(`document.querySelector('.scene-context-item').title.includes('long title.pdf')`),'Full long title tooltip retained');
    check(await ev(`Array.from(document.querySelectorAll('.reader-paper-row button')).every(e=>e.getAttribute('aria-label')||e.textContent.trim())`),'All buttons named');
