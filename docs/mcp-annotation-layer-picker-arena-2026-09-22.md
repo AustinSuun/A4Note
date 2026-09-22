@@ -103,7 +103,7 @@ page.goto: Timeout 30000ms exceeded.
 
 - 契约证据：`.a4-tests/annotation-layer-picker/<run>/result.json`、`stages.log`、`screenshots/`（`picker-1-layer`、`picker-5-layer`、`picker-12-light`、`picker-12-scroll`、`picker-12-dark`、`picker-confirm`、`picker-narrow-z150`、`dock-long-name`）。
 - 夹具为真实组件 + 真实应用 CSS（`tokens.css`、`base.css`、`reader-annotation-dock.css`、`reader-annotation-layers.css`）+ 内存图层 API；不接触真实资料库、不启动原生进程。
-- **未提供原生 `dev:live` 截图**：走查原生实例需要交互式文件对话框打开 PDF 才能出现阅读器工具坞，无人值守下无法完成；这与已归档卡片 `23528921` 记录的限制一致（该卡的弹窗几何同样由隔离 Chrome 回归覆盖并获验收）。本轮没有伪造原生截图；如需原生复核，可在验收会话中用 `npm run dev:live -- --instance <代号> --port <端口> --cdp-port <端口>` 复跑并对照第 2 节的断言点。
+- **未提供原生 `dev:live` 截图（验收第 8 项未满足，如实记录）**：本轮实际尝试过原生取证，被两道硬性约束挡住。其一，仓库内已有的隔离实例（`.tmp/live-dev/*`）都留着 `owner.lock.json`，启动器按 fail-closed 设计直接拒绝复用，也不会清除他人锁（其提示明确要求不得终止他人会话）；其二，新建实例会使用 `.build/live-dev/<instance>/target` 这个全新的 Rust 目标目录，需要完整冷编译，在无人值守窗口内无法可靠完成；此后仍要经系统文件对话框打开 PDF 才会出现阅读器工具坞。这与已归档卡片 `23528921` 记录的限制一致（该卡的弹窗几何同样由隔离 Chrome 回归覆盖并获验收）。本轮没有伪造原生截图；原生复核方式：在具备暖目标目录或交互条件的会话中执行 `npm run dev:live -- --instance <新代号> --port <端口> --cdp-port <端口>`，打开内置指南 PDF 后对照第 2 节的断言点检查 1/5/12 层与浅深主题，并记录 pageerror/console error。
 - 启动器与探针脚本、日志均留在 `.tmp/` 与 `.a4-tests/`，未进入 `docs/`。
 
 ## 6. 未做与下一步
