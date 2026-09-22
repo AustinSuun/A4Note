@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-22T18:54:00+08:00",
+  "updatedAt": "2026-09-22T20:51:17+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
-    "status": "in_progress",
-    "owner": "arena",
-    "branch": "feat/capture-folder-tree-0.6.2",
+    "status": "review",
+    "owner": "巡舟 (xunzhou)",
+    "branch": "fix/layer-toolbar-height-xunzhou (merged to local main; SHAs in the task card delivery)",
     "scope": [
+      "layer-toolbar-height-xunzhou：巡舟完成 f3878879 阅读器标注工具栏图层入口等高/左侧残留/撑高修复。根因（dev:live 实测量测）：入口 flex: 0 0 64px 在遗留 reader.css 的列方向 slot 中被解释为高度（64×64，同排 36×36，工具栏 69.6px）+ border-left/margin-left/圆角残留。修复后入口 64×36 等高对齐（差 0px）、工具栏 41.6px。新增 test:layer-toolbar-geometry 42/42（旧布局 20 项失败红测）；picker 43/43、popover 166/166、layers 55、tsc/build/diagnostics 0；verify 除 2 步既有失败（qinglan 3781ddf 后 verify 契约未同步，基线复现一致）外全过（Rust 215/0/5）。原生功能探针 14/14、pageerror 0、修复前后各 9 张截图已传任务卡。详见 docs/mcp-layer-toolbar-height-xunzhou-2026-09-22.md。",
       "text-annotation-controls-qinglan：青岚完成任务 54576b3e spec4 核心实现。修复根因是悬浮颜色沿用 annotation.color，而文本字形实际使用 positionJson.textColor；现在文本快捷色点、预设色和自定义色均读写 textColor，非文本标注仍使用原通用颜色。悬浮 Aa/二级字号样式面板改为直接 B/I（aria-pressed、tooltip、键盘可达）；文本工具面板删除外框色与字号 UI，保留文字色、背景及 B/I；内部 fontSize、borderColor 兼容字段和缩放逻辑未改。清理失效组件/CSS。build、静态回归 33/33、真实 PdfReader 浏览器交互 97/97（含直接 B/I、文字色与通用色隔离、缩放/编辑/边缘/IME、pageerror 0）通过。未打包/安装/推送/发布。详见 docs/mcp-text-annotation-controls-qinglan-2026-09-22.md。",
       "windows-package-arena：用户指示对已合并 main 打包；版本按约定 0.1.27→0.1.28（package.json/Cargo.toml/Cargo.lock/tauri.conf.json 各 1 行，提交 76a6cb2，基线 38d9977）。npm run package:windows 退出 0（约 202 秒）；artifacts/windows/latest/ 内 a4note.exe 37687296 字节 SHA-256 20FB3F6DC851A27B65E680A3CC50E5F051F89E87E203A98EEC021AF18B567CF7、A4 Note_x64-setup.exe 22831212 字节 SHA-256 FA5A1EE17FBE24E9CEECC1D99826D01E7AF174D1D5300BF09752DA6F8381BB29，独立重算与 build-info.json 一致，更新签名与 latest.json 一致；上一份 0.1.27 latest 已归档。包内前端含本轮图层弹窗标记（前端构建复核）。未完整 verify、未安装、未推送/发布。详见 docs/mcp-windows-package-arena-2026-09-22.md。",
       "eraser-alignment-xingxu：星序完成 fcd4d8d6 spec2。先在真实隔离 Windows/Tauri Mean Flows 蓝色笔迹上复现 UI80/PDF370 圆环偏移(-134.94,-164.11)px；根因是 viewport CSS 偏移被当作 local CSS 二次缩放，且预览直径与命中半径混用坐标空间。现中心用页百分比、半径用未缩放布局尺寸，无固定补偿/DPR叠乘，保留页外停止、乐观保存和失败反馈。四组原生前后对照中心误差≤0.0063px；追加原生118%/140%/fit-width/侧栏/窄窗、45项原生持久化/连续帧/图层/undo/redo/reopen通过。precision26、真实PdfReader浏览器217/24场景、PowerShell完整verify（Rust215/0/5 ignored）、diagnostics0通过；旧实现浏览器红测110.316px。正常场景console/pageerror0，锁定负测保留1条预期拒绝日志。原生配对实测DPR1.25，另模拟DPR1/1.25/1.5，不冒充物理多屏认证。交付/合并SHA与截图见任务记录，下一步用户验收；未打包/安装/推送/发布。详见 docs/mcp-pdf-eraser-alignment-xingxu-2026-09-22.md。",
@@ -146,6 +147,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "layer-toolbar-height-xunzhou：图层入口与同排工具等高（0px 差）、左侧残留清零、工具栏恢复 41.6px 紧凑高度；几何/功能/缩放/主题/窄窗全覆盖验证完成，任务分支已合入本地 main。",
       "text-annotation-controls-qinglan：青岚完成任务 54576b3e spec4 核心实现。修复根因是悬浮颜色沿用 annotation.color，而文本字形实际使用 positionJson.textColor；现在文本快捷色点、预设色和自定义色均读写 textColor，非文本标注仍使用原通用颜色。悬浮 Aa/二级字号样式面板改为直接 B/I（aria-pressed、tooltip、键盘可达）；文本工具面板删除外框色与字号 UI，保留文字色、背景及 B/I；内部 fontSize、borderColor 兼容字段和缩放逻辑未改。清理失效组件/CSS。build、静态回归 33/33、真实 PdfReader 浏览器交互 97/97（含直接 B/I、文字色与通用色隔离、缩放/编辑/边缘/IME、pageerror 0）通过。未打包/安装/推送/发布。详见 docs/mcp-text-annotation-controls-qinglan-2026-09-22.md。",
       "eraser-alignment-xingxu：已领取spec2并建立独立工作区，未修改业务代码。",
       "annotation-layer-picker-arena：Arena 完成 f6b927bb 阅读器标注图层弹窗 UI 优化与底部入口解耦；去圆点改整行选中态、“新图层”按钮修根因（26×26 方块规则）、每行垃圾桶删除（唯一层禁用 + 含标注确认/移动/取消 + 活动层相邻接管）、工具坞入口固定 64px 与名称解耦；新增 test:annotation-layer-picker 43/43 并在首跑捕获修复 460px@150% 横向溢出，test:annotation-layers 55、tsc/build/diagnostics 0；verify 28/30（annotation-layers 兼容写法后单跑通过；pdf-find-entry 为高负载 30s page.goto 超时，与本轮无关）。详见 docs/mcp-annotation-layer-picker-arena-2026-09-22.md。",
@@ -460,6 +462,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "layer-toolbar-height-xunzhou：test:layer-toolbar-geometry 42/42（旧布局 22/20 红测）、annotation-layer-picker 43/43、reader-popover-layout 166/166、annotation-layers 55、tsc 0、build 0、diagnostics 0；npm run verify 除 test:reader/test:ui-state 既有失败（干净基线复现同一断言，非本轮引入）外全部通过（Rust 215/0/5 ignored）；原生 dev:live 功能探针 14/14，pageerror 0。",
       "reader-selection-outline-xunzhou：旧 CSS 红测 25/26 且仅鼠标按下无框断言失败；修复及合并最新 main 后浏览器回归 26/26。Reader/helper/UI 定向测试与 popover layout 166/166 通过；dev:live 官方运行时 21/21、真实 mouse-down/release/重复点击/切换/返回场景/键盘焦点/窄窗 DPR1.5 共 20/20，pageerror 与 console error 均为空。合并后 build、完整 npm run verify（Rust 215 passed/0 failed/5 ignored）、src diagnostics 0、diff check 全绿。",
       "reader-annotation-toast-drag-xunzhou：自动化 `verify-reader-priority-fixes` 71 assertions，reader/helpers、PDF text annotation 28、selection preview 37、eraser precision 22、TypeScript、build 与完整 `npm run verify` 均通过；完整 verify 含任务服务 86 pass/1 平台 skip、Rust 215 pass/5 ignored。隔离 Tauri 逐帧结果无 snap-back、无应用 pageerror/console error；证据已上传任务卡。",
       "6a2240f7 arena-two: tsc 0; npm run build 通过; test:pdf-find-entry 35 断言(旧代码失败); shortcuts/shortcuts-browser/reader/ui-state/architecture/verify-reader-priority-fixes 通过; npm run verify 全量通过; 独立原生窗口 after 18/18, pageerror 0",
@@ -839,6 +842,7 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
+      "layer-toolbar-height-xunzhou：delivery 已提交等待用户验收（复核原生截图与几何对照）；归档由用户执行。",
       "eraser-alignment-xingxu：基于最新main0bf3081和已取回的本轮参考图，进行真实原生同采样坐标复现。",
       "reader-selection-outline-xunzhou：代码、文档、隔离原生证据和任务卡附件已完成；提交 delivery 进入 review 后由用户验收鼠标只保留整行背景且键盘焦点轮廓仍可见，归档仍仅由用户执行。",
       "reader-annotation-toast-drag-xunzhou：代码与证据已完成并合入本地 main；提交任务进入 review 后由用户验收全部工具不再出现正常进度提示、文本框拖动连续性及失败反馈，归档仍仅由用户执行。",
@@ -874,6 +878,7 @@
       "依赖更新后保留MDX→js-yaml override直至上游解除旧精确锁；后续升级继续分别执行PDF/Markdown行为回归和audit。"
     ],
     "risks": [
+      "layer-toolbar-height-xunzhou：npm run verify 的 test:reader/test:ui-state 两步失败为既有阻塞（qinglan 3781ddf 简化文本工具控件后 verify 源码契约未同步，8a3b1ed 已记录；本轮 stash 干净基线复现同一断言，非本轮引入，未代改他人脚本）。参考图附件本轮环境无法目视查看，结论全部来自运行时量测。仅 dev favicon.ico 404 为已知环境噪音。",
       "reader-selection-outline-xunzhou：修复只收窄 Reader 侧栏标题按钮的鼠标 active 样式，不改选择/打开/展开/移除事件，也不改其它场景焦点样式。未打包、安装、发布或写入生产资料库；根目录并行脏改动未触碰。",
       "reader-annotation-toast-drag-xunzhou：本轮不吞掉锁定层、无可写层或持久化失败反馈；证据用的 900ms 延迟与写入拒绝注入已撤销，不在提交中。未安装、打包、发布或接触正式资料库。",
       "reader-eraser-pointer-xunzhou：修复前隔离实例未复现所报右下偏移，只能证明旧实现该样本已中心对齐；不将其写成已复现。CDP 日志有两次开发服务器 favicon.ico 404，但 pageerror 和应用逻辑 console error 为 0。",
@@ -896,6 +901,6 @@
       "PDF重开/绘制已测试，但双栏同步、长文档、选区/批注、缩放坐标与页面失败提示位置还需真实Windows手验；未量化实际EXE冷启动/可交互时间。",
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。"
     ],
-    "updatedAt": "2026-09-22T16:51:40+08:00"
+    "updatedAt": "2026-09-22T20:51:17+08:00"
   }
 }
