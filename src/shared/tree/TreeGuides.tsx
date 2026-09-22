@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react';
-import { treeGuideRails, type TreeGuideRow } from './treeGeometry';
+import { normalizeTreeGuideAxes, treeGuideLayout, type TreeGuideRow } from './treeGeometry';
 
 /** Shared by Markdown's disk tree and the library's ID-based category tree.
  * Only DOM geometry is shared here; no filesystem or repository access. */
@@ -18,16 +18,30 @@ export function TreeGuides({ containerRef, contentRef, emphasizedId, normalizeId
       frame = 0;
       if (disposed) return;
       const bounds = container.getBoundingClientRect();
-      const rows = [...content.querySelectorAll<HTMLElement>('[data-tree-row]')].filter(row => row.getClientRects().length > 0).map(row => {
-        const rect = row.getBoundingClientRect();
-        const caret = row.querySelector<HTMLElement>('[data-tree-caret], .file-tree-caret')?.getBoundingClientRect();
-        const depth = Number(row.dataset.treeDepth) || 0;
-        const step = parseFloat(getComputedStyle(container).getPropertyValue('--file-tree-depth-step')) || 20;
-        return { id: row.dataset.treeRow!, depth, expanded: row.dataset.treeExpanded === 'true',
-          top: rect.top - bounds.top, bottom: rect.bottom - bounds.top,
-          caretCenter: caret ? caret.left + caret.width / 2 - bounds.left : 16 + depth * step };
-      });
-      const next = { height: content.getBoundingClientRect().height, rows };
+      const scaleX = bounds.width && container.offsetWidth ? bounds.width / container.offsetWidth : 1;
+      const scaleY = bounds.height && container.offsetHeight ? bounds.height / container.offsetHeight : scaleX;
+      const step = parseFloat(getComputedStyle(container).getPropertyValue('--file-tree-depth-step')) || 20;
+      const rows = [...content.querySelectorAll<HTMLElement>('[data-tree-row]')]
+        .filter(row => row.getClientRects().length > 0)
+        .map(row => {
+          const rect = row.getBoundingClientRect();
+          const caretElement = row.querySelector<HTMLElement>('[data-tree-caret], .file-tree-caret, .file-tree-caret-spacer');
+          const caret = caretElement?.getBoundingClientRect();
+          const depth = Number(row.dataset.treeDepth) || 0;
+          return {
+            id: row.dataset.treeRow!,
+            depth,
+            expanded: row.dataset.treeExpanded === 'true',
+            top: (rect.top - bounds.top) / scaleY,
+            bottom: (rect.bottom - bounds.top) / scaleY,
+            caretCenter: caret ? (caret.left + caret.width / 2 - bounds.left) / scaleX : 16 + depth * step,
+            caretHalfWidth: caretElement ? caretElement.offsetWidth / 2 : 8,
+          };
+        });
+      const next = {
+        height: content.getBoundingClientRect().height / scaleY,
+        rows: normalizeTreeGuideAxes(rows, step),
+      };
       setLayout(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
     };
     const schedule = () => { if (!disposed) { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure); } };
@@ -41,11 +55,15 @@ export function TreeGuides({ containerRef, contentRef, emphasizedId, normalizeId
     return () => { disposed = true; cancelAnimationFrame(frame); resize.disconnect(); mutation.disconnect(); window.removeEventListener('resize', schedule); document.fonts?.removeEventListener('loadingdone', schedule); };
   }, [containerRef, contentRef]);
   const active = emphasizedId == null ? -1 : layout.rows.findIndex(row => normalizeId(row.id) === normalizeId(emphasizedId));
+  const guides = treeGuideLayout(layout.rows);
   return <div className="file-tree-guides" aria-hidden="true" style={{ height: Math.max(1, layout.height) }}>
-    {treeGuideRails(layout.rows).map(rail => <span key={rail.id}
+    {guides.rails.map(rail => <span key={rail.id}
       className={`file-tree-guide-rail${active >= rail.start && active <= rail.end ? ' highlighted' : ''}`}
       data-guide-depth={rail.depth} data-guide-color={rail.depth % 6} data-guide-id={rail.id}
       style={{ top: rail.top, height: rail.height, left: rail.left }} />)}
+    {guides.branches.map(branch => <span key={branch.id}
+      className="file-tree-guide-branch" data-guide-depth={branch.depth} data-guide-color={branch.depth % 6}
+      style={{ top: branch.top, left: branch.left, width: branch.width }} />)}
   </div>;
 }
 function identity(id: string) { return id; }
