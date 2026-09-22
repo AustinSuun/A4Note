@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react';
-import { normalizeTreeGuideAxes, treeGuideLayout, type TreeGuideRow } from './treeGeometry';
+import { normalizeTreeGuideAxes, treeGuideRails, type TreeGuideRow } from './treeGeometry';
 
 /** Shared by Markdown's disk tree and the library's ID-based category tree.
  * Only DOM geometry is shared here; no filesystem or repository access. */
@@ -35,7 +35,6 @@ export function TreeGuides({ containerRef, contentRef, emphasizedId, normalizeId
             top: (rect.top - bounds.top) / scaleY,
             bottom: (rect.bottom - bounds.top) / scaleY,
             caretCenter: caret ? (caret.left + caret.width / 2 - bounds.left) / scaleX : 16 + depth * step,
-            caretHalfWidth: caretElement ? caretElement.offsetWidth / 2 : 8,
           };
         });
       const next = {
@@ -55,15 +54,11 @@ export function TreeGuides({ containerRef, contentRef, emphasizedId, normalizeId
     return () => { disposed = true; cancelAnimationFrame(frame); resize.disconnect(); mutation.disconnect(); window.removeEventListener('resize', schedule); document.fonts?.removeEventListener('loadingdone', schedule); };
   }, [containerRef, contentRef]);
   const active = emphasizedId == null ? -1 : layout.rows.findIndex(row => normalizeId(row.id) === normalizeId(emphasizedId));
-  const guides = treeGuideLayout(layout.rows);
   return <div className="file-tree-guides" aria-hidden="true" style={{ height: Math.max(1, layout.height) }}>
-    {guides.rails.map(rail => <span key={rail.id}
+    {treeGuideRails(layout.rows).map(rail => <span key={rail.id}
       className={`file-tree-guide-rail${active >= rail.start && active <= rail.end ? ' highlighted' : ''}`}
       data-guide-depth={rail.depth} data-guide-color={rail.depth % 6} data-guide-id={rail.id}
       style={{ top: rail.top, height: rail.height, left: rail.left }} />)}
-    {guides.branches.map(branch => <span key={branch.id}
-      className="file-tree-guide-branch" data-guide-depth={branch.depth} data-guide-color={branch.depth % 6}
-      style={{ top: branch.top, left: branch.left, width: branch.width }} />)}
   </div>;
 }
 function identity(id: string) { return id; }
