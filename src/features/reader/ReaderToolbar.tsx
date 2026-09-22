@@ -660,41 +660,45 @@ function ToolColorPalette({
   const inputValue = annotationColorInputValue(value === 'transparent' ? customColor : value);
   return (
     <div className={`tool-option-color-group ${allowTransparent ? 'with-transparent-toggle' : ''}`.trim()} aria-label={label}>
-      <span className="tool-option-label">{label}</span>
-      {allowTransparent && (
-        <label className="tool-option-transparent-toggle" title="无背景">
+      <div className="tool-option-color-heading">
+        <span className="tool-option-label">{label}</span>
+        {allowTransparent && (
+          <label className="tool-option-transparent-toggle" title="无背景">
+            <input
+              type="checkbox"
+              checked={value === 'transparent'}
+              onChange={(event) => onChange(event.target.checked ? 'transparent' : inputValue)}
+            />
+            <span>无背景</span>
+          </label>
+        )}
+      </div>
+      <div className="tool-option-color-row">
+        <label className="tool-option-color-custom" title={`${label}：自定义颜色`}>
           <input
-            type="checkbox"
-            checked={value === 'transparent'}
-            onChange={(event) => onChange(event.target.checked ? 'transparent' : inputValue)}
+            type="color"
+            aria-label={`${label}：自定义颜色`}
+            value={inputValue}
+            onChange={(event) => {
+              onCustomColorChange(event.target.value);
+            }}
           />
-          <span>无背景</span>
+          <span style={{ background: inputValue }} />
         </label>
-      )}
-      <label className="tool-option-color-custom" title={`${label}：自定义颜色`}>
-        <input
-          type="color"
-          aria-label={`${label}：自定义颜色`}
-          value={inputValue}
-          onChange={(event) => {
-            onCustomColorChange(event.target.value);
-          }}
-        />
-        <span style={{ background: inputValue }} />
-      </label>
-      <div className="tool-option-color-presets">
-        {toolColorPresets.map((color) => (
-          <button
-            key={color}
-            type="button"
-            className={inputValue.toLowerCase() === color.toLowerCase() && value !== 'transparent' ? 'active' : ''}
-            aria-pressed={inputValue.toLowerCase() === color.toLowerCase() && value !== 'transparent'}
-            style={{ background: color }}
-            title={color}
-            aria-label={color}
-            onClick={() => onChange(color)}
-          />
-        ))}
+        <div className="tool-option-color-presets">
+          {toolColorPresets.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={inputValue.toLowerCase() === color.toLowerCase() && value !== 'transparent' ? 'active' : ''}
+              aria-pressed={inputValue.toLowerCase() === color.toLowerCase() && value !== 'transparent'}
+              style={{ background: color }}
+              title={color}
+              aria-label={color}
+              onClick={() => onChange(color)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
