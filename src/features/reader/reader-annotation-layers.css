@@ -1,51 +1,71 @@
-/* Annotation layers (fb5e3f2f): dock entry, quick picker and the management page. */
-/* Same specificity as the dock's fixed 36px tool buttons, so the layer entry can grow to show its name. */
+/* Annotation layers (fb5e3f2f): dock entry, quick picker and the annotation list toolbar. */
+
+/* Dock entry (f6b927bb): a fixed-width icon + count chip. The editable layer name is deliberately
+   absent here, so renaming a layer to any length cannot resize this button or move its neighbours. */
 :root .reader-annotation-dock .annotation-toolbar .annotation-layer-btn {
-  width: auto;
-  min-width: 36px;
-  max-width: 168px;
-  padding: 0 8px 0 6px;
-  gap: 5px;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+  flex: 0 0 64px;
+  padding: 0;
+  gap: 4px;
+  justify-content: center;
+  overflow: hidden;
   border-left: 1px solid var(--border-soft, rgba(60, 80, 70, 0.14));
   border-radius: 8px;
   margin-left: 3px;
   flex-direction: row;
 }
 :root .reader-annotation-dock .annotation-toolbar .annotation-layer-btn > svg { width: 20px; height: 20px; flex: 0 0 20px; }
-.annotation-layer-btn-name { font-size: 12px; font-weight: 600; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.annotation-layer-btn-count { font-size: 11px; opacity: 0.72; font-variant-numeric: tabular-nums; }
+.annotation-layer-btn-count { font-size: 11px; opacity: 0.72; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .annotation-layer-btn.blocked { box-shadow: inset 0 0 0 1.5px rgba(214, 120, 40, 0.6); }
-@media (max-width: 980px) {
-  .annotation-layer-btn-name { display: none; }
-  :root .reader-annotation-dock .annotation-toolbar .annotation-layer-btn { max-width: 80px; }
-}
 
-.annotation-layer-picker { min-width: 280px; max-width: 360px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+/* Quick picker (f6b927bb): no radio dot; the active layer is a whole-row tint plus a hairline. */
+.annotation-layer-picker { min-width: 280px; max-width: 380px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
 .annotation-layer-warning { margin: 0; padding: 6px 8px; border-radius: 6px; background: rgba(214, 120, 40, 0.12); color: #8a4b12; font-size: 12px; }
-.annotation-layer-list { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow: auto; }
-.annotation-layer-row { display: flex; align-items: center; gap: 2px; border-radius: 8px; padding: 2px; }
-.annotation-layer-row.active { background: var(--accent-soft, rgba(77, 131, 107, 0.12)); }
+.annotation-layer-list { display: flex; flex-direction: column; gap: 2px; padding: 1px 2px; max-height: 264px; overflow: auto; overscroll-behavior: contain; }
+.annotation-layer-row { display: flex; align-items: center; gap: 2px; border-radius: 8px; padding: 1px; }
+.annotation-layer-row:not(.active):hover { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+.annotation-layer-row.active { background: var(--accent-soft, rgba(77, 131, 107, 0.12)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-strong) 36%, transparent); }
+.annotation-layer-row.active .annotation-layer-name { font-weight: 680; color: var(--accent-strong, #4d836b); }
 .annotation-layer-row.hidden-layer .annotation-layer-name { opacity: 0.55; }
-.annotation-layer-select { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
-.annotation-layer-select:hover { background: rgba(77, 131, 107, 0.08); }
+.annotation-layer-select { flex: 1 1 auto; display: flex; align-items: center; min-width: 0; padding: 7px 8px; border: 0; border-radius: 7px; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
 .annotation-layer-select:focus-visible, .annotation-layer-icon-btn:focus-visible, .annotation-layer-action:focus-visible { outline: 2px solid var(--accent-strong, #4d836b); outline-offset: 1px; }
-.annotation-layer-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--accent-strong, #4d836b); flex: 0 0 10px; box-sizing: border-box; }
-[aria-checked="true"] > .annotation-layer-dot { background: var(--accent-strong, #4d836b); }
 .annotation-layer-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .annotation-layer-kind { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: rgba(77, 131, 107, 0.14); color: var(--accent-strong, #4d836b); white-space: nowrap; }
 .annotation-layer-kind.active { background: var(--accent-strong, #4d836b); color: #fff; }
 .annotation-layer-count { font-size: 11px; opacity: 0.7; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.annotation-layer-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; opacity: 0.85; }
-.annotation-layer-icon-btn:hover:not(:disabled) { background: rgba(77, 131, 107, 0.12); opacity: 1; }
+.annotation-layer-icon-btn { display: inline-flex; flex: 0 0 28px; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; opacity: 0.85; }
+.annotation-layer-icon-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--accent-soft) 70%, transparent); opacity: 1; }
 .annotation-layer-icon-btn[aria-pressed="true"] { color: var(--accent-strong, #4d836b); opacity: 1; }
 .annotation-layer-icon-btn:disabled { opacity: 0.35; cursor: default; }
+/* Keep the destructive row action visibly apart from the eye toggle (f6b927bb). */
+.annotation-layer-delete { margin-left: 4px; }
 .annotation-layer-icon-btn.danger:hover:not(:disabled) { background: rgba(200, 60, 60, 0.12); color: #b23b3b; }
-.annotation-layer-action { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-soft, rgba(60, 80, 70, 0.18)); background: var(--surface, #fff); color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+.annotation-layer-action { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-soft, rgba(60, 80, 70, 0.18)); background: var(--surface, #fff); color: inherit; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
 .annotation-layer-action:hover:not(:disabled) { border-color: var(--accent-strong, #4d836b); }
 .annotation-layer-action.primary { background: var(--accent-strong, #4d836b); border-color: var(--accent-strong, #4d836b); color: #fff; font-weight: 600; }
 .annotation-layer-action.danger { background: #b23b3b; border-color: #b23b3b; color: #fff; }
 .annotation-layer-action:disabled { opacity: 0.5; cursor: default; }
+/* The popover heading no longer hosts a square close button, so the 新图层 action keeps real size. */
+.annotation-layer-action-primary { border-color: var(--accent-strong, #4d836b); color: var(--accent-strong, #4d836b); font-weight: 640; }
+.annotation-layer-action-primary:hover:not(:disabled) { background: var(--accent-soft, #e8eee9); }
+.annotation-layer-action-danger { border-color: #c05050; color: #b23b3b; }
+.annotation-layer-action-danger:hover:not(:disabled) { background: rgba(178, 59, 59, 0.1); }
+.reader-tool-popover-heading .annotation-layer-action { min-height: 30px; padding: 0 10px; }
 .annotation-layer-status { margin: 0; min-height: 1.2em; font-size: 12px; opacity: 0.75; }
+
+.annotation-layer-confirm { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 8px; border: 1px solid rgba(178, 59, 59, 0.34); background: rgba(178, 59, 59, 0.07); }
+.annotation-layer-confirm-text { margin: 0; font-size: 12px; line-height: 1.5; }
+.annotation-layer-confirm-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.annotation-layer-confirm-label { font-size: 12px; color: var(--muted); }
+.annotation-layer-confirm-select { flex: 1 1 auto; min-width: 0; max-width: 150px; font: inherit; font-size: 12px; padding: 4px 6px; border-radius: 6px; }
+
+:root[data-theme="midnight"] .annotation-layer-warning { color: #f0b98a; }
+:root[data-theme="midnight"] .annotation-layer-action-danger { border-color: #e0918a; color: #f0a7a0; }
+:root[data-theme="midnight"] .annotation-layer-action-danger:hover:not(:disabled) { background: rgba(224, 145, 138, 0.16); }
+:root[data-theme="midnight"] .annotation-layer-confirm { border-color: rgba(224, 145, 138, 0.4); background: rgba(224, 145, 138, 0.09); }
+:root[data-theme="midnight"] .annotation-layer-icon-btn.danger:hover:not(:disabled) { background: rgba(224, 145, 138, 0.16); color: #f0a7a0; }
 
 .annotation-layer-rename { flex: 1 1 auto; min-width: 0; font: inherit; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--accent-strong, #4d836b); }
 

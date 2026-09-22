@@ -30,6 +30,7 @@
     "test:pdf-rotated-text": "node --experimental-strip-types scripts/verify-pdf-rotated-text-layer.mjs",
     "test:pdf-crosspage-selection": "node --experimental-strip-types scripts/verify-pdf-crosspage-selection.mjs",
     "test:annotation-layers": "node scripts/verify-annotation-layers.mjs",
+    "test:annotation-layer-picker": "node scripts/verify-annotation-layer-picker-browser.mjs",
     "test:pdf-selection-preview": "node --experimental-strip-types scripts/verify-pdf-selection-preview.mjs",
     "test:pdf-text-layer-offset": "node --experimental-strip-types scripts/verify-pdf-text-layer-offset.mjs",
     "test:pdf-text-layer-offset-browser": "node scripts/verify-pdf-text-layer-offset-browser.mjs",

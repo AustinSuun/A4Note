@@ -38,7 +38,7 @@
 .reader-tool-popover { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(30,45,38,.16); }
 .reader-tool-popover-heading { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 .reader-tool-popover-heading strong { font-size: inherit; font-weight: 650; }
-.reader-tool-popover-heading button { width: 26px; height: 26px; min-height: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 19px; }
+.reader-tool-popover-heading button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 26px; min-height: 26px; padding: 2px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: var(--ui-control-font-size, 13px); white-space: nowrap; flex: 0 0 auto; }
 .reader-tool-popover .reader-tool-options-bar { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: min(300px, calc(100vw - 40px)); min-width: 0; padding: 12px; box-sizing: border-box; border: 0; box-shadow: none; }
 .reader-tool-popover .reader-tool-options-bar:has(.tool-option-color-presets) { width: min(calc(40px + 34px + 8px + var(--annotation-swatch-size) * 10 + var(--annotation-swatch-gap) * 9), calc(100vw - 40px)); }
 @media (max-width: 480px) {
