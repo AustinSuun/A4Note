@@ -17,6 +17,7 @@
 - `npm run test:pdf-text-annotation`：33/33。
 - `node scripts/verify-pdf-text-annotation-browser.mjs`：97/97；覆盖真实 PdfReader DOM 的直接 B/I、pressed 状态、文字色写入 `positionJson.textColor` 且不改 `annotation.color`、固定/自适应框缩放、编辑、边缘放置、IME 与重叠标注；pageerror 0。证据在 `.tmp/pdf-text-annotation/after`。
 - `git diff --check`：通过。
+- `npm run verify`：build、dev-live/admission、core、shortcuts 均通过，随后无输出停在既有 `test:pdf-find-entry` 浏览器脚本；已终止残留 `verify-all.mjs`/`verify-pdf-find-entry-browser.mjs` 进程。本轮文件不涉及该测试。
 
 ## 边界
 
