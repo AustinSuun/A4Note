@@ -102,7 +102,7 @@ export function ReaderNoteWorkbenchMenu({ mode, onToggle, onSelectMode, temporar
       if (!anchor || !menu) return;
       const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
       const box = menu.getBoundingClientRect();
-      const x = mode === 'writing' ? anchor.right + 6 : anchor.left - box.width - 6;
+      const x = mode === 'writing' || overlay ? anchor.right + 6 : anchor.left - box.width - 6;
       setMenuStyle({ position: 'fixed', left: Math.max(8, Math.min(x, innerWidth - box.width - 8)) / zoom,
         top: Math.max(8, Math.min(anchor.top + anchor.height / 2 - box.height / 2, innerHeight - box.height - 8)) / zoom,
         maxWidth: (innerWidth - 16) / zoom, maxHeight: (innerHeight - 16) / zoom });
@@ -110,7 +110,7 @@ export function ReaderNoteWorkbenchMenu({ mode, onToggle, onSelectMode, temporar
     place(); const observer = new ResizeObserver(place); if (menuRef.current) observer.observe(menuRef.current);
     window.addEventListener('resize', place); window.addEventListener('scroll', place, true);
     return () => { observer.disconnect(); window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
-  }, [open, mode, drawerWidth]);
+  }, [open, mode, overlay, drawerWidth]);
   return (
     <div className="reader-note-workbench-entry reader-note-edge-entry" ref={rootRef} data-note-mode={mode}
       data-note-temporary={temporary ? 'true' : 'false'} data-note-docked={docked ? 'true' : 'false'}
