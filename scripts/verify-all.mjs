@@ -65,6 +65,7 @@ const steps = [
   ['npm', ['run', 'test:declarative-plugin-runtime']],
   ['npm', ['run', 'test:library-export']],
   ['npm', ['run', 'test:library-behavior']],
+  ['npm', ['run', 'test:tree-guides-browser']],
   ['npm', ['run', 'test:library-summary']],
   ['node', ['scripts/verify-summary-provision.mjs']],
   ['npm', ['run', 'test:startup-safety']],

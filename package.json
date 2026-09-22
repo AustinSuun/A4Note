@@ -64,7 +64,8 @@
     "package:native-host": "node scripts/prepare-native-host.mjs",
     "test:capture-native-registration": "node scripts/verify-native-registration.mjs",
     "test:extension-updates": "node scripts/verify-extension-updates.mjs",
-    "test:note-workbench-browser": "node scripts/verify-note-workbench-browser.mjs"
+    "test:note-workbench-browser": "node scripts/verify-note-workbench-browser.mjs",
+    "test:tree-guides-browser": "node scripts/verify-tree-guides-browser.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",

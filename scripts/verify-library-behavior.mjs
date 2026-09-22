@@ -1,5 +1,5 @@
 import { toggleTreeExpansion } from '../src/core/treeExpansion.ts';
-import { treeGuideRails } from '../src/shared/tree/treeGeometry.ts';
+import { normalizeTreeGuideAxes, treeGuideLayout, treeGuideRails } from '../src/shared/tree/treeGeometry.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildLibraryFolderTree, selectLibraryView, isLibrarySmartView } from '../src/core/libraryViews.ts';
@@ -86,13 +86,22 @@ const rows=[
  {id:'otherRoot',depth:0,expanded:false,top:124,bottom:154,caretCenter:16},
 ];
 const rails=treeGuideRails(rows);
-assert.deepEqual(rails.find(r=>r.id==='root'),{id:'root',depth:0,top:33,height:87,left:16,start:0,end:3});
+assert.deepEqual(rails.find(r=>r.id==='root'),{id:'root',depth:0,top:33,height:75,left:16,start:0,end:3});
 assert.equal(rails.find(r=>r.id==='branch').end,2);
 assert.equal(rails.find(r=>r.id==='branch').left,36);
 assert.equal(treeGuideRails([{...rows[0],expanded:false},rows[4]]).length,0);
 assert.equal(treeGuideRails([{...rows[0],expanded:true}]).length,0,'empty branches have no phantom rail');
 const newDraft={id:'draft',depth:2,expanded:false,top:62,bottom:140,caretCenter:56};
-assert.equal(treeGuideRails(rows.slice(0,2).concat(newDraft)).find(r=>r.id==='root').height,104,'variable-height draft participates in the parent rail');
+const draftLayout=treeGuideLayout(rows.slice(0,2).concat(newDraft));
+assert.equal(draftLayout.rails.find(r=>r.id==='root').height,13,'parent rail stops at its last direct child, not a deep descendant');
+assert.equal(draftLayout.rails.find(r=>r.id==='branch').height,37,'variable-height draft connects to its direct parent at row centre');
+assert.equal(draftLayout.branches.length,2,'each visible child has exactly one connector');
+assert.equal(draftLayout.branches[1].top,101,'connector uses the variable-height row centre');
+assert.equal(draftLayout.branches[1].width,10,'connector stops before the fixed-width caret column');
+const noisyDepthRows=Array.from({length:6},(_,depth)=>({id:`d${depth}`,depth,expanded:depth<5,top:depth*30,bottom:depth*30+30,caretCenter:16+depth*20+(depth===3?4:0),caretHalfWidth:8}));
+const normalized=normalizeTreeGuideAxes(noisyDepthRows,20);
+assert.deepEqual(normalized.map(row=>row.caretCenter),[16,36,56,76,96,116],'all row types share one fixed depth axis');
+assert.ok(normalized.every((row,index)=>index===0 || row.caretCenter-normalized[index-1].caretCenter===20),'depth axes cannot accumulate zoom or DOM-state drift');
 assert.match(sidebar,/TreeGuides containerRef=\{treeRef\}/);
 assert.match(sidebar,/toggleTreeExpansion\(current, id, undefined, protectedIds\)/);
 assert.match(sidebar,/onClick=\{toggleAll\}/);

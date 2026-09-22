@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-22T19:40:36+08:00",
+  "updatedAt": "2026-09-22T20:14:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "arena",
     "branch": "feat/capture-folder-tree-0.6.2",
     "scope": [
+      "rainbow-tree-qinglan：完成任务 7876734f spec3 共享彩虹线修复。根因是根元素 CSS zoom 后直接把 getBoundingClientRect 视口坐标写回局部绝对定位，导致二次缩放和深层累积漂移；旧竖线还延伸到最深后代行底。现统一还原局部坐标、固定深度轴，竖线只连接直接子项并在末项中心收尾，新增短横线且在 caret/spacer 前结束。Explorer 与 Library 两个全仓使用点共用实现。真实 React DOM 浏览器 24 组（两种 DOM、1–6级、UI80/100/125/150%、DPR1/1.25/1.5）最大轴误差0.03125px、步长误差0、末端误差0.1875px，pageerror/console error 0；library、note 51/51、note browser 42/42、tsc、build 通过。完整 npm run verify 退出0（Rust 215通过/5 ignored）。未打包/安装/推送/发布。详见 docs/mcp-rainbow-tree-qinglan-2026-09-22.md。",
       "shortcut-hint-size-xingxu：星序完成63b530ee spec2实现与验证，095a3ae放大16px键帽/15px功能名、M4/M5，受限时仅浮动行14px；末键对齐长组合、整体避让文本浮动栏/色板。28f9cd8整合最新main文本B/I，1be6c62补色板与同步已验收UI测试契约，不修改图层/文本产品文件。浏览器461/32组合、原生153+87及严格同场景配对通过；11→16px、键帽20.4→28.4px，工具坞444.6×69.6与按钮矩形完全不变、最小间隙9px。完整verify退出0/211.647秒（Rust215/0/5 ignored）、diagnostics0。附加文本浏览器东侧resize断言在本分支及未修改main均失败，另记既有问题，不声称全绿；app UI上限140，125/150为受控CSS压力场景。交付与main包含SHA见任务卡，下一步用户验收；未打包安装推送发布。详见docs/mcp-shortcut-hint-size-xingxu-2026-09-22.md。",
       "text-annotation-controls-qinglan：青岚完成任务 54576b3e spec4 核心实现。修复根因是悬浮颜色沿用 annotation.color，而文本字形实际使用 positionJson.textColor；现在文本快捷色点、预设色和自定义色均读写 textColor，非文本标注仍使用原通用颜色。悬浮 Aa/二级字号样式面板改为直接 B/I（aria-pressed、tooltip、键盘可达）；文本工具面板删除外框色与字号 UI，保留文字色、背景及 B/I；内部 fontSize、borderColor 兼容字段和缩放逻辑未改。清理失效组件/CSS。build、静态回归 33/33、真实 PdfReader 浏览器交互 97/97（含直接 B/I、文字色与通用色隔离、缩放/编辑/边缘/IME、pageerror 0）通过。未打包/安装/推送/发布。详见 docs/mcp-text-annotation-controls-qinglan-2026-09-22.md。",
       "windows-package-arena：用户指示对已合并 main 打包；版本按约定 0.1.27→0.1.28（package.json/Cargo.toml/Cargo.lock/tauri.conf.json 各 1 行，提交 76a6cb2，基线 38d9977）。npm run package:windows 退出 0（约 202 秒）；artifacts/windows/latest/ 内 a4note.exe 37687296 字节 SHA-256 20FB3F6DC851A27B65E680A3CC50E5F051F89E87E203A98EEC021AF18B567CF7、A4 Note_x64-setup.exe 22831212 字节 SHA-256 FA5A1EE17FBE24E9CEECC1D99826D01E7AF174D1D5300BF09752DA6F8381BB29，独立重算与 build-info.json 一致，更新签名与 latest.json 一致；上一份 0.1.27 latest 已归档。包内前端含本轮图层弹窗标记（前端构建复核）。未完整 verify、未安装、未推送/发布。详见 docs/mcp-windows-package-arena-2026-09-22.md。",
@@ -152,6 +153,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "rainbow-tree-qinglan：完成任务 7876734f spec3 共享彩虹线修复。根因是根元素 CSS zoom 后直接把 getBoundingClientRect 视口坐标写回局部绝对定位，导致二次缩放和深层累积漂移；旧竖线还延伸到最深后代行底。现统一还原局部坐标、固定深度轴，竖线只连接直接子项并在末项中心收尾，新增短横线且在 caret/spacer 前结束。Explorer 与 Library 两个全仓使用点共用实现。真实 React DOM 浏览器 24 组（两种 DOM、1–6级、UI80/100/125/150%、DPR1/1.25/1.5）最大轴误差0.03125px、步长误差0、末端误差0.1875px，pageerror/console error 0；library、note 51/51、note browser 42/42、tsc、build 通过。完整 npm run verify 退出0（Rust 215通过/5 ignored）。未打包/安装/推送/发布。详见 docs/mcp-rainbow-tree-qinglan-2026-09-22.md。",
       "text-annotation-controls-qinglan：青岚完成任务 54576b3e spec4 核心实现。修复根因是悬浮颜色沿用 annotation.color，而文本字形实际使用 positionJson.textColor；现在文本快捷色点、预设色和自定义色均读写 textColor，非文本标注仍使用原通用颜色。悬浮 Aa/二级字号样式面板改为直接 B/I（aria-pressed、tooltip、键盘可达）；文本工具面板删除外框色与字号 UI，保留文字色、背景及 B/I；内部 fontSize、borderColor 兼容字段和缩放逻辑未改。清理失效组件/CSS。build、静态回归 33/33、真实 PdfReader 浏览器交互 97/97（含直接 B/I、文字色与通用色隔离、缩放/编辑/边缘/IME、pageerror 0）通过。未打包/安装/推送/发布。详见 docs/mcp-text-annotation-controls-qinglan-2026-09-22.md。",
       "eraser-alignment-xingxu：已领取spec2并建立独立工作区，未修改业务代码。",
       "annotation-layer-picker-arena：Arena 完成 f6b927bb 阅读器标注图层弹窗 UI 优化与底部入口解耦；去圆点改整行选中态、“新图层”按钮修根因（26×26 方块规则）、每行垃圾桶删除（唯一层禁用 + 含标注确认/移动/取消 + 活动层相邻接管）、工具坞入口固定 64px 与名称解耦；新增 test:annotation-layer-picker 43/43 并在首跑捕获修复 460px@150% 横向溢出，test:annotation-layers 55、tsc/build/diagnostics 0；verify 28/30（annotation-layers 兼容写法后单跑通过；pdf-find-entry 为高负载 30s page.goto 超时，与本轮无关）。详见 docs/mcp-annotation-layer-picker-arena-2026-09-22.md。",

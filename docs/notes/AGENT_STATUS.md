@@ -3142,3 +3142,7 @@ the final visual check still needs a manual refresh of the dev preview.
 验证结果：`npm run build`、`npm run test:core`、`npm run test:scene-plugins`、`npm run test:declarative-plugin-runtime`、`npm run test:architecture` 和 `npm run verify` 均通过；Rust 122 项测试通过。
 
 已知风险/未完成：本轮没有重新生成 Windows release exe；未进行新的桌面预览截图。其他场景可通过声明 `sidebarMode: 'workspace'` 复用此交互。
+
+## 目录树彩虹层级线修复（青岚，2026-09-22）
+
+完成任务 `7876734f-ed8d-4a06-a103-f4af379a785a`：修复 CSS zoom 下 `getBoundingClientRect` 视口坐标被再次缩放导致的深层轴线漂移；共享几何现在统一局部坐标与层级轴，竖线只连直接子项并在末项中心收尾，短横线在箭头前结束。全仓彩虹线使用点仅 Markdown/笔记文件树与 Library 文件类树，均复用该实现。真实 React DOM 24 组缩放/DPR/DOM 适配回归最大轴误差 0.03125px、步长误差 0、末端误差 0.1875px；定向测试、TypeScript、build 与完整 `npm run verify` 通过（Rust 215 通过/5 ignored）。未打包、安装、推送或发布。详见 `docs/mcp-rainbow-tree-qinglan-2026-09-22.md`。
