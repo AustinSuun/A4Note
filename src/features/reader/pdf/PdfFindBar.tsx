@@ -1,9 +1,11 @@
+import { useShortcutProps } from '../../../shared/shortcuts';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { findPdfMatches } from './pdfSearch';
 import type { PageMeta } from './types';
 import '../reader-reliability.css';
 
 export function PdfFindBar({ surface, pages, documentKey }: { surface: RefObject<HTMLDivElement | null>; pages: PageMeta[]; documentKey: string }) {
+  const shortcutProps = useShortcutProps();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
@@ -38,7 +40,7 @@ export function PdfFindBar({ surface, pages, documentKey }: { surface: RefObject
   }, [surface, open, results, current]);
   const close = () => { setOpen(false); surface.current?.querySelector<HTMLElement>('.pdf-document')?.focus({ preventScroll: true }); };
   const move = (step: number) => setIndex(i => results.matches.length ? (i + step + results.matches.length) % results.matches.length : 0);
-  if (!open) return <button type="button" className="pdf-find-trigger" title="搜索当前 PDF（Ctrl+F）" onClick={() => { setOpen(true); requestAnimationFrame(() => input.current?.focus()); }}>查找</button>;
+  if (!open) return <button type="button" className="pdf-find-trigger" {...shortcutProps('reader.search', '搜索当前 PDF')} onClick={() => { setOpen(true); requestAnimationFrame(() => input.current?.focus()); }}>查找</button>;
   const hasText = pages.some(page => page.textItems.some(item => item.text.trim()));
   return <div className="pdf-find-bar" role="search" aria-label="搜索当前 PDF" onPointerDown={e => e.stopPropagation()} onKeyDown={e => {
     if (e.nativeEvent.isComposing) return;

@@ -9,7 +9,7 @@ import { pdfLoadErrorMessage } from './pdfLoadError';
 import { capturePdfCenterAnchor, restorePdfPageAnchor } from './pdfZoomAnchor';
 import { usePdfPan } from './usePdfPan';
 import { usePdfShapeDraft } from './usePdfShapeDraft';
-import { pdfCoordinateLayer } from './pdfCoordinates';
+import { pdfCoordinateLayer, pdfPointerCoordinates } from './pdfCoordinates';
 import { eraseInkPosition } from './pdfInk';
 import type { Annotation, AnnotationColor, AnnotationDraft, AnnotationType, PositionJson, ReaderTool } from '../../../core/types';
 import { isTauriRuntime, loadPaperFileBytes } from '../../../platform/nativeApi';
@@ -955,21 +955,17 @@ export default function PdfReader({
 
   function eraseInkAtPointer(pageNumber: number, event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>) {
     if (activeTool !== 'eraser') return;
-    const rect = pdfCoordinateLayer(event.currentTarget).getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
     // pointFromEvent clamps into 0..100, which would keep erasing along the page edge once the
     // cursor leaves the page. The eraser needs the raw position so it can simply stop instead.
     event.preventDefault();
     event.stopPropagation();
-    const point = {
-      x: ((event.clientX - rect.left) / rect.width) * 100,
-      y: ((event.clientY - rect.top) / rect.height) * 100,
-    };
-    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
+    const pointer = pdfPointerCoordinates(event.currentTarget, event.clientX, event.clientY);
+    // A hidden off-page preview must never leave a still-active eraser footprint at the page edge.
+    if (!pointer?.inside) return;
+    const { rect } = pointer;
+    const point = { x: pointer.xPercent, y: pointer.yPercent };
     const radiusX = Math.max((toolSettings.eraserSize / rect.width) * 50, 0.05);
     const radiusY = Math.max((toolSettings.eraserSize / rect.height) * 50, 0.05);
-    // Outside the page (plus the eraser radius) nothing can be touched, so do not erase at all.
-    if (point.x < -radiusX || point.x > 100 + radiusX || point.y < -radiusY || point.y > 100 + radiusY) return;
 
     for (const annotation of currentFileAnnotations) {
       if (annotation.page !== pageNumber || annotation.type !== 'ink') continue;
@@ -996,22 +992,16 @@ export default function PdfReader({
       setEraserCursor(null);
       return;
     }
-    const layer = pdfCoordinateLayer(event.currentTarget as HTMLElement);
-    const rect = layer.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) {
-      return;
-    }
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const pointer = pdfPointerCoordinates(event.currentTarget, event.clientX, event.clientY);
     // Never retain an old in-page ring while the real pointer is over an adjacent panel/window.
-    if (x < 0 || x > rect.width || y < 0 || y > rect.height) {
+    if (!pointer?.inside) {
       setEraserCursor(null);
       return;
     }
     setEraserCursor({
       page: pageNumber,
-      x,
-      y,
+      x: pointer.xPx,
+      y: pointer.yPx,
     });
   }
 

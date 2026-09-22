@@ -14,6 +14,8 @@
     "status": "node scripts/show-agent-status.mjs",
     "test:capture": "node scripts/verify-capture.mjs",
     "test:project-tasks": "node --test apps/project-tasks/test/offline-takeover.test.mjs apps/project-tasks/test/task-delivery.test.mjs apps/project-tasks/test/gateway.test.mjs apps/project-tasks/test/gateway-lifecycle.test.mjs apps/project-tasks/test/service.test.mjs apps/project-tasks/test/tools.test.mjs apps/project-tasks/test/bootstrap.test.mjs apps/project-tasks/test/onboarding.test.mjs apps/project-tasks/test/plan-queue.test.mjs apps/project-tasks/test/acceptance-policy.test.mjs apps/project-tasks/test/acceptance-fixtures.test.mjs apps/project-tasks/test/acceptance-integration.test.mjs apps/project-tasks/test/acceptance-cli.test.mjs apps/project-tasks/test/data-dir.test.mjs && node scripts/verify-task-acceptance.mjs && node scripts/verify-task-edit-conflict.mjs && node --experimental-strip-types scripts/verify-project-task-launcher.mjs",
+    "test:shortcuts-browser": "node scripts/verify-shortcuts-browser.mjs",
+    "test:shortcuts": "node scripts/verify-shortcuts.mjs && node scripts/verify-shortcut-dispatcher.mjs",
     "test:core": "node scripts/verify-core-smoke.mjs",
     "test:sync": "node --experimental-strip-types scripts/verify-sync.mjs",
     "test:workspace": "node --experimental-strip-types scripts/verify-workspace-model.mjs",

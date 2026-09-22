@@ -6,6 +6,7 @@ import type { Section } from './types';
 export type SettingsAnchor = { id: string; section: Section; title: string; description?: string; keywords: string[] };
 
 export const SECTION_META: Record<Section, { label: string; description: string; keywords: string[] }> = {
+  shortcuts: { label: '快捷键', description: '工作台场景切换、命令面板与界面缩放。阅读器绑定在阅读器内设置。', keywords: ['快捷键', '键盘', '鼠标', '绑定', 'shortcut'] },
   general: { label: '通用', description: '语言、界面密度、阅读布局与元数据补全。', keywords: ['通用', '基础', '语言', '简介', 'AI'] },
   appearance: { label: '外观与主题', description: '主题、字体、字号、行距与文档版式。', keywords: ['外观', '主题', '配色', '字体', '字号', '排版'] },
   library: { label: '资料库', description: '资料库位置、备份恢复、浏览器采集与场景。', keywords: ['资料库', '路径', '备份', '恢复', '采集', '场景', '存储'] },
@@ -16,6 +17,7 @@ export const SECTION_META: Record<Section, { label: string; description: string;
 };
 
 export const SETTINGS_CATALOG: SettingsAnchor[] = [
+  { id: 'setting-shortcuts', section: 'shortcuts', title: '工作台快捷键', description: '自定义键盘和鼠标侧键、冲突检查及恢复默认。', keywords: ['快捷键', '键盘', '鼠标', '录制', '绑定'] },
   { id: 'setting-language', section: 'general', title: '界面语言', description: '当前界面语言。', keywords: ['语言', '中文', 'language', 'locale'] },
   { id: 'setting-density', section: 'general', title: '界面密度', description: '紧凑或舒适的界面间距。', keywords: ['密度', '紧凑', '舒适', '间距', 'density'] },
   { id: 'setting-reader-layout', section: 'general', title: '默认阅读布局', description: '打开 PDF 时使用的默认布局。', keywords: ['阅读布局', '专注', '笔记', 'AI', '默认布局'] },
