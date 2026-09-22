@@ -22,37 +22,32 @@ export function highlightPositionStyle(position: PositionJson) {
   const width = numberValue(position.width, 42);
   const orientation = segmentOrientation(position);
   if (orientation === 90 || orientation === 270) {
-    // Rotated run (page /Rotate 90/270): the glyph box's ascent axis is horizontal, so the
-    // band is trimmed along x. Top→bottom text (90) has its ascender on the right edge,
-    // bottom→top text (270) on the left edge; the same proportions as the horizontal case.
+    // `width` runs from the far ascender edge to the baseline. Descenders therefore sit just
+    // outside the box: on the left for top→bottom text (90), on the right for bottom→top (270).
+    // Extend only that baseline edge so g/y/p/q/j-equivalents are painted without widening the
+    // line on both sides or changing the persisted selection geometry.
     const glyphWidth = Math.max(width, 0.2);
-    const ascentInset = Math.max(glyphWidth * 0.28, 0.02);
-    const descentInset = Math.max(glyphWidth * 0.18, 0.015);
-    const band = Math.max(glyphWidth - ascentInset - descentInset, glyphWidth * 0.5);
+    const descender = glyphWidth * TEXT_DESCENDER_RATIO;
     return {
-      left: `${orientation === 90 ? x + descentInset : x + ascentInset}%`,
+      left: `${orientation === 90 ? x - descender : x}%`,
       top: `${y}%`,
-      width: `${band}%`,
+      width: `${glyphWidth + descender}%`,
       height: `${numberValue(position.height, 5)}%`,
     };
   }
-  // Selection rectangles carry the glyph box including ascent/descent padding.
-  // A band that spans the full box looks like a solid slab over the line and
-  // visually collides with the rows above and below, so trim a proportional
-  // share from both edges and keep the band centred on the x-height.
+  // PDF.js gives us an ascent box whose bottom edge is the baseline, not a full ink box. Keep
+  // that whole ascent box and add proportional descender space only on the baseline side. This
+  // fixes the old 28%/18% trimming that ended the band above the baseline and clipped descenders.
   const height = Math.max(numberValue(position.height, 5), 0.2);
-  const topInset = Math.max(height * 0.28, 0.02);
-  const bottomInset = Math.max(height * 0.18, 0.015);
-  const band = Math.max(height - topInset - bottomInset, height * 0.5);
+  const descender = height * TEXT_DESCENDER_RATIO;
   if (orientation === 180) {
-    // Upside-down run: the ascender side is the bottom edge, so the descent inset goes on top.
-    return { left: `${x}%`, top: `${y + bottomInset}%`, width: `${width}%`, height: `${band}%` };
+    return { left: `${x}%`, top: `${y - descender}%`, width: `${width}%`, height: `${height + descender}%` };
   }
   return {
     left: `${x}%`,
-    top: `${y + topInset}%`,
+    top: `${y}%`,
     width: `${width}%`,
-    height: `${band}%`,
+    height: `${height + descender}%`,
   };
 }
 
@@ -62,42 +57,28 @@ export function underlinePositionStyle(position: PositionJson, thicknessOverride
   const width = numberValue(position.width, 42);
   const orientation = segmentOrientation(position);
   if (orientation === 90 || orientation === 270) {
-    // Rotated run: the baseline is vertical and sits just inside the descender edge, i.e. the
-    // left edge for top→bottom text (90) and the right edge for bottom→top text (270). The rule
-    // is placed on the descender side of it, clamped into the glyph box; the stylesheet's
-    // `.vertical-rule` variant keeps the element in place and draws it 2px wide.
+    // Rotated run: the baseline is the left edge for top→bottom text (90) and the right edge for
+    // bottom→top text (270). Put the rule beyond that edge with a real gap; keeping it inside the
+    // ascent box is what made the old rule cross the glyph body.
     const glyphWidth = Math.max(width, 0.2);
-    const lineWidth = thicknessOverride ?? Math.min(Math.max(glyphWidth * 0.08, 0.05), 0.42);
-    const descender = glyphWidth * 0.2;
-    const baselineGap = Math.min(Math.max(glyphWidth * 0.08, 0.02), 0.12);
+    const lineWidth = underlineThickness(glyphWidth, thicknessOverride);
+    const baselineGap = underlineGap(glyphWidth);
     const left = orientation === 90
-      ? Math.max(x + descender - baselineGap - lineWidth, x)
-      : Math.min(x + glyphWidth - descender + baselineGap, x + glyphWidth - lineWidth);
+      ? x - baselineGap - lineWidth
+      : x + glyphWidth + baselineGap;
     return { left: `${left}%`, top: `${y}%`, width: `${lineWidth}%`, height: `${numberValue(position.height, 5)}%` };
   }
-  // `height` is the full glyph box: the baseline sits above its bottom edge by
-  // the descender. Drawing at `y + height` therefore lands inside the descent
-  // of the same row and the rule crosses g/y/p. Clear the descender first, then
-  // add a small gap so the rule sits under the glyphs without touching the next
-  // line. The stroke also scales with the run height instead of a flat 1px.
+  // Horizontal selection boxes end at the baseline. Return the rule's actual top edge (the CSS
+  // no longer translates it upward), leaving 2–4% of the run height as breathing room.
   const height = Math.max(numberValue(position.height, 5), 0.2);
-  const lineHeight = thicknessOverride ?? Math.min(Math.max(height * 0.08, 0.05), 0.42);
-  const descender = height * 0.2;
-  const baselineGap = Math.min(Math.max(height * 0.08, 0.02), 0.12);
+  const lineHeight = underlineThickness(height, thicknessOverride);
+  const baselineGap = underlineGap(height);
   if (orientation === 180) {
-    // Upside-down run: the baseline sits just below the top edge, so the rule's bottom edge
-    // moves up into the top descender slack (the stylesheet still lifts it by its own height).
-    const ruleBottom = Math.max(y + descender - baselineGap, y + lineHeight);
-    return { left: `${x}%`, top: `${ruleBottom}%`, width: `${width}%`, height: `${lineHeight}%` };
+    return { left: `${x}%`, top: `${y - baselineGap - lineHeight}%`, width: `${width}%`, height: `${lineHeight}%` };
   }
-  // `top` marks the rule's BOTTOM edge; `.annotation-mark.underline` lifts the
-  // element by its own height. The stylesheet keeps a 1px minimum so a hairline
-  // stays visible, and anchoring the bottom makes that clamp grow the rule
-  // upwards into the descender slack.
-  const ruleBottom = Math.min(y + height - descender + baselineGap + lineHeight, y + height);
   return {
     left: `${x}%`,
-    top: `${ruleBottom}%`,
+    top: `${y + height + baselineGap}%`,
     width: `${width}%`,
     height: `${lineHeight}%`,
   };
@@ -115,7 +96,17 @@ export function underlineThicknessForSegments(segments: PositionJson[]): number 
     })
     .sort((a, b) => a - b);
   const median = axes[Math.floor((axes.length - 1) / 2)];
-  return Math.min(Math.max(median * 0.08, 0.05), 0.42);
+  return underlineThickness(median);
+}
+
+const TEXT_DESCENDER_RATIO = 0.2;
+
+function underlineGap(axis: number) {
+  return Math.min(Math.max(axis * 0.04, 0.02), 0.12);
+}
+
+function underlineThickness(axis: number, override?: number) {
+  return override ?? Math.min(Math.max(axis * 0.08, 0.05), 0.42);
 }
 
 /** Run direction stored on rotated selection segments (see pdfSelection.withSegmentOrientation). */

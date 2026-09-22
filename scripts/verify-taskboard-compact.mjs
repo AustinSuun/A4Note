@@ -17,6 +17,8 @@ fs.mkdirSync(evidence, { recursive: true });
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'a4-compact-ui-'));
 let browser, ws, web, tasks;
 let seq = 0, checks = 0;
+// Mirrors src/features/taskboard/taskboard.css "Taskboard readability" overrides (206b641); update both together.
+const READABILITY_FONTS = { '.tb-header h1': '27px', '.tb-project-name': '14px', '.tb-column h2': '16px', '.tb-column header p': '14px', '.tb-empty': '15px', '.tb-filters > input': '15px' };
 const pending = new Map(), records = [], errors = [];
 const pause = ms => new Promise(r => setTimeout(r, ms));
 const ok = (value, message) => { assert(value, message); checks++; };
@@ -117,7 +119,9 @@ try {
     ok(await evaluate(`!!document.querySelector('.tb-sidebar-title-row .tb-sidebar-mini-button[aria-label="打开已有项目文件夹"]')`), 'open-folder action sits at sidebar top right');
     ok(await evaluate(`document.querySelectorAll('.tb-sidebar-footer button').length===1&&document.querySelector('.tb-sidebar-footer button').textContent.includes('新建项目')`), 'sidebar footer keeps only new project');
     // 拖动契约：容器仍可拖动，流程切换、提示词和主按钮都是明确的真实控件。
-    const titlebarControls = await evaluate(`(()=>{const box=document.querySelector('.tb-titlebar-actions'),nav=document.querySelector('.tb-titlebar-actions .tb-stage-nav'),prompts=[...document.querySelectorAll('.tb-agent-prompt-actions button')],prim=document.querySelector('.tb-titlebar-actions .tb-primary');return{ok:!!box&&!!nav&&!!prim&&prompts.length===2&&!box.hasAttribute('data-window-no-drag')&&nav.hasAttribute('data-window-no-drag'),promptLabels:prompts.map(b=>b.textContent.trim()),primary:prim?.textContent.trim()}})()`);
+    // 8cc3cc88: the drag boundary sits on the switch control itself; the nav is a plain
+    // layout box that must neither carry no-drag nor grow into the blank strip.
+    const titlebarControls = await evaluate(`(()=>{const box=document.querySelector('.tb-titlebar-actions'),nav=document.querySelector('.tb-titlebar-actions .tb-stage-nav'),sw=document.querySelector('.tb-titlebar-actions .tb-stage-switch'),prompts=[...document.querySelectorAll('.tb-agent-prompt-actions button')],prim=document.querySelector('.tb-titlebar-actions .tb-primary');const navRect=nav?.getBoundingClientRect(),swRect=sw?.getBoundingClientRect();return{ok:!!box&&!!nav&&!!sw&&!!prim&&prompts.length===2&&!box.hasAttribute('data-window-no-drag')&&!nav.hasAttribute('data-window-no-drag')&&sw.hasAttribute('data-window-no-drag')&&navRect.width<=swRect.width+8,navWidth:navRect?.width,switchWidth:swRect?.width,promptLabels:prompts.map(b=>b.textContent.trim()),primary:prim?.textContent.trim()}})()`);
     ok(titlebarControls.ok, 'titlebar controls keep the drag boundary and prompt buttons ' + JSON.stringify(titlebarControls));
     ok(titlebarControls.promptLabels.some(label => label.includes('发布者提示词')) && titlebarControls.promptLabels.some(label => label.includes('执行者提示词')), 'both Agent prompt copy buttons are visible');
     const boardFit = await evaluate(`(()=>{const b=document.querySelector('.tb-board'),cols=[...document.querySelectorAll('.tb-column')],last=cols[cols.length-1].getBoundingClientRect(),br=b.getBoundingClientRect();return{scroll:b.scrollWidth,client:b.clientWidth,lastRight:last.right,boardRight:br.right}})()`);
@@ -139,7 +143,10 @@ try {
         const fit = await evaluate(`(()=>{const b=document.querySelector('.tb-board'),cols=[...document.querySelectorAll('.tb-column')],last=cols[cols.length-1].getBoundingClientRect(),br=b.getBoundingClientRect();return{scroll:b.scrollWidth,client:b.clientWidth,lastRight:last.right,boardRight:br.right}})()`);
         ok(fit.scroll <= fit.client + 2 && fit.lastRight <= fit.boardRight + 2, 'columns adapt to window width ' + [width, sidebar]);
       }
-      assert.deepEqual(layout.fonts, { '.tb-header h1': '25px', '.tb-project-name': '13px', '.tb-column h2': '15px', '.tb-column header p': '13px', '.tb-empty': '14px', '.tb-filters > input': '14px' }); checks++;
+      // Font sizes come from the fixed-pixel "Taskboard readability" block at the end of taskboard.css
+      // (`.taskboard .tb-header h1 { font-size: 27px }` …), not from the --ui-* tokens, so the expected values are
+      // spelled out here; they must stay identical across widths, zoom levels and sidebar states.
+      assert.deepEqual(layout.fonts, READABILITY_FONTS, 'taskboard readability font sizes ' + [width, zoom, sidebar]); checks++;
       records.push({ width, zoom, sidebar, headerHeight: layout.rects[0].bottom - layout.rects[0].top });
     }
     await evaluate(`document.documentElement.style.zoom='1';document.documentElement.dataset.sidebar='closed'`);

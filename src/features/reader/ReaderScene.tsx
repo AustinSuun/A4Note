@@ -1,16 +1,15 @@
 import { ReaderSaveErrorNotice } from './ReaderSaveErrorNotice';
 import { ReaderPageControl } from './ReaderPageControl';
-import { ReaderNoteActivity, ReaderNoteRequests } from './ReaderNoteActivity';
+import { ReaderNoteActivity, ReaderNoteRequests, ReaderNoteCreateAction, type ReaderNoteCreateBridge } from './ReaderNoteActivity';
 import { BookOpenText, ChevronLeft } from 'lucide-react';
 import { useReaderLayoutPosition } from './useReaderLayoutPosition';
 import { useReaderWritingShortcuts } from './useReaderWritingShortcuts';
 import { ReaderNoteWorkbenchMenu } from './ReaderNoteWorkbenchMenu';
-import { ReaderToolbarPortal } from './ReaderToolbarPortal';
 import { NOTE_WORKBENCH_COMMANDS, modeForNoteWorkbenchCommand, splitWidthPx, type NoteWorkbenchMode } from './noteWorkbench';
 import { useNoteWorkbench } from './useNoteWorkbench';
 import { useReaderDrawerLayout } from './useReaderDrawerLayout';
 import './reader-writing-layout.css';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { AnnotationColor, PaperDocument, PositionJson } from '../../core/types';
 import type { ObjectNavigationTarget } from '../../core/relations';
 import { ReaderDocumentPane } from './ReaderDocumentPane';
@@ -71,9 +70,12 @@ export function ReaderScene({
   const currentTranslatedFileId = preferredTranslatedFileId(paper, translatedFileId);
   const activeFileKind = fileMode === 'parallel' ? activeParallelFileKind : fileMode;
   const drawer = useReaderDrawerLayout();
+  const noteCreate = useRef<ReaderNoteCreateBridge>({ pending: false });
   const workbench = useNoteWorkbench(paper.paperId, drawer.available);
-  const writingExpanded = drawer.expanded && sidePanelOpen && sidePanelTab === 'notes';
-  const overlay = sidePanelOpen && drawer.compact;
+  const notesVisible = sidePanelOpen && sidePanelTab === 'notes';
+  const visibleNoteMode = notesVisible ? workbench.mode : 'reading';
+  const writingExpanded = visibleNoteMode === 'writing';
+  const overlay = sidePanelOpen && drawer.compact && visibleNoteMode !== 'floating';
   const mainHidden = writingExpanded || overlay;
   useReaderLayoutPosition(drawer.containerRef,
     JSON.stringify([paper.paperId, contentMode, fileMode, currentTranslatedFileId, requestedPage, focusedAnnotationId, zoom]),
@@ -84,13 +86,16 @@ export function ReaderScene({
   /* One command path for the entry button, the menu, Escape and the shortcut listener;
      the registry (src/core/shortcuts.ts on the shortcuts branch) registers NOTE_WORKBENCH_COMMAND_LIST
      and calls this same dispatcher, so no second key listener is added here. */
-  const applyNoteMode = (mode: NoteWorkbenchMode) => workbench.setMode(mode);
+  const applyNoteMode = (mode: NoteWorkbenchMode) => {
+    if (mode !== 'reading') openNotes();
+    workbench.setMode(mode);
+  };
   /* Escape leaves the wide mode and returns to the anchor the reader came from. */
   const exitNoteMode = () => workbench.restoreMode();
   const runWorkbenchCommand = (command: string) => {
     const mode = modeForNoteWorkbenchCommand(command);
     if (mode) { applyNoteMode(mode); return; }
-    if (command === NOTE_WORKBENCH_COMMANDS.toggle) applyNoteMode(workbench.mode === 'reading' ? workbench.prefs.wideMode : 'reading');
+    if (command === NOTE_WORKBENCH_COMMANDS.toggle) applyNoteMode(visibleNoteMode === 'reading' ? workbench.prefs.wideMode : 'reading');
   };
   useReaderWritingShortcuts(drawer.containerRef, runWorkbenchCommand);
   useEffect(() => {
@@ -109,7 +114,8 @@ export function ReaderScene({
     if (workbench.mode !== 'split') return;
     drawer.changeWidth(splitWidthPx(drawer.available, workbench.prefs.splitRatio));
   }, [workbench.mode, workbench.prefs.splitRatio, drawer.available]);
-  const floatingActive = workbench.mode === 'floating';
+  const resizeMaximum = visibleNoteMode === 'split' ? splitWidthPx(drawer.available, 1) : drawer.maximum;
+  const floatingActive = visibleNoteMode === 'floating';
   const floatingRect = workbench.prefs.floating;
   const floatingStyle = floatingActive ? ({
     '--floating-note-left': `${floatingRect.x * 100}%`,
@@ -282,23 +288,24 @@ export function ReaderScene({
       onDeleteAnnotation={onDeleteAnnotation}
     >
       <section className="scene active reader-scene-shell" data-reader-layer="root">
-        <div ref={drawer.containerRef} className={`reader-workspace-shell note-mode-${workbench.mode} ${sidePanelOpen ? 'workspace-open' : ''} ${writingExpanded ? 'writing-expanded' : ''} ${overlay ? 'drawer-overlay' : ''}`}
-          data-note-mode={workbench.mode} data-note-requested-mode={workbench.requestedMode} data-note-temporary={workbench.temporary ? 'true' : 'false'} style={{ ...readerLayoutStyle, ...floatingStyle }}
+        <div ref={drawer.containerRef} className={`reader-workspace-shell note-mode-${visibleNoteMode} ${sidePanelOpen ? 'workspace-open' : ''} ${writingExpanded ? 'writing-expanded' : ''} ${overlay ? 'drawer-overlay' : ''}`}
+          data-note-mode={visibleNoteMode} data-note-requested-mode={workbench.requestedMode} data-note-temporary={workbench.temporary ? 'true' : 'false'} style={{ ...readerLayoutStyle, ...floatingStyle }}
           onKeyDown={event => {
             if (event.key === 'Escape' && !event.defaultPrevented && !event.nativeEvent.isComposing && writingExpanded && !drawer.compact && !(event.target as HTMLElement).closest('[role="dialog"], dialog')) {
               event.preventDefault(); exitNoteMode();
             }
           }}>
-          <ReaderToolbarPortal compactLabel="笔记工作台">
             <ReaderNoteWorkbenchMenu
-              mode={workbench.mode}
-              temporary={workbench.temporary}
-              onToggle={() => runWorkbenchCommand(NOTE_WORKBENCH_COMMANDS.toggle)}
+              mode={visibleNoteMode}
+              temporary={notesVisible && workbench.temporary}
+              onToggle={() => visibleNoteMode === 'writing' ? exitNoteMode() : runWorkbenchCommand(NOTE_WORKBENCH_COMMANDS.toggle)}
               onSelectMode={applyNoteMode}
-              onNewNote={onCreateNote}
-              onOpenHistory={() => applyNoteMode('writing')}
+              onNewNote={() => { if (noteCreate.current.create) noteCreate.current.create(); else noteCreate.current.pending = true; applyNoteMode(visibleNoteMode === 'reading' ? workbench.prefs.wideMode : visibleNoteMode); }}
+              docked={sidePanelOpen && !floatingActive && !writingExpanded}
+              overlay={overlay}
+              drawerWidth={drawer.width}
+              resize={sidePanelOpen && !floatingActive && !writingExpanded && !overlay ? { width: drawer.width, maximum: resizeMaximum, onChange: next => { drawer.changeWidth(next); workbench.setSplitRatio(next / Math.max(1, drawer.available)); } } : undefined}
             />
-          </ReaderToolbarPortal>
           {floatingActive && (
             <div className="reader-note-floating-controls">
               <button type="button" className="reader-note-floating-drag" aria-label="拖动悬浮速记卡（方向键微调，Escape 回到分屏）" onPointerDown={startFloatingDrag} onKeyDown={nudgeFloating}>
@@ -375,10 +382,12 @@ export function ReaderScene({
             </div>
           </div>
           </ReaderNoteRequests.Provider></ReaderNoteActivity.Provider>
-          <ReaderSideDrawer
+          <ReaderNoteCreateAction.Provider value={noteCreate.current}><ReaderSideDrawer
             open={sidePanelOpen}
+            noteMode={workbench.mode}
+            onSelectNoteMode={applyNoteMode}
             width={drawer.width}
-            maximumWidth={drawer.maximum}
+            maximumWidth={resizeMaximum}
             expanded={writingExpanded}
             compact={drawer.compact}
             onExpandedChange={drawer.setExpanded}
@@ -395,8 +404,8 @@ export function ReaderScene({
             aiThreadContexts={aiThreadContexts}
             focusedAnnotationId={focusedAnnotationId}
             noteDraftPatch={noteDraftPatch}
-            onSidePanelOpenChange={onSidePanelOpenChange}
-            onSidePanelTabChange={onSidePanelTabChange}
+            onSidePanelOpenChange={open => { onSidePanelOpenChange(open); if (!open && sidePanelTab === 'notes') workbench.setMode('reading'); }}
+            onSidePanelTabChange={tab => { onSidePanelTabChange(tab); if (tab === 'notes' && workbench.mode === 'reading') workbench.setMode(workbench.prefs.wideMode); }}
             onNoteDraftPatchConsumed={onNoteDraftPatchConsumed}
             onNoteSave={onNoteSave}
             onCreateNote={onCreateNote}
@@ -408,7 +417,7 @@ export function ReaderScene({
             onAppendAnnotationToNote={onAppendAnnotationToNote}
             onNavigateAnnotation={navigateAnnotationId}
             onNavigateRelationTarget={navigateRelationTarget}
-          />
+          /></ReaderNoteCreateAction.Provider>
         </div>
       </section>
     </ReaderProvider>

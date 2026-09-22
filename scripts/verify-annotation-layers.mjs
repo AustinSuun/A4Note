@@ -171,7 +171,7 @@ function layersFixture() {
   return { h, native, papers, statuses, step, render, select: (id) => { selected = id; }, revisionValue: () => revision };
 }
 
-// ---------- layer state: load, study records, visibility loads, locks ----------
+// ---------- layer state: load, generic layers, visibility loads, locks ----------
 {
   const f = layersFixture();
   seedRow(f.native.disk, 'old-1', 'one', 'layer-default-one');
@@ -182,22 +182,22 @@ function layersFixture() {
   check([api.activeLayer.id, api.visibleLayerIds, api.writeLayerId()], ['layer-default-one', ['layer-default-one'], 'layer-default-one'], 'the default layer is active, visible and writable');
   check(api.layers[0].annotationCount, 2, 'counts come from the native aggregate');
 
-  const attempt = await api.createLayer({ kind: 'attempt' });
+  const created = await api.createLayer({ kind: 'layer' });
   api = await f.step();
-  ok(attempt && attempt.kind === 'attempt' && attempt.name.startsWith('第 1 次学习'), 'a study record is an attempt layer with an automatic name', attempt);
-  check([api.activeLayer.id, api.visibleLayerIds], [attempt.id, [attempt.id]], 'the new study record is active and the only visible layer (clean view)');
-  check([api.isLayerVisible('layer-default-one'), f.papers.get('one').annotations.length], [false, 2], 'earlier marks stay in memory but are no longer visible');
-  check(api.writeLayerId(), attempt.id, 'new marks would go to the study record');
+  ok(created && created.kind === 'layer' && created.name === '图层 2', 'a new generic layer gets the next concise layer name', created);
+  check([api.activeLayer.id, api.visibleLayerIds], [created.id, ['layer-default-one', created.id]], 'a new layer becomes active without hiding existing visible layers');
+  check([api.isLayerVisible('layer-default-one'), f.papers.get('one').annotations.length], [true, 2], 'earlier marks stay visible and in memory');
+  check(api.writeLayerId(), created.id, 'new marks would go to the new layer');
 
-  const second = await api.createLayer({ kind: 'attempt' });
-  const third = await api.createLayer({ kind: 'attempt' });
+  const second = await api.createLayer({ kind: 'layer' });
+  const third = await api.createLayer({ kind: 'layer' });
   api = await f.step();
-  ok(second.name.startsWith('第 2 次学习') && third.name.startsWith('第 3 次学习'), 'consecutive study records number themselves', [second.name, third.name]);
+  ok(second.name === '图层 3' && third.name === '图层 4', 'consecutive generic layers number themselves', [second.name, third.name]);
   check(api.layers.map((layer) => layer.sortOrder), [0, 1, 2, 3], 'creation order is stable');
 
   await api.setLayerVisible('layer-default-one', true);
   api = await f.step();
-  check(api.visibleLayerIds, [third.id, 'layer-default-one'], 'showing a layer keeps the active layer visible');
+  check(api.visibleLayerIds, ['layer-default-one', created.id, second.id, third.id], 'showing an already visible layer keeps the complete visible set');
   check(f.native.calls.filter((call) => call[0] === 'listAnnotations').length, 0, 'layers whose rows were in the startup payload are not fetched again');
   check(f.papers.get('one').annotations.length, 2, 'no duplicate rows after showing an already loaded layer');
 
@@ -363,14 +363,19 @@ function layersFixture() {
   assert.match(toolbar, /<AnnotationLayerPicker \/>/);
   const list = fs.readFileSync('src/features/reader/AnnotationListPanel.tsx', 'utf8');
   assert.match(list, /annotation-list-layer-group/);
-  assert.match(list, /AnnotationLayerManager layers=\{layers\}/);
+  assert.doesNotMatch(list, /AnnotationLayerManager|managerOpen|管理图层/);
   const picker = fs.readFileSync('src/features/reader/AnnotationLayerPicker.tsx', 'utf8');
   assert.match(picker, /role="radiogroup"/);
   assert.match(picker, /aria-live="polite"/);
-  const manager = fs.readFileSync('src/features/reader/AnnotationLayerManager.tsx', 'utf8');
-  assert.match(manager, /role="alertdialog"/);
-  assert.match(manager, /restoreFocus\(trigger, section\.current\)/);
-  checks += 10;
+  assert.match(picker, /> 新图层<\/button>/);
+  assert.match(picker, /onDoubleClick=.*setRenaming/);
+  assert.doesNotMatch(picker, /新建学习记录|管理图层|annotation-layer-kind|annotation-layer-count|LockOpen/);
+  const popover = fs.readFileSync('src/features/reader/ReaderToolPopover.tsx', 'utf8');
+  assert.doesNotMatch(popover, /关闭标注设置|>×<\/button>/);
+  const nativeLayers = fs.readFileSync('src-tauri/src/annotation_layers.rs', 'utf8');
+  assert.match(nativeLayers, /DEFAULT_LAYER_NAME: &str = "图层 1"/);
+  assert.match(nativeLayers, /kind = 'default' AND name = \?3/);
+  checks += 14;
 }
 
 console.log(`PASS ${checks} annotation layer assertions (simulated React lifecycle + in-memory native double, not desktop E2E).`);

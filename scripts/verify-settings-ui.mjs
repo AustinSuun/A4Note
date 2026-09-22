@@ -225,7 +225,8 @@ async function main() {
 
   // ---------------------------------------------------------------- 1. structure
   const nav = await evaluate(`Array.from(document.querySelectorAll('.settings-section-nav button')).map(b => ({ label: b.textContent.trim(), current: b.getAttribute('aria-current'), tabIndex: b.tabIndex }))`);
-  ok(nav.length === 7, '设置分类共 7 个', nav.length);
+  ok(nav.length === 8, '设置分类共 8 个（含快捷键）', nav.length);
+  ok(nav.some(item => item.label.includes('快捷键')), '快捷键分类可发现');
   ok(nav.filter(item => item.current === 'page').length === 1, '只有一个分类带 aria-current="page"', nav.map(item => item.current));
   ok(nav.filter(item => item.tabIndex === 0).length === 1, '分类导航使用 roving tabindex（仅当前项可 Tab 进入）', nav.map(item => item.tabIndex));
   ok(new Set(nav.map(item => item.label)).size === nav.length, '分类名称互不重复', nav.map(item => item.label));

@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 /** Keep tool settings outside the horizontally scrolling toolbar and clipped title bar. */
-export function ReaderToolPopover({ children, onClose, title = '标注设置' }: { children: ReactNode; onClose: () => void; title?: string }) {
+export function ReaderToolPopover({ children, onClose, title = '标注设置', headerAction }: { children: ReactNode; onClose: () => void; title?: string; headerAction?: ReactNode }) {
   const anchor = useRef<HTMLSpanElement>(null);
   const popup = useRef<HTMLDivElement>(null);
   const close = useRef(onClose); close.current = onClose;
@@ -50,7 +50,7 @@ export function ReaderToolPopover({ children, onClose, title = '标注设置' }:
     style={{ left: position.left, top: position.top, boxSizing: 'border-box', maxWidth: position.ready ? position.maxWidth : undefined, maxHeight: position.ready ? position.maxHeight : undefined, visibility: position.ready ? 'visible' : 'hidden' }}
     onPointerDown={event => event.stopPropagation()} onMouseDown={event => event.stopPropagation()} onDoubleClick={event => event.stopPropagation()}
     onKeyDown={event => { if (event.key === 'Escape' && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); anchor.current?.parentElement?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true }); close.current(); } }}>
-    <div className="reader-tool-popover-heading"><strong>{title}</strong><button type="button" aria-label="关闭标注设置" onClick={() => { anchor.current?.parentElement?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true }); close.current(); }}>×</button></div>
+    <div className="reader-tool-popover-heading"><strong>{title}</strong>{headerAction}</div>
     {children}
   </div>, document.body)}</>;
 }

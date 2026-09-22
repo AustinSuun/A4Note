@@ -1,10 +1,15 @@
 .tb-titlebar-actions { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; width: 100%; overflow: hidden; }
-/* Only the real controls opt out of the titlebar drag region; the blank strip between
-   them must stay draggable so the window can still be moved. */
-.tb-titlebar-actions button, .tb-titlebar-actions .tb-stage-nav { -webkit-app-region: no-drag; }
+/* Window dragging is the JS gesture in src/workbench/windowTitlebarGestures.ts, not CSS
+   app regions (WebView2 ignores -webkit-app-region). Real controls opt out through
+   native interactive elements or data-window-no-drag on the control surface; the blank
+   strip between the stage switch and the primary button must stay a plain container so
+   the window can still be moved from it. */
 .workbench-topbar:has(.tb-titlebar-actions) > .workbench-breadcrumb { flex: 0 1 auto; }
 .workbench-topbar > .workbench-document-controls:has(.tb-titlebar-actions) { flex: 1 1 auto; min-width: 0; }
-.tb-titlebar-actions > .tb-stage-nav { margin-right: auto; }
+/* In the titlebar the nav must not grow into the blank strip: it keeps the switch's own
+   width, may shrink (min-width: 0 + overflow-x: auto from task-stage-views.css) in
+   narrow windows, and the strip after it belongs to the draggable container. */
+.tb-titlebar-actions > .tb-stage-nav { flex: 0 1 auto; margin-right: auto; }
 @media (max-width: 1050px) { .tb-titlebar-actions > .tb-titlebar-project { display: none; } }
 .tb-titlebar-actions button { flex: 0 0 auto; min-height: 30px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--surface); font: inherit; font-size: var(--ui-control-font-size, 14px); white-space: nowrap; cursor: pointer; }
 .tb-titlebar-actions button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }

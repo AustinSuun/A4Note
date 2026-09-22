@@ -14,13 +14,15 @@ export type PdfPageViewProps = {
   textToolsUnavailable: boolean;
   annotationLayer: ReactNode;
   commentPopover: CommentPopover | null;
-  eraserPreview: { x: number; y: number; size: number; shape: ReaderToolSettings['eraserShape'] } | null;
+  /** Center uses page percentages; diameter remains a local CSS length. */
+  eraserPreview: { xPercent: number; yPercent: number; size: number; shape: ReaderToolSettings['eraserShape'] } | null;
   pageHandlers: {
     onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
     onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
     onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
     onPointerCancel: (event: PointerEvent<HTMLDivElement>) => void;
     onLostPointerCapture: (event: PointerEvent<HTMLDivElement>) => void;
+    onPointerLeave: (event: PointerEvent<HTMLDivElement>) => void;
     onMouseDown: (event: MouseEvent<HTMLDivElement>) => void;
     onMouseMove: (event: MouseEvent<HTMLDivElement>) => void;
     onMouseUp: () => void;
@@ -210,7 +212,7 @@ export function PdfPageView({
         {eraserPreview && (
           <div
             className={`eraser-cursor-preview ${eraserPreview.shape}`}
-            style={{ left: eraserPreview.x, top: eraserPreview.y, width: eraserPreview.size, height: eraserPreview.size }}
+            style={{ left: `${eraserPreview.xPercent}%`, top: `${eraserPreview.yPercent}%`, width: eraserPreview.size, height: eraserPreview.size }}
             aria-hidden="true"
           />
         )}

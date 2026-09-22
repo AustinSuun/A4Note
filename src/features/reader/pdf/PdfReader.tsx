@@ -9,7 +9,7 @@ import { pdfLoadErrorMessage } from './pdfLoadError';
 import { capturePdfCenterAnchor, restorePdfPageAnchor } from './pdfZoomAnchor';
 import { usePdfPan } from './usePdfPan';
 import { usePdfShapeDraft } from './usePdfShapeDraft';
-import { pdfCoordinateLayer } from './pdfCoordinates';
+import { pdfCoordinateLayer, pdfPointerCoordinates } from './pdfCoordinates';
 import { eraseInkPosition } from './pdfInk';
 import type { Annotation, AnnotationColor, AnnotationDraft, AnnotationType, PositionJson, ReaderTool } from '../../../core/types';
 import { isTauriRuntime, loadPaperFileBytes } from '../../../platform/nativeApi';
@@ -18,6 +18,8 @@ import { zh } from '../../../ui/zh';
 import { annotationLabel, buildAnnotationDraft } from './pdfAnnotationHelpers';
 import type { PdfDocumentSource } from './pdfSource';
 import { AnnotationOverlay } from './AnnotationOverlay';
+import { createOptimisticAnnotationPosition, discardOptimisticAnnotationPosition, reconcileOptimisticAnnotationPosition } from './annotationPositionOptimism';
+import type { OptimisticAnnotationPosition } from './annotationPositionOptimism';
 import {
   clamp,
   clonePositionJson,
@@ -31,7 +33,7 @@ import { TEXT_EDGE_MARGIN_PERCENT, TEXT_FONT_UNIT_PAGE, clampTextBoxToPage, perc
 import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
 import { SELECTION_PREVIEW_COLOR } from './pdfHighlightAppearance';
-import { boundingBox, clipRangeToNode, dominantTextOrientation, mergeRectsIntoLineSegments, quoteFromTextItemSelections, textItemSelectionsFromRange, textSelectionFromDrag, textSelectionPageElements, textSelectionRectsFromOffsets, withSegmentOrientation } from './pdfSelection';
+import { boundingBox, clipRangeToNode, dominantTextOrientation, mergeRectsIntoLineSegments, quoteFromTextItemSelections, textItemSelectionsFromRange, textRunExtentMeasurer, textSelectionFromDrag, textSelectionPageElements, textSelectionRectsFromLayer, withSegmentOrientation } from './pdfSelection';
 import type {
   AnnotationMarkModel,
   AnnotationResize,
@@ -131,6 +133,8 @@ export default function PdfReader({
   const [stickyDrag, setStickyDrag] = useState<StickyDrag | null>(null);
   const [annotationResize, setAnnotationResize] = useState<AnnotationResize | null>(null);
   const [stickyDragPreview, setStickyDragPreview] = useState<StickyDragPreview | null>(null);
+  const [optimisticAnnotationPositions, setOptimisticAnnotationPositions] = useState<Map<string, OptimisticAnnotationPosition>>(() => new Map());
+  const optimisticAnnotationRevisionRef = useRef(0);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [visiblePage, setVisiblePage] = useState(1);
   const [focusedAnnotationId, setFocusedAnnotationId] = useState<string | null>(null);
@@ -138,7 +142,12 @@ export default function PdfReader({
   // gesture the existing layout is painted through a temporary transform;
   // this keeps PDF.js from starting a render for every wheel tick.
   const displayZoom = zoom;
-  const [eraserCursor, setEraserCursor] = useState<{ page: number; x: number; y: number } | null>(null);
+  const [eraserCursor, setEraserCursor] = useState<{ page: number; xPercent: number; yPercent: number } | null>(null);
+  // Pointer moves can arrive faster than native persistence and React can render the updated
+  // annotation. Keep cumulative geometry so each sample clips the previous sample's result.
+  const eraserPositionsRef = useRef(new Map<string, PositionJson | null>());
+  const eraserPointerIdRef = useRef<number | null>(null);
+  const eraserPointerTargetRef = useRef<HTMLDivElement | null>(null);
   const zoomFrameRef = useRef<number | null>(null);
   const zoomTimerRef = useRef<number | null>(null);
   const zoomGestureAnchorRef = useRef<PdfZoomAnchor | null>(null);
@@ -174,14 +183,32 @@ export default function PdfReader({
     [activeFileId, activeResourceId, annotations],
   );
   const displayedAnnotations = useMemo(
-    () =>
-      stickyDragPreview
-        ? currentFileAnnotations.map((annotation) =>
-            annotation.id === stickyDragPreview.annotationId ? { ...annotation, positionJson: stickyDragPreview.positionJson } : annotation,
-          )
-        : currentFileAnnotations,
-    [currentFileAnnotations, stickyDragPreview],
+    () => currentFileAnnotations.map((annotation) => {
+      const optimistic = optimisticAnnotationPositions.get(annotation.id);
+      const previewPosition = stickyDragPreview?.annotationId === annotation.id
+        ? stickyDragPreview.positionJson
+        : optimistic?.positionJson;
+      return previewPosition ? { ...annotation, positionJson: previewPosition } : annotation;
+    }),
+    [currentFileAnnotations, optimisticAnnotationPositions, stickyDragPreview],
   );
+
+  useEffect(() => {
+    setOptimisticAnnotationPositions((current) => {
+      if (!current.size) return current;
+      const committedById = new Map(currentFileAnnotations.map((annotation) => [annotation.id, annotation.positionJson]));
+      let changed = false;
+      const next = new Map(current);
+      for (const [annotationId, optimistic] of current) {
+        const committed = committedById.get(annotationId);
+        if (!committed || !reconcileOptimisticAnnotationPosition(optimistic, committed)) {
+          next.delete(annotationId);
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [currentFileAnnotations]);
   const textSelectionToolsActive = activeTool === 'highlight' || activeTool === 'underline';
   const shapeToolsActive = activeTool === 'area' || activeTool === 'rect' || activeTool === 'arrow';
   const selectableText = activeTool === 'cursor' || textSelectionToolsActive;
@@ -303,6 +330,15 @@ export default function PdfReader({
     inkPointerTargetRef.current = null;
     inkDraftRef.current = null;
     setInkDraft(null);
+    eraserPositionsRef.current.clear();
+    const eraserPointerId = eraserPointerIdRef.current;
+    const eraserPointerTarget = eraserPointerTargetRef.current;
+    if (eraserPointerId !== null && eraserPointerTarget?.hasPointerCapture(eraserPointerId)) {
+      eraserPointerTarget.releasePointerCapture(eraserPointerId);
+    }
+    eraserPointerIdRef.current = null;
+    eraserPointerTargetRef.current = null;
+    setEraserCursor(null);
     setCommentPopover(null);
     setInlineText(null);
     inlineEditorRef.current = null;
@@ -310,6 +346,8 @@ export default function PdfReader({
     setStickyDrag(null);
     setAnnotationResize(null);
     setStickyDragPreview(null);
+    setOptimisticAnnotationPositions(new Map());
+    optimisticAnnotationRevisionRef.current = 0;
   }, [source.key]);
 
   useLayoutEffect(() => {
@@ -332,6 +370,14 @@ export default function PdfReader({
   useEffect(() => {
     if (activeTool !== 'eraser') {
       setEraserCursor(null);
+      eraserPositionsRef.current.clear();
+      const pointerId = eraserPointerIdRef.current;
+      const pointerTarget = eraserPointerTargetRef.current;
+      eraserPointerIdRef.current = null;
+      eraserPointerTargetRef.current = null;
+      if (pointerId !== null && pointerTarget?.hasPointerCapture(pointerId)) {
+        pointerTarget.releasePointerCapture(pointerId);
+      }
     }
     if (activeTool !== 'ink') {
       const pointerId = inkPointerIdRef.current;
@@ -344,6 +390,17 @@ export default function PdfReader({
         pointerTarget.releasePointerCapture(pointerId);
       }
     }
+  }, [activeTool]);
+
+  useEffect(() => {
+    if (activeTool !== 'eraser') return;
+    const hideOutsideWindow = () => setEraserCursor(null);
+    window.addEventListener('blur', hideOutsideWindow);
+    document.documentElement.addEventListener('mouseleave', hideOutsideWindow);
+    return () => {
+      window.removeEventListener('blur', hideOutsideWindow);
+      document.documentElement.removeEventListener('mouseleave', hideOutsideWindow);
+    };
   }, [activeTool]);
 
   useEffect(() => {
@@ -672,7 +729,7 @@ export default function PdfReader({
   };
 
   const beginStickyDrag = (annotationId: string, pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
-    const annotation = currentFileAnnotations.find((item) => item.id === annotationId);
+    const annotation = displayedAnnotations.find((item) => item.id === annotationId);
     if (!annotation || (annotation.type !== 'comment' && annotation.type !== 'text' && annotation.type !== 'rect')) return;
     event.preventDefault();
     event.stopPropagation();
@@ -708,7 +765,7 @@ export default function PdfReader({
     handle: AnnotationResizeHandle,
     event: MouseEvent<HTMLElement>,
   ) => {
-    const annotation = currentFileAnnotations.find((item) => item.id === annotationId);
+    const annotation = displayedAnnotations.find((item) => item.id === annotationId);
     if (!annotation || (annotation.type !== 'rect' && annotation.type !== 'text')) return;
     event.preventDefault();
     event.stopPropagation();
@@ -751,7 +808,7 @@ export default function PdfReader({
 
   const updateStickyDrag = (pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
     if (annotationResize?.page === pageNumber) {
-      const annotation = currentFileAnnotations.find((item) => item.id === annotationResize.annotationId);
+      const annotation = displayedAnnotations.find((item) => item.id === annotationResize.annotationId);
       if (!annotation) return;
       const point = pointFromEvent(event);
       if (!point) return;
@@ -763,7 +820,7 @@ export default function PdfReader({
       return;
     }
     if (!stickyDrag || stickyDrag.page !== pageNumber) return;
-    const annotation = currentFileAnnotations.find((item) => item.id === stickyDrag.annotationId);
+    const annotation = displayedAnnotations.find((item) => item.id === stickyDrag.annotationId);
     if (!annotation) return;
     const point = pointFromEvent(event);
     if (!point) return;
@@ -780,15 +837,39 @@ export default function PdfReader({
     const base = annotationResize?.positionJson ?? stickyDrag?.positionJson ?? null;
     setStickyDrag(null);
     setAnnotationResize(null);
-    setStickyDragPreview(null);
-    if (!preview) return;
+    if (!preview) {
+      setStickyDragPreview(null);
+      return;
+    }
     // A plain click on a box or a handle is not a move: persisting it would only add history noise and,
     // for auto-sized text boxes, silently freeze their width.
     const moved = !base || (['x', 'y', 'width', 'height'] as const).some(
       (key) => Math.abs(numberValue(preview.positionJson[key], 0) - numberValue(base[key], 0)) > 0.02,
     );
-    if (!moved) return;
-    void saves.run('移动标注', async () => onUpdateAnnotationPosition(preview.annotationId, preview.positionJson), undefined, preview.annotationId);
+    if (!moved) {
+      setStickyDragPreview(null);
+      return;
+    }
+    const optimistic = createOptimisticAnnotationPosition(
+      ++optimisticAnnotationRevisionRef.current,
+      clonePositionJson(preview.positionJson),
+    );
+    setOptimisticAnnotationPositions((current) => new Map(current).set(preview.annotationId, optimistic));
+    // These state updates are batched: the durable optimistic entry replaces the pointer preview atomically.
+    setStickyDragPreview(null);
+    const discard = () => setOptimisticAnnotationPositions((current) => {
+      const existing = current.get(preview.annotationId);
+      if (discardOptimisticAnnotationPosition(existing, optimistic.revision) === existing) return current;
+      const next = new Map(current);
+      next.delete(preview.annotationId);
+      return next;
+    });
+    void saves.run(
+      '移动标注',
+      async () => onUpdateAnnotationPosition(preview.annotationId, optimistic.positionJson),
+      discard,
+      preview.annotationId,
+    );
   };
 
   const finishTextSelection = async (pageNumber: number, container: HTMLElement, overrideTool?: ReaderTool) => {
@@ -815,7 +896,8 @@ export default function PdfReader({
 
   const textSelectionDraft = (pageElement: HTMLElement, range: Range, tool: AnnotationType) => {
     const pageNumber = Number(pageElement.dataset.page);
-    const textLayer = pdfCoordinateLayer(pageElement).querySelector('.pdf-text-layer');
+    const layer = pdfCoordinateLayer(pageElement);
+    const textLayer = layer.querySelector('.pdf-text-layer');
     if (!textLayer || !Number.isFinite(pageNumber) || !pageElement.getBoundingClientRect().width) return null;
     const pageRange = clipRangeToNode(range, textLayer);
     const page = pages.find((candidate) => candidate.pageNumber === pageNumber);
@@ -825,20 +907,19 @@ export default function PdfReader({
       ? quoteFromTextItemSelections(page.textItems, textItemSelections)
       : pageRange.toString().replace(/\s+/g, ' ').trim();
     if (!selectionText) return null;
-    const preciseRects = page ? textSelectionRectsFromOffsets(page.textItems, textItemSelections) : [];
-    // Use the selected glyphs' live client rects in this page's rendering layer.
-    // Only fall back when the browser provides no rectangles at all, never when
-    // it reports invalid/out-of-page geometry that the filter rejects.
+    // Along each run the band follows the live glyphs of the run-fitted text layer (the same
+    // boxes the caret and hit testing use, so the start and end sit exactly under the pointer at
+    // every zoom, scroll offset and sidebar width); across the run it takes the pdf.js run box,
+    // which trims whitespace at both ends and keeps one height per font size so multi-line
+    // highlights/underlines stay even instead of following ragged substitute-font line boxes.
+    const preciseRects = page ? textSelectionRectsFromLayer(page.textItems, textItemSelections, layer.getBoundingClientRect(), textRunExtentMeasurer(textLayer)) : [];
+    // Only fall back to the browser's own selection rects when the run boxes yield nothing at all,
+    // never when they report invalid/out-of-page geometry that the filter rejects.
     const clientRects = Array.from(pageRange.getClientRects());
     const liveRects = clientRects
       .map((rect) => normalizeClientRect(rect, pageElement))
       .filter((rect): rect is RectBox => rect !== null && rect.width > 0.12 && rect.height > 0.08);
     const textOrientation = page ? dominantTextOrientation(page.textItems, textItemSelections) : 0;
-    // The browser's live rects follow the substitute font of the transparent text layer:
-    // full lines overflow past the painted glyphs, ends land unevenly and line boxes vary
-    // in height, which made multi-line highlights/underlines ragged and uneven. The run
-    // boxes sliced by character offsets follow the PDF glyphs on every orientation, trim
-    // whitespace at both ends and keep one height per font size, so bands and rules stay even.
     const rects = preciseRects.length ? preciseRects : liveRects;
     if (!rects.length) return null;
     // Merge along the run direction and keep it on each segment so highlight/underline marks
@@ -920,61 +1001,65 @@ export default function PdfReader({
     await saveAnnotationDraft(draft);
   };
 
-  function eraseInkAtPointer(pageNumber: number, event: MouseEvent<HTMLDivElement>) {
+  function eraseInkAtPointer(pageNumber: number, event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>) {
     if (activeTool !== 'eraser') return;
-    const rect = pdfCoordinateLayer(event.currentTarget).getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
     // pointFromEvent clamps into 0..100, which would keep erasing along the page edge once the
     // cursor leaves the page. The eraser needs the raw position so it can simply stop instead.
     event.preventDefault();
     event.stopPropagation();
-    const point = {
-      x: ((event.clientX - rect.left) / rect.width) * 100,
-      y: ((event.clientY - rect.top) / rect.height) * 100,
-    };
-    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
-    const radiusX = Math.max((toolSettings.eraserSize / rect.width) * 50, 0.05);
-    const radiusY = Math.max((toolSettings.eraserSize / rect.height) * 50, 0.05);
-    // Outside the page (plus the eraser radius) nothing can be touched, so do not erase at all.
-    if (point.x < -radiusX || point.x > 100 + radiusX || point.y < -radiusY || point.y > 100 + radiusY) return;
+    const pointer = pdfPointerCoordinates(event.currentTarget, event.clientX, event.clientY);
+    // A hidden off-page preview must never leave a still-active eraser footprint at the page edge.
+    if (!pointer?.inside) return;
+    const { layoutWidth, layoutHeight } = pointer;
+    const point = { x: pointer.xPercent, y: pointer.yPercent };
+    const radiusX = Math.max((toolSettings.eraserSize / layoutWidth) * 50, 0.05);
+    const radiusY = Math.max((toolSettings.eraserSize / layoutHeight) * 50, 0.05);
 
     for (const annotation of currentFileAnnotations) {
       if (annotation.page !== pageNumber || annotation.type !== 'ink') continue;
-      const nextPosition = eraseInkPosition(annotation.positionJson, point, radiusX, radiusY, toolSettings.eraserShape);
-      if (nextPosition === annotation.positionJson) continue;
+      const cached = eraserPositionsRef.current.get(annotation.id);
+      if (cached === null) continue;
+      const previousPosition = cached ?? annotation.positionJson;
+      const nextPosition = eraseInkPosition(previousPosition, point, radiusX, radiusY, toolSettings.eraserShape);
+      if (nextPosition === previousPosition) continue;
+      eraserPositionsRef.current.set(annotation.id, nextPosition);
       if (nextPosition) {
-        void saves.run('擦除笔迹', async () => onUpdateAnnotationPosition(annotation.id, nextPosition), undefined, annotation.id);
+        void saves.run('擦除笔迹', async () => onUpdateAnnotationPosition(annotation.id, nextPosition), undefined, annotation.id).then((saved) => {
+          if (saved && eraserPositionsRef.current.get(annotation.id) === nextPosition) eraserPositionsRef.current.delete(annotation.id);
+        });
       } else {
-        void saves.run('删除笔迹', async () => onDeleteAnnotation(annotation.id), undefined, annotation.id);
+        void saves.run('删除笔迹', async () => onDeleteAnnotation(annotation.id), undefined, annotation.id).then((saved) => {
+          if (saved && eraserPositionsRef.current.get(annotation.id) === null) eraserPositionsRef.current.delete(annotation.id);
+        });
       }
     }
   }
 
-  function updateEraserCursor(pageNumber: number, event: MouseEvent<HTMLDivElement>) {
+  function updateEraserCursor(pageNumber: number, event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>) {
     if (activeTool !== 'eraser') {
       setEraserCursor(null);
       return;
     }
-    const layer = pdfCoordinateLayer(event.currentTarget as HTMLElement);
-    const rect = layer.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) {
-      return;
-    }
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    if (x < -rect.width * 0.15 || x > rect.width * 1.15 || y < -rect.height * 0.15 || y > rect.height * 1.15) {
-      if (x < -rect.width * 0.5 || x > rect.width * 1.5 || y < -rect.height * 0.5 || y > rect.height * 1.5) {
-        setEraserCursor(null);
-      }
+    const pointer = pdfPointerCoordinates(event.currentTarget, event.clientX, event.clientY);
+    // Never retain an old in-page ring while the real pointer is over an adjacent panel/window.
+    if (!pointer?.inside) {
+      setEraserCursor(null);
       return;
     }
     setEraserCursor({
       page: pageNumber,
-      // Do not clamp: a clamped ring slides along the page border while the real cursor is
-      // elsewhere, which reads as the eraser drifting away from the mouse.
-      x,
-      y,
+      xPercent: pointer.xPercent,
+      yPercent: pointer.yPercent,
     });
+  }
+
+  function finishEraserPointer(event: PointerEvent<HTMLDivElement>) {
+    if (eraserPointerIdRef.current !== event.pointerId) return;
+    const target = eraserPointerTargetRef.current;
+    eraserPointerIdRef.current = null;
+    eraserPointerTargetRef.current = null;
+    if (target?.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
+    if (event.type === 'pointercancel' || event.type === 'lostpointercapture') setEraserCursor(null);
   }
 
   const createTextAnnotationAtPointer = (pageNumber: number, event: MouseEvent<HTMLDivElement>) => {
@@ -1238,43 +1323,49 @@ export default function PdfReader({
   const pageHandlers = (pageNumber: number) => ({
     onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') beginInkStroke(pageNumber, event);
+      else if (activeTool === 'eraser' && event.button === 0) {
+        event.preventDefault();
+        eraserPointerIdRef.current = event.pointerId;
+        eraserPointerTargetRef.current = event.currentTarget;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        updateEraserCursor(pageNumber, event);
+        eraseInkAtPointer(pageNumber, event);
+      }
     },
     onPointerMove: (event: PointerEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') updateInkStroke(pageNumber, event);
+      else if (activeTool === 'eraser') {
+        updateEraserCursor(pageNumber, event);
+        if (eraserPointerIdRef.current === event.pointerId && (event.buttons & 1) === 1) eraseInkAtPointer(pageNumber, event);
+      }
     },
     onPointerUp: (event: PointerEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') finishInkPointer(event);
+      else if (activeTool === 'eraser') finishEraserPointer(event);
     },
     onPointerCancel: (event: PointerEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') finishInkPointer(event);
+      else if (activeTool === 'eraser') finishEraserPointer(event);
     },
     onLostPointerCapture: (event: PointerEvent<HTMLDivElement>) => {
       if (activeTool === 'ink') finishInkPointer(event);
+      else if (activeTool === 'eraser') finishEraserPointer(event);
+    },
+    onPointerLeave: () => {
+      if (activeTool === 'eraser' && eraserPointerIdRef.current === null) setEraserCursor(null);
     },
     onMouseDown: (event: MouseEvent<HTMLDivElement>) => {
-      if (activeTool === 'ink') return;
+      if (activeTool === 'ink' || activeTool === 'eraser') return;
       if (stickyDrag) return;
       if (textSelectionToolsActive && !pageHasSelectableText(pageNumber)) {
         showTextLayerHint();
-        return;
-      }
-      if (activeTool === 'eraser') {
-        updateEraserCursor(pageNumber, event);
-        eraseInkAtPointer(pageNumber, event);
         return;
       }
       if (activeTool === 'comment') return;
       beginAnnotationDrag(pageNumber, event);
     },
     onMouseMove: (event: MouseEvent<HTMLDivElement>) => {
-      if (activeTool === 'ink') return;
-      if (activeTool === 'eraser') {
-        updateEraserCursor(pageNumber, event);
-        if (event.buttons === 1) {
-          eraseInkAtPointer(pageNumber, event);
-        }
-        return;
-      }
+      if (activeTool === 'ink' || activeTool === 'eraser') return;
       updateStickyDrag(pageNumber, event);
       updateAnnotationDrag(pageNumber, event);
     },
@@ -1354,7 +1445,7 @@ export default function PdfReader({
               textToolsUnavailable={textSelectionToolsActive && page.textItems.length === 0}
               commentPopover={commentPopover?.page === page.pageNumber ? commentPopover : null}
               eraserPreview={activeTool === 'eraser' && eraserCursor?.page === page.pageNumber
-                ? { x: eraserCursor.x, y: eraserCursor.y, size: toolSettings.eraserSize, shape: toolSettings.eraserShape }
+                ? { xPercent: eraserCursor.xPercent, yPercent: eraserCursor.yPercent, size: toolSettings.eraserSize, shape: toolSettings.eraserShape }
                 : null}
               pageHandlers={pageHandlers(page.pageNumber)}
               flashKind={flash?.page === page.pageNumber ? flash.kind : null}

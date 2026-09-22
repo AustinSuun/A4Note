@@ -3,8 +3,17 @@ import { findPdfMatches } from './pdfSearch';
 import type { PageMeta } from './types';
 import '../reader-reliability.css';
 
+/**
+ * In-PDF search. It has no resident trigger control: the bar opens only through the
+ * `reader.search` shortcut command / command palette, which dispatch `reader-find` on the
+ * reader surface (see readerNavigation.requestPdfFind). The Ctrl hint overlay therefore shows
+ * `reader.search` as a floating scene shortcut instead of anchoring it to a button.
+ */
 export function PdfFindBar({ surface, pages, documentKey }: { surface: RefObject<HTMLDivElement | null>; pages: PageMeta[]; documentKey: string }) {
   const [open, setOpen] = useState(false);
+  // Every open request (shortcut / command palette) bumps this so the input is focused and
+  // reselected after React has committed the bar, instead of racing a requestAnimationFrame.
+  const [focusRequest, setFocusRequest] = useState(0);
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -13,10 +22,15 @@ export function PdfFindBar({ surface, pages, documentKey }: { surface: RefObject
   useEffect(() => { setOpen(false); setQuery(''); setIndex(0); }, [documentKey]);
   useEffect(() => {
     const node = surface.current;
-    const show = () => { setOpen(true); requestAnimationFrame(() => { input.current?.focus(); input.current?.select(); }); };
+    const show = () => { setOpen(true); setFocusRequest(n => n + 1); };
     node?.addEventListener('reader-find', show);
     return () => node?.removeEventListener('reader-find', show);
   }, [surface]);
+  useEffect(() => {
+    if (!open || !focusRequest) return;
+    input.current?.focus();
+    input.current?.select();
+  }, [open, focusRequest]);
   useEffect(() => {
     const node = surface.current;
     if (!node || !open) return;
@@ -38,7 +52,7 @@ export function PdfFindBar({ surface, pages, documentKey }: { surface: RefObject
   }, [surface, open, results, current]);
   const close = () => { setOpen(false); surface.current?.querySelector<HTMLElement>('.pdf-document')?.focus({ preventScroll: true }); };
   const move = (step: number) => setIndex(i => results.matches.length ? (i + step + results.matches.length) % results.matches.length : 0);
-  if (!open) return <button type="button" className="pdf-find-trigger" title="搜索当前 PDF（Ctrl+F）" onClick={() => { setOpen(true); requestAnimationFrame(() => input.current?.focus()); }}>查找</button>;
+  if (!open) return null;
   const hasText = pages.some(page => page.textItems.some(item => item.text.trim()));
   return <div className="pdf-find-bar" role="search" aria-label="搜索当前 PDF" onPointerDown={e => e.stopPropagation()} onKeyDown={e => {
     if (e.nativeEvent.isComposing) return;

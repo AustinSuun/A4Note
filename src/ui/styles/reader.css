@@ -462,6 +462,15 @@
   transform-origin: 0 0;
   line-height: 1;
   cursor: text;
+  /* Each run is laid out at its natural advance and scaled onto the box pdf.js measured for it
+     (--pdf-run-scale, set by pdfTextLayerFit). Native caret/hit positions, Range rects and the
+     selection preview then follow the painted glyphs at every zoom and layout instead of drifting
+     along the run with the substitute font. Rotated runs flow vertically and scale along y. */
+  transform: scaleX(var(--pdf-run-scale, 1));
+}
+.pdf-text-layer span[data-text-orientation="90"],
+.pdf-text-layer span[data-text-orientation="270"] {
+  transform: scaleY(var(--pdf-run-scale, 1));
 }
 .pdf-text-layer.selectable span {
   box-sizing: content-box;
@@ -512,9 +521,9 @@
 .annotation-mark.highlight.purple { background: rgba(151, 112, 219, .2); }
 .annotation-mark.green { background: rgba(100, 180, 130, .3); outline: 1px solid rgba(55, 128, 86, .28); }
 .annotation-mark.blue { background: rgba(92, 142, 219, .28); outline: 1px solid rgba(64, 111, 190, .25); }
-.annotation-mark.underline { min-height: 1px; transform: translateY(-100%); background: #5c8edb; opacity: .86; border-radius: 999px; }
-/* Runs on pages with /Rotate 90/270 read vertically: the rule keeps the segment's full height, stays in place and is 2px wide. */
-.annotation-mark.underline.vertical-rule { min-height: 0; min-width: 1px; width: 2px !important; transform: none; }
+.annotation-mark.underline { min-height: 1px; background: #5c8edb; opacity: .86; border-radius: 999px; }
+/* Rotated rules keep the segment's full length; their computed width scales with the glyph axis. */
+.annotation-mark.underline.vertical-rule { min-height: 0; min-width: 1px; }
 .annotation-mark.area, .annotation-mark.purple { background: rgba(151, 112, 219, .16); outline: 2px solid rgba(123, 87, 186, .45); }
 .annotation-mark.comment {
   min-width: 148px;
@@ -1434,18 +1443,30 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .shape-preview.rect { border-radius: 2px; }
 .shape-preview.ellipse { border-radius: 999px; }
 .tool-option-color-group {
-  grid-template-columns: auto auto max-content;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   min-width: 0;
   gap: 6px;
 }
-.tool-option-color-group .tool-option-label {
-  grid-column: 1 / -1;
+.tool-option-color-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.tool-option-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 .tool-option-transparent-toggle {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 34px;
+  height: 24px;
   padding: 0 7px;
   border-radius: 4px;
   background: rgba(238,243,239,.72);
@@ -1523,6 +1544,9 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
   border-color: var(--accent-strong, #35624f);
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(77,131,107,.62);
 }
+@media (max-width: 480px) {
+  .tool-option-color-presets { grid-template-columns: repeat(5, var(--annotation-swatch-size)); }
+}
 .text-style-picker button {
   min-width: 28px;
   width: 28px;
@@ -1534,15 +1558,6 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .text-style-picker button:nth-child(2) {
   font-style: italic;
 }
-.text-size-option select { width: 58px; height: 28px; min-height: 28px; padding: 0 22px 0 8px; border-radius: 4px; background-color: rgba(255,255,255,.9); font-size: var(--ui-body-small-font-size); }
-.font-size-dropdown { position: relative; display: inline-flex; }
-.font-size-dropdown .font-size-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; width: 64px; height: 28px; min-height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,0.92); color: var(--ink); font-size: var(--ui-body-small-font-size); cursor: pointer; }
-.font-size-dropdown .font-size-trigger:hover { border-color: var(--accent-strong); }
-.font-size-dropdown .dropdown-arrow { font-size: 10px; opacity: 0.7; }
-.font-size-dropdown .font-size-list { position: absolute; top: calc(100% + 4px); left: 0; z-index: 50; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; max-height: 200px; overflow-y: auto; min-width: 140px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface, #fff); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-.font-size-dropdown .font-size-list button { height: 28px; min-height: 28px; padding: 0 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--ink); font-size: var(--ui-body-small-font-size); cursor: pointer; text-align: center; }
-.font-size-dropdown .font-size-list button:hover { background: var(--accent-soft); border-color: var(--accent-strong); }
-.font-size-dropdown .font-size-list button.active { background: var(--accent-strong); color: white; border-color: var(--accent-strong); }
 .reader-toolbar-colors .color-dot {
   width: 22px;
   height: 22px;
@@ -2475,3 +2490,25 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .note-save-error > span { flex: 1 1 180px; overflow-wrap: anywhere; }
 .pdf-render-error { position: absolute; z-index: 12; top: 8px; left: 8px; right: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; font-size: var(--ui-caption-font-size); }
 .pdf-render-error > span { flex: 1 1 160px; overflow-wrap: anywhere; }
+
+/* Reader note document picker: shares the compact Markdown workbench language. */
+.note-document-header > .note-history-shell { min-width: 0; flex: 1 1 0; }
+.note-document-trigger { display:flex; align-items:center; width:100%; min-width:0; height:32px; gap:6px; padding:0 8px; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--ink); box-shadow:none; font:inherit; font-size:var(--ui-control-font-size,14px); font-weight:700; text-align:left; }
+.note-document-trigger > span { min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.note-document-trigger > svg { width:15px; height:15px; flex:none; color:var(--muted); transition:transform .15s ease; }
+.note-document-trigger:hover,.note-document-trigger.active { border-color:var(--line); background:var(--surface-soft); }
+.note-document-trigger.active > svg { transform:rotate(180deg); }
+.note-document-trigger:focus-visible { outline:2px solid var(--accent-strong); outline-offset:1px; }
+.note-document-header > .note-history-shell .note-history-popover { left:0; right:auto; width:min(360px,calc(100vw - 36px)); max-width:max(280px,100%); background:var(--surface); border-color:var(--line); }
+.note-history-actions { display:grid; gap:2px; padding:5px; border-top:1px solid var(--line); }
+.note-history-actions button { display:flex; align-items:center; gap:8px; min-height:32px; padding:6px 8px; border:0; border-radius:5px; background:transparent; color:var(--ink); box-shadow:none; text-align:left; }
+.note-history-actions button:hover:not(:disabled) { background:var(--accent-soft); }
+.note-history-actions svg { width:15px; height:15px; color:var(--accent-strong); }
+.note-history-rename { display:grid; gap:7px; padding:10px; border-top:1px solid var(--line); }
+.note-history-rename label { color:var(--muted); font-size:var(--ui-caption-font-size,11px); }
+.note-history-rename input { box-sizing:border-box; width:100%; min-width:0; height:32px; padding:0 8px; border:1px solid var(--line); border-radius:5px; background:var(--surface); color:var(--ink); font:inherit; }
+.note-history-rename > div { display:flex; justify-content:flex-end; gap:6px; }
+.note-history-rename button { min-height:28px; padding:4px 10px; border:1px solid var(--line); border-radius:5px; background:var(--surface); color:var(--ink); }
+.note-history-rename :is(input,button):focus-visible,.note-history-actions button:focus-visible,.note-history-list > button:focus-visible { outline:2px solid var(--accent-strong); outline-offset:-2px; }
+.reader-workspace-drawer.notes-active { grid-template-rows:minmax(0,1fr); }
+@media (prefers-reduced-motion:reduce) { .note-document-trigger > svg { transition:none; } }

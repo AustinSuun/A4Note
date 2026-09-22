@@ -9,6 +9,7 @@ import {execFile, spawn} from 'node:child_process';
 import {promisify} from 'node:util';
 import readline from 'node:readline';
 import {fileURLToPath} from 'node:url';
+import {testEnv} from './test-env.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 function fixture() {
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'takeover-'));
@@ -63,8 +64,7 @@ test('HTTP concurrency, CLI takeover and real MCP handoff',async()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'takeover-api-'));const app=createTaskServer({dataDir:dir});
  await new Promise(r=>app.server.listen(0,'127.0.0.1',r));
  const url='http://127.0.0.1:'+app.server.address().port;
- const env={...process.env,TASKS_DATA_DIR:dir,TASKS_URL:url};
- for(const k of ['TASKS_PROJECT_ROOT','TASKS_EXPECTED_PROJECT_ID','TASKS_SESSION_TOKEN','TASKS_SESSION_FILE'])delete env[k];
+ const env=testEnv({TASKS_DATA_DIR:dir,TASKS_URL:url});
  const cli=async(...args)=>JSON.parse((await promisify(execFile)(process.execPath,[path.join(here,'../cli.mjs'),...args],{env})).stdout);
  const post=async(t,actor,body)=>{const r=await fetch(url+'/api/tasks/'+t.id,{method:'PATCH',headers:{Authorization:'Bearer '+actor.sessionToken,'Content-Type':'application/json'},body:JSON.stringify(body)});return {status:r.status,body:await r.json()};};
  const human=app.store.auth(app.store.access.operatorToken);

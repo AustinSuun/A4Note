@@ -8,18 +8,16 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createTaskServer } from '../server.mjs';
+import { testEnv } from './test-env.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 test('real CLI and MCP stdio clients share tasks but not agent identities', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tasks-tools-')),
     app = createTaskServer({ dataDir: dir, project: '工具测试' });
   await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
-  const env = {
-    ...process.env,
+  const env = testEnv({
     TASKS_DATA_DIR: dir,
     TASKS_URL: 'http://127.0.0.1:' + app.server.address().port,
-  };
-  delete env.TASKS_SESSION_TOKEN;
-  delete env.TASKS_SESSION_FILE;
+  });
   const cli = async (...args) =>
     JSON.parse(
       (

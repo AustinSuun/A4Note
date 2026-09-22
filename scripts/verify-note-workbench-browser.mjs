@@ -10,7 +10,7 @@ import { createServer } from 'vite';
 import react from '@vitejs/plugin-react';
 
 /* Generated host page: real reader modules mounted in a synthetic shell (no native data). */
-const HOST_SOURCE = "import React, { useEffect, useRef, useState } from 'react';\nimport { createRoot } from 'react-dom/client';\nimport '/src/ui/styles/tokens.css';\nimport '/src/ui/styles/reader.css';\nimport '/src/features/reader/reader-writing-layout.css';\nimport { ReaderNoteWorkbenchMenu } from '/src/features/reader/ReaderNoteWorkbenchMenu';\nimport { ReaderDrawerResizer } from '/src/features/reader/ReaderDrawerResizer';\nimport { useNoteWorkbench } from '/src/features/reader/useNoteWorkbench';\nimport { NOTE_WORKBENCH_COMMANDS, floatingCardBox, modeForNoteWorkbenchCommand, splitWidthPx } from '/src/features/reader/noteWorkbench';\n\n/* Host mirrors ReaderScene's workbench wiring (shell classes, drawer, retained note,\n   floating controls) while reusing the real state hook, menu, geometry and CSS. */\nconst NOTES = { 'paper-a': ['note-a1', 'note-a2'], 'paper-b': ['note-b1'], 'paper-c': [] };\n\nfunction Host() {\n  const [paperId, setPaperId] = useState('paper-a');\n  const [containerWidth, setContainerWidth] = useState(1440);\n  const containerRef = useRef(null);\n  const workbench = useNoteWorkbench(paperId, containerWidth);\n  const [draft, setDraft] = useState('论文笔记草稿');\n  const [historyOpen, setHistoryOpen] = useState(false);\n  const mode = workbench.mode;\n  const drawerOpen = mode !== 'reading';\n  const writingExpanded = mode === 'writing';\n  const drawerWidth = splitWidthPx(containerWidth, workbench.prefs.splitRatio);\n  const floatingRect = workbench.prefs.floating;\n  const floatingBox = floatingCardBox(floatingRect, containerWidth, 620);\n  const floatingStyle = mode === 'floating' ? {\n    '--floating-note-left': floatingRect.x * 100 + '%',\n    '--floating-note-top': floatingRect.y * 100 + '%',\n    '--floating-note-width': floatingRect.width * 100 + '%',\n    '--floating-note-height': floatingRect.height * 100 + '%',\n  } : {};\n  const activeNoteId = workbench.prefs.activeNoteId;\n\n  const runCommand = (command) => {\n    const next = modeForNoteWorkbenchCommand(command);\n    if (next) { workbench.setMode(next); return; }\n    if (command === NOTE_WORKBENCH_COMMANDS.toggle) workbench.setMode(mode === 'reading' ? workbench.prefs.wideMode : 'reading');\n  };\n\n  const startFloatingDrag = (event) => {\n    const rect = containerRef.current.getBoundingClientRect();\n    const startX = event.clientX, startY = event.clientY, origin = { ...floatingRect }, element = event.currentTarget;\n    element.setPointerCapture(event.pointerId);\n    const move = (moveEvent) => workbench.setFloatingRect({\n      ...origin,\n      x: Math.min(1 - origin.width, Math.max(0, origin.x + (moveEvent.clientX - startX) / rect.width)),\n      y: Math.min(1 - origin.height, Math.max(0, origin.y + (moveEvent.clientY - startY) / rect.height)),\n    });\n    const stop = () => { element.removeEventListener('pointermove', move); element.removeEventListener('pointerup', stop); };\n    element.addEventListener('pointermove', move);\n    element.addEventListener('pointerup', stop);\n  };\n  const startFloatingResize = (event) => {\n    const rect = containerRef.current.getBoundingClientRect();\n    const startX = event.clientX, startY = event.clientY, origin = { ...floatingRect }, element = event.currentTarget;\n    element.setPointerCapture(event.pointerId);\n    const move = (moveEvent) => workbench.setFloatingRect({\n      ...origin,\n      width: Math.min(1 - origin.x, Math.max(0.24, origin.width + (moveEvent.clientX - startX) / rect.width)),\n      height: Math.min(1 - origin.y, Math.max(0.24, origin.height + (moveEvent.clientY - startY) / rect.height)),\n    });\n    const stop = () => { element.removeEventListener('pointermove', move); element.removeEventListener('pointerup', stop); };\n    element.addEventListener('pointermove', move);\n    element.addEventListener('pointerup', stop);\n  };\n\n  useEffect(() => {\n    window.__wbState = {\n      paperId, containerWidth, mode, requested: workbench.requestedMode, temporary: workbench.temporary,\n      drawerDiag: (() => { const el = document.querySelector('.reader-workspace-drawer'); if (!el) return null; const style = getComputedStyle(el); return { width: style.width, position: style.position, top: style.top, left: style.left, maxWidth: style.maxWidth }; })(),\n      prefs: workbench.prefs, drawerWidth, drawerOpen, floatingBox, activeNoteId,\n      storage: Object.fromEntries(Object.keys(localStorage).sort().map(key => [key, localStorage.getItem(key)])),\n    };\n  });\n\n  return (\n    <div className=\"wb-harness\">\n      <div className=\"wb-harness-toolbar\">\n        <ReaderNoteWorkbenchMenu\n          mode={mode}\n          temporary={workbench.temporary}\n          onToggle={() => runCommand(NOTE_WORKBENCH_COMMANDS.toggle)}\n          onSelectMode={workbench.setMode}\n          onNewNote={() => setDraft('')}\n          onOpenHistory={() => setHistoryOpen(true)}\n        />\n        <button type=\"button\" className=\"wb-harness-paper\" data-paper=\"paper-b\" onClick={() => setPaperId('paper-b')}>paper-b</button>\n        <button type=\"button\" className=\"wb-harness-paper\" data-paper=\"paper-a\" onClick={() => setPaperId('paper-a')}>paper-a</button>\n        <button type=\"button\" className=\"wb-harness-paper\" data-paper=\"paper-c\" onClick={() => setPaperId('paper-c')}>paper-c</button>\n        <button type=\"button\" className=\"wb-harness-width\" data-width=\"900\" onClick={() => setContainerWidth(900)}>900</button>\n        <button type=\"button\" className=\"wb-harness-width\" data-width=\"1300\" onClick={() => setContainerWidth(1300)}>1300</button>\n        <button type=\"button\" className=\"wb-harness-width\" data-width=\"1440\" onClick={() => setContainerWidth(1440)}>1440</button>\n      </div>\n      <div\n        ref={containerRef}\n        className={'reader-workspace-shell note-mode-' + mode + (drawerOpen ? ' workspace-open' : '') + (writingExpanded ? ' writing-expanded' : '')}\n        data-note-mode={mode}\n        data-note-requested-mode={workbench.requestedMode}\n        data-note-temporary={workbench.temporary ? 'true' : 'false'}\n        style={{ position: 'relative', width: containerWidth + 'px', height: '620px', ...floatingStyle }}\n        onKeyDown={(event) => { if (event.key === 'Escape' && writingExpanded) workbench.restoreMode(); }}\n      >\n        <div className=\"reader-main-workspace\" inert={writingExpanded} aria-hidden={writingExpanded}>\n          <div className=\"wb-harness-pdf\" style={{ width: drawerOpen ? containerWidth - drawerWidth : containerWidth }}>PDF</div>\n        </div>\n        {mode === 'floating' && (\n          <div className=\"reader-note-floating-controls\">\n            <button type=\"button\" className=\"reader-note-floating-drag\" aria-label=\"拖动悬浮速记卡（方向键微调，Escape 回到分屏）\" onPointerDown={startFloatingDrag}>拖动</button>\n            <button type=\"button\" className=\"reader-note-floating-resize\" aria-label=\"调整悬浮速记卡大小\" onPointerDown={startFloatingResize} />\n          </div>\n        )}\n        {drawerOpen && (\n          <aside className=\"reader-workspace-drawer\" style={{ width: mode === 'split' ? drawerWidth + 'px' : undefined }} data-drawer-width={mode === 'split' ? drawerWidth : 'auto'}>\n            <header className=\"reader-workspace-header\">\n              <div className=\"reader-workspace-tabs\" role=\"tablist\" aria-label=\"面板\"><button type=\"button\" className=\"reader-workspace-tab active\" role=\"tab\" aria-selected=\"true\">笔记</button></div>\n              <div className=\"reader-workspace-actions\">\n                {historyOpen && <span className=\"note-history-marker\">历史</span>}\n              </div>\n            </header>\n            <div className=\"reader-retained-note\">\n              <div className=\"note-workspace\">\n                <textarea className=\"md-body markdown-live-codemirror\" data-note-editor=\"1\" value={draft} onChange={(event) => setDraft(event.target.value)} />\n                <div className=\"note-meta-row\"><button type=\"button\" className=\"wb-harness-note\" onClick={() => workbench.setActiveNote((NOTES[paperId] || [])[0] || null)}>选择笔记</button></div>\n              </div>\n            </div>\n          </aside>\n        )}\n        {mode === 'split' && drawerOpen && (\n          <ReaderDrawerResizer width={drawerWidth} maximum={containerWidth - 332} onChange={(next) => workbench.setSplitRatio(next / containerWidth)} />\n        )}\n      </div>\n    </div>\n  );\n}\n\ncreateRoot(document.getElementById('root')).render(<Host />);\n";
+const HOST_SOURCE = fs.readFileSync('scripts/fixtures/note-edge-host.tsx', 'utf8');
 const HOST_HTML = "<!doctype html>\n<html lang=\"zh-CN\"><head><meta charset=\"utf-8\" /><title>note workbench harness</title>\n<style>html,body{margin:0;padding:0;background:#fff}.wb-harness{padding:8px}.wb-harness-toolbar{display:flex;gap:6px;align-items:center;margin-bottom:8px}.wb-harness-pdf{height:600px;background:#f4f6f4;border:1px solid #d8ded8;padding:8px;box-sizing:border-box}</style>\n</head>\n<body><div id=\"root\"></div><script type=\"module\" src=\"./host.tsx\"></script></body></html>\n";
 
 const own = path.resolve('.tmp/note-workbench-browser');
@@ -21,6 +21,8 @@ const records = [];
 const errors = [];
 const sourceFiles = [
   'src/features/reader/ReaderScene.tsx',
+  'src/features/reader/useReaderDrawerLayout.ts',
+  'src/features/reader/useReaderDrawerGesture.ts',
   'src/features/reader/ReaderSideDrawer.tsx',
   'src/features/reader/reader-writing-layout.css',
   'src/ui/styles/tokens.css',
@@ -144,6 +146,7 @@ try {
   await wait('!!document.querySelector(".reader-note-workbench-button")');
   await waitState();
 
+  check(await ev("!!document.querySelector('.reader-note-workbench-button')?.closest('.reader-workspace-shell')"), '入口属于内容区而非标题栏');
   /* 1. entry button resumes the remembered wide mode, and closes again */
   let snapshot = await state();
   check(snapshot.mode === 'reading' && snapshot.drawerOpen === false, '首次进入默认为 PDF 专注（笔记收起）', snapshot.mode);
@@ -152,12 +155,14 @@ try {
   snapshot = await state();
   check(snapshot.mode === 'split' && snapshot.drawerOpen === true, '主按钮恢复上次的宽屏模式（分屏）', snapshot.mode);
   check(/a4note\.reader\.noteWorkbench\.paper-a/.test(Object.keys(snapshot.storage).join(',')), '模式写入按论文的偏好键', Object.keys(snapshot.storage));
+  const headerActionCount = await ev("document.querySelectorAll('.note-document-actions button').length");
+  await click('[aria-label="笔记历史"]');check(await ev("!!document.querySelector('.note-history-marker')"),'打开把手后一次点击头部历史可达');
   await shot('01-split-entry');
   await click('.reader-note-workbench-button');
   check((await state()).mode === 'reading', '再次点击收起笔记并回到 PDF 专注');
 
   /* 2. menu contents + keyboard hints */
-  await click('.reader-note-workbench-more');
+  await ev("document.querySelector('.reader-note-workbench-button').focus()");await key('ArrowDown','ArrowDown',40);
   await wait('!!document.querySelector(".reader-note-workbench-menu")');
   const menu = await ev(`(()=>{const m=document.querySelector('.reader-note-workbench-menu');return {
     items:[...m.querySelectorAll('[role=menuitemradio]')].map(i=>i.textContent),
@@ -167,19 +172,20 @@ try {
     focused:document.activeElement&&document.activeElement.textContent,
   }})()`);
   check(menu.items.length === 4, '菜单包含四种模式（边读边记/悬浮速记/专注写作/PDF 专注）', menu.items);
-  check(menu.extras.length === 2, '菜单包含新建笔记与笔记历史', menu.extras);
+  check(menu.extras.length === 1 && headerActionCount === 1, '新建在把手菜单、历史在文档头部，两次点击可达', { extras:menu.extras, headerActionCount });
   check(menu.keys.length === 4 && menu.shortcuts.every(Boolean), 'kbd 提示与 aria-keyshortcuts 反映绑定', menu.keys);
+  check(await ev("document.querySelectorAll('.reader-note-workbench-menu [aria-checked=true] .lucide-check').length === 1"), '当前模式同时有可见勾选和 radio 状态');
   await shot('02-menu');
   await key('ArrowDown', 'ArrowDown', 40);
   const afterArrow = await ev('document.activeElement.getAttribute("role")');
   check(afterArrow === 'menuitemradio' || afterArrow === 'menuitem', '方向键在菜单内移动焦点', afterArrow);
   await key('Escape', 'Escape', 27);
   const closed = await ev('!document.querySelector(".reader-note-workbench-menu")');
-  const refocused = await ev('document.activeElement && document.activeElement.classList.contains("reader-note-workbench-more")');
+  const refocused = await ev('document.activeElement && document.activeElement.classList.contains("reader-note-workbench-button")');
   check(closed && refocused, 'Escape 关闭菜单并把焦点还给触发按钮');
 
   /* 3. split width honours the 34-40% default and the PDF minimum */
-  await click('.reader-note-workbench-more');
+  await ev("document.querySelector('.reader-note-workbench-button').focus()");await key('ArrowDown','ArrowDown',40);
   await wait('!!document.querySelector(".reader-note-workbench-menu")');
   await click('.reader-note-workbench-menu [role=menuitemradio]');
   await wait('window.__wbState.mode === "split"');
@@ -203,7 +209,7 @@ try {
   check(beforeB === null, '拖动只影响当前论文的偏好');
 
   /* 5. floating card: geometry, drag, resize, Escape */
-  await click('.reader-note-workbench-more');
+  await ev("document.querySelector('.reader-note-workbench-button').focus()");await key('ArrowDown','ArrowDown',40);
   await wait('!!document.querySelector(".reader-note-workbench-menu")');
   await click('.reader-note-workbench-menu [role=menuitemradio]:nth-of-type(2)');
   await wait('window.__wbState.mode === "floating"');
@@ -213,7 +219,7 @@ try {
   snapshot = await state();
   const localCard = { left: cardBox.left - shellRect.left, top: cardBox.top - shellRect.top, width: cardBox.width, right: cardBox.right - shellRect.left };
   check(localCard.left >= -1 && localCard.top >= -1 && localCard.right <= snapshot.containerWidth + 1, '悬浮卡完全落在内容区内', localCard);
-  check(Math.abs(localCard.left - snapshot.floatingBox.left) <= 2 && Math.abs(localCard.top - snapshot.floatingBox.top) <= 2 && Math.abs(localCard.width - snapshot.floatingBox.width) <= 2, '悬浮卡几何来自共享计算函数', { localCard, expected: snapshot.floatingBox, diag: snapshot.drawerDiag });
+  check(Math.abs(localCard.left - Math.min(snapshot.floatingBox.left,snapshot.containerWidth-snapshot.floatingBox.width-28)) <= 2 && Math.abs(localCard.top - snapshot.floatingBox.top) <= 2 && Math.abs(localCard.width - snapshot.floatingBox.width) <= 2, '悬浮卡几何来自共享比例并为边缘把手保留28px操作区', { localCard, expected: snapshot.floatingBox, diag: snapshot.drawerDiag });
   await shot('04-floating');
   await dragBy('.reader-note-floating-drag', -180, 90);
   await settle();
@@ -230,7 +236,7 @@ try {
 
   /* 6. writing mode fills the content area and keeps the editor mounted */
   const modeBeforeWriting = (await state()).mode;
-  await click('.reader-note-workbench-more');
+  await ev("document.querySelector('.reader-note-workbench-button').focus()");await key('ArrowDown','ArrowDown',40);
   await wait('!!document.querySelector(".reader-note-workbench-menu")');
   await click('.reader-note-workbench-menu [role=menuitemradio]:nth-of-type(3)');
   await waitState("state.mode === 'writing'");
@@ -254,7 +260,7 @@ try {
   const restored = await state();
   check(restored.mode === modeBeforeWriting, 'Escape 从专注写作返回进入前的模式', { before: modeBeforeWriting, after: restored.mode });
   check(restored.prefs.wideMode === 'writing', '退出后仍记住宽屏偏好为专注写作', restored.prefs.wideMode);
-  await click('.reader-note-workbench-more');
+  await ev("document.querySelector('.reader-note-workbench-button').focus()");await key('ArrowDown','ArrowDown',40);
   await wait('!!document.querySelector(".reader-note-workbench-menu")');
   await click('.reader-note-workbench-menu [role=menuitemradio]:nth-of-type(1)');
   await waitState("state.mode === 'split'");
@@ -292,7 +298,7 @@ try {
   await send('Emulation.setEmulatedMedia', { features: [] });
 
   /* 10. per-paper mode + active note persistence, corrupt preferences */
-  await click('.reader-note-workbench-more');
+  await ev("document.querySelector('.reader-note-workbench-button').focus()");await key('ArrowDown','ArrowDown',40);
   await wait('!!document.querySelector(".reader-note-workbench-menu")');
   await click('.reader-note-workbench-menu [role=menuitemradio]:nth-of-type(3)');
   await wait('window.__wbState.mode === "writing"');
@@ -322,6 +328,39 @@ try {
   check(reloaded.mode === 'writing', '重启后按论文恢复模式', reloaded.mode);
   check(Math.abs(reloaded.prefs.splitRatio - 0.37) > 0.001, '重启后保留拖动过的侧栏比例', reloaded.prefs.splitRatio);
 
+  // Boundary geometry and genuine pointer transactions (not HTMLElement.click).
+  await ev("window.__edgeTest.setWidth(1300);window.__edgeTest.setMode('reading')");await settle();
+  const edge = '.reader-note-edge-handle';
+  const closedEdge = await boxOf(edge), shellEdge = await boxOf('.reader-workspace-shell');
+  check(closedEdge.width===22 && closedEdge.height===88 && Math.abs(closedEdge.right-shellEdge.right)<1,'收起把手22×88且停靠内容右边界',{closedEdge,shellEdge});
+  check(Math.abs(closedEdge.top+44-(shellEdge.top+shellEdge.height/2))<1,'把手垂直居中');
+  check(await ev("!document.querySelector('.wb-harness-toolbar .reader-note-workbench-entry')"),'标题栏无笔记入口占位');
+  check(await ev("document.querySelector('[data-shortcut-id=\"reader.notes.toggle\"]')?.matches('.reader-note-edge-handle')"),'快捷键锚点迁移至把手');
+  await click(edge);await settle();await ev("window.__edgeTest.setMode('split')");await settle();
+  const activeEdge=await boxOf(edge), asideEdge=await boxOf('.reader-workspace-drawer');
+  check(activeEdge.width===16&&activeEdge.height===56&&Math.abs(activeEdge.left+8-asideEdge.left-5)<1,'打开把手16×56且骑在分隔条中心',{activeEdge,asideEdge});
+  for(let i=0;i<20;i++){
+    await ev("window.__edgeTest.setMode('split')");await settle();const oldWidth=(await state()).drawerWidth;
+    await dragBy(edge, i%2===0?2:(i%4===1?-8:8),0);await settle();
+    check(i%2===0?(await state()).mode==='reading':(await state()).mode==='split'&&(await state()).drawerWidth!==oldWidth,'连续点击/拖宽阈值无误判 '+i);
+  }
+  await ev("window.__edgeTest.setMode('split')");await settle();
+  let rect=await boxOf(edge),x=rect.left+rect.width/2,y=rect.top+rect.height/2;
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'right',buttons:2,clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x,y,button:'right',clickCount:1});await pause(150);
+  check(await ev("!!document.querySelector('.reader-note-workbench-menu')"),'右键打开模式菜单');await key('Escape','Escape',27);
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',buttons:1,clickCount:1});await pause(450);await send('Input.dispatchMouseEvent',{type:'mouseReleased',x,y,button:'left',clickCount:1});await pause(150);
+  check(await ev("!!document.querySelector('.reader-note-workbench-menu')")&&(await state()).mode==='split','400ms长按打开菜单不误收起');await key('Escape','Escape',27);
+  await ev("document.querySelector('.reader-note-edge-handle').focus()");await key('ArrowDown','ArrowDown',40);const menuEdge=await boxOf('.reader-note-workbench-menu');
+  check(menuEdge.left>=0&&menuEdge.right<=1568&&menuEdge.top>=0&&menuEdge.bottom<=1005,'菜单向内展开且视口约束',menuEdge);await key('Escape','Escape',27);
+  await click('.reader-note-mode-switch [aria-label="专注写作"]');await settle();const writeEdge=await boxOf(edge);
+  check(Math.abs(writeEdge.left-shellEdge.left)<1,'写作态把手位于内容左边缘');await click(edge);await settle();check((await state()).mode==='split','写作把手返回进入前模式而非强制关闭');
+  await ev("window.__edgeTest.setMode('floating')");await settle();
+  for(const [x,y] of [[0,0],[.9,0],[0,.9],[.9,.9]]){await ev(`window.__edgeTest.setFloating({x:${x},y:${y},width:.42,height:.62})`);await settle();const c=await boxOf('.reader-workspace-drawer'),h=await boxOf(edge),d=await boxOf('.reader-note-floating-drag');check(c.right<h.left&&d.top>=shellEdge.top,'四角浮卡保留把手与拖动钮操作区 '+x+'/'+y,{c,h,d});}
+  for(const zoom of [1,1.25,1.5]){await ev(`document.documentElement.style.zoom='${zoom}';document.documentElement.style.setProperty('--ui-zoom','${zoom}');window.__edgeTest.setWidth(${Math.floor(1500/zoom)});window.__edgeTest.setMode('floating')`);await settle();const h=await boxOf(edge),c=await boxOf('.reader-workspace-drawer');check(h.left>=c.right&&await ev("(()=>{const n=document.querySelector('.reader-note-edge-handle'),r=n.getBoundingClientRect();return n.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})()"),'浮动卡与把手均可操作 UI'+zoom,{h,c});}
+  await ev("document.documentElement.style.zoom='1';document.documentElement.style.setProperty('--ui-zoom','1');window.__edgeTest.setMode('reading')");await settle();
+  const scrollBefore=await ev("document.querySelector('.pdf-document').scrollTop");rect=await boxOf(edge);await send('Input.dispatchMouseEvent',{type:'mouseWheel',x:rect.left+rect.width/2,y:rect.top+rect.height/2,deltaX:0,deltaY:120});await pause(150);check(await ev("document.querySelector('.pdf-document').scrollTop")>scrollBefore,'把手上滚轮继续滚动PDF');
+  await ev("document.documentElement.style.zoom='1.5';document.documentElement.style.setProperty('--ui-zoom','1.5');document.querySelector('.wb-harness').style.minWidth='980px';window.__edgeTest.setWidth(1600);window.__edgeTest.setMode('floating')");await settle();await settle();
+  const bounded=await boxOf(edge);check(bounded.right<=1568&&await ev("(()=>{const n=document.querySelector('.reader-note-edge-handle'),r=n.getBoundingClientRect();return n.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2))})()"),'宿主最小宽度溢出时 Reader 自身约束在可见视口',bounded);
   check(errors.length === 0, '无运行时异常与控制台错误', errors);
 } catch (error) {
   check(false, '执行失败', String(error && error.stack ? error.stack : error));

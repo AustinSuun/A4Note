@@ -9,8 +9,10 @@ export function TaskStageSwitcher({ value, disabled = false, onChange }: {
   value: TaskStage; tasks: readonly Task[]; supportsQueue: boolean; disabled?: boolean;
   onChange: (stage: TaskStage) => void;
 }) {
-  return <nav className="tb-stage-nav" aria-label="任务流程视图" data-window-no-drag>
-    <div className="tb-stage-switch" data-stage={value}
+  /* The nav is a layout box that may stretch across the titlebar; only the switch
+     itself opts out of the window drag gesture (see windowTitlebarGestures.ts). */
+  return <nav className="tb-stage-nav" aria-label="任务流程视图">
+    <div className="tb-stage-switch" data-stage={value} data-window-no-drag
       style={{ '--tb-stage-index': taskStages.findIndex(s => s.id === value) } as CSSProperties}
       onKeyDown={e => {
         if (disabled || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;

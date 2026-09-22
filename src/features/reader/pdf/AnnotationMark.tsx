@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type ComponentProps, type CSSProperties, type MouseEvent } from 'react';
+import { memo, useState, type ComponentProps, type CSSProperties, type MouseEvent } from 'react';
 import type { AnnotationColor, PositionJson } from '../../../core/types';
 import { zh } from '../../../ui/zh';
 import { annotationColorInputValue, toolColorPresets } from '../readerConstants';
@@ -12,7 +12,7 @@ import {
 } from './pdfAnnotationHelpers';
 import { numberValue } from './pdfGeometry';
 import { InlineTextEditor } from './InlineTextEditor';
-import { TEXT_FONT_SIZE_OPTIONS, textAnnotationLayout, textBoxStyle, textTypographyStyle } from './pdfTextAnnotation';
+import { textAnnotationLayout, textBoxStyle, textTypographyStyle } from './pdfTextAnnotation';
 import type { AnnotationMarkModel, AnnotationResizeHandle, InlineTextEditorState, TextAnnotationStylePatch } from './types';
 import './pdf-text-annotation.css';
 
@@ -59,7 +59,6 @@ function AnnotationMarkView({
   rangeSelectionActive?: boolean;
 }) {
   const [colorPaletteOpen, setColorPaletteOpen] = useState(false);
-  const [textStyleOpen, setTextStyleOpen] = useState(false);
   const segments = annotationSegments(annotation.positionJson);
   const annotationId = annotation.id;
   const isTextBox = annotation.type === 'comment' || annotation.type === 'text';
@@ -67,6 +66,13 @@ function AnnotationMarkView({
   const isResizable = annotation.type === 'rect' || annotation.type === 'text';
   const customColorStyle = annotation.color.startsWith('#') ? annotationCustomColorStyle(annotation.type, annotation.color) : undefined;
   const textLayout = annotation.type === 'text' ? textAnnotationLayout(annotation.positionJson) : null;
+  // Text annotations store their visible ink separately from the generic mark colour.
+  // The compact colour control must edit and reflect that persisted text colour.
+  const actionColor = textLayout?.textColor ?? annotation.color;
+  const updateActionColor = (targetId: string, color: AnnotationColor) =>
+    textLayout && onUpdateTextStyle
+      ? onUpdateTextStyle(targetId, { textColor: color })
+      : onUpdateAnnotationColor?.(targetId, color);
   const editing = Boolean(inlineEditor && annotation.type === 'text' && (draft ? !inlineEditor.annotationId : inlineEditor.annotationId === annotation.id));
   const rangeSelectionPassthrough = rangeSelectionActive && (annotation.type === 'highlight' || annotation.type === 'underline');
   // A single annotation-wide rule thickness so every line of a multi-line underline draws
@@ -128,21 +134,36 @@ function AnnotationMarkView({
           </button>
         )}
         {textLayout && onUpdateTextStyle && (
-          <button
-            type="button"
-            className="annotation-text-style-toggle"
-            title="文字样式"
-            aria-label="文字样式"
-            aria-expanded={textStyleOpen}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setColorPaletteOpen(false);
-              setTextStyleOpen((current) => !current);
-            }}
-          >
-            <span aria-hidden="true">Aa</span>
-          </button>
+          <>
+            <button
+              type="button"
+              className={textLayout.bold ? 'active annotation-text-style-button' : 'annotation-text-style-button'}
+              title="加粗"
+              aria-label="加粗"
+              aria-pressed={textLayout.bold}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void onUpdateTextStyle(annotationId, { bold: !textLayout.bold });
+              }}
+            >
+              <strong aria-hidden="true">B</strong>
+            </button>
+            <button
+              type="button"
+              className={textLayout.italic ? 'active annotation-text-style-button' : 'annotation-text-style-button'}
+              title="倾斜"
+              aria-label="倾斜"
+              aria-pressed={textLayout.italic}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void onUpdateTextStyle(annotationId, { italic: !textLayout.italic });
+              }}
+            >
+              <em aria-hidden="true">I</em>
+            </button>
+          </>
         )}
         <button
           type="button"
@@ -170,59 +191,44 @@ function AnnotationMarkView({
         <button
           type="button"
           className="annotation-color-pill"
-          style={{ background: colorToCss(annotation.color) }}
-          title="选择颜色"
+          style={{ background: colorToCss(actionColor) }}
+          title={textLayout ? '选择文字颜色' : '选择颜色'}
           aria-expanded={colorPaletteOpen}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            setTextStyleOpen(false);
             setColorPaletteOpen((current) => !current);
           }}
         >
-          <ColorSwatchIcon color={colorToCss(annotation.color)} />
+          <ColorSwatchIcon color={colorToCss(actionColor)} />
         </button>
-        {textStyleOpen && textLayout && onUpdateTextStyle && (
-          <div className="annotation-text-style-panel" role="group" aria-label="文字样式" onClick={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
-            <label>
-              <span>字号</span>
-              <AnnotationFontSizeDropdown value={textLayout.fontSize} onChange={(size) => void onUpdateTextStyle(annotationId, { fontSize: size })} />
-            </label>
-            <button type="button" className={textLayout.bold ? 'active' : ''} aria-pressed={textLayout.bold} title="粗体" onClick={() => void onUpdateTextStyle(annotationId, { bold: !textLayout.bold })}>B</button>
-            <button type="button" className={textLayout.italic ? 'active' : ''} aria-pressed={textLayout.italic} title="斜体" onClick={() => void onUpdateTextStyle(annotationId, { italic: !textLayout.italic })}>I</button>
-            <label title="文字颜色">
-              <span>颜色</span>
-              <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(textLayout.textColor) ? textLayout.textColor : '#202822'} onChange={(event) => void onUpdateTextStyle(annotationId, { textColor: event.target.value })} />
-            </label>
-          </div>
-        )}
         {colorPaletteOpen && (
           <div className="annotation-color-palette" onClick={(event) => event.stopPropagation()}>
-            <span className="annotation-color-palette-label">标注颜色</span>
+            <span className="annotation-color-palette-label">{textLayout ? '文字颜色' : '标注颜色'}</span>
             <label className="annotation-color-custom-choice" title="自定义颜色">
               <input
                 type="color"
-                value={annotationColorInputValue(annotation.color)}
+                value={annotationColorInputValue(actionColor)}
                 onChange={(event) => {
-                  void onUpdateAnnotationColor?.(annotationId, event.target.value as AnnotationColor);
+                  void updateActionColor(annotationId, event.target.value as AnnotationColor);
                   setColorPaletteOpen(false);
                 }}
               />
-              <span style={{ background: annotationColorInputValue(annotation.color) }} />
+              <span style={{ background: annotationColorInputValue(actionColor) }} />
             </label>
             <div className="annotation-color-presets">
               {toolColorPresets.map((color) => (
                 <button
                   key={color}
                   type="button"
-                  className={annotationColorInputValue(annotation.color) === color ? 'active' : ''}
+                  className={annotationColorInputValue(actionColor) === color ? 'active' : ''}
                   style={{ background: color }}
                   title={color}
                   aria-label={color}
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    void onUpdateAnnotationColor?.(annotationId, color);
+                    void updateActionColor(annotationId, color);
                     setColorPaletteOpen(false);
                   }}
                 />
@@ -535,69 +541,5 @@ function EditIcon() {
       <path d="M5 19h4l10-10-4-4L5 15v4Z" />
       <path d="M13.5 6.5l4 4" />
     </svg>
-  );
-}
-
-function AnnotationFontSizeDropdown({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside as any);
-    return () => document.removeEventListener('mousedown', handleClickOutside as any);
-  }, []);
-  useEffect(() => {
-    if (open && listRef.current) {
-      const active = listRef.current.querySelector('.active') as HTMLElement;
-      active?.scrollIntoView({ block: 'nearest' });
-    }
-  }, [open]);
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      setOpen(false);
-      return;
-    }
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (!open) {
-        setOpen(true);
-        return;
-      }
-      const idx = TEXT_FONT_SIZE_OPTIONS.indexOf(value);
-      let nextIdx = idx;
-      if (e.key === 'ArrowDown') nextIdx = Math.min(idx + 1, TEXT_FONT_SIZE_OPTIONS.length - 1);
-      else nextIdx = Math.max(idx - 1, 0);
-      if (nextIdx !== idx) onChange(TEXT_FONT_SIZE_OPTIONS[nextIdx]);
-    }
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      setOpen((o) => !o);
-    }
-  };
-  const handleWheel = (e: React.WheelEvent) => {
-    if (!open) return;
-    e.preventDefault();
-    const idx = TEXT_FONT_SIZE_OPTIONS.indexOf(value);
-    if (e.deltaY < 0 && idx > 0) onChange(TEXT_FONT_SIZE_OPTIONS[idx - 1]);
-    if (e.deltaY > 0 && idx < TEXT_FONT_SIZE_OPTIONS.length - 1) onChange(TEXT_FONT_SIZE_OPTIONS[idx + 1]);
-  };
-  return (
-    <div className="font-size-dropdown" ref={ref} onKeyDown={handleKeyDown}>
-      <button type="button" className="font-size-trigger" onClick={() => setOpen((o) => !o)}>
-        <span>{value}</span>
-        <span className="dropdown-arrow" aria-hidden>▾</span>
-      </button>
-      {open && (
-        <div className="font-size-list" ref={listRef} onWheel={handleWheel}>
-          {TEXT_FONT_SIZE_OPTIONS.map((size) => (
-            <button key={size} type="button" className={size === value ? 'active' : ''} onClick={() => { onChange(size); setOpen(false); }}>{size}</button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }

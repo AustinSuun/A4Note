@@ -31,9 +31,10 @@ export function useReaderSaveQueue(scope: string) {
     return execute(job);
   };
   const feedback = <div className="reader-save-queue" onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}>
-    {rows.filter(job => job.scope === scope).map(job => <div className="reader-save-feedback" key={job.id} role={job.error ? 'alert' : 'status'}>
-      <span>{job.pending ? `${job.label}中…` : job.error}</span>
-      {!job.pending && <><button type="button" onClick={() => void execute(job)}>重试</button><button type="button" onClick={() => { job.discard?.(); jobs.current.delete(job.id); publish(); }}>{job.discard ? '放弃未保存标注' : '关闭提示'}</button></>}
+    {rows.filter(job => job.scope === scope && job.error).map(job => <div className="reader-save-feedback" key={job.id} role="alert">
+      <span>{job.error}</span>
+      <button type="button" onClick={() => void execute(job)}>重试</button>
+      <button type="button" onClick={() => { job.discard?.(); jobs.current.delete(job.id); publish(); }}>{job.discard ? '放弃未保存标注' : '关闭提示'}</button>
     </div>)}
   </div>;
   return { run, feedback };

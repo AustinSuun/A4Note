@@ -321,7 +321,7 @@ assert.match(readerConstantsSource, /export const annotationPresetColors/);
 assert.match(readerToolbarSource, /export function ReaderToolbar\(/);
 assert.doesNotMatch(readerToolbarSource, /sidePanels\.map\(\(panel\) =>/);
 assert.match(readerSceneSource, /<ReaderNoteWorkbenchMenu/);
-assert.match(readerSceneSource, /data-note-mode=\{workbench\.mode\}/);
+assert.match(readerSceneSource, /data-note-mode=\{visibleNoteMode\}/);
 assert.match(readerSceneSource, /runWorkbenchCommand\(NOTE_WORKBENCH_COMMANDS\.toggle\)/);
 assert.doesNotMatch(readerSceneSource, /reader-note-reopen/);
 assert.match(readerSceneSource, /const openNotes = \(\) => \{ onSidePanelTabChange\(\x27notes\x27\); onSidePanelOpenChange\(true\); \}/);

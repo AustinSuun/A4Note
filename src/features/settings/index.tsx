@@ -1,3 +1,4 @@
+import { ShortcutEditor } from '../../shared/shortcuts';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpCircle, CircleHelp, LibraryBig, Palette, Plug, RefreshCw, Search, SlidersHorizontal, X } from 'lucide-react';
 import type { AiProviderContribution, ProviderContribution, SceneContribution, SettingContribution } from '../../core/types';
@@ -20,6 +21,7 @@ export { defaultSettings } from './types';
 export type { AppSettings, InterfaceDensity, InterfaceFont, InterfaceFontSize, AppTheme, DocumentFont, CodeFont, DocumentFontSize, DocumentLineHeight, DocumentLayout, MetadataSourcePreference, PluginSettingValue, PluginSettingValues, SettingsPathKind, SettingsExtensionCounts, SettingsPluginSummary, LocalPluginSummary, SyncSettingsState, PluginMarketSettingsState, Section } from './types';
 
 const SECTION_ICONS: Record<Section, typeof SlidersHorizontal> = {
+  shortcuts: SlidersHorizontal,
   general: SlidersHorizontal,
   appearance: Palette,
   library: LibraryBig,
@@ -169,6 +171,8 @@ export function SettingsScene(props: SettingsSceneProps) {
     <GeneralSection settings={settings} onChange={onChange} aiProviders={aiProviders} />
   ) : section === 'appearance' ? (
     <AppearanceSection settings={settings} onChange={onChange} />
+  ) : section === 'shortcuts' ? (
+    <ShortcutEditor />
   ) : section === 'library' ? (
     <LibrarySection paths={paths} onRefreshPaths={onRefreshPaths} onRevealPath={onRevealPath} onCreateBackup={onCreateBackup} onRestoreBackup={onRestoreBackup} scenes={scenes} enabledSceneIds={enabledSceneIds} onToggleScene={onToggleScene} />
   ) : section === 'plugins' ? (

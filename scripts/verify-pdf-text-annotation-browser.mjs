@@ -468,22 +468,30 @@ createRoot(document.getElementById('root')!).render(<Harness />);
   ok(fixedSaved.positionJson.autoWidth === false && near(fixedSaved.positionJson.width, resized.positionJson.width, 0.05), 'the fixed width survives the edit', fixedSaved.positionJson);
   results.cases.resize = { before: widthBefore, resized: resized.positionJson, saved: fixedSaved.positionJson };
 
-  // On-demand style entry from the selection actions (no automatic panel).
+  // Selection actions expose bold and italic directly; colour edits the glyph ink.
   const sp = await pointOnPage(fixedSaved.positionJson.x + 0.5, fixedSaved.positionJson.y + 0.5);
   await clickAt(sp.x, sp.y);
-  await until(`!!document.querySelector('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}].focused .annotation-text-style-toggle')`);
-  ok(!(await evaluate(`!!document.querySelector('.annotation-text-style-panel')`)), 'selecting a text annotation shows no style panel by itself');
-  await evaluate(`document.querySelector('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}] .annotation-text-style-toggle').click()`);
-  await until(`!!document.querySelector('.annotation-text-style-panel')`);
-  await screenshot('after-style-panel-on-demand');
-  await evaluate(`document.querySelector('.annotation-text-style-panel .font-size-trigger').click()`);
-  await until(`!!document.querySelector('.annotation-text-style-panel .font-size-list')`);
-  await evaluate(`[...document.querySelectorAll('.annotation-text-style-panel .font-size-list button')].find(button => button.textContent === '24')?.click()`);
-  await pause(250);
+  await until(`!!document.querySelector('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}].focused .annotation-text-style-button[aria-label="加粗"]')`);
+  ok(!(await evaluate(`!!document.querySelector('.annotation-text-style-panel, .annotation-text-style-toggle')`)), 'selecting a text annotation has no Aa entry or secondary style panel');
+  const styleBefore = (await annotations()).find(a => a.id === rz.id);
+  await evaluate(`document.querySelector('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}] .annotation-text-style-button[aria-label="加粗"]').click()`);
+  await until(`window.__pdfHarness.annotations().find(a => a.id === ${JSON.stringify(rz.id)}).positionJson.bold === true`);
+  await evaluate(`document.querySelector('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}] .annotation-text-style-button[aria-label="倾斜"]').click()`);
+  await until(`window.__pdfHarness.annotations().find(a => a.id === ${JSON.stringify(rz.id)}).positionJson.italic === true`);
+  const pressed = await evaluate(`(()=>{const m=document.querySelector('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}]');return {bold:m.querySelector('[aria-label="加粗"]').getAttribute('aria-pressed'),italic:m.querySelector('[aria-label="倾斜"]').getAttribute('aria-pressed')}})()`);
+  ok(pressed.bold === 'true' && pressed.italic === 'true', 'direct bold and italic buttons expose their persisted pressed state', pressed);
+  await evaluate(`document.querySelector('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}] .annotation-color-pill').click()`);
+  await until(`!!document.querySelector('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}] .annotation-color-palette-label')`);
+  const paletteLabel = await evaluate(`document.querySelector('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}] .annotation-color-palette-label').textContent`);
+  ok(paletteLabel === '文字颜色', 'text annotation colour palette is explicitly bound to glyph colour', paletteLabel);
+  const chosenTextColor = await evaluate(`(()=>{const buttons=[...document.querySelectorAll('.annotation-mark[data-annotation-id=${JSON.stringify(rz.id)}] .annotation-color-presets button')];const b=buttons.find(x=>!x.classList.contains('active'));const c=b?.getAttribute('aria-label');b?.click();return c})()`);
+  await until(`window.__pdfHarness.annotations().find(a => a.id === ${JSON.stringify(rz.id)}).positionJson.textColor === ${JSON.stringify(chosenTextColor)}`);
   const restyled = (await annotations()).find(a => a.id === rz.id);
   const restyledMark = await markState(rz.id);
-  ok(restyled.positionJson.fontSize === 24 && near(restyledMark.fontPx, 24, 0.5) && restyledMark.clipped === false, 'the compact style entry changes the font size and the box reflows without clipping', { fontPx: restyledMark.fontPx });
-  results.cases.style = { restyled: restyled.positionJson, mark: restyledMark };
+  ok(restyled.positionJson.bold === true && restyled.positionJson.italic === true && restyled.positionJson.fontSize === styleBefore.positionJson.fontSize, 'direct B/I changes preserve the internal font size', restyled.positionJson);
+  ok(restyled.positionJson.textColor === chosenTextColor && restyled.color === styleBefore.color, 'quick colour changes textColor without mutating the generic annotation colour', { textColor: restyled.positionJson.textColor, annotationColor: restyled.color });
+  await screenshot('after-direct-bold-italic-text-color');
+  results.cases.style = { before: styleBefore.positionJson, restyled: restyled.positionJson, mark: restyledMark, pressed };
 
   // IME-style input through CDP composition events (real Windows IME cannot be driven headlessly).
   await evaluate(`window.__pdfHarness.setTool('text')`); await frame();

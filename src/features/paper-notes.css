@@ -40,12 +40,21 @@
   padding: 6px; border: 1px solid transparent; border-radius: 7px;
   color: var(--muted); background: transparent; opacity: 1; box-shadow: none;
 }
+/* Mouse feedback is background-only: no border, inset shadow or outline may appear on hover, press or
+   after a click while the pointer stays (3580532a). The translucent accent tint stays visible on the
+   active row, whose own background already equals --accent-soft. */
 .reader-scene-sidebar .reader-paper-row .reader-paper-expand:hover,
 .reader-scene-sidebar .reader-paper-row .scene-context-item-close:hover {
-  background: var(--accent-soft, #eaf5ee); color: var(--ink); border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--ink); border-color: transparent; box-shadow: none;
 }
-.reader-scene-sidebar .reader-paper-row button:active {
-  background: var(--accent-soft, #eaf5ee); box-shadow: inset 0 0 0 2px var(--accent);
+.reader-scene-sidebar .reader-paper-row .reader-paper-expand:active,
+.reader-scene-sidebar .reader-paper-row .scene-context-item-close:active {
+  background: color-mix(in srgb, var(--accent) 24%, transparent); border-color: transparent; box-shadow: none;
+}
+/* Pointer focus leaves nothing behind; keyboard focus keeps the visible outline below. */
+.reader-scene-sidebar .reader-paper-row .reader-paper-expand:focus:not(:focus-visible),
+.reader-scene-sidebar .reader-paper-row .scene-context-item-close:focus:not(:focus-visible) {
+  outline: none; box-shadow: none; border-color: transparent;
 }
 .reader-scene-sidebar .reader-paper-row button:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;

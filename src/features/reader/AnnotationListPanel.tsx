@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { AnnotationColor, PaperDocument, PositionJson } from '../../core/types';
 import type { PaperFileKind } from '../../platform/nativeApi';
 import { zh } from '../../ui/zh';
-import { AnnotationLayerManager } from './AnnotationLayerManager';
 import { TrashIcon } from './ReaderIcons';
 import { annotationPresetColors } from './readerConstants';
 import { annotationLabelText, noteSaveStateText, preferredTranslatedFileId } from './readerHelpers';
@@ -40,9 +39,6 @@ export function AnnotationListPanel({
     .filter((annotation) => !activeFileId || annotation.fileId === activeFileId)
     .filter((annotation) => !layerFilter || annotation.layerId === layerFilter)
     .sort((a, b) => a.page - b.page || (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-  if (layers?.state && layers.managerOpen) {
-    return <AnnotationLayerManager layers={layers} paper={paper} onClose={() => layers.setManagerOpen(false)} />;
-  }
   // Layers are only offered when the layer system is available for this paper (Tauri or the local store).
   const visibleLayers = layers?.state ? layers.layers.filter((layer) => !layer.archivedAt && layers.isLayerVisible(layer.id)) : [];
   const writableTargets = layers?.state ? layers.layers.filter((layer) => !layer.archivedAt && !layer.locked) : [];
@@ -55,7 +51,6 @@ export function AnnotationListPanel({
           {visibleLayers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name}（{layer.annotationCount}）</option>)}
         </select>
       </label>
-      <button type="button" className="annotation-layer-action" onClick={() => layers.setManagerOpen(true)} aria-haspopup="true">管理图层</button>
     </div>
   ) : null;
   if (!sortedAnnotations.length) {

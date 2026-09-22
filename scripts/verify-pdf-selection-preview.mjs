@@ -37,15 +37,20 @@ for (const run of [
   const [rect] = preview;
   const vertical = run.orientation === 90 || run.orientation === 270;
   const across = vertical ? rect.width / run.width : rect.height / run.height;
-  ok(across >= 0.5 && across <= 0.6, 'band keeps 50–60% of the run across the glyph axis (proportional, not a fixed px height)', { run, rect, across });
-  const inset = vertical ? (rect.x - run.x) / run.width : (rect.y - run.y) / run.height;
-  ok(inset >= 0.17 && inset <= 0.29, 'band starts after the ascender/descender inset', { run, rect, inset });
+  ok(Math.abs(across - 1.2) < 1e-9, 'band keeps the full ascent box plus 20% descender coverage', { run, rect, across });
+  const leading = vertical ? (run.x - rect.x) / run.width : (run.y - rect.y) / run.height;
+  const trailing = vertical
+    ? (rect.x + rect.width - run.x - run.width) / run.width
+    : (rect.y + rect.height - run.y - run.height) / run.height;
+  const baselineAtStart = run.orientation === 90 || run.orientation === 180;
+  ok(Math.abs(leading - (baselineAtStart ? 0.2 : 0)) < 1e-9 && Math.abs(trailing - (baselineAtStart ? 0 : 0.2)) < 1e-9,
+    'descender extension follows the baseline side for every orientation', { run, rect, leading, trailing });
 }
 // Same band for the same run at any zoom: geometry is expressed in page percent.
 {
   const run = { x: 10, y: 10, width: 30, height: 2 };
   const a = helpers.highlightPositionStyle(run);
-  ok(a.top === '10.56%' && a.height === '1.08%', 'percent geometry is zoom independent', a);
+  ok(a.top === '10%' && a.height === '2.4%', 'percent geometry is zoom independent', a);
 }
 
 // ---- reader wiring ----

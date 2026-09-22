@@ -1,4 +1,6 @@
-import { RetainedReaderNote } from './ReaderNoteActivity';
+import { ReaderNoteModeSwitch } from './ReaderNoteWorkbenchMenu';
+import type { NoteWorkbenchMode } from './noteWorkbench';
+import { RetainedReaderNote, ReaderNoteLayoutActions } from './ReaderNoteActivity';
 import { ReaderDrawerResizer } from './ReaderDrawerResizer';
 import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type { ObjectNavigationTarget } from '../../core/relations';
@@ -15,6 +17,8 @@ const workspacePanelTabs: ReaderSidePanelTab[] = ['notes', 'annotations', 'chat'
 
 export function ReaderSideDrawer({
   open,
+  noteMode,
+  onSelectNoteMode,
   width,
   maximumWidth,
   expanded,
@@ -45,6 +49,8 @@ export function ReaderSideDrawer({
   onNavigateRelationTarget,
 }: {
   open: boolean;
+  noteMode?: NoteWorkbenchMode;
+  onSelectNoteMode?: (mode: NoteWorkbenchMode) => void;
   width: number;
   maximumWidth: number;
   expanded: boolean;
@@ -125,7 +131,7 @@ export function ReaderSideDrawer({
 
   return (
     <aside
-      className="reader-workspace-drawer"
+      className={`reader-workspace-drawer${notesActive ? ' notes-active' : ''}`}
       data-reader-layer="sidebar"
       aria-label="阅读工作面板" hidden={!open} inert={!open} aria-hidden={!open}
       style={{ width: expanded || compact ? '100%' : width, display: open ? undefined : 'none' }}
@@ -136,7 +142,7 @@ export function ReaderSideDrawer({
       onKeyDown={event => { if (event.key === 'Escape' && addMenuOpen && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); setAddMenuOpen(false); } }}
     >
       {open && !expanded && !compact && <ReaderDrawerResizer width={width} maximum={maximumWidth} onChange={onWidthChange} />}
-      <header className="reader-workspace-header">
+      {!notesActive && <header className="reader-workspace-header">
         <div className="reader-workspace-tabs" role="tablist" aria-label={zh.reader.openPanel}>
           {openTabs.map((tab) => {
             const panel = panelById.get(tab);
@@ -181,6 +187,7 @@ export function ReaderSideDrawer({
           </div>
         </div>
         <div className="reader-workspace-actions">
+
           
           <button
             className="reader-workspace-toggle active"
@@ -193,11 +200,13 @@ export function ReaderSideDrawer({
             <SidebarIcon />
           </button>
         </div>
-      </header>
+      </header>}
 
       <div className="workspace-panel-content">
         {retainNotes && notesPanel && notesView && <RetainedReaderNote key={paper.paperId} active={notesActive}>
+          <ReaderNoteLayoutActions.Provider value={noteMode && onSelectNoteMode ? <ReaderNoteModeSwitch mode={noteMode} onSelectMode={onSelectNoteMode} /> : null}>
           {notesView.render({ panel: notesPanel.panel, sceneId: 'reader', selectedPaper: paper })}
+                  </ReaderNoteLayoutActions.Provider>
         </RetainedReaderNote>}
         {open && sidePanelTab !== 'notes' && activePanel && activePanelView
           ? activePanelView.render({ panel: activePanel.panel, sceneId: 'reader', selectedPaper: paper })

@@ -1,3 +1,4 @@
+import { shortcutTestRuntime } from './shortcut-test-runtime.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -43,30 +44,21 @@ function find(node, predicate) {
 }
 const zh = { reader: { pageStatus: (p, t) => `${p}/${t}`, fitWidth: 'FIT', zoomOut: 'OUT', zoomReset: 'RESET', zoomIn: 'IN' }, workbench: {} };
 
-// Run the real app keyboard function, not a reimplementation of its branching.
+// Run the actual registry and application dispatcher (previously extracted App's removed listener).
 {
-  const src = fs.readFileSync('src/ui/App.tsx', 'utf8');
-  const start = src.indexOf('    const handleGlobalKeyDown =');
-  const end = src.indexOf("    window.addEventListener('keydown', handleGlobalKeyDown)", start);
-  const code = ts.transpileModule(src.slice(start, end) + ';globalThis.handle=handleGlobalKeyDown;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-  class Input {}; class Textarea {}; class Select {}; const events = [];
-  const context = { HTMLInputElement: Input, HTMLTextAreaElement: Textarea, HTMLSelectElement: Select,
-    importOpen: false, metadataEditOpen: false, tagsEditOpen: false, bulkTagsEditOpen: false, commandPaletteOpen: false,
-    activeScene: 'reader', readerContentMode: 'pdf', readerFocusedAnnotationId: null,
-    aster: { scenes: { list: () => [] } }, visibleSceneIds: [],
-    requestPdfFind: () => events.push('find-pdf'), undoAnnotationAction: () => events.push('undo'), redoAnnotationAction: () => events.push('redo'),
-    setScene: s => events.push(s), requestAnimationFrame: fn => fn(), librarySearchRef: { current: { focus: () => events.push('library-search') } },
-  };
-  vm.createContext(context); vm.runInContext(code, context);
-  function key(key, target = {}, extras = {}) { events.length = 0; context.handle({ key, target, ctrlKey: true, metaKey: false, shiftKey: false, preventDefault() {}, ...extras }); return [...events]; }
-  for (const target of [new Input(), new Textarea(), new Select(), { isContentEditable: true }]) {
-    check(key('z', target), [], 'text field owns undo'); check(key('y', target), [], 'text field owns redo');
+  const runtime = shortcutTestRuntime();
+  const { Element, key, store } = runtime;
+  for (const kind of ['input', 'textarea', 'select', 'contenteditable', 'cm']) {
+    check(key('z', new Element(kind)).events, [], 'text field owns undo');
+    check(key('y', new Element(kind)).events, [], 'text field owns redo');
   }
-  check(key('z', {}, { defaultPrevented: true }), [], 'respect handled events');
-  check(key('z', {}, { isComposing: true }), [], 'respect IME');
-  check(key('z'), ['undo'], 'canvas undo'); check(key('y'), ['redo'], 'canvas redo');
-  check(key('f'), ['find-pdf'], 'reader search remains in reader');
-  context.activeScene = 'library'; check(key('f'), ['library', 'library-search'], 'library search preserved');
+  check(key('z', undefined, { defaultPrevented: true }).events, [], 'respect handled events');
+  check(key('z', undefined, { isComposing: true }).events, [], 'respect IME');
+  check(key('z').events, ['undo'], 'canvas undo'); check(key('y').events, ['redo'], 'canvas redo');
+  check(key('f').events, ['find-pdf'], 'reader search remains in reader');
+  store.setContext('library', false);
+  check(key('f').events, ['library', 'library-search'], 'library search preserved');
+  runtime.dispose();
 }
 
 // Page entry: focus protects draft; Enter commits once; Escape cancels; a different paper resets.
@@ -129,6 +121,43 @@ const zh = { reader: { pageStatus: (p, t) => `${p}/${t}`, fitWidth: 'FIT', zoomO
   check(findPdfMatches(pages, '[a+b].').matches.length, 1, 'regex metacharacters are literal');
   check(findPdfMatches(pages, '   ').matches.length, 0, 'blank query');
   check(findPdfMatches([{ pageNumber: 1, textItems: [item('aaa')] }], 'a', 2).truncated, true, 'bounded search');
+}
+
+// Normal annotation work remains internal: every tool may save concurrently without a progress/status notice.
+{
+  const h = hooks(); const { useReaderSaveQueue } = load('src/features/reader/useReaderSaveQueue.tsx', { react: h.react, 'react/jsx-runtime': jsx });
+  let queue; const render = () => queue = h.render(() => useReaderSaveQueue('normal-operations'));
+  render(); h.flush();
+  const releases = [];
+  const labels = ['保存高亮', '保存下划线', '保存笔迹', '擦除笔迹', '保存文字', '保存图形', '保存箭头', '移动标注', '调整标注大小'];
+  const pending = labels.map((label, index) => queue.run(label, () => new Promise(resolve => releases.push(resolve)), undefined, `annotation-${index}`));
+  render();
+  check(queue.feedback.props.children.length, 0, 'all annotation tools hide normal-operation progress');
+  assert.equal(find(queue.feedback, node => node.props?.role === 'status'), undefined, 'normal saves never expose a status row'); checks++;
+  releases.forEach(resolve => resolve());
+  await Promise.all(pending); render();
+  check(queue.feedback.props.children.length, 0, 'rapid normal saves leave no queued notice');
+}
+
+// Delayed and out-of-order parent/native publications cannot displace the newest optimistic geometry.
+{
+  const {
+    annotationPositionsEqual,
+    createOptimisticAnnotationPosition,
+    discardOptimisticAnnotationPosition,
+    reconcileOptimisticAnnotationPosition,
+  } = load('src/features/reader/pdf/annotationPositionOptimism.ts');
+  const original = { x: 10, y: 20, width: 22, nested: { edge: [1, 2] } };
+  const firstPosition = { ...original, x: 30, y: 35 };
+  const secondPosition = { ...original, x: 55, y: 62 };
+  const first = createOptimisticAnnotationPosition(1, firstPosition);
+  const second = createOptimisticAnnotationPosition(2, secondPosition);
+  check(annotationPositionsEqual(original, { width: 22, nested: { edge: [1, 2] }, y: 20, x: 10 }), true, 'position equality ignores key order');
+  assert.equal(reconcileOptimisticAnnotationPosition(second, original), second, 'old committed geometry cannot clear latest drag'); checks++;
+  assert.equal(reconcileOptimisticAnnotationPosition(second, first.positionJson), second, 'out-of-order first completion cannot clear second drag'); checks++;
+  assert.equal(discardOptimisticAnnotationPosition(second, first.revision), second, 'discarding older failure cannot revert newer drag'); checks++;
+  assert.equal(reconcileOptimisticAnnotationPosition(second, second.positionJson), undefined, 'matching latest completion settles optimism'); checks++;
+  assert.equal(discardOptimisticAnnotationPosition(first, first.revision), undefined, 'explicit discard restores committed geometry'); checks++;
 }
 
 // Retryable retained draft jobs: initial failure, retry deduplication, success and discard.

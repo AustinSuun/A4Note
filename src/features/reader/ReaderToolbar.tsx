@@ -1,10 +1,11 @@
+import { useShortcutProps } from '../../shared/shortcuts';
+import { ReaderShortcutSettings } from './ReaderShortcutSettings';
 import { useEffect, useRef, useState, type CSSProperties, type WheelEvent as ReactWheelEvent } from 'react';
 import { HighlightAppearanceControl } from './HighlightAppearanceControl';
 import { ReaderToolbarPortal } from './ReaderToolbarPortal';
 import { ReaderAnnotationDock } from './ReaderAnnotationDock';
 import { AnnotationLayerPicker } from './AnnotationLayerPicker';
 import { ReaderToolPopover } from './ReaderToolPopover';
-import { TEXT_FONT_SIZE_OPTIONS } from './pdf/pdfTextAnnotation';
 import './reader-file-switch.css';
 import type { AnnotationColor, PaperDocument, ReaderTool } from '../../core/types';
 import { zh } from '../../ui/zh';
@@ -77,6 +78,7 @@ export function ReaderToolbar({
   onZoomChange: (zoom: number, anchor?: PdfZoomAnchor) => void;
   onFitWidth: () => void;
 }) {
+  const shortcutProps = useShortcutProps();
   const hasTranslatedPdf = Boolean(paper.translatedPdfs.length);
   const [toolColors, setToolColors] = useState<Record<ReaderTool, AnnotationColor>>(() => ({ ...defaultToolColors }));
   const [toolSettingsOpenFor, setToolSettingsOpenFor] = useState<ReaderTool | null>(null);
@@ -224,20 +226,20 @@ export function ReaderToolbar({
             <button
               type="button"
               onClick={() => onZoomChange(Math.max(0.2, Number((zoom - 0.1).toFixed(2))))}
-              title={zh.reader.zoomOut}
+              {...shortcutProps('reader.zoomOut', zh.reader.zoomOut)}
             >
               <ZoomOutIcon />
             </button>
             <button type="button" className="zoom-pct-btn" onClick={() => onZoomChange(1)} title="Reset to 100%">
               {Math.round(zoom * 100)}%
             </button>
-            <button type="button" onClick={onFitWidth} title={zh.reader.fitWidth}>
+            <button type="button" onClick={onFitWidth} {...shortcutProps('reader.fitWidth', zh.reader.fitWidth)}>
               <FitWidthIcon />
             </button>
             <button
               type="button"
               onClick={() => onZoomChange(Math.min(5, Number((zoom + 0.1).toFixed(2))))}
-              title={zh.reader.zoomIn}
+              {...shortcutProps('reader.zoomIn', zh.reader.zoomIn)}
             >
               <ZoomInIcon />
             </button>
@@ -261,7 +263,7 @@ export function ReaderToolbar({
                     className={`annotation-tool-btn ${isActive ? 'active' : ''} ${isContextual ? 'contextual' : ''}`.trim()}
                     type="button"
                     onClick={() => handleSelectTool(tool.id)}
-                    title={tool.id === 'hand' ? '手形拖动：按住左键移动；空格＋左键可临时拖动' : isContextual ? `${tool.label}（点击打开所选标注的设置）` : toolHasSettings(tool.id) ? `${tool.label}（再次点击打开设置）` : tool.label}
+                    {...shortcutProps(`reader.tool.${tool.id}`, tool.id === 'hand' ? '手形拖动：按住左键移动；空格＋左键可临时拖动' : isContextual ? `${tool.label}（点击打开所选标注的设置）` : toolHasSettings(tool.id) ? `${tool.label}（再次点击打开设置）` : tool.label)}
                     aria-label={tool.label}
                     aria-pressed={isActive}
                     aria-haspopup={toolHasSettings(tool.id) ? 'dialog' : undefined}
@@ -289,6 +291,7 @@ export function ReaderToolbar({
               );
             })}
             <AnnotationLayerPicker />
+            <ReaderShortcutSettings />
           </div>
         </div>}
 
@@ -495,26 +498,8 @@ function ToolOptionsBar({
               >
                 I
               </button>
-              <button
-                type="button"
-                className={toolSettings.textBorderColor !== 'transparent' ? 'active' : ''}
-                title="文字外框"
-                aria-label="文字外框"
-                onClick={() =>
-                  onToolSettingsChange({
-                    ...toolSettings,
-                    textBorderColor: toolSettings.textBorderColor === 'transparent' ? '#ffffff' : 'transparent',
-                  })
-                }
-              >
-                <span className="text-outline-preview" aria-hidden="true">T</span>
-              </button>
             </div>
             <span className="tool-option-hint">点击页面后直接输入；Esc 或点击外部完成，框随文字扩展</span>
-          </div>
-          <div className="tool-option-block compact text-size-option">
-            <span className="tool-option-label">字号</span>
-            <FontSizeDropdown value={toolSettings.textFontSize} onChange={(textFontSize) => onToolSettingsChange({ ...toolSettings, textFontSize: textFontSize })} />
           </div>
           <ToolColorPalette
             label="文字颜色"
@@ -522,13 +507,6 @@ function ToolOptionsBar({
             customColor={toolSettings.textColor}
             onChange={(textColor) => onToolSettingsChange({ ...toolSettings, textColor })}
             onCustomColorChange={(textColor) => onToolSettingsChange({ ...toolSettings, textColor })}
-          />
-          <ToolColorPalette
-            label="外边框"
-            value={toolSettings.textBorderColor}
-            customColor={toolSettings.textBorderColor === 'transparent' ? '#ffffff' : toolSettings.textBorderColor}
-            onChange={(textBorderColor) => onToolSettingsChange({ ...toolSettings, textBorderColor })}
-            onCustomColorChange={(textBorderColor) => onToolSettingsChange({ ...toolSettings, textBorderColor })}
           />
           <ToolColorPalette
             label="背景"
@@ -656,41 +634,45 @@ function ToolColorPalette({
   const inputValue = annotationColorInputValue(value === 'transparent' ? customColor : value);
   return (
     <div className={`tool-option-color-group ${allowTransparent ? 'with-transparent-toggle' : ''}`.trim()} aria-label={label}>
-      <span className="tool-option-label">{label}</span>
-      {allowTransparent && (
-        <label className="tool-option-transparent-toggle" title="无背景">
+      <div className="tool-option-color-heading">
+        <span className="tool-option-label">{label}</span>
+        {allowTransparent && (
+          <label className="tool-option-transparent-toggle" title="无背景">
+            <input
+              type="checkbox"
+              checked={value === 'transparent'}
+              onChange={(event) => onChange(event.target.checked ? 'transparent' : inputValue)}
+            />
+            <span>无背景</span>
+          </label>
+        )}
+      </div>
+      <div className="tool-option-color-row">
+        <label className="tool-option-color-custom" title={`${label}：自定义颜色`}>
           <input
-            type="checkbox"
-            checked={value === 'transparent'}
-            onChange={(event) => onChange(event.target.checked ? 'transparent' : inputValue)}
+            type="color"
+            aria-label={`${label}：自定义颜色`}
+            value={inputValue}
+            onChange={(event) => {
+              onCustomColorChange(event.target.value);
+            }}
           />
-          <span>无背景</span>
+          <span style={{ background: inputValue }} />
         </label>
-      )}
-      <label className="tool-option-color-custom" title={`${label}：自定义颜色`}>
-        <input
-          type="color"
-          aria-label={`${label}：自定义颜色`}
-          value={inputValue}
-          onChange={(event) => {
-            onCustomColorChange(event.target.value);
-          }}
-        />
-        <span style={{ background: inputValue }} />
-      </label>
-      <div className="tool-option-color-presets">
-        {toolColorPresets.map((color) => (
-          <button
-            key={color}
-            type="button"
-            className={inputValue.toLowerCase() === color.toLowerCase() && value !== 'transparent' ? 'active' : ''}
-            aria-pressed={inputValue.toLowerCase() === color.toLowerCase() && value !== 'transparent'}
-            style={{ background: color }}
-            title={color}
-            aria-label={color}
-            onClick={() => onChange(color)}
-          />
-        ))}
+        <div className="tool-option-color-presets">
+          {toolColorPresets.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={inputValue.toLowerCase() === color.toLowerCase() && value !== 'transparent' ? 'active' : ''}
+              aria-pressed={inputValue.toLowerCase() === color.toLowerCase() && value !== 'transparent'}
+              style={{ background: color }}
+              title={color}
+              aria-label={color}
+              onClick={() => onChange(color)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -751,85 +733,4 @@ function toolColorToCss(color: AnnotationColor): string {
     purple: 'rgba(151,112,219,.9)',
   };
   return map[color] ?? '#f2c94c';
-}
-
-function FontSizeDropdown({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside as any);
-    return () => document.removeEventListener('mousedown', handleClickOutside as any);
-  }, []);
-
-  useEffect(() => {
-    if (open && listRef.current) {
-      const active = listRef.current.querySelector('.active') as HTMLElement;
-      active?.scrollIntoView({ block: 'nearest' });
-    }
-  }, [open]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      setOpen(false);
-      return;
-    }
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (!open) {
-        setOpen(true);
-        return;
-      }
-      const idx = TEXT_FONT_SIZE_OPTIONS.indexOf(value);
-      let nextIdx = idx;
-      if (e.key === 'ArrowDown') nextIdx = Math.min(idx + 1, TEXT_FONT_SIZE_OPTIONS.length - 1);
-      else nextIdx = Math.max(idx - 1, 0);
-      if (nextIdx !== idx) onChange(TEXT_FONT_SIZE_OPTIONS[nextIdx]);
-    }
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      setOpen((o) => !o);
-    }
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    if (!open) return;
-    e.preventDefault();
-    const idx = TEXT_FONT_SIZE_OPTIONS.indexOf(value);
-    if (e.deltaY < 0 && idx > 0) onChange(TEXT_FONT_SIZE_OPTIONS[idx - 1]);
-    if (e.deltaY > 0 && idx < TEXT_FONT_SIZE_OPTIONS.length - 1) onChange(TEXT_FONT_SIZE_OPTIONS[idx + 1]);
-  };
-
-  return (
-    <div className="font-size-dropdown" ref={ref} onKeyDown={handleKeyDown}>
-      <button type="button" className="font-size-trigger" aria-label="文本字号" onClick={() => setOpen((o) => !o)}>
-        <span>{value}</span>
-        <span className="dropdown-arrow" aria-hidden>▾</span>
-      </button>
-      {open && (
-        <div className="font-size-list" ref={listRef} onWheel={handleWheel}>
-          {TEXT_FONT_SIZE_OPTIONS.map((size) => (
-            <button
-              key={size}
-              type="button"
-              className={size === value ? 'active' : ''}
-              onClick={() => {
-                onChange(size);
-                setOpen(false);
-              }}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
