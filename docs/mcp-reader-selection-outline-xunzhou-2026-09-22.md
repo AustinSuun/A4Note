@@ -4,7 +4,7 @@
 
 - 任务：`7ef5d0fd-e15d-4451-876e-925e0aa2fce0`，spec revision `2`。
 - 分支：`fix/reader-selection-outline-xunzhou`。
-- 实现提交：`36d9e6a`；随后把本地 `main` 的 `c22a5e0` 合入任务分支，合并提交为 `4f6482c`。
+- 实现提交：`36d9e6a`；任务分支随后合入最新本地 `main` `9bcc068`（包含中间合并提交 `4f6482c`）。
 - 结果：鼠标按下、释放、重复点击、切换条目和返回 Reader 场景后，标题按钮都不再绘制矩形外框；选中状态只由整行浅绿色背景表达。键盘 `:focus-visible` 轮廓保留。
 
 ## 根因

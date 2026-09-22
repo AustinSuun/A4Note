@@ -39,4 +39,10 @@ const wrapped=layoutShortcutHints(twoGroups,{left:8,top:8,right:536,bottom:200},
 check(new Set(twoGroups.slice(3).map(t=>wrapped[t.id]?.left)).size===1&&wrapped['named-3'].left<wrapped['named-0'].left,'related actions wrap as a complete group');
 const blocked=layoutShortcutHints([floatingItems[0]],{left:8,top:8,right:792,bottom:592},[{left:690,top:70,right:740,bottom:100}]);
 check(blocked['named-0'].top>=104,'collision check includes the action label, not just keys');
+check(JSON.stringify(hintKeycaps({type:'keyboard',key:'h',ctrl:true},true))==='["H"]','button keycap omits held Ctrl');
+check(JSON.stringify(hintKeycaps({type:'keyboard',key:'n',ctrl:true,alt:true},true))==='["Alt","N"]','button keycap keeps required Alt modifier');
+check(JSON.stringify(hintKeycaps({type:'keyboard',key:'+',ctrl:true,shift:true},true))==='["Shift","+"]','compact Plus binding preserves Shift and Plus');
+check(JSON.stringify(hintKeycaps({type:'keyboard',key:'q',code:'KeyA',semantics:'code',ctrl:true,meta:true},true))==='["Meta","A"]','compact physical key keeps Meta');
+check(JSON.stringify(hintKeycaps({type:'mouse',button:3},true))==='["鼠标后退"]','compact mouse binding unchanged');
+check(JSON.stringify(hintKeycaps({type:'keyboard',key:'h',ctrl:true}))==='["Ctrl","H"]','full display remains the default for settings and floating hints');
 console.log(`Shortcut hint layout verification passed: ${checks.length} checks`);

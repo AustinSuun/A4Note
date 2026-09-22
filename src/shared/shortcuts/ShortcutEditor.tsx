@@ -94,24 +94,33 @@ export function ShortcutEditor({ sceneId }: { sceneId?: string }) {
     <div className="shortcut-editor-list" role="list" aria-label="快捷键命令">
       {filtered.map(c => {
         const bindings = bindingsForCommand(c, store.overrides);
-        return <div key={c.id} className="shortcut-editor-row" data-shortcut-row={c.id} role="listitem">
+        const isRecording = recordingId === c.id;
+        return <div key={c.id} className={`shortcut-editor-row${isRecording ? ' is-capturing' : ''}`} data-shortcut-row={c.id} role="listitem">
           <div className="shortcut-editor-command"><strong>{c.title}</strong><small>{c.group}</small></div>
-          <div className="shortcut-editor-binding"><ShortcutKeycaps bindings={bindings} /></div>
-          <div className="shortcut-editor-actions"><button className="shortcut-change-button" type="button" disabled={!!recordingId} onClick={e => start(c, null, e.currentTarget)}>更改</button>
+          <div className={`shortcut-editor-binding${isRecording ? ' shortcut-editor-binding-capture' : ''}`}>
+            {isRecording ? <div className="shortcut-inline-capture" role="status" aria-live="polite" aria-atomic="true">
+              <span className="shortcut-inline-capture-label">正在更改</span>
+              {candidate === null ? <strong>{preview || '请按下新快捷键或鼠标侧键'}</strong> : <ShortcutKeycaps bindings={candidate} empty="将清除快捷键" />}
+              <small>Esc 取消 · Delete / Backspace 清除</small>
+            </div> : <ShortcutKeycaps bindings={bindings} />}
+          </div>
+          <div className="shortcut-editor-actions">{isRecording ? <>
+            <button className="shortcut-button-primary" ref={saveButton} type="button" disabled={candidate === null} onClick={save}>{conflicts.length ? '替换并保存' : warnings.length ? '确认风险并保存' : '保存更改'}</button>
+            <button type="button" disabled={candidate === null} onClick={() => { setRestoringDefault(false); setCandidate(null); setPreview(''); }}>重新输入</button>
+            <button type="button" onClick={finish}>取消</button>
+          </> : <>
+            <button className="shortcut-change-button" type="button" disabled={!!recordingId} onClick={e => start(c, null, e.currentTarget)}>更改</button>
             <button type="button" disabled={!!recordingId || !bindings.length} title="清除快捷键" aria-label={`清除“${c.title}”快捷键`} onClick={e => start(c, [], e.currentTarget)}>清除</button>
-            <button type="button" disabled={!!recordingId} title="恢复此项默认快捷键" aria-label={`恢复“${c.title}”默认快捷键`} onClick={e => start(c, c.defaultBindings, e.currentTarget, true)}>重置</button></div>
+            <button type="button" disabled={!!recordingId} title="恢复此项默认快捷键" aria-label={`恢复“${c.title}”默认快捷键`} onClick={e => start(c, c.defaultBindings, e.currentTarget, true)}>重置</button>
+          </>}</div>
+          {isRecording && (conflicts.length > 0 || warnings.length > 0) && <div className="shortcut-editor-inline-feedback">
+            {conflicts.length > 0 && <p className="shortcut-editor-alert" role="alert">与以下命令冲突：{[...new Set(conflicts.map(item => item.title))].join('、')}。保存会移除这些命令中冲突的绑定。</p>}
+            {warnings.map((warning, index) => <p className="shortcut-editor-warning" role="alert" key={index}>{warning}</p>)}
+          </div>}
         </div>;
       })}
       {!filtered.length && <p className="shortcut-editor-empty">没有匹配的命令</p>}
     </div>
-    {recordingId && <div className="shortcut-recorder" role="region" aria-label="更改快捷键">
-      <span className="shortcut-recorder-eyebrow">正在更改</span><strong>{command?.title}</strong>
-      <div className="shortcut-recorder-status" role="status">{candidate === null ? <span>{preview || '请按下新快捷键或鼠标侧键'}</span> : <ShortcutKeycaps bindings={candidate} empty="将清除快捷键" />}</div>
-      <p className="shortcut-recorder-help">按 Esc 取消，Delete 或 Backspace 清除</p>
-      {conflicts.length > 0 && <p className="shortcut-editor-alert" role="alert">与以下命令冲突：{[...new Set(conflicts.map(c => c.title))].join('、')}。替换会移除这些命令中冲突的绑定。</p>}
-      {warnings.map((w, i) => <p className="shortcut-editor-warning" key={i}>{w}</p>)}
-      <div className="shortcut-editor-actions"><button className="shortcut-button-primary" ref={saveButton} type="button" disabled={candidate === null} onClick={save}>{conflicts.length ? '替换并保存' : warnings.length ? '确认风险并保存' : '保存更改'}</button>
-        <button type="button" onClick={() => { setRestoringDefault(false); setCandidate(null); setPreview(''); }}>重新输入</button><button type="button" onClick={finish}>取消</button></div>
-    </div>}
+
   </section>;
 }
