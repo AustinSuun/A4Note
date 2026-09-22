@@ -59,3 +59,7 @@
 - 默认绑定表和保留组合/侧键驱动限制仍见 `mcp-context-shortcuts-delivery-xingxu-2026-09-22.md`；本轮没有改变键位。第一有效绑定以外的别名去设置或tooltip查看。
 - 鼠标侧键以CDP事件验证真实WebView，不代表实体鼠标驱动全覆盖；未做macOS/Linux、屏幕阅读器人工验收。Rust既有23条编译警告与5个忽略测试未掩盖。
 - 由用户检查实际透明浮现效果并决定验收，不自行归档。本次不推送、打包、安装或发布；先前EXE不会自动包含本轮。
+
+## 本地main整合核验
+
+`29341cc` → `e28158440e629c12772052a490ed021989656998` 已完成快进合并；main重跑agent-status、core52、dispatcher50、布局18、Reader优先级62、UI-state、Reader rendering全部通过。`git diff 75c20c8 HEAD -- src scripts package.json`零差异；`git merge-base --is-ancestor e281584 main`通过，主树已跟踪文件干净。后续仅本段和双状态文档记录提交，实际最终delivery SHA由任务卡记录。既有未跟踪PDF/截图保持原状。隔离窗口已正常关闭，自己的dev:live launcher退出0。
