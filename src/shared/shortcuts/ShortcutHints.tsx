@@ -5,11 +5,30 @@ import { elementIsVisible, eventTargetIsEditable, modalIsOpen } from './dispatch
 import { layoutShortcutHints, type HintPosition, type HintRect } from './hintLayout';
 import type { ShortcutStore } from './store';
 
-type Hint = { id: string; label: string; enabled: boolean; anchor?: HTMLElement };
+type Hint = { id: string; label: string; enabled: boolean; anchor?: Element };
 const rectOf = (element: Element): HintRect => {
   const { left, top, right, bottom } = element.getBoundingClientRect();
   return { left, top, right, bottom };
 };
+// Scene navigation uses large grid tiles. Position by the icon and protect its
+// glyph/label, not the tile's empty hit-target padding (which forced hints several
+// rows away). Small toolbar buttons still protect their complete hit rectangle.
+function sceneTileIcon(node: HTMLElement) {
+  const rect = node.getBoundingClientRect();
+  return node.matches('button[data-shortcut-id^="scene."]') && rect.width >= 96 && rect.height >= 52 ? node.querySelector('svg') : null;
+}
+function controlRects(node: HTMLElement): HintRect[] {
+  const icon = sceneTileIcon(node);
+  if (!icon) return [rectOf(node)];
+  const rects = [rectOf(icon)];
+  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    if (!walker.currentNode.textContent?.trim()) continue;
+    const range = document.createRange(); range.selectNodeContents(walker.currentNode);
+    rects.push(...[...range.getClientRects()].map(({ left, top, right, bottom }) => ({ left, top, right, bottom })));
+  }
+  return rects;
+}
 function visibleControl(node: HTMLElement) {
   if (!elementIsVisible(node) || getComputedStyle(node).opacity === '0') return false;
   const rect = node.getBoundingClientRect();
@@ -37,7 +56,8 @@ export function ShortcutHints({ store }: { store: ShortcutStore }) {
         seen.add(command.id);
         // One primary effective binding keeps the overlay compact. All alternatives
         // remain in the existing button tooltip, aria-keyshortcuts and editor.
-        return [{ id: command.id, label: formatBinding(bindings[0]), enabled: canDispatchShortcut(command, context), anchor: nodes.find(node => node.dataset.shortcutId === command.id) }];
+        const node = nodes.find(node => node.dataset.shortcutId === command.id);
+        return [{ id: command.id, label: formatBinding(bindings[0]), enabled: canDispatchShortcut(command, context), anchor: node ? sceneTileIcon(node) ?? node : undefined }];
       }));
     };
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(refresh); };
@@ -65,7 +85,7 @@ export function ShortcutHints({ store }: { store: ShortcutStore }) {
   useLayoutEffect(() => {
     if (!store.hintVisible || !root.current) return;
     const elements = [...root.current.querySelectorAll<HTMLElement>('[data-hint-id]')];
-    const controls = [...document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role="button"], [role="menuitemradio"], #a4note-live-dev-badge')].filter(visibleControl).map(rectOf);
+    const controls = [...document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role="button"], [role="menuitemradio"], #a4note-live-dev-badge')].filter(visibleControl).flatMap(controlRects);
     const measurements = hints.map(hint => {
       const node = elements.find(element => element.dataset.hintId === hint.id)!;
       const rect = node.getBoundingClientRect();

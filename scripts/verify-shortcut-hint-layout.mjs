@@ -17,4 +17,11 @@ for(const [width,height] of [[800,600],[1280,800],[360,500]]) {
 }
 const control={left:100,top:700,right:130,bottom:730};
 check(hintRectsOverlap(control,{left:100,top:control.bottom-30,right:148,bottom:control.bottom-10}),'regression fixture catches old bottom-minus-30 icon overlap');
+// Large sidebar tiles: use glyph/label obstacles instead of blocking all of a
+// tile's empty padding. A key must remain within 12px of its own icon.
+const tiles=Array.from({length:4},(_,i)=>({id:`scene-${i}`,width:42,height:20,anchor:{left:55+(i%2)*140,top:100+Math.floor(i/2)*80,right:79+(i%2)*140,bottom:124+Math.floor(i/2)*80}}));
+const tileObstacles=tiles.flatMap(t=>[t.anchor,{left:t.anchor.left-8,right:t.anchor.right+8,top:t.anchor.bottom+8,bottom:t.anchor.bottom+24}]);
+const tilePositions=layoutShortcutHints(tiles,{left:8,top:80,right:290,bottom:280},tileObstacles);
+check(tiles.every(t=>tilePositions[t.id]?.placement==='adjacent'),'sidebar tile icons retain adjacent keys');
+check(tiles.every(t=>Math.min(Math.abs(tilePositions[t.id].left-t.anchor.right),Math.abs(tilePositions[t.id].top+20-t.anchor.top))<=12),'sidebar hints do not drift multiple tile rows');
 console.log(`Shortcut hint layout verification passed: ${checks.length} checks`);

@@ -22,15 +22,16 @@ export function layoutShortcutHints(items: HintMeasurement[], bounds: HintRect, 
     const anchor = item.anchor;
     if (!anchor) continue;
     const centered = Math.max(bounds.left, Math.min(bounds.right - item.width, (anchor.left + anchor.right - item.width) / 2));
-    for (let row = 0; row < 5; row += 1) {
+    const top = Math.max(bounds.top, Math.min(bounds.bottom - item.height, (anchor.top + anchor.bottom - item.height) / 2));
+    if (place(item, centered, anchor.top - 8 - item.height, 'adjacent')
+      || place(item, centered, anchor.bottom + 8, 'adjacent')
+      || place(item, anchor.right + 8, top, 'adjacent')
+      || place(item, anchor.left - item.width - 8, top, 'adjacent')) continue;
+    for (let row = 1; row < 5; row += 1) {
       const distance = 8 + row * (item.height + 8);
       // Subtract from TOP, not bottom: the old bottom-30 formula covered icons.
       if (place(item, centered, anchor.top - distance - item.height, 'adjacent')
         || place(item, centered, anchor.bottom + distance, 'adjacent')) break;
-    }
-    if (!result[item.id]) {
-      const top = Math.max(bounds.top, Math.min(bounds.bottom - item.height, (anchor.top + anchor.bottom - item.height) / 2));
-      place(item, anchor.right + 8, top, 'adjacent') || place(item, anchor.left - item.width - 8, top, 'adjacent');
     }
   }
   // Unanchored commands are individual transparent text hints in free space,
