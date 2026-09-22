@@ -174,6 +174,7 @@ try {
   check(menu.items.length === 4, '菜单包含四种模式（边读边记/悬浮速记/专注写作/PDF 专注）', menu.items);
   check(menu.extras.length === 1 && headerActionCount === 1, '新建在把手菜单、历史在文档头部，两次点击可达', { extras:menu.extras, headerActionCount });
   check(menu.keys.length === 4 && menu.shortcuts.every(Boolean), 'kbd 提示与 aria-keyshortcuts 反映绑定', menu.keys);
+  check(await ev("document.querySelectorAll('.reader-note-workbench-menu [aria-checked=true] .lucide-check').length === 1"), '当前模式同时有可见勾选和 radio 状态');
   await shot('02-menu');
   await key('ArrowDown', 'ArrowDown', 40);
   const afterArrow = await ev('document.activeElement.getAttribute("role")');
