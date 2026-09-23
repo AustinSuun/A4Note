@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-22T22:50:00+08:00",
+  "updatedAt": "2026-09-23T09:29:39+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
-    "status": "review",
-    "owner": "星序 (xingxu)",
-    "branch": "feat/note-edge-xingxu（交付及main包含SHA见任务卡）",
+    "status": "blocked",
+    "owner": "Arena (arena-084aaa9e7a0e)",
+    "branch": "fix/reader-shortcut-overlay-arena-084aaa（代码提交15ecbaacb9a5，待安全合并main）",
     "scope": [
+      "reader-shortcut-overlay-arena：任务2e96c3ee spec4，原文/译文/对照 Ctrl+F1/F2/F3、Ctrl+滚轮固定缩放提示与旧键移除、浮层94%/禁用97%毛玻璃背板；独立分支已提交代码15ecbaacb9a5并上传5张DEV隔离原生截图。main前进至a8fab19但有18项他人未跟踪文件，按AGENTS不覆盖、不强行合并、不submit；任务仍in_progress，等文件所有者处理后复核、合并、复验。详见docs/mcp-reader-shortcuts-arena-2026-09-23.md。",
       "taskboard-regressions-refresh-jingxing：竞行完成 4bc5d239 任务看板两条回归脚本过期。verify-task-stage-integration.mjs 第 318 行的「未提供结构化独立验收评价」已被 TaskReviewSummary 收进默认折叠的「证据说明与限制」disclosure，且调整意见 textarea 改为点「需要调整」后才渲染；verify-taskboard-compact.mjs 第 144 行字号快照抄的是 taskboard.css 基础规则（25/13/15/13/14/14px），而 206b641 同时引入的「Taskboard readability」固定像素覆盖块才是生效值（27/14/16/14/15/15px），与 --ui-* token 无关，快照自引入起即失败。改为语义谓词（开发 Agent 出处 + 常显 caution + 无「验收通过」措辞 + disclosure 存在）并内建篡改克隆反例断言，字号改用 READABILITY_FONTS 常量并注明来源；两脚本 3 轮稳定（约 7.7s / 3.7s）后加入 verify-all。src 无改动。记录 docs/mcp-taskboard-regressions-refresh-jingxing-2026-09-22.md。",
       "reader-note-edge-xingxu：星序完成9b69c4b5 spec3方案C：22×88/16×56边界把手、共享4px拖宽/400ms长按、向内四态勾选菜单、写作左缘返回；保留最新main单行文档头部，三态切换嵌入头部，新建走把手菜单并复用编辑器保存/选中文档，历史走标题下拉，均两次可达。54c51a7整合头部，aaeb146合入main9c1f3d4，未覆盖彩虹线/列表边框/图层/侧栏并行改动。最终browser84/84、core57、sidebar16及browser、Reader/UI-state/architecture通过；最新整合组合browser+完整verify248.346秒退出0（含build，Rust215/0/5ignored），原生158+18+20=196项/20图errors[]、diagnostics0。CSS125/150和补充CDP视口、临时显露滚动条边界如实记录。交付与main包含SHA见任务卡，下一步用户验收；未打包安装推送发布。详见docs/mcp-reader-note-edge-handle-xingxu-2026-09-22.md。更新：2026-09-22T22:01:40+08:00",
       "project-tasks-test-env-jingxing：竞行完成 f042df17 project-tasks 测试子进程环境泄漏。根因是 tools.test 等用 ...process.env 派生子进程且只删 session 变量，Agent 终端按 AGENTS.md 导出的 TASKS_EXPECTED_PROJECT_ID（及 TASKS_ENROLLMENT_TOKEN）泄漏进一次性测试服务的 CLI，checkService 身份不匹配 / 注册凭据无效。新增 test/test-env.mjs testEnv() 统一剔除全部 TASKS_* 后再合入显式键，五个测试改用；导出变量的 shell 中 tools.test 红→绿、套件 84/2 → 86/0。记录 docs/mcp-project-tasks-test-env-isolation-jingxing-2026-09-22.md。",
@@ -161,6 +162,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "reader-shortcut-overlay-arena：任务2e96c3ee spec4代码/回归在独立分支提交15ecbaacb9a5，5张带DEV独立测试标识的真实WebView2截图上传任务卡result（非独立验收）；受main18项他人未跟踪文件阻塞，尚未合并或submit review。",
       "reader-note-edge-xingxu：方案C边缘把手及新单行笔记头部兼容完成，196项原生验证通过；交付与main包含SHA见任务卡。",
       "layer-toolbar-height-xunzhou：图层入口与同排工具等高（0px 差）、左侧残留清零、工具栏恢复 41.6px 紧凑高度；几何/功能/缩放/主题/窄窗全覆盖验证完成，任务分支已合入本地 main。",
       "reader-note-sidebar-qinglan：完成 bcd4de7e spec9。笔记活动面板移除顶部标签整行、标题输入、文档计数/独立新增按钮及 Markdown 冗余状态行；当前标题改为论文文档下拉，统一切换、新建、重命名和总览入口。切换/新建先 flush 且防重复，继续复用 MarkdownLiveEditor、Library note session 与标注引用。静态16/16、真实组件浏览器12文档/键盘/重命名/新建/深色125%、note51/51、note browser42/42、reader、tsc、build、diagnostics及完整verify（Rust215/5 ignored）通过。dev:live未保持CDP，未冒充原生截图；未打包安装推送发布。详见 docs/mcp-reader-note-sidebar-qinglan-2026-09-22.md。",
@@ -479,6 +481,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "reader-shortcut-overlay-arena：shortcuts core52/dispatcher62/layout36/settings22全部通过；真实浏览器491项通过；最终同代码完整npm run verify退出0（含build、Rust215 passed/0 failed/5 ignored）；隔离WebView2三视图、Ctrl+滚轮130%→144%、无译文保护、禁用毛玻璃背板断言通过，最终pageerror=[]/console.error=[]；只在独立分支验证，非新main合并后结果。",
       "reader-note-edge-xingxu：browser84/core57/sidebar16+browser、Reader/UI-state/architecture、最新main完整verify含build/Rust215pass通过；原生158+18+20、diagnostics0，细节与受控测试边界见专属交接文档。",
       "layer-toolbar-height-xunzhou：test:layer-toolbar-geometry 42/42（旧布局 22/20 红测）、annotation-layer-picker 43/43、reader-popover-layout 166/166、annotation-layers 55、tsc 0、build 0、diagnostics 0；npm run verify 除 test:reader/test:ui-state 既有失败（干净基线复现同一断言，非本轮引入）外全部通过（Rust 215/0/5 ignored）；原生 dev:live 功能探针 14/14，pageerror 0。",
       "reader-selection-outline-xunzhou：旧 CSS 红测 25/26 且仅鼠标按下无框断言失败；修复及合并最新 main 后浏览器回归 26/26。Reader/helper/UI 定向测试与 popover layout 166/166 通过；dev:live 官方运行时 21/21、真实 mouse-down/release/重复点击/切换/返回场景/键盘焦点/窄窗 DPR1.5 共 20/20，pageerror 与 console error 均为空。合并后 build、完整 npm run verify（Rust 215 passed/0 failed/5 ignored）、src diagnostics 0、diff check 全绿。",
@@ -860,6 +863,7 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
+      "reader-shortcut-overlay-arena：用户/未跟踪文件所有者先妥善处理main的18项他人文件，执行Agent再get任务最新revision/spec并核对main；无冲突时安全合并分支、复测最新main组合、检查commit包含关系、提交结构化delivery进入review，由用户独立验收或退回。此前保持in_progress且不打包/安装/推送/发布。",
       "reader-note-edge-xingxu：用户验收右边缘把手任务9b69c4b5；无打包安装推送发布授权。",
       "layer-toolbar-height-xunzhou：delivery 已提交等待用户验收（复核原生截图与几何对照）；归档由用户执行。",
       "eraser-alignment-xingxu：基于最新main0bf3081和已取回的本轮参考图，进行真实原生同采样坐标复现。",
@@ -920,6 +924,6 @@
       "PDF重开/绘制已测试，但双栏同步、长文档、选区/批注、缩放坐标与页面失败提示位置还需真实Windows手验；未量化实际EXE冷启动/可交互时间。",
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。"
     ],
-    "updatedAt": "2026-09-22T22:01:40+08:00"
+    "updatedAt": "2026-09-23T09:29:39+08:00"
   }
 }

@@ -1,4 +1,5 @@
 ﻿# A4 Note Agent 状态
+- reader-shortcut-overlay-arena：Arena 实现任务 `2e96c3ee-6ac2-472b-95f0-9e5b80efa108` spec4（原文/译文/对照 Ctrl+F1/F2/F3、Ctrl+滚轮固定缩放提示及旧键移除、94%/禁用行97%毛玻璃防文字穿透）；代码/回归提交 `15ecbaacb9a5`，独立分支 `fix/reader-shortcut-overlay-arena-084aaa`。shortcuts core52/dispatcher62/layout36/settings22、真实浏览器491项、最终 `npm run verify` 退出0（Rust215/0/5 ignored）、隔离 WebView2 真实三视图/缩放/禁用/背板与最终 pageerror/console.error 0；5张带 DEV 隔离状态条的原生截图已作为开发者 result 证据上传任务板，非独立验收。main 已前进到 `a8fab19`，但存在18项他人未跟踪文件；不覆盖、不强行合并、未提交 review，待工作区所有者处理后复核新 main 并安全合并/复验/submit。无打包/安装/推送/发布、无生产资料操作。详见 docs/mcp-reader-shortcuts-arena-2026-09-23.md。更新：2026-09-23T09:29:39+08:00
 - taskboard-regressions-refresh-jingxing：竞行完成 4bc5d239 任务看板两条回归脚本过期。verify-task-stage-integration.mjs 第 318 行的「未提供结构化独立验收评价」已被 TaskReviewSummary 收进默认折叠的「证据说明与限制」disclosure，且调整意见 textarea 改为点「需要调整」后才渲染；verify-taskboard-compact.mjs 第 144 行字号快照抄的是 taskboard.css 基础规则（25/13/15/13/14/14px），而 206b641 同时引入的「Taskboard readability」固定像素覆盖块才是生效值（27/14/16/14/15/15px），与 --ui-* token 无关，快照自引入起即失败。改为语义谓词（开发 Agent 出处 + 常显 caution + 无「验收通过」措辞 + disclosure 存在）并内建篡改克隆反例断言，字号改用 READABILITY_FONTS 常量并注明来源；两脚本 3 轮稳定（约 7.7s / 3.7s）后加入 verify-all。src 无改动。记录 docs/mcp-taskboard-regressions-refresh-jingxing-2026-09-22.md。
 - reader-note-edge-xingxu：星序完成9b69c4b5 spec3方案C：22×88/16×56边界把手、共享4px拖宽/400ms长按、向内四态勾选菜单、写作左缘返回；保留最新main单行文档头部，三态切换嵌入头部，新建走把手菜单并复用编辑器保存/选中文档，历史走标题下拉，均两次可达。54c51a7整合头部，aaeb146合入main9c1f3d4，未覆盖彩虹线/列表边框/图层/侧栏并行改动。最终browser84/84、core57、sidebar16及browser、Reader/UI-state/architecture通过；最新整合组合browser+完整verify248.346秒退出0（含build，Rust215/0/5ignored），原生158+18+20=196项/20图errors[]、diagnostics0。CSS125/150和补充CDP视口、临时显露滚动条边界如实记录。交付与main包含SHA见任务卡，下一步用户验收；未打包安装推送发布。详见docs/mcp-reader-note-edge-handle-xingxu-2026-09-22.md。更新：2026-09-22T22:01:40+08:00
 - project-tasks-test-env-jingxing：竞行完成 f042df17 project-tasks 测试子进程环境泄漏。根因是 tools.test 等用 ...process.env 派生子进程且只删 session 变量，Agent 终端按 AGENTS.md 导出的 TASKS_EXPECTED_PROJECT_ID（及 TASKS_ENROLLMENT_TOKEN）泄漏进一次性测试服务的 CLI，checkService 身份不匹配 / 注册凭据无效。新增 test/test-env.mjs testEnv() 统一剔除全部 TASKS_* 后再合入显式键，五个测试改用；导出变量的 shell 中 tools.test 红→绿、套件 84/2 → 86/0。记录 docs/mcp-project-tasks-test-env-isolation-jingxing-2026-09-22.md。
@@ -65,7 +66,7 @@ annotation-popover-swatch-chengchuan：澄川完成 23528921 标注工具弹窗�
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-22T21:08:00+08:00
+更新时间：2026-09-23T09:29:39+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 
