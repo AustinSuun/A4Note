@@ -111,7 +111,13 @@ const resizer = fs.readFileSync('src/features/reader/ReaderDrawerResizer.tsx', '
 ok(resizer.includes('ArrowLeft') && resizer.includes('Home'), '侧栏宽度提供键盘替代控制');
 ok(scene.includes('setSplitRatio'), '拖动侧栏后按论文持久化比例');
 ok(scene.includes('exitNoteMode()'), '专注写作可经 Escape 返回进入前的模式');
-ok(scene.includes('useNotePanelPresence') && scene.includes('reader-note-floating-grip'), 'Reader 使用保留式动效并渲染无文字 Pill 拖动横条');
+const floatingControls = fs.readFileSync('src/features/reader/ReaderNoteFloatingControls.tsx', 'utf8');
+ok(scene.includes('useNotePanelPresence') && scene.includes('ReaderNoteFloatingControls') && floatingControls.includes('reader-note-floating-grip'), 'Reader 使用保留式动效并渲染无文字 Pill 拖动横条');
+ok(floatingControls.includes('data-corner={corner}') && floatingControls.includes('resizeFloatingRect') && !scene.includes('reader-note-floating-resize'), '悬浮卡四角弧形缩放柄取代右下角按钮（3932f561）');
+ok(scene.includes('useNoteLayoutFlip') && scene.includes("'--reader-side-target'") && css.includes('transition: grid-template-columns'), '侧栏经网格轨道连续滑开/收回，模式切换走 FLIP（3932f561）');
+const readerCss = fs.readFileSync('src/ui/styles/reader.css', 'utf8');
+ok(/\.note-history-title \{[^}]*font-size: var\(--ui-control-font-size/.test(readerCss) && /\.note-history-actions button \{[^}]*font-size:var\(--ui-control-font-size/.test(readerCss) && /\.note-history-excerpt \{[^}]*--ui-caption-font-size/.test(readerCss), '文档下拉：条目标题与操作按钮同为控件字号、摘要为说明字号（3932f561）');
+ok(css.includes('.note-mode-floating .note-save-state { display: none; }') && drawer.includes("noteMode !== 'floating' && <ReaderDrawerResizer") && css.includes('.reader-note-floating-corner[data-corner="nw"]'), '悬浮卡：去掉已保存与左缘拖宽条，四角柄样式存在（3932f561）');
 const hookSource = fs.readFileSync('src/features/reader/useNoteWorkbench.ts', 'utf8');
 ok(hookSource.includes('restoreMode') && hookSource.includes('previousMode'), '退出宽屏模式回到进入前的模式且保留宽屏偏好');
 const menuSource = fs.readFileSync('src/features/reader/ReaderNoteWorkbenchMenu.tsx', 'utf8');

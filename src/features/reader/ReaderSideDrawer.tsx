@@ -149,7 +149,7 @@ export function ReaderSideDrawer({
       onMouseUp={(event) => event.stopPropagation()}
       onKeyDown={event => { if (event.key === 'Escape' && addMenuOpen && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); setAddMenuOpen(false); } }}
     >
-      {open && !expanded && !compact && <ReaderDrawerResizer width={width} maximum={maximumWidth} onChange={onWidthChange} />}
+      {open && !expanded && !compact && noteMode !== 'floating' && <ReaderDrawerResizer width={width} maximum={maximumWidth} onChange={onWidthChange} />}
       {!notesShown && <header className="reader-workspace-header">
         <div className="reader-workspace-tabs" role="tablist" aria-label={zh.reader.openPanel}>
           {openTabs.map((tab) => {

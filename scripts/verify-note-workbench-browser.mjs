@@ -232,10 +232,15 @@ try {
   await settle();
   const movedBox = await boxOf('.reader-workspace-drawer');
   check(Math.abs(movedBox.left - cardBox.left) > 100 && movedBox.top > cardBox.top, '拖动悬浮卡改变位置', { from: cardBox.left, to: movedBox.left });
-  await dragBy('.reader-note-floating-resize', 120, 60);
+  await dragBy('.reader-note-floating-corner[data-corner="se"]', 120, 60);
   await settle();
   const resizedBox = await boxOf('.reader-workspace-drawer');
   check(resizedBox.width > movedBox.width + 60 && resizedBox.height > movedBox.height + 30, '拖动右下角改变卡片尺寸', { w: resizedBox.width, h: resizedBox.height });
+  await dragBy('.reader-note-floating-corner[data-corner="nw"]', 40, 30);
+  await settle();
+  const cornerBox = await boxOf('.reader-workspace-drawer');
+  check(cornerBox.left > resizedBox.left + 20 && cornerBox.top > resizedBox.top + 15 && Math.abs((cornerBox.left + cornerBox.width) - (resizedBox.left + resizedBox.width)) <= 2 && Math.abs((cornerBox.top + cornerBox.height) - (resizedBox.top + resizedBox.height)) <= 2, '拖动左上角柄：右下角固定、左上角随手移动', { before: resizedBox, after: cornerBox });
+  check(await ev('document.querySelectorAll(".reader-note-floating-corner").length === 4 && !document.querySelector(".reader-note-floating-resize") && !document.querySelector(".reader-workspace-drawer .reader-drawer-resize-handle")'), '悬浮卡有四个角柄、无旧右下角按钮、无左缘拖宽条');
   await shot('05-floating-resized');
   await ev('document.querySelector(".reader-note-floating-drag").focus()');
   await key('Escape', 'Escape', 27);
@@ -356,7 +361,9 @@ try {
   check(await ev("document.querySelector('[data-shortcut-id=\"reader.notes.toggle\"]')?.matches('.reader-note-edge-handle')"),'快捷键锚点迁移至把手');
   await click(edge);await settle();await ev("window.__edgeTest.setMode('split')");await settle();
   const activeEdge=await boxOf(edge), asideEdge=await boxOf('.reader-workspace-drawer');
-  check(activeEdge.width===16&&activeEdge.height===56&&Math.abs(activeEdge.left+8-asideEdge.left-5)<1,'打开把手16×56且骑在分隔条中心',{activeEdge,asideEdge});
+  check(activeEdge.width===16&&activeEdge.height===56&&Math.abs(activeEdge.left+8-asideEdge.left)<1,'打开把手16×56且骑在分隔线中心',{activeEdge,asideEdge});
+  const grip=await ev(`(()=>{const h=document.querySelector('${edge}');const b=getComputedStyle(h,'::before');const s=getComputedStyle(h.querySelector('svg'));return {grip:b.transform,bg:b.backgroundColor,handleBg:getComputedStyle(h).backgroundColor,border:getComputedStyle(h).borderTopWidth,chevron:s.opacity}})()`);
+  check(/matrix\(0\.5, 0, 0, 0\.8, 0, 0\)/.test(grip.grip)&&grip.border==='0px'&&grip.chevron==='0'&&grip.handleBg==='rgba(0, 0, 0, 0)','打开态把手为收窄的中性握条：无边框/无填充，chevron 隐藏',grip);
   for(let i=0;i<20;i++){
     await ev("window.__edgeTest.setMode('split')");await settle();const oldWidth=(await state()).drawerWidth;
     await dragBy(edge, i%2===0?2:(i%4===1?-8:8),0);await settle();
