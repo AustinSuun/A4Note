@@ -25,6 +25,8 @@ const readerDocumentPaneSource = await readFile('src/features/reader/ReaderDocum
 const readerSideDrawerSource = await readFile('src/features/reader/ReaderSideDrawer.tsx', 'utf8');
 const readerSidePanelContentSource = await readFile('src/features/reader/ReaderSidePanelContent.tsx', 'utf8');
 const librarySource = await readFile('src/features/library/LibraryScene.tsx', 'utf8');
+const libraryTypesSource = await readFile('src/features/library/types.ts', 'utf8');
+const paperContextMenuSource = await readFile('src/features/library/PaperContextMenu.tsx', 'utf8');
 const librarySidebarSource = await readFile('src/features/library/LibrarySceneSidebar.tsx', 'utf8');
 const libraryDetailSource = await readFile('src/features/library/LibraryDetailPanel.tsx', 'utf8');
 const importDialogSource = await readFile('src/features/library/ImportDialog.tsx', 'utf8');
@@ -340,6 +342,19 @@ const paperSignalsSource = await readFile('src/features/PaperSignals.tsx', 'utf8
 assert.match(paperSignalsSource, /className="paper-status-badges"/);
 assert.match(paperSignalsSource, /paper\.notes\.length/);
 assert.match(librarySource, /className="library-menu-popover align-right"/);
+assert.match(paperContextMenuSource, /onClick=\{\(\) => run\(onRevealSourcePdf\)\} disabled=\{!paper\.sourcePdf\}><FolderOpen \/>打开 PDF 所在文件夹<\/button>/);
+assert.ok(paperContextMenuSource.indexOf('打开 PDF 所在文件夹') < paperContextMenuSource.indexOf('导入译文 PDF'), 'reveal-source item must precede translation import');
+assert.match(librarySource, /onRevealSourcePdf=\{\(\) => onRevealSourcePdf\(menuPaper\.paperId\)\}/);
+assert.match(libraryTypesSource, /export type LibrarySceneProps = \{[\s\S]*?onRevealSourcePdf: \(paperId: string\) => void;/);
+assert.match(libraryTypesSource, /export type LibraryDetailPanelProps = \{[\s\S]*?onRevealSourcePdf: \(\) => void;/);
+assert.match(appSource, /const revealPaperFileForPaper = async \(paper: PaperDocument, kind: PaperFileKind\) => \{[\s\S]*?await revealPaperFile\(\{[\s\S]*?paperId: paper\.paperId/);
+assert.match(appSource, /const revealContextPaperSourceFile = async \(paperId: string\) => \{[\s\S]*?const paper = aster\.documents\.get\(paperId\);[\s\S]*?await revealPaperFileForPaper\(paper, 'source'\);/);
+assert.match(appSource, /onRevealSourcePdf: \(paperId\) => void revealContextPaperSourceFile\(paperId\),/);
+const revealPaperHelperSource = appSource.slice(appSource.indexOf('const revealPaperFileForPaper'), appSource.indexOf('const openSelectedPaperFile'));
+assert.match(revealPaperHelperSource, /if \(!isTauriRuntime\(\)\) \{\s*setLibraryStatus\(zh\.app\.browserPreview\);\s*return;/);
+assert.match(revealPaperHelperSource, /setLibraryStatus\(kind === 'translated' \? zh\.library\.revealTranslatedFailed : zh\.library\.revealSourceFailed\)/);
+assert.doesNotMatch(revealPaperHelperSource, /openPaperFile\(/);
+assert.match(zhSource, /revealSourceFailed: '无法定位原文 PDF，请检查文件是否仍在资料库中。'/);
 assert.doesNotMatch(librarySource, /smartViews/);
 assert.doesNotMatch(librarySource, /function matchesSmartView/);
 assert.doesNotMatch(librarySource, /zh\.library\.shortcutsHint/);
