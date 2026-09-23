@@ -217,6 +217,7 @@ export function ReaderDocumentPane({
             onSave={onNoteSave}
             onCreateNote={onCreateNote}
             onNavigateAnnotation={onNavigateAnnotation}
+            focusedAnnotationId={focusedAnnotationId}
           />
         </div>
       ) : (

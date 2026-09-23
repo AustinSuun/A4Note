@@ -162,7 +162,17 @@
 .reader-workspace-drawer .note-save-state { margin-left: auto; white-space: nowrap; }
 .reader-workspace-drawer .note-workspace { display: flex; flex-direction: column; }
 .reader-workspace-drawer .note-workspace > :is(.markdown-live-codemirror,.markdown-preview,.note-editor-loading) { flex: 1 1 0; min-height: 0; }
-.reader-workspace-drawer .note-workspace > :is(.note-document-header,.note-meta-row,.note-save-error) { flex-shrink: 0; }
+.reader-workspace-drawer .note-workspace > :is(.note-document-header,.note-meta-row,.note-save-error,.markdown-authoring-dock) { flex-shrink: 0; }
+
+/* Float the shared Markdown dock over reader notes the same way standalone notes do. */
+.reader-workspace-drawer .note-workspace,
+.markdown-document-pane .note-workspace { position: relative; }
+:root .note-workspace > .markdown-authoring-dock { max-width: calc(100% - 12px); }
+.note-workspace:has(> .markdown-authoring-dock) .cm-content { padding-bottom: 88px; }
+.note-workspace:has(> .markdown-authoring-dock) .markdown-preview { padding-bottom: 88px; }
+.note-citation-insert { max-width: 9.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 26px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+.note-citation-insert:hover, .note-citation-insert:focus-visible { border-color: var(--accent-strong); color: var(--accent-strong); }
+.note-image-input { display: none; }
 
 /* Leave a real strip beside the card: the handle and all card controls remain hit-testable. */
 .reader-workspace-shell.note-mode-floating { --note-card-safe-height: min(var(--floating-note-height, 62%), 100%); --note-card-safe-top: max(0px, min(var(--floating-note-top, 14%), calc(100% - max(200px, var(--note-card-safe-height))))); --note-card-safe-width: min(var(--floating-note-width, 42%), calc(100% - 28px)); --note-card-safe-left: max(0px, min(var(--floating-note-left, 50%), calc(100% - max(240px, var(--note-card-safe-width)) - 28px))); }
