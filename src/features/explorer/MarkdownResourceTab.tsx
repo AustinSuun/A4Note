@@ -1,6 +1,6 @@
 import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
 import { Bold, BookOpen, CalendarDays, Check, CheckSquare, ChevronDown, ChevronRight, Clipboard, ClipboardPaste, Code2, Eraser, ExternalLink, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Highlighter, ImagePlus, Italic, Link as LinkIcon, List, ListChecks, ListOrdered, ListTree, LoaderCircle, Minus, Pencil, Pilcrow, Plus, Quote, Scissors, Sigma, Strikethrough, Table2, Tag, Tags, Trash2, UserRound, X } from 'lucide-react';
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,6 +15,8 @@ import { MarkdownAuthoringDock } from './MarkdownAuthoringDock';
 import { loadNoteImage } from './noteImageLoader';
 import './markdown-mode-switch.css';
 import './markdown-toc-follow.css';
+import './markdown-toc-tree.css';
+import { useMarkdownTocCollapse } from './useMarkdownTocCollapse';
 import { headingAtLine, localScrollTop, tocScrollBehavior, useMarkdownTocFollow } from './useMarkdownTocFollow';
 import { markdownTemplates, type MarkdownTemplate } from './markdownTemplates';
 import { useDocumentToolbar, useDocumentToolbarActive } from '../../workbench/DocumentToolbar';
@@ -72,11 +74,12 @@ function offsetWithin(element: HTMLElement, ancestor: HTMLElement) {
   if (!ancestor.contains(element)) return null;
   const elementRect = element.getBoundingClientRect();
   const ancestorRect = ancestor.getBoundingClientRect();
+  const scale = ancestorRect.width / (ancestor.offsetWidth || ancestorRect.width || 1);
   return {
-    top: elementRect.top - ancestorRect.top + ancestor.scrollTop,
-    left: elementRect.left - ancestorRect.left + ancestor.scrollLeft,
-    width: elementRect.width,
-    height: elementRect.height,
+    top: (elementRect.top - ancestorRect.top) / scale + ancestor.scrollTop,
+    left: (elementRect.left - ancestorRect.left) / scale + ancestor.scrollLeft,
+    width: elementRect.width / scale,
+    height: elementRect.height / scale,
   };
 }
 
@@ -86,11 +89,12 @@ function offsetWithinLayer(element: HTMLElement, layer: HTMLElement, scrollAnces
   if (!scrollAncestor.contains(element)) return null;
   const elementRect = element.getBoundingClientRect();
   const layerRect = layer.getBoundingClientRect();
+  const scale = layerRect.width / (layer.offsetWidth || layerRect.width || 1);
   return {
-    top: elementRect.top - layerRect.top,
-    left: elementRect.left - layerRect.left,
-    width: elementRect.width,
-    height: elementRect.height,
+    top: (elementRect.top - layerRect.top) / scale,
+    left: (elementRect.left - layerRect.left) / scale,
+    width: elementRect.width / scale,
+    height: elementRect.height / scale,
   };
 }
 
@@ -380,6 +384,8 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
       };
     });
   }, [body, tocHeadings]);
+  const { visibleRows: visibleTocRows, visibleIds: visibleTocIds, collapsed: collapsedTocKeys, toggle: toggleTocHeading } = useMarkdownTocCollapse(documentId, tocHeadingMeta);
+  const visibleTocKey = visibleTocRows.map(row => row.id).join('|');
 
   useEffect(() => {
     setActiveHeadingId((current) => tocHeadings.some((heading) => heading.id === current) ? current : tocHeadings[0]?.id ?? null);
@@ -418,6 +424,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
     for (let index = 0; index < tocHeadings.length; index += 1) {
       const heading = tocHeadings[index];
       const meta = tocHeadingMeta[index];
+      if (!visibleTocIds.has(heading.id)) continue;
       // The heading list and its derived section metadata can be reconciled
       // on separate renders. Do not publish a partially measured layout while
       // that transient state is visible; the layout effect will retry after
@@ -492,7 +499,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
         top: railTop,
         height: Math.max(2, railEnd - railTop),
         startIndex: parent.index,
-        endIndex: lastDescendantIndex,
+        endIndex: lastDescendant.index,
       });
     }
     // Do not include the absolute guide layer or the scroll-past-end spacer:
@@ -500,7 +507,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
     const contentHeight = Math.max(list.clientHeight, rows.at(-1)?.bottom ?? 0);
     setTocGuideLayout({ contentHeight, rails });
     return true;
-  }, [tocHeadings, tocHeadingMeta]);
+  }, [tocHeadings, tocHeadingMeta, visibleTocKey]);
 
   useLayoutEffect(() => {
     if (!tocOpen) {
@@ -1120,24 +1127,30 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
                 return <span key={rail.id} className={`markdown-toc-guide-rail${highlighted ? ' highlighted' : ''}`} data-guide-level={rail.level} style={{ left: rail.left, top: rail.top, height: rail.height }} />;
               })}
             </div>
-            {tocHeadingMeta.map((heading) => {
+            {visibleTocRows.map((heading) => {
               // The managed document title is the root of the outline. Keep
               // its disclosure affordance visible even when the section is
               // temporarily empty while the editor is being reconciled.
               const showCaret = heading.hasChildHeadings;
-              return <button
-              type="button"
-              key={heading.id}
+              return <div
+              key={heading.key}
               ref={(node) => { if (node) tocRowRefs.current.set(heading.id, node); else tocRowRefs.current.delete(heading.id); }}
               className={`markdown-toc-item level-${heading.level}${activeHeadingId === heading.id ? ' active' : ''}`}
-              onClick={() => navigateToHeading(heading)}
-              aria-current={activeHeadingId === heading.id ? 'location' : undefined}
+              style={{ '--toc-depth': heading.depth } as CSSProperties}
               onMouseEnter={() => setHoveredHeadingId(heading.id)}
               onMouseLeave={() => setHoveredHeadingId(null)}
               title={heading.text}
               data-toc-level={heading.level}
               data-toc-heading-id={heading.id}
-            >{showCaret ? <span className="markdown-toc-caret open" aria-hidden="true"><ChevronRight size={17} strokeWidth={2.35} /></span> : <span className="markdown-toc-caret-spacer" aria-hidden="true" />}<span className="markdown-toc-label">{heading.text}</span></button>;
+            >{showCaret ? <button type="button"
+                className={`markdown-toc-caret${collapsedTocKeys.has(heading.key) ? '' : ' open'}`}
+                aria-expanded={!collapsedTocKeys.has(heading.key)}
+                aria-label={`${collapsedTocKeys.has(heading.key) ? '展开' : '收起'} ${heading.text}`}
+                onClick={() => toggleTocHeading(heading.key)}><ChevronRight size={16} strokeWidth={1.8} aria-hidden="true" /></button>
+                : <span className="markdown-toc-caret-spacer" aria-hidden="true" />}
+                <button type="button" className="markdown-toc-label" title={heading.text}
+                  aria-current={activeHeadingId === heading.id ? 'location' : undefined}
+                  onClick={() => navigateToHeading(heading)}>{heading.text}</button></div>;
             })}
           </nav> : <p className="markdown-toc-empty">当前笔记还没有标题</p>}
         </aside>}

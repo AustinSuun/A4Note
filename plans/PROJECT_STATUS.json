@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-23T12:10:00+08:00",
+  "updatedAt": "2026-09-23T13:18:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
-    "status": "review",
-    "owner": "Arena (arena)",
-    "branch": "main（db456c6 chore: release 0.1.30；本地打包，未推送/发布）",
+    "status": "in_progress",
+    "owner": "Arena-Board",
+    "branch": "fix/markdown-toc-arena-board",
     "scope": [
+      "目录任务deb0ed49：仅独立工作树修复TOC样式与可访问标题折叠，不改正文/保存，不覆盖主工作树滚动修复。详见docs/mcp-markdown-toc-arena-board-2026-09-23.md。",
       "windows-package-0.1.30-arena：用户指示打包 exe。按约定 0.1.29→0.1.30（package.json/package-lock.json/Cargo.toml/Cargo.lock/tauri.conf.json 各 1 处，release.yml 发布说明更新），提交 db456c6（基线 4207317）。npm run package:windows 退出 0（4m39s，独立冷编译目录已清理）；artifacts/windows/latest/ a4note.exe 37690880 字节 SHA-256 12F07B74EE94EA05B8F88A203563B32EB506B54427A1B42B732E615A21119044、A4 Note_x64-setup.exe 22831450 字节 SHA-256 8332EB201276475CC3A4DFEE13EB7B655FCC62FBAB66772A1970A2AA0CFDCD80，certutil 独立重算与 build-info.json 一致，exe 版本资源 0.1.30，updaterSigned true，上一份 0.1.29 已归档。sourceDirty false。未安装/实测/推送/发布，未跑完整 verify。同日另完成用户授权的仓库瘦身：工作树 40→2、本地分支 80→2、.build/.tmp/历史 artifacts 清理，磁盘释放约 372 GB，分支 SHA 备份在 arena-tmp/branch-backup-2026-09-23.txt。详见 docs/mcp-windows-package-arena-2026-09-23.md。更新：2026-09-23T12:10:00+08:00",
       "reader-shortcut-overlay-arena：任务2e96c3ee spec4 已安全合并本地main：原文/译文/对照Ctrl+F1/F2/F3、Ctrl+鼠标滚轮与旧键提示移除、94%/禁用行97%毛玻璃背板。合并54993ca、当前HEAD8c6483a；任务板review，详见docs/mcp-reader-shortcuts-arena-2026-09-23.md。",
       "reader-note-enter-motion-arena：Arena 接手 1f484418 spec3 阅读器笔记入场动效。main a8fab19 已有 373f54d presence 模型，但模式切换首帧 opacity 1（先淡出再淡入，90ms 冻结帧 opacity .078）、浮卡 transform-origin 固定 50%、无令牌/回弹/回归。现 tokens.css 新增 --motion-panel-{duration 220ms, ease-out, ease-in, ease-pop cubic-bezier(.34,1.3,.64,1), slide-distance 28px, pop-lift 10px, pop-scale .96}；reader-writing-layout.css 消费令牌，entering 时 transition-duration 0s 瞬时落位使模式切换可重放，floating entered 用回弹缓动，transform-origin 取 --note-pop-origin（noteEnterMotion.ts floatingPopOrigin 12%/50%/88%），reduced-motion 时长归零；useNotePanelPresence 在第二帧翻转 entered。新增 verify-note-enter-motion-browser（47/47，已入 verify-all；main a8fab19 上 31/47、33b9bfd 上无法加载 presence hook）。dev:live arena-note-motion 12 个触发场景 before/after + 2 主题×3 缩放各 27 图：after 首帧均为起始姿态/0s，过渡窗口 15–16 帧、均值 16.7ms、最大 ≤33.4ms，几何不变、焦点在面板内、pageerror/console 0；冷启动后首次打开的长帧落在 entered 之后会吞掉过渡，已如实记录。tsc/build/diagnostics 0，note-workbench 61/61、sidebar 16/16、workbench-browser 91/91，worktree 完整 verify 退出 0（Rust 215/0/5 ignored）。37a7442+8065f6b 已 ff 合入本地 main，未打包/安装/推送/发布。详见 docs/mcp-reader-note-enter-motion-arena-2026-09-23.md。更新：2026-09-23T10:32:00+08:00",
@@ -144,6 +145,7 @@
     ]
   },
   "tracks": {
+    "markdownTocArenaBoard": "review",
     "eraserAlignmentXingxu": "in_progress",
     "workbench": "done",
     "resources": "done",
@@ -164,6 +166,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "Arena-Board：目录折叠和缩放坐标修复已实现；同文档语义键、父子状态、跳级与重复标题、细中性引导线，独立worktree。",
       "reader-shortcut-overlay-arena：代码15ecbaacb9a5、任务分支9925dd1221b2已普通合并main 54993ca6018e；6张带DEV隔离状态条的原生截图作为开发者result上传，任务板submit review。执行Agent合并时18项未跟踪文件大小/SHA-256均未改变；其后文件所有者9项同字节归档、9项移走，用户已确认有意处理。",
       "reader-note-edge-xingxu：方案C边缘把手及新单行笔记头部兼容完成，196项原生验证通过；交付与main包含SHA见任务卡。",
       "layer-toolbar-height-xunzhou：图层入口与同排工具等高（0px 差）、左侧残留清零、工具栏恢复 41.6px 紧凑高度；几何/功能/缩放/主题/窄窗全覆盖验证完成，任务分支已合入本地 main。",
@@ -483,6 +486,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "Arena-Board：完整npm run verify退出0，Rust215 passed/0 failed/5 ignored；真实组件浏览器67项、原生dev:live 8组/21张最终V2前后截图通过，错误0；原生隔离身份22/22；旧代码红测失败于缺少真实折叠按钮。旧reader源码/CSS契约已对齐实际交互。",
       "reader-shortcut-overlay-arena：完整main npm run verify退出0（Rust215 passed/0 failed/5 ignored）；当前HEAD8c6483a快捷键浏览器491 checks、test:ui-state和test:agent-status通过；隔离WebView2三模式、无译文边界、Ctrl+滚轮176%→195%、毛玻璃94%/禁用97%/blur(12px)、pageerror/console.error=[]。先前共享根Vite扫描导致浏览器夹具超时，限制扫描/关闭watch后复验全绿。",
       "reader-note-edge-xingxu：browser84/core57/sidebar16+browser、Reader/UI-state/architecture、最新main完整verify含build/Rust215pass通过；原生158+18+20、diagnostics0，细节与受控测试边界见专属交接文档。",
       "layer-toolbar-height-xunzhou：test:layer-toolbar-geometry 42/42（旧布局 22/20 红测）、annotation-layer-picker 43/43、reader-popover-layout 166/166、annotation-layers 55、tsc 0、build 0、diagnostics 0；npm run verify 除 test:reader/test:ui-state 既有失败（干净基线复现同一断言，非本轮引入）外全部通过（Rust 215/0/5 ignored）；原生 dev:live 功能探针 14/14，pageerror 0。",
@@ -865,6 +869,7 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
+      "Arena-Board：目录开发验证全部通过，安全合并本地main后submit review（提交哈希见任务卡）；等待用户验收，不自动归档。随后领取白板Phase0，仅方案文档、不做产品代码。",
       "reader-shortcut-overlay-arena：任务板为review，等待用户独立验收并归档或退回；不自行验收、不打包/安装/推送/发布、不处理其他人的文件。",
       "reader-note-edge-xingxu：用户验收右边缘把手任务9b69c4b5；无打包安装推送发布授权。",
       "layer-toolbar-height-xunzhou：delivery 已提交等待用户验收（复核原生截图与几何对照）；归档由用户执行。",
