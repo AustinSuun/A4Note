@@ -3,6 +3,7 @@ import type { AsterPaths, BackupResult } from '../../../platform/nativeApi';
 import { Button } from '../../../shared/ui';
 import { zh } from '../../../ui/zh';
 import { CaptureSettings } from '../CaptureSettings';
+import { LibraryStorageSettings } from './LibraryStorageSettings';
 import { ActionRow, PathRow, SettingField, SettingGroup, StatusLine, ToggleRow } from '../primitives';
 import type { SettingsPathKind } from '../types';
 import { useAsyncStatus } from '../useAsyncStatus';
@@ -47,6 +48,7 @@ export function LibrarySection({ paths, onRefreshPaths, onRevealPath, onCreateBa
         </ActionRow>
         <StatusLine id="library-path-status" tone={status.status.tone === 'error' ? 'error' : status.status.tone === 'busy' ? 'busy' : 'success'} message={status.status.tone === 'error' || status.status.tone === 'success' || status.status.tone === 'busy' ? status.status.message : ''} />
       </SettingGroup>
+      <LibraryStorageSettings onChanged={onRefreshPaths} onReveal={() => onRevealPath('files')} />
       <SettingGroup title="备份与恢复" description="备份包含资料库数据库与库内附件，不含外部 Markdown 笔记文件夹。" anchorId="backup">
         <ActionRow>
           <Button id="setting-backup" variant="primary" pill disabled={status.busy} onClick={() => void status.run(() => onCreateBackup(), { busy: zh.settings.backupRunning, success: (result) => `${zh.settings.backupCreated}：${result.backup_path}`, error: () => zh.settings.backupFailed })}>{status.busy ? zh.settings.backupRunning : zh.settings.createBackup}</Button>

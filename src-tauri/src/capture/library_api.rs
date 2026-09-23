@@ -36,8 +36,11 @@ pub fn open_file(root:&Path,paper:&str,file:&str)->Result<(),String> {
     let c=Connection::open(root.join("aster.db")).map_err(|e|e.to_string())?;
     let path:String=c.query_row("SELECT path FROM paper_files WHERE paper_id=?1 AND id=?2",params![paper,file],|r|r.get(0)).map_err(|e|e.to_string())?;
     let path=PathBuf::from(path).canonicalize().map_err(|e|e.to_string())?;
-    let base=root.join("files").join("papers").join(paper).canonicalize().map_err(|e|e.to_string())?;
-    if !path.starts_with(base) { return Err("文件不在当前文献目录内".into()); }
+    // Files bound before a storage switch without migration still live under the default root.
+    let inside=crate::storage::known_papers_roots(root).into_iter()
+        .filter_map(|papers| papers.join(paper).canonicalize().ok())
+        .any(|base| path.starts_with(base));
+    if !inside { return Err("文件不在当前文献目录内".into()); }
     if path.extension().and_then(|s|s.to_str()).map(|s|!s.eq_ignore_ascii_case("pdf")).unwrap_or(true) {
         // Opaque attachments are not launched, extracted, or passed to a renderer.
         return crate::app_paths::open_path_in_file_manager(path.parent().ok_or("attachment_parent_missing")?);

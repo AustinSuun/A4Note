@@ -202,7 +202,7 @@ export const zh = {
     untitledDocument: '未命名文献',
     confirm: '确认导入',
     importing: '导入中...',
-    hint: '确认后会复制 PDF 到应用数据目录，写入 SQLite，并立即显示在文献库中。',
+    hint: '确认后会复制 PDF 到资料库文件目录（可在设置 → 资料库 → 文件存储位置更改），写入 SQLite，并立即显示在文献库中。',
   },
   reader: {
     title: '阅读',

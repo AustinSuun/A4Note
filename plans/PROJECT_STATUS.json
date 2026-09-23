@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-23T07:13:20.918Z",
+  "updatedAt": "2026-09-24T00:55:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "review",
-    "owner": "Arena-Board",
-    "branch": "fix/markdown-managed-images-arena-board",
+    "owner": "Arena (arena)",
+    "branch": "feat/library-files-root-arena（交付与 main 包含 SHA 见任务卡）",
     "scope": [
+      "library-files-root-arena：Arena 发布并领取 6557dc15（用户要求插件下载的 PDF 与译文不要写 C 盘）。新增 src-tauri/src/storage.rs：<AsterData>/storage.json 配置、files_root/papers_root 统一解析（import/capture ingest+attach/summaries/guide/backup/diagnostics/delete 全部改走）、目录校验（绝对/非链接/不在 AsterData 内/隔离实例留在实例目录/生产在 AppData 外/可写）、Windows 剩余空间与推荐盘（剩余最多的非系统固定盘 X:\\A4Note\\files）、复制→SHA-256 校验→事务改写 paper_files.path→写配置→删旧的可取消迁移（失败/取消回滚、持导入锁阻塞并发导入采集、进度事件），采集缓存随文件根、capture.db 留原处；备份恢复支持外部文件根（同卷 rename/跨卷复制）。前端设置 → 资料库新增「文件存储位置」（当前目录/占用/磁盘剩余/推荐、选择目录、使用推荐、恢复默认、打开文件夹、迁移进度与取消）与资料库场景一次性推荐提示（可不再提示，老用户不静默迁移）。验证：cargo test 235/0/5 两轮；tsc 0、build、settings-ui 116/116、新增 test:library-storage-browser 31/31（入 verify-all）；dev:live 隔离实例 arena-storage 原生取证：使用推荐位置迁移 3 文件、旧目录消失、storage.json 指向新目录，真实 import_pdf/译文导入落在新目录且默认目录不存在，深色 150% 不裁切，恢复默认迁回，pageerror/console 0。详见 docs/mcp-library-files-root-arena-2026-09-24.md。更新：2026-09-24T00:55:00+08:00",
       "Arena-Board / 图片托管d3cdee12 spec1：三类入口共享受限图片落盘/粘贴/选择器、paperId显式读取、字段真缩略图与键盘查看完成。实现3b209ba，保留main0a43b66抓取/阅读器改动后整合95424a0；整合版PowerShell完整verify退出0/198.328秒（Rust230/0/5ignored），纯52/浏览器18、原生25项及3组几何，errors=[]。本地main已普通ff至95424a0，21份开发者结果附件已上传，准备submit待用户验收；未打包/推送/发布。详见docs/mcp-managed-images-arena-board-2026-09-23.md。",
       "白板865d6308 Phase0低优先级仅讨论：只读核实资料接入/来源语义，比较Excalidraw、自研混合画布、tldraw及许可，提出未实测性能目标、阶段路线和用户决策；不开发原型，不改产品代码、依赖或数据库。详见docs/mcp-whiteboard-phase0-arena-board-2026-09-23.md。",
       "目录任务deb0ed49：仅独立工作树修复TOC样式与可访问标题折叠，不改正文/保存，不覆盖主工作树滚动修复。详见docs/mcp-markdown-toc-arena-board-2026-09-23.md。",
