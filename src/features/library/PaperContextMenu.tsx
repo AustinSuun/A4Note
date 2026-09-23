@@ -103,7 +103,6 @@ export function PaperContextMenu({ anchor, paper, folders, onClose, onRead, onDe
         const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
         buttons[next]?.focus();
       }}>
-      <div className="library-context-title" title={paper.title}>{paper.title}</div>
       {folderMode ? <>
         <button type="button" role="menuitem" onClick={() => setFolderMode(false)}><ChevronLeft />返回论文操作</button>
         <div role="separator" className="library-context-separator" />
