@@ -350,7 +350,7 @@ assert.match(readerSideDrawerSource, /sidePanels\.map\(\(panel\) =>/);
 assert.match(readerSideDrawerSource, /const activePanelView = activePanel \? panelViews\.find\(\(view\) => view\.id === activePanel\.panel\.id\)/);
 assert.match(readerSideDrawerSource, /activePanelView\.render\(\{ panel: activePanel\.panel, sceneId: 'reader', selectedPaper: paper \}\)/);
 assert.match(readerSceneSource, /<section className="scene active reader-scene-shell"(?:\s+data-reader-layer="root")?>/);
-assert.match(readerSceneSource, /className=\{`reader-workspace-shell note-mode-\$\{visibleNoteMode\} \$\{sidePanelOpen \? 'workspace-open' : ''\}/);
+assert.match(readerSceneSource, /className=\{`reader-workspace-shell note-mode-\$\{notePresentationMode\} \$\{sidePanelOpen \|\| notePanelPresented \? 'workspace-open' : ''\}/);
 assert.match(readerSceneSource, /className="reader-main-workspace"/);
 assert.match(readerSceneSource, /<div ref=\{drawer\.containerRef\}[\s\S]*style=\{\{ \.\.\.readerLayoutStyle, \.\.\.floatingStyle \}\}/);
 assert.match(readerSceneSource, /<ReaderNoteActivity\.Provider value=\{!mainHidden\}[\s\S]*<div className="reader-main-workspace" inert=\{mainHidden\} aria-hidden=\{mainHidden\}/);

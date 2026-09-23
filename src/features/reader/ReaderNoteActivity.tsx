@@ -9,7 +9,7 @@ export const ReaderNoteRequests = createContext(true);
 export const useReaderNoteRequests = () => useContext(ReaderNoteRequests);
 export const useReaderNoteActive = () => useContext(ReaderNoteActivity);
 /** Keep CodeMirror and its undo/selection state, without allowing hidden request consumers. */
-export function RetainedReaderNote({ active, children }: { active: boolean; children: ReactNode }) {
+export function RetainedReaderNote({ active, visible = active, children }: { active: boolean; visible?: boolean; children: ReactNode }) {
   const root = useRef<HTMLDivElement>(null);
   const focus = useRef<HTMLElement | null>(null);
   const scroll = useRef(new Map<HTMLElement, { top: number; left: number }>());
@@ -28,7 +28,7 @@ export function RetainedReaderNote({ active, children }: { active: boolean; chil
     previouslyActive.current = active;
   }, [active]);
   return <ReaderNoteActivity.Provider value={active}><ReaderNoteRequests.Provider value={active}>
-    <div ref={root} className="reader-retained-note" hidden={!active} inert={!active} aria-hidden={!active}
+    <div ref={root} className="reader-retained-note" hidden={!visible} inert={!active} aria-hidden={!active}
       onFocusCapture={event => { if (active) focus.current = event.target as HTMLElement; }}
       onScrollCapture={event => {
         if (!active || !(event.target instanceof HTMLElement)) return;
