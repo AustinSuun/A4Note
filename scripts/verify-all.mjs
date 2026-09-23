@@ -64,6 +64,7 @@ const steps = [
   ['npm', ['run', 'test:note-enter-motion-browser']],
   ['npm', ['run', 'test:library-storage-browser']],
   ['npm', ['run', 'test:library-context-menu-browser']],
+  ['npm', ['run', 'test:library-sidebar-browser']],
   ['npm', ['run', 'test:settings-ui']],
   ['node', ['scripts/verify-brand-update.mjs']],
 
