@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-23T07:06:28.823Z",
+  "updatedAt": "2026-09-23T07:13:20.918Z",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
-    "status": "in_progress",
+    "status": "review",
     "owner": "Arena-Board",
     "branch": "fix/markdown-managed-images-arena-board",
     "scope": [
-      "Arena-Board / 图片托管d3cdee12 spec1：三类入口共享安全落盘/粘贴/选择器、paperId显式读取、字段真缩略图与键盘查看完成；PowerShell完整verify两轮通过，Rust225/0/5ignored、纯52/浏览器18、原生5+8+7+5项及3组几何，errors=[]。重启为真实新进程；离线仅非回环HTTP阻断，主题属性压力不冒充完整主题验收。等待整合已前进main0a43b66、复核/本地合并和submit；未发布。详见docs/mcp-managed-images-arena-board-2026-09-23.md。",
+      "Arena-Board / 图片托管d3cdee12 spec1：三类入口共享受限图片落盘/粘贴/选择器、paperId显式读取、字段真缩略图与键盘查看完成。实现3b209ba，保留main0a43b66抓取/阅读器改动后整合95424a0；整合版PowerShell完整verify退出0/198.328秒（Rust230/0/5ignored），纯52/浏览器18、原生25项及3组几何，errors=[]。本地main已普通ff至95424a0，21份开发者结果附件已上传，准备submit待用户验收；未打包/推送/发布。详见docs/mcp-managed-images-arena-board-2026-09-23.md。",
       "白板865d6308 Phase0低优先级仅讨论：只读核实资料接入/来源语义，比较Excalidraw、自研混合画布、tldraw及许可，提出未实测性能目标、阶段路线和用户决策；不开发原型，不改产品代码、依赖或数据库。详见docs/mcp-whiteboard-phase0-arena-board-2026-09-23.md。",
       "目录任务deb0ed49：仅独立工作树修复TOC样式与可访问标题折叠，不改正文/保存，不覆盖主工作树滚动修复。详见docs/mcp-markdown-toc-arena-board-2026-09-23.md。",
       "windows-package-0.1.30-arena：用户指示打包 exe。按约定 0.1.29→0.1.30（package.json/package-lock.json/Cargo.toml/Cargo.lock/tauri.conf.json 各 1 处，release.yml 发布说明更新），提交 db456c6（基线 4207317）。npm run package:windows 退出 0（4m39s，独立冷编译目录已清理）；artifacts/windows/latest/ a4note.exe 37690880 字节 SHA-256 12F07B74EE94EA05B8F88A203563B32EB506B54427A1B42B732E615A21119044、A4 Note_x64-setup.exe 22831450 字节 SHA-256 8332EB201276475CC3A4DFEE13EB7B655FCC62FBAB66772A1970A2AA0CFDCD80，certutil 独立重算与 build-info.json 一致，exe 版本资源 0.1.30，updaterSigned true，上一份 0.1.29 已归档。sourceDirty false。未安装/实测/推送/发布，未跑完整 verify。同日另完成用户授权的仓库瘦身：工作树 40→2、本地分支 80→2、.build/.tmp/历史 artifacts 清理，磁盘释放约 372 GB，分支 SHA 备份在 arena-tmp/branch-backup-2026-09-23.txt。详见 docs/mcp-windows-package-arena-2026-09-23.md。更新：2026-09-23T12:10:00+08:00",
@@ -173,7 +173,7 @@
   },
   "lastHandoff": {
     "completed": [
-      "图片托管：受限图片后端、共享CodeMirror事务、三类入口与文件选择器、显式paperId读取及总览字段缩略图实现完成；尚待本地main整合与任务submit。",
+      "图片托管实现3b209ba，安全整合95424a0已普通ff合入干净本地main，保留抓取命名与阅读器最新交付；21份开发者结果已上传，不等于用户验收。",
       "Arena-Board：目录任务deb0ed49已合并本地main fcc2040并submit review rev53；随后领取白板865d6308并完成Phase0中文讨论方案，未派生开发任务。",
       "Arena-Board：目录折叠和缩放坐标修复已实现；同文档语义键、父子状态、跳级与重复标题、细中性引导线，独立worktree。",
       "reader-shortcut-overlay-arena：代码15ecbaacb9a5、任务分支9925dd1221b2已普通合并main 54993ca6018e；6张带DEV隔离状态条的原生截图作为开发者result上传，任务板submit review。执行Agent合并时18项未跟踪文件大小/SHA-256均未改变；其后文件所有者9项同字节归档、9项移走，用户已确认有意处理。",
@@ -496,7 +496,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
-      "图片托管：完整verify v2/v3均退出0（192.702/184.389秒），Rust225/0/5ignored；52纯事务、18真实编辑器模拟IPC、原生25项和3组几何，最终errors=[]，src diagnostics0。只读/源码重试/选择器/撤销与进程重启已实测。详见任务文档中的离线和主题限制。",
+      "图片托管整合后完整verify退出0/198.328秒，Rust230通过/0失败/5忽略；整合前两轮也通过。52纯事务/18浏览器、原生25项及3组几何errors=[]，src诊断0。离线为非回环HTTP阻断；主题属性压力不等于完整主题验收。",
       "白板Phase0：源码/公开许可只读核实，明确事实F/建议S/待验证U。仅文档和双状态变更；不做UI或性能实测、不运行build/原生服务。文档格式与路径、diff白名单及test:agent-status作交付检查。",
       "Arena-Board：最终再次整合main1a2fdb2的Markdown滚动优化为a4238bc，只合并React import并集；build/reader/preview-layout/TOC-follow35/TOC浏览器67/滚动浏览器通过。测试服务限定允许node_modules junction真实路径解决字体403，未改生产服务。",
       "Arena-Board：完整npm run verify退出0，Rust215 passed/0 failed/5 ignored；真实组件浏览器67项、原生dev:live 8组/21张最终V2前后截图通过，错误0；原生隔离身份22/22；旧代码红测失败于缺少真实折叠按钮。旧reader源码/CSS契约已对齐实际交互。",
@@ -884,7 +884,7 @@
       "capture-readable-pdf-arena：定向Rust ingest_tests 8/8，独立工作树npm run verify退出0（Rust 220通过/5忽略），git diff --check通过。"
     ],
     "next": [
-      "先保留并整合main0a43b66抓取命名与阅读器交付记录，完成整合后验证/双状态/本地main安全合并、结果附件上传、submit review，再领取下一任务。队列完成后另行打包、推送、发布；白板仅讨论。",
+      "提交当前图片任务待用户验收，然后逐个领取总览7603 spec9、其他新queued任务；不领取别人的进行中任务。全部执行队列完成后另行按标准命令打包、检查版本/签名、推送发布；白板仍仅讨论。",
       "白板Phase0等待用户讨论首发场景、许可预算、存储、引用默认与第一批资料类型；审阅方案不等于批准开发，后续原型/依赖/迁移/开发必须另行授权。两项任务不自行归档。",
       "Arena-Board：目录开发验证全部通过，安全合并本地main后submit review（提交哈希见任务卡）；等待用户验收，不自动归档。随后领取白板Phase0，仅方案文档、不做产品代码。",
       "reader-shortcut-overlay-arena：任务板为review，等待用户独立验收并归档或退回；不自行验收、不打包/安装/推送/发布、不处理其他人的文件。",
@@ -951,6 +951,6 @@
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。",
       "capture-readable-pdf-arena：未在用户真实资料库或已安装桌面端验收；仅新采集PDF生效，旧哈希名仍保留。"
     ],
-    "updatedAt": "2026-09-23T07:06:28.823Z"
+    "updatedAt": "2026-09-23T07:13:20.918Z"
   }
 }
