@@ -1,6 +1,6 @@
 # 阅读器视图快捷键、滚轮缩放与毛玻璃提示（Arena，2026-09-23）
 
-任务 `2e96c3ee-6ac2-472b-95f0-9e5b80efa108`，需求版本 4，原任务参考截图附件 `c9796b6c-42f4-4427-b810-41222567883a`。独立分支 `fix/reader-shortcut-overlay-arena-084aaa`，工作树 `.worktrees/reader-shortcut-overlay-arena-084aaa`；基线本地 main `33b9bfd`，代码和回归提交 `15ecbaacb9a5`。先后**仅在独立分支**吸收 main `a8fab19`（`908ec6afd3a9`）、`8065f6b`（`97b1a53bdeb9`）及文档/状态提交 `44632a9`（`81ce84f`）；后一次双状态文件的冲突逐项合并，保留 main 的笔记动效状态与本任务状态，`test:agent-status` 通过。**尚未合并回 main、尚未向任务板提交 review**；用户已授权保留全部未跟踪文件前提下尝试普通非强制合并，临合并还需重新检查，遇文件风险停止。
+任务 `2e96c3ee-6ac2-472b-95f0-9e5b80efa108`，需求版本 4，原任务参考截图附件 `c9796b6c-42f4-4427-b810-41222567883a`。独立分支 `fix/reader-shortcut-overlay-arena-084aaa`，工作树 `.worktrees/reader-shortcut-overlay-arena-084aaa`；基线本地 main `33b9bfd`，代码和回归提交 `15ecbaacb9a5`。先后**仅在独立分支**吸收 main `a8fab19`（`908ec6afd3a9`）、`8065f6b`（`97b1a53bdeb9`）、文档/状态提交 `44632a9`（`81ce84f`）及文献库产品代码提交 `cb3c380`（`25073fc`，`App.tsx` 自动合并无冲突）。双状态文件的冲突逐项合并，保留 main 的笔记动效状态与本任务状态，`test:agent-status` 通过。**尚未合并回 main、尚未向任务板提交 review**；用户已授权保留全部未跟踪文件前提下尝试普通非强制合并，临合并还需重新检查，遇文件风险停止。
 
 ## 改动范围
 
@@ -19,6 +19,8 @@
 
 - 吸收 main `8065f6b` 后复跑 `npm run test:shortcuts-browser`：491 checks，通过；完整 `npm run verify` 退出 0，日志 `.tmp/arena-reader-shortcuts-main806-verify.log` 尾部 `MAIN806_VERIFY_EXIT=0`，含笔记动效浏览器 47/47 和 Rust 215 passed / 5 ignored。后续 main `44632a9` 只含文档/状态变化，未引入产品代码；分支对状态文件完成双侧保留与状态测试。
 - 最新组合在隔离 Tauri/WebView2 `reader-shortcuts` 实例复测：底部独立测试库状态条已核验；三模式快捷键、禁用边界、Ctrl+滚轮 PDF 缩放 159%→176%、浮动背板 94%/`blur(12px)`、禁用行背板 97% 全通过，`pageerror=[]`、`console.error=[]`。`.tmp/shots/reader-shortcuts-main446/native-visual.log` 和同目录 7 张截图为分支内本次证据；后台实例已停止、锁已移除，`productionLibraryCopied:false`。原先上传的 6 张任务板截图保留，未用本次复测覆盖。
+
+- 吸收 main `cb3c380`（含 `App.tsx` 产品代码）后的最新组合再次跑通快捷键浏览器 491 checks；完整 `npm run verify` 退出 0，日志 `.tmp/arena-reader-shortcuts-maincb3-verify.log` 尾部 `MAINCB3_VERIFY_EXIT=0`、Rust 215 passed / 5 ignored。隔离原生 WebView2 也再测三模式快捷键、无译文禁用、Ctrl+滚轮 176%→195%、94% 背板/`blur(12px)` 和禁用行 97% 背板，`pageerror=[]`、`console.error=[]`；证据 `.tmp/shots/reader-shortcuts-maincb3/native-visual.log` 与 7 张新截图，实例正常停止、锁已移除，未复制正式资料库。既有 6 张任务板证据不变。
 
 ## 截图及边界
 
