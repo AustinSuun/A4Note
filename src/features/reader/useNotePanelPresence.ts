@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { NoteWorkbenchMode } from './noteWorkbench';
 
+/** Mirrors --motion-panel-duration (src/ui/styles/tokens.css); the exit timer only has
+ *  to outlive the CSS transition, it never drives the animation itself. */
 export const NOTE_PANEL_MOTION_MS = 220;
 
 export type NotePanelPresencePhase = 'hidden' | 'entering' | 'entered' | 'exiting';
@@ -33,7 +35,17 @@ export function useNotePanelPresence(visible: boolean, mode: NoteWorkbenchMode):
       if (!reducedMotion) {
         frame = window.requestAnimationFrame(() => {
           if (generation.current !== currentGeneration) return;
-          setPresence(current => current.mode === nextMode ? { ...current, phase: 'entered' } : current);
+          /* Let the first frame paint the 'entering' start pose and absorb the layout
+             work a mode change brings (PDF column re-flow, editor mount) before the
+             transition starts; flipping in the same frame would fix the transition's
+             start time before that long frame and swallow most of it. */
+          frame = window.requestAnimationFrame(() => {
+            if (generation.current !== currentGeneration) return;
+            /* Resolve the start pose so the transition has something to start from even
+               when the previous frame was skipped (hidden tab, throttled timeline). */
+            void document.documentElement.offsetWidth;
+            setPresence(current => current.mode === nextMode ? { ...current, phase: 'entered' } : current);
+          });
         });
       }
     } else {
