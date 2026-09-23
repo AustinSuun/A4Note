@@ -327,8 +327,12 @@ assert.match(await readFile('src/core/libraryViews.ts', 'utf8'), /paper\.folderI
 assert.match(librarySource, /const visiblePapers = papers/);
 assert.match(librarySource, /className="library-commandbar"/);
 assert.match(librarySource, /<ColumnSettings columns=/);
+// ae98615a: the command bar's standalone details toggle is gone; details stay reachable from the row menu.
+assert.doesNotMatch(librarySource, /<LibraryIcon name="details" \/>/);
+assert.match(librarySource, /onDetails=\{\(\) => onDetailOpenChange\(true\)\}/);
 const columnSettingsSource = await readFile('src/features/library/ColumnSettings.tsx', 'utf8');
 assert.match(columnSettingsSource, /className="column-settings-trigger"/);
+assert.match(columnSettingsSource, /toCssPixels\(anchoredPlacement\(/);
 assert.match(columnSettingsSource, /open && createPortal/);
 assert.match(columnSettingsSource, /document\.body/);
 assert.match(columnSettingsSource, /type="checkbox" checked=\{column\.visible\} disabled=\{disabled \|\| column\.fixed\}/);

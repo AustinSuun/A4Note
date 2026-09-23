@@ -167,16 +167,6 @@ export function LibraryScene({
               )}
             </label>
             <span className="library-result-count">{visiblePapers.length} 条结果</span>
-            <button
-              type="button"
-              className={detailVisible ? 'library-icon-button active' : 'library-icon-button'}
-              onClick={() => onDetailOpenChange(!detailOpen)}
-              disabled={!selectedInView}
-              title={detailVisible ? zh.library.hideDetails : zh.library.details}
-              aria-label={detailVisible ? zh.library.hideDetails : zh.library.details}
-            >
-              <LibraryIcon name="details" />
-            </button>
             {view === 'list' && <ColumnSettings columns={[
               { id: 'title', label: '标题', visible: true, fixed: true },
               ...(Object.keys(libraryColumnLabels) as LibraryColumnId[]).map(id => ({ id, label: libraryColumnLabels[id], visible: visibleColumns[id] })),

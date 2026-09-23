@@ -75,6 +75,7 @@
     "test:library-storage-browser": "node scripts/verify-library-storage-browser.mjs",
     "test:library-context-menu-browser": "node scripts/verify-library-context-menu-browser.mjs",
     "test:library-sidebar-browser": "node scripts/verify-library-sidebar-browser.mjs",
+    "test:library-column-settings-browser": "node scripts/verify-library-column-settings-browser.mjs",
     "test:tree-guides-browser": "node scripts/verify-tree-guides-browser.mjs",
     "test:markdown-scroll-browser": "node scripts/verify-markdown-scroll-browser.mjs"
   },
