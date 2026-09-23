@@ -42,7 +42,8 @@ export function useShortcutProps() {
   const store = useShortcuts();
   return (id: string, title: string) => {
     const bindings = store.bindings(id);
-    const text = bindings.map(formatBinding).join(' / ');
+    const gesture = store.commands().find(command => command.id === id)?.fixedGesture;
+    const text = gesture?.description ?? bindings.map(formatBinding).join(' / ');
     const aria = bindings.map(ariaKeyShortcut).filter(Boolean).join(' ');
     return { 'data-shortcut-id': id, title: text ? `${title} · ${text}` : title, 'aria-keyshortcuts': aria || undefined };
   };

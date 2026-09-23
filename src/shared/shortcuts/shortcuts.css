@@ -1,23 +1,35 @@
 .shortcut-hints { position: fixed; inset: 0; z-index: 10000; pointer-events: none; opacity: 0; transition: opacity 140ms ease; zoom: calc(1 / var(--ui-zoom, 1)); color: var(--ink, #243b31); font: 15px/24px var(--font-ui, sans-serif); }
 .shortcut-hints.is-visible { opacity: 1; }
 .shortcut-hints *, .shortcut-hints kbd { pointer-events: none !important; }
-/* The overall layer stays transparent. Only individual keys have a light keycap;
-   unanchored commands get an aligned action label to the right, never a card.
+/* The overall layer stays transparent. Keycaps and floating action rows have
+   their own contrast shields, so PDF text cannot show through the hint labels.
    Use real layout sizes (not transform:scale): both measure copies and painted
    hints share these rules, so dense toolbars can stagger into collision-free rows. */
 .shortcut-hints .shortcut-key-hint { position: fixed; display: inline-flex; align-items: center; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; font: 15px/24px var(--font-ui, sans-serif); }
 .shortcut-hints .shortcut-hint-keys { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; width: max-content; max-width: min(220px, calc(100vw - 24px)); justify-self: start; }
 .shortcut-hints .shortcut-hint-key-part { display: inline-flex; gap: 3px; align-items: center; }
 .shortcut-hints .shortcut-hint-plus { font-size: 12px; color: var(--muted, #617267); text-shadow: 0 0 3px var(--surface, #fff); }
-.shortcut-hints kbd { display: inline-block; box-sizing: border-box; min-width: 28px; max-width: 180px; margin: 0; padding: 1px 5px; border: 1px solid var(--line, #ccd8ce); border-bottom-width: 2px; border-radius: 4px; background: color-mix(in srgb, var(--surface, #fff) 92%, transparent); box-shadow: 0 1px 2px #0000000d; font: 600 16px/24px var(--font-ui, sans-serif); text-align: center; overflow-wrap: anywhere; }
+.shortcut-hints kbd { display: inline-block; box-sizing: border-box; min-width: 28px; max-width: 180px; margin: 0; padding: 1px 5px; border: 1px solid var(--line, #ccd8ce); border-bottom-width: 2px; border-radius: 4px; background: color-mix(in srgb, var(--surface, #fff) 96%, transparent); color: var(--ink, #243b31); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 1px 2px #00000026; font: 600 16px/24px var(--font-ui, sans-serif); text-align: center; overflow-wrap: anywhere; }
 .shortcut-hints .shortcut-floating-hint { display: grid; grid-template-columns: var(--shortcut-key-column, 146px) minmax(0, 1fr); align-items: center; column-gap: 12px; width: max-content; max-width: min(320px, calc(100vw - 24px)); box-sizing: border-box; }
+.shortcut-hints .shortcut-floating-hint { isolation: isolate; padding: 3px 5px; }
+.shortcut-hints .shortcut-floating-hint::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--line, #ccd8ce) 78%, var(--ink, #243b31) 22%);
+  border-radius: 7px; background: color-mix(in srgb, var(--surface, #fff) 94%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 2px 10px #00000026;
+}
 .shortcut-hints .shortcut-floating-hint .shortcut-hint-keys { max-width: 100%; }
 .shortcut-hints .shortcut-hint-label { min-width: 0; max-width: 160px; font: 15px/23px var(--font-ui, sans-serif); color: var(--ink, #243b31); overflow-wrap: anywhere; text-shadow: 0 0 3px var(--surface, #fff), 0 0 5px var(--surface, #fff); }
 .shortcut-hints[data-floating-density="compact"] .shortcut-floating-hint kbd { min-width: 24px; padding: 1px 4px; font-size: 14px; line-height: 20px; }
 .shortcut-hints[data-floating-density="compact"] .shortcut-floating-hint .shortcut-hint-label { font-size: 14px; line-height: 20px; }
 .shortcut-hints .shortcut-hint-measures { position: fixed; left: 0; top: 0; visibility: hidden; }
 .shortcut-hints .shortcut-hint-measures > span { position: absolute; top: 0; left: 0; }
-.shortcut-hints .is-disabled { opacity: .45; }
+/* Do not fade the entire disabled row: opacity also fades the frosted glass,
+   making PDF glyphs bleed through the label and defeating its contrast shield. */
+.shortcut-hints .is-disabled { opacity: 1; }
+.shortcut-hints .is-disabled kbd,
+.shortcut-hints .is-disabled .shortcut-hint-label { color: color-mix(in srgb, var(--ink, #243b31) 72%, var(--surface, #fff) 28%); }
+.shortcut-hints .is-disabled.shortcut-floating-hint::before { background: color-mix(in srgb, var(--surface, #fff) 97%, transparent); }
 .shortcut-editor { color: var(--ink); min-width: 0; font-size: var(--ui-control-font-size, 13px); }
 .shortcut-editor p { margin: 8px 0; line-height: 1.6; }
 .shortcut-editor-note { color: var(--muted); font-size: var(--ui-caption-font-size, 12px); }
@@ -128,6 +140,7 @@
   background: var(--surface);
 }
 .shortcut-editor-row:last-child { border-bottom: 0; }
+.shortcut-editor-gesture-note { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .shortcut-editor-row:hover { background: color-mix(in srgb, var(--surface) 96%, var(--accent) 4%); }
 .shortcut-editor-command { min-width: 0; }
 .shortcut-editor-command strong { display: block; overflow-wrap: anywhere; font-size: 14px; line-height: 1.35; }

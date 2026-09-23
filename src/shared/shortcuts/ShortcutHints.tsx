@@ -53,12 +53,12 @@ export function ShortcutHints({ store }: { store: ShortcutStore }) {
       const nodes = [...document.querySelectorAll<HTMLElement>('[data-shortcut-id]')].filter(visibleControl);
       const seen = new Set<string>();
       setHints(resolveShortcuts(store.commands(), store.overrides, context).flatMap(({ command, bindings }): Hint[] => {
-        if (seen.has(command.id) || !bindings.length) return [];
+        if (seen.has(command.id) || command.showInHints?.(context) === false || (!bindings.length && !command.fixedGesture)) return [];
         seen.add(command.id);
         // One primary effective binding keeps the overlay compact. All alternatives
         // remain in the existing button tooltip, aria-keyshortcuts and editor.
         const node = nodes.find(node => node.dataset.shortcutId === command.id);
-        return [{ id: command.id, keys: hintKeycaps(bindings[0]), compactKeys: hintKeycaps(bindings[0], true), title: command.title.replace(/^笔记工作台：/, ''), group: command.group, enabled: canDispatchShortcut(command, context), anchor: node ? sceneTileIcon(node) ?? node : undefined }];
+        return [{ id: command.id, keys: command.fixedGesture?.keys ?? hintKeycaps(bindings[0]), compactKeys: command.fixedGesture?.compactKeys ?? hintKeycaps(bindings[0], true), title: command.title.replace(/^笔记工作台：/, ''), group: command.group, enabled: canDispatchShortcut(command, context), anchor: node ? sceneTileIcon(node) ?? node : undefined }];
       }));
     };
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(refresh); };

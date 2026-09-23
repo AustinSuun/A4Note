@@ -18,9 +18,13 @@ export function layoutShortcutHints(items: HintMeasurement[], bounds: HintRect, 
     if (occupied.some(other => hintRectsOverlap(box, other, 4))) return false;
     occupied.push(box); result[item.id] = { left, top, placement }; return true;
   };
-  // Controls get first choice across the ENTIRE viewport. In particular, do not
-  // reserve a right-hand panel that steals the PDF zoom controls' anchors.
-  for (const item of items) {
+  // Controls get first choice across the ENTIRE viewport. Place wide bottom-
+  // dock chords before neighboring single keys: otherwise a tiny key can claim
+  // the only row where the long chord fits next to its own control.
+  const wideDock = (item: HintMeasurement) => item.anchor
+    && item.anchor.top > bounds.top + (bounds.bottom - bounds.top) * .6
+    && item.width > (item.anchor.right - item.anchor.left) * 2;
+  for (const item of [...items].sort((a, b) => Number(Boolean(wideDock(b))) - Number(Boolean(wideDock(a))))) {
     const anchor = item.anchor;
     if (!anchor) continue;
     let centered = Math.max(bounds.left, Math.min(bounds.right - item.width, (anchor.left + anchor.right - item.width) / 2));

@@ -162,6 +162,7 @@ export function ReaderToolbar({
               className={fileMode === 'source' ? 'active' : ''}
               aria-pressed={fileMode === 'source'}
               type="button"
+              {...shortcutProps('reader.file.source', zh.reader.sourcePdf)}
               onClick={() => onFileModeChange('source')}
               disabled={!paper.sourcePdf}
             >
@@ -171,6 +172,7 @@ export function ReaderToolbar({
               className={fileMode === 'translated' ? 'active' : ''}
               aria-pressed={fileMode === 'translated'}
               type="button"
+              {...shortcutProps('reader.file.translated', zh.reader.translatedPdf)}
               onClick={() => onFileModeChange('translated')}
               disabled={!hasTranslatedPdf}
             >
@@ -180,6 +182,7 @@ export function ReaderToolbar({
               className={fileMode === 'parallel' ? 'active' : ''}
               aria-pressed={fileMode === 'parallel'}
               type="button"
+              {...shortcutProps('reader.file.parallel', zh.reader.parallelPdf)}
               onClick={() => onFileModeChange('parallel')}
               disabled={!paper.sourcePdf || !hasTranslatedPdf}
             >

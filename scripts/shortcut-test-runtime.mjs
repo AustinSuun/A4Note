@@ -44,10 +44,10 @@ export function shortcutTestRuntime() {
   const storage = { getItem: key => persisted.get(key) ?? null, setItem: (key, value) => persisted.set(key, value) };
   const store = new ShortcutStore(storage), events = [];
   const action = name => () => { events.push(name); };
-  const options = { scenes: [{ id: 'library', label: '文献库', key: '2' }], hasPaper: true, pdfMode: true, focusedAnnotation: true, canUndo: true, canRedo: true,
+  const options = { scenes: [{ id: 'library', label: '文献库', key: '2' }], hasPaper: true, pdfMode: true, hasSourcePdf: true, hasTranslatedPdf: true, focusedAnnotation: true, canUndo: true, canRedo: true,
     palette: action('palette'), openScene: action('scene'), importPdf: action('import'), librarySearch: () => events.push('library', 'library-search'),
     pdfSearch: action('find-pdf'), undo: action('undo'), redo: action('redo'), deleteAnnotation: action('delete'), cancel: () => { events.push('cancel'); return true; },
-    selectTool: tool => events.push(tool), pdfZoom: action('pdf-zoom'), fitWidth: action('fit'), uiZoom: action('ui-zoom') };
+    selectTool: tool => events.push(tool), selectReaderFileMode: mode => events.push(`mode-${mode}`), pdfZoom: action('pdf-zoom'), fitWidth: action('fit'), uiZoom: action('ui-zoom') };
   const commands = createAppShortcutCommands(options);
   store.register('app', commands); store.setContext('reader', false);
   const dispose = attachShortcutDispatcher(store, win);
