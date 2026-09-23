@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-24T08:34:27+08:00",
+  "updatedAt": "2026-09-23T17:29:37.749Z",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
-    "status": "in_progress",
+    "status": "review",
     "owner": "星序",
-    "branch": "fix/reader-page-control-xingxu",
+    "branch": "fix/reader-page-control-xingxu（交付与 main 包含 SHA 见任务卡）",
     "scope": [
-      "reader-page-control-xingxu：f4ea1a89 spec2，独立worktree基于main f891c15。隔离16页PDF复现总页数点击不聚焦及编辑中内部点击提前跳页；浏览器旧版23通过/32失败。局部修复整段点击、Enter/整体失焦提交、Esc取消及文档/页数变更草稿保护，补自动化与原生证据。不触碰其他工作区，不打包安装发布。",
+      "reader-page-control-xingxu：星序完成 f4ea1a89 spec2。整段点击聚焦、草稿隔离、Enter/整体失焦单次提交、Esc/非法/未变取消、文档/页数变更丢弃草稿；按住外部按钮切文档等待释放与click后判定。实现da96422，用户授权的e54e56b仅隔离storage测试子进程并增跨线程标志回归，存储业务代码不变。保留存储/菜单主线后078594a完整verify69步通过；再保留cd6329侧栏提交形成0ee25bc，Reader/Rust无差异，13项相关整合回归全过，不宣称最终快照再跑70步全套。纯34/浏览器59/优先级74、原生59及12张after截图通过，errors=[]；默认并行Rust三轮236/0/5及整合复跑通过，诊断0。交付与本地main包含SHA见任务卡，待用户检查；未打包安装推送发布。详见docs/mcp-reader-page-control-xingxu-2026-09-24.md。",
       "library-sidebar-top-folder-arena：Arena 完成 5e3bdbd4 spec2。删除 LibrarySceneSidebar 标题行的 FolderPlus「新建文件夹」按钮与导入，标题/篇数/分割线不变、无占位热区；「文件类」旁「＋ 新建文件类」、右键新建子文件夹、草稿行与创建逻辑保持。新增 test:library-sidebar-browser 13/13（已入 verify-all；旧代码 9/13 红测），tsc 0、build、architecture 通过；dev:live arena-library 前后截图（浅/深色标题行、＋ 草稿行、150%、980 窄窗，pageerror/console 0）。详见 docs/mcp-library-sidebar-top-folder-arena-2026-09-24.md。更新：2026-09-24T01:40:00+08:00",
       "library-context-menu-header-arena：Arena 完成 bab38e7e spec2。删除 PaperContextMenu 顶部 .library-context-title 展示行与对应 CSS，菜单首项直接是「阅读」，role=menu 的 aria-label 仍含完整论文标题；操作项、禁用逻辑、文件夹子菜单、视口钳制定位与键盘/点外关闭均未改。新增 test:library-context-menu-browser 22/22（三轮稳定，已入 verify-all；旧代码 14/20 红测），tsc 0、build、ui-state、architecture 通过；dev:live arena-library 前后截图（浅/深色主菜单与子菜单、行末「…」、右下角锚点，pageerror/console 0）。详见 docs/mcp-library-context-menu-header-arena-2026-09-24.md。更新：2026-09-24T01:25:00+08:00",
       "library-files-root-arena：Arena 发布并领取 6557dc15（用户要求插件下载的 PDF 与译文不要写 C 盘）。新增 src-tauri/src/storage.rs：<AsterData>/storage.json 配置、files_root/papers_root 统一解析（import/capture ingest+attach/summaries/guide/backup/diagnostics/delete 全部改走）、目录校验（绝对/非链接/不在 AsterData 内/隔离实例留在实例目录/生产在 AppData 外/可写）、Windows 剩余空间与推荐盘（剩余最多的非系统固定盘 X:\\A4Note\\files）、复制→SHA-256 校验→事务改写 paper_files.path→写配置→删旧的可取消迁移（失败/取消回滚、持导入锁阻塞并发导入采集、进度事件），采集缓存随文件根、capture.db 留原处；备份恢复支持外部文件根（同卷 rename/跨卷复制）。前端设置 → 资料库新增「文件存储位置」（当前目录/占用/磁盘剩余/推荐、选择目录、使用推荐、恢复默认、打开文件夹、迁移进度与取消）与资料库场景一次性推荐提示（可不再提示，老用户不静默迁移）。验证：cargo test 235/0/5 两轮；tsc 0、build、settings-ui 116/116、新增 test:library-storage-browser 31/31（入 verify-all）；dev:live 隔离实例 arena-storage 原生取证：使用推荐位置迁移 3 文件、旧目录消失、storage.json 指向新目录，真实 import_pdf/译文导入落在新目录且默认目录不存在，深色 150% 不裁切，恢复默认迁回，pageerror/console 0。详见 docs/mcp-library-files-root-arena-2026-09-24.md。更新：2026-09-24T00:55:00+08:00",
@@ -173,10 +173,12 @@
     },
     "readerNoteEdgeXingxu": "done",
     "managedImagesArena": "in_progress",
-    "captureReadablePdfArena": "done"
+    "captureReadablePdfArena": "done",
+    "readerPageControlXingxu": "review"
   },
   "lastHandoff": {
     "completed": [
+      "reader-page-control-xingxu：星序完成 f4ea1a89 spec2。整段点击聚焦、草稿隔离、Enter/整体失焦单次提交、Esc/非法/未变取消、文档/页数变更丢弃草稿；按住外部按钮切文档等待释放与click后判定。实现da96422，用户授权的e54e56b仅隔离storage测试子进程并增跨线程标志回归，存储业务代码不变。保留存储/菜单主线后078594a完整verify69步通过；再保留cd6329侧栏提交形成0ee25bc，Reader/Rust无差异，13项相关整合回归全过，不宣称最终快照再跑70步全套。纯34/浏览器59/优先级74、原生59及12张after截图通过，errors=[]；默认并行Rust三轮236/0/5及整合复跑通过，诊断0。交付与本地main包含SHA见任务卡，待用户检查；未打包安装推送发布。详见docs/mcp-reader-page-control-xingxu-2026-09-24.md。",
       "图片托管实现3b209ba，安全整合95424a0已普通ff合入干净本地main，保留抓取命名与阅读器最新交付；21份开发者结果已上传，不等于用户验收。",
       "Arena-Board：目录任务deb0ed49已合并本地main fcc2040并submit review rev53；随后领取白板865d6308并完成Phase0中文讨论方案，未派生开发任务。",
       "Arena-Board：目录折叠和缩放坐标修复已实现；同文档语义键、父子状态、跳级与重复标题、细中性引导线，独立worktree。",
@@ -500,6 +502,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
+      "reader-page-control-xingxu：旧浏览器23/55→最终59/59，纯34、优先级74；隔离原生59项/12after+3before，errors=[]。首次整合verify真实记录Rust234/1/5；用户授权只改cfg(test)隔离全局迁移状态，默认并行三轮236/0/5；完整verify68步通过，再保留bf29菜单后078594a完整69步退出0/命令211529ms。再保留cd6329侧栏后0ee25bc的build、库侧栏/菜单/存储/行为、页码纯与浏览器/优先级、Reader/UI-state/架构/状态/cargo共13项通过，未声称该最终快照重跑70步。Reader同da96422、Rust业务未改，src诊断0。",
       "图片托管整合后完整verify退出0/198.328秒，Rust230通过/0失败/5忽略；整合前两轮也通过。52纯事务/18浏览器、原生25项及3组几何errors=[]，src诊断0。离线为非回环HTTP阻断；主题属性压力不等于完整主题验收。",
       "白板Phase0：源码/公开许可只读核实，明确事实F/建议S/待验证U。仅文档和双状态变更；不做UI或性能实测、不运行build/原生服务。文档格式与路径、diff白名单及test:agent-status作交付检查。",
       "Arena-Board：最终再次整合main1a2fdb2的Markdown滚动优化为a4238bc，只合并React import并集；build/reader/preview-layout/TOC-follow35/TOC浏览器67/滚动浏览器通过。测试服务限定允许node_modules junction真实路径解决字体403，未改生产服务。",
@@ -888,6 +891,7 @@
       "capture-readable-pdf-arena：定向Rust ingest_tests 8/8，独立工作树npm run verify退出0（Rust 220通过/5忽略），git diff --check通过。"
     ],
     "next": [
+      "reader-page-control-xingxu：交付到review后由用户检查整段页码点击、草稿/提交/取消及换文档；最终交付与main包含关系见任务卡结构化delivery。开发者证据不等于独立验收，不自行归档，不自动打包安装推送发布。",
       "提交当前图片任务待用户验收，然后逐个领取总览7603 spec9、其他新queued任务；不领取别人的进行中任务。全部执行队列完成后另行按标准命令打包、检查版本/签名、推送发布；白板仍仅讨论。",
       "白板Phase0等待用户讨论首发场景、许可预算、存储、引用默认与第一批资料类型；审阅方案不等于批准开发，后续原型/依赖/迁移/开发必须另行授权。两项任务不自行归档。",
       "Arena-Board：目录开发验证全部通过，安全合并本地main后submit review（提交哈希见任务卡）；等待用户验收，不自动归档。随后领取白板Phase0，仅方案文档、不做产品代码。",
@@ -930,6 +934,7 @@
       "capture-readable-pdf-arena：如需真实浏览器采集时看到新文件名，须另行构建并安装包含该源码的桌面版本；只重载插件不能使已安装桌面行为改变。旧PDF不自动迁移。"
     ],
     "risks": [
+      "reader-page-control-xingxu：使用合成16页PDF和独立dev:live资料库；CSS100/125/150%为受控压力，不等于系统多显示器覆盖。5项Rust既有忽略未新增。额外修复仅测试隔离，未复测存储设置原生UI，不改变业务或接管其他卡。完整69步与随后13项差异回归分别记录，不混称最终快照70步全量。",
       "本任务不自动清理未引用资产、不迁移旧图；表格字段/自由区/文本布局归总览7603任务。原生发现既有隐藏PDF层拦截其他场景点击，关闭自身PDF标签绕开并记录；主题属性压力出现既有深色表格对比问题，不宣称视觉验收。未打包/推送/发布。",
       "layer-toolbar-height-xunzhou：npm run verify 的 test:reader/test:ui-state 两步失败为既有阻塞（qinglan 3781dfd 简化文本工具控件后 verify 源码契约未同步，8a3b1ed 已记录；本轮 stash 干净基线复现同一断言，非本轮引入，未代改他人脚本）。参考图附件本轮环境无法目视查看，结论全部来自运行时量测。仅 dev favicon.ico 404 为已知环境噪音。",
       "reader-selection-outline-xunzhou：修复只收窄 Reader 侧栏标题按钮的鼠标 active 样式，不改选择/打开/展开/移除事件，也不改其它场景焦点样式。未打包、安装、发布或写入生产资料库；根目录并行脏改动未触碰。",
@@ -955,6 +960,6 @@
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。",
       "capture-readable-pdf-arena：未在用户真实资料库或已安装桌面端验收；仅新采集PDF生效，旧哈希名仍保留。"
     ],
-    "updatedAt": "2026-09-23T07:13:20.918Z"
+    "updatedAt": "2026-09-23T17:29:37.749Z"
   }
 }
