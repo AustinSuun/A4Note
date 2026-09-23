@@ -5,6 +5,9 @@ import { summaryDocument, replaceSummaryFreeText, type SummarySegment } from '..
 import { replaceSummaryFieldText, summaryEditorPatch } from '../../core/summaryEditorPatch';
 import { paperNoteImageDocument } from '../../core/paperImageReference';
 import { summaryLayoutSession, uploadSummaryImage } from '../../platform/library/summaries';
+import { saveSummaryFieldCatalog } from '../../platform/library/summaryFieldCatalog';
+import type { TextDocumentSession } from '../../core/textDocumentSession';
+import { SummaryFieldSettings } from './SummaryFieldSettings';
 import type { MarkdownLiveEditorHandle } from '../reader/MarkdownLiveEditor';
 import './summary-document-editor.css';
 const Editor = lazy(() => import('../reader/MarkdownLiveEditor').then(m => ({ default: m.MarkdownLiveEditor })));
@@ -20,6 +23,7 @@ export const SummaryDocumentEditor = forwardRef<MarkdownLiveEditorHandle, Props>
   const [columns, setColumns] = useState<SummaryColumn[]>([]), [catalogError, setCatalogError] = useState('');
   const [active, setActive] = useState<string | null>(null), [choice, setChoice] = useState(''), [error, setError] = useState('');
   const editor = useRef<MarkdownLiveEditorHandle>(null);
+  const catalog = useRef<TextDocumentSession | null>(null);
   useImperativeHandle(forwardedRef, () => {
     const perform = (action: (target: MarkdownLiveEditorHandle) => void) => {
       if (readOnly || !surfaceActive) return;
@@ -41,10 +45,11 @@ export const SummaryDocumentEditor = forwardRef<MarkdownLiveEditorHandle, Props>
     let alive = true, stop: (() => void) | undefined;
     void summaryLayoutSession().then(session => {
       if (!alive) return;
+      catalog.current = session;
       const refresh = () => { try { setColumns(parseSummaryLayout(session.getSnapshot().content).columns); setCatalogError(session.getSnapshot().error || ''); } catch (reason) { setCatalogError(String(reason)); } };
       refresh(); stop = session.subscribe(refresh);
     }).catch(reason => { if (alive) setCatalogError(String(reason)); });
-    return () => { alive = false; stop?.(); };
+    return () => { alive = false; catalog.current = null; stop?.(); };
   }, []);
   if (!parsed.document) return <div role="alert" className="summary-warning">{parsed.error}<button type="button" onClick={onSource}>打开高级源码修复</button></div>;
   const document = parsed.document;
@@ -68,7 +73,15 @@ export const SummaryDocumentEditor = forwardRef<MarkdownLiveEditorHandle, Props>
     <p className="summary-document-hint">仅明确添加的字段参与总览。自由内容保持原位置，不按标题或相邻字段自动归类。</p>
     {catalogError && <p role="alert">字段目录暂不可用：{catalogError}</p>}
     {!readOnly && surfaceActive && <div className="summary-document-add">
-      <label>添加已有字段<select value={choice} onChange={event => setChoice(event.target.value)} disabled={!!catalogError}>
+      <SummaryFieldSettings columns={columns} disabled={!catalog.current} triggerLabel="新建或管理字段" onSave={async (next, baseline) => {
+        const session = catalog.current;
+        if (!session) throw new Error('字段目录尚未加载。');
+        await saveSummaryFieldCatalog(session, next, baseline);
+        const added = next.filter(column => !baseline.some(old => old.id === column.id));
+        if (added.length === 1) setChoice(added[0].id);
+      }} />
+      <p className="summary-document-hint">新建字段先保存到全局目录，再点击“添加到本篇”；不会补写其他笔记。</p>
+      <label>添加已有字段<select aria-label="添加已有字段" value={choice} onChange={event => setChoice(event.target.value)} disabled={!!catalogError}>
         <option value="">选择字段（只添加到本篇）</option>{available.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select></label>
       <button type="button" disabled={!available.some(c => c.id === choice) || !!catalogError} onClick={() => {

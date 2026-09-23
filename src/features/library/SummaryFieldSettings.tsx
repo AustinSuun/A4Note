@@ -3,8 +3,8 @@ import type { SummaryColumn } from '../../core/librarySummary';
 import { addSummaryField, renameSummaryField, reorderSummaryField, validateSummaryFieldCatalog } from '../../core/summaryFieldCatalog';
 import './summary-field-settings.css';
 
-export function SummaryFieldSettings({ columns, disabled, onSave }: {
-  columns: SummaryColumn[]; disabled: boolean;
+export function SummaryFieldSettings({ columns, disabled, onSave, triggerLabel = '管理字段' }: {
+  columns: SummaryColumn[]; disabled: boolean; triggerLabel?: string;
   onSave: (next: SummaryColumn[], baseline: SummaryColumn[]) => Promise<void>;
 }) {
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null);
@@ -19,7 +19,7 @@ export function SummaryFieldSettings({ columns, disabled, onSave }: {
     try { setDraft(operation()); setError(''); } catch (reason) { setError(String(reason)); }
   };
   const save = async () => {
-    if (!draft || saving) return;
+    if (!draft || saving || rename) return;
     try {
       validateSummaryFieldCatalog(draft); setSaving(true); setError(''); setAttempted(true);
       await onSave(draft, baseline.current);
@@ -30,9 +30,10 @@ export function SummaryFieldSettings({ columns, disabled, onSave }: {
     <button type="button" ref={trigger} disabled={disabled} onClick={() => {
       baseline.current = columns.map(column => ({ ...column })); setDraft(baseline.current);
       setName(''); setRename(null); setError(''); setAttempted(false);
-    }}>管理字段</button>
+    }}>{triggerLabel}</button>
     <dialog ref={dialog} className="summary-field-settings" aria-labelledby={titleId}
-      onCancel={event => { event.preventDefault(); close(); }}>
+      onKeyDown={event => { event.stopPropagation(); if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); void save(); } }}
+      onCancel={event => { event.preventDefault(); event.stopPropagation(); close(); }}>
       {draft && <>
         <h2 id={titleId}>总览字段目录</h2>
         <p>名称、显示和顺序适用于整个总览。新增字段不会给任何笔记补写空内容；已有笔记及字段标识保持不变。</p>

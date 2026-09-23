@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-23T17:19:03.680Z",
+  "updatedAt": "2026-09-23T17:44:10.318Z",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "Arena-Board",
     "branch": "fix/summary-note-fields-arena-board",
     "scope": [
+      "Arena-Board / 总览7603 spec9：阅读器/完整总结单篇新建字段入口已复用现有目录管理和公共CAS保存；保存目录只预选新ID，明确添加才改本篇；总览订阅目录实时更新，内层目录键盘不误触父笔记。新增浏览器11项、字段链140项、原生5项通过（失败保留仅浏览器模拟，原生含三篇保护及reload）；全verify退出0/208689ms，Rust231通过/0失败/5忽略。仍缺显式归类选区/真实CAS、自适应摘要/侧栏根因及余下主题缩放图片标注冲突/真正重启验收，不submit，不领下一卡。",
       "Arena-Board / 总览7603 spec9：阅读器指定总结已接同源字段/自由分区及只读视图，格式/模板/图片/选区方法桥接当前编辑区，非活动与只读保护；普通笔记分支保留。9项新增浏览器、字段链129、note-workbench66通过；原生4项证明阅读器与总览双向保存回到同一笔记且自由原文/A/C保留。全套verify退出0/244175ms，Rust231通过/0失败/5忽略。仍缺单篇自定义入口、显式归类真实CAS、自适应摘要/侧栏根因/主题缩放图片标注冲突完整验收；不交付，不领下一卡。",
       "Arena-Board / 总览7603 spec9：完整总结窗口已接字段/自由区编辑、单篇明确添加现有字段、高级源码和共享Markdown编辑器。22项原始行尾/字段保护检查加入统一链，28+60+22+10及build/tsc/architecture通过；原生4项验证B实际字段/自由内容保存和总览回显，A/C全文不变。B夹具已被明确编辑，不再为空。阅读器分区/单篇新建自定义字段/归类CAS/自适应摘要/侧栏/最终verify及重启仍待完成，不交付。",
       "Arena-Board / 总览7603 spec9：字段目录UI已接现有配置会话保存，支持新增稳定ID、重命名、显隐、排序及取消；10浏览器检查通过（模拟保存失败/重试），独立原生实际写盘+WebView刷新3项通过，三论文身份及正文完全不变。build/tsc/architecture通过。整项仍未交付：单篇添加/正常分区/归类CAS/自适应摘要/侧栏修复及最终全verify/原生重启待完成。未合并main或领取下一卡。",
@@ -178,6 +179,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "Arena-Board / 总览7603 spec9：阅读器/完整总结单篇新建字段入口已复用现有目录管理和公共CAS保存；保存目录只预选新ID，明确添加才改本篇；总览订阅目录实时更新，内层目录键盘不误触父笔记。新增浏览器11项、字段链140项、原生5项通过（失败保留仅浏览器模拟，原生含三篇保护及reload）；全verify退出0/208689ms，Rust231通过/0失败/5忽略。仍缺显式归类选区/真实CAS、自适应摘要/侧栏根因及余下主题缩放图片标注冲突/真正重启验收，不submit，不领下一卡。",
       "Arena-Board / 总览7603 spec9：阅读器指定总结已接同源字段/自由分区及只读视图，格式/模板/图片/选区方法桥接当前编辑区，非活动与只读保护；普通笔记分支保留。9项新增浏览器、字段链129、note-workbench66通过；原生4项证明阅读器与总览双向保存回到同一笔记且自由原文/A/C保留。全套verify退出0/244175ms，Rust231通过/0失败/5忽略。仍缺单篇自定义入口、显式归类真实CAS、自适应摘要/侧栏根因/主题缩放图片标注冲突完整验收；不交付，不领下一卡。",
       "Arena-Board / 总览7603 spec9：完整总结窗口已接字段/自由区编辑、单篇明确添加现有字段、高级源码和共享Markdown编辑器。22项原始行尾/字段保护检查加入统一链，28+60+22+10及build/tsc/architecture通过；原生4项验证B实际字段/自由内容保存和总览回显，A/C全文不变。B夹具已被明确编辑，不再为空。阅读器分区/单篇新建自定义字段/归类CAS/自适应摘要/侧栏/最终verify及重启仍待完成，不交付。",
       "Arena-Board / 总览7603 spec9：字段目录UI已接现有配置会话保存，支持新增稳定ID、重命名、显隐、排序及取消；10浏览器检查通过（模拟保存失败/重试），独立原生实际写盘+WebView刷新3项通过，三论文身份及正文完全不变。build/tsc/architecture通过。整项仍未交付：单篇添加/正常分区/归类CAS/自适应摘要/侧栏修复及最终全verify/原生重启待完成。未合并main或领取下一卡。",
@@ -506,6 +508,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
+      "单篇目录入口全verify退出0/208689ms，Rust231/0/5ignored；字段链140（新增浏览器11），原生per-note-catalog-result.json 5项、截图per-note-catalog-full.png已目视。首轮遗漏聚焦后打开完整总结按钮，续测核对基线而非重复创建。",
       "阅读器分区增量整套npm run verify退出0/244175ms（Rust231/0/5ignored），.tmp/summary-reader-verify.log UTF16；字段链129，原生reader-result.json 4项，无pageerror，reader-from-overview.png已目视。仅默认窄窗，不冒充主题/缩放/标注/冲突整项验收。",
       "完整总结分区增量：22编辑补丁纯检查+既有28/60/10通过；原生editor-result.json 4项，无pageerror；editor-normal-saved.png已目视。最新完整verify仍是90be4fe模型提交，本次不冒充整项验收。",
       "目录UI增量：28目录+60模型+10浏览器；原生catalog-result.json 3项、catalog-after-reload.png已目视；build/tsc/architecture/diff。完整verify最近属于90be4fe模型提交，未冒充本UI增量完整verify。",
@@ -899,6 +902,7 @@
       "capture-readable-pdf-arena：定向Rust ingest_tests 8/8，独立工作树npm run verify退出0（Rust 220通过/5忽略），git diff --check通过。"
     ],
     "next": [
+      "继续7603：显式选区归类与真正CAS成功后发布、CRLF映射和并发草稿保护；自适应摘要/侧栏根因/多主题缩放图片标注冲突/真正重启；最终整合main/submit后才领下一卡。B新增custom-2dc280fb-2670-4d5c-99ed-eeef275ec250，不重跑一次性新建夹具脚本。",
       "继续7603：先设计并实现不提前移除原文的实际归类CAS事务和选区CRLF映射，SummaryNoteSession新事务方法不能漏掉真实note委托；单篇新建字段、自适应摘要、侧栏根因及余下验收，最后整合main/submit。",
       "继续7603：阅读器分区与工具栏/标注桥接、单篇新建自定义字段、选区CRLF映射及真正归类CAS事务；自适应摘要/侧栏DOM/双向与重启/完整verify后才合并main和submit。",
       "继续同一任务：单篇按需添加及正常字段/自由区编辑，再接带身份/基线保护的实际归类CAS保存，处理CRLF，最后自适应摘要/真实滚动/主题/重启/完整verify。",
@@ -973,6 +977,6 @@
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。",
       "capture-readable-pdf-arena：未在用户真实资料库或已安装桌面端验收；仅新采集PDF生效，旧哈希名仍保留。"
     ],
-    "updatedAt": "2026-09-23T17:19:03.680Z"
+    "updatedAt": "2026-09-23T17:44:10.318Z"
   }
 }

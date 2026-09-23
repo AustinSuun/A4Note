@@ -5,7 +5,7 @@ import { SummaryRowResizer, type RowResizeActions } from './SummaryRowResizer';
 import { Pin } from 'lucide-react';
 import { ColumnSettings } from './ColumnSettings';
 import { SummaryFieldSettings } from './SummaryFieldSettings';
-import { validateSummaryFieldCatalog } from '../../core/summaryFieldCatalog';
+import { saveSummaryFieldCatalog } from '../../platform/library/summaryFieldCatalog';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -68,11 +68,21 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
     let stop: (() => void) | undefined;
     void summaryLayoutSession().then(session => {
       if (!mounted.current) return;
-      const state = parseSummaryLayout(session.getSnapshot().content); rawLayout.current = state.raw; layout.current = session; setColumns(state.columns); setSizing(summarySizing(state.raw));
-      const saved = state.raw.rowHeights;
-      if (saved && typeof saved === 'object' && !Array.isArray(saved)) setRowHeights(Object.fromEntries(Object.entries(saved).filter(([, value]) => typeof value === 'number' && Number.isFinite(value) && value >= 44 && value <= 2000)));
-      if (session.getSnapshot().error) setError(session.getSnapshot().error);
-      stop = session.subscribe(() => { if (session.getSnapshot().error) setError(session.getSnapshot().error); });
+      layout.current = session;
+      let lastContent: string | undefined;
+      const refreshLayout = () => {
+        try {
+          const snapshot = session.getSnapshot();
+          if (snapshot.content !== lastContent) {
+            const state = parseSummaryLayout(snapshot.content); rawLayout.current = state.raw; setColumns(state.columns); setSizing(summarySizing(state.raw));
+            const saved = state.raw.rowHeights;
+            setRowHeights(saved && typeof saved === 'object' && !Array.isArray(saved) ? Object.fromEntries(Object.entries(saved).filter(([, value]) => typeof value === 'number' && Number.isFinite(value) && value >= 44 && value <= 2000)) : {});
+            lastContent = snapshot.content;
+          }
+          setError(snapshot.error);
+        } catch (reason) { setError(String(reason)); }
+      };
+      refreshLayout(); stop = session.subscribe(refreshLayout);
     }).catch(e => { if (mounted.current) setError(`列设置加载失败：${String(e)}。默认列仅供显示，不覆盖原文件。`); });
     return () => { mounted.current = false; stop?.(); clearTimeout(saveTimer.current); cancelAnimationFrame(wheelFrame.current); cancelAnimationFrame(scrollFrame.current); cancelAnimationFrame(columnFrame.current); void layout.current?.flush().catch(() => {}); };
   }, []);
@@ -154,14 +164,8 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
     const session = layout.current;
     if (!session) throw new Error('列设置尚未加载，未保存。');
     try {
-      validateSummaryFieldCatalog(next);
-      const current = parseSummaryLayout(session.getSnapshot().content);
-      const actual = JSON.stringify(current.columns);
-      if (actual !== JSON.stringify(baseline) && actual !== JSON.stringify(next)) throw new Error('列设置已变化，请关闭并重新打开字段目录；未覆盖其他修改。');
-      const text = JSON.stringify({ ...current.raw, version: 2, columns: next }, null, 2) + '\n';
-      parseSummaryLayout(text); clearTimeout(saveTimer.current);
-      session.update(text); rawLayout.current = JSON.parse(text); setColumns(next);
-      await session.flush(); setError('');
+      clearTimeout(saveTimer.current);
+      await saveSummaryFieldCatalog(session, next, baseline); setError('');
     } catch (reason) { setError(String(reason)); throw reason; }
   };
   const commitWidths = (next: number[]) => {
