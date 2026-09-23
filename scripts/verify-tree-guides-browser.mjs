@@ -31,7 +31,7 @@ fs.writeFileSync(path.join(hostDir, 'harness.css'), '');
 let server;
 const results=[];
 try {
- server=await createServer({configFile:false,root,cacheDir:path.join(hostDir,'cache'),plugins:[react()],server:{host:'127.0.0.1',port:0},logLevel:'error'}); await server.listen();
+ server=await createServer({configFile:false,root,cacheDir:path.join(hostDir,'cache'),optimizeDeps:{entries:['.tmp/tree-guides-browser/index.html']},plugins:[react()],server:{host:'127.0.0.1',port:0,watch:null},logLevel:'error'}); await server.listen();
  const url=`http://127.0.0.1:${server.config.server.port}/.tmp/tree-guides-browser/index.html`;
  for(const dpr of [1,1.25,1.5]){
   const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
