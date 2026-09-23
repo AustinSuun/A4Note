@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import ts from 'typescript';
+const load = async name => {
+  const source = fs.readFileSync(new URL('../src/core/' + name + '.ts', import.meta.url), 'utf8');
+  const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  return import('data:text/javascript;base64,' + Buffer.from(output).toString('base64'));
+};
+const catalog = await load('summaryFieldCatalog'), { defaultSummaryColumns, parseSummaryLayout } = await load('librarySummary');
+let passed = 0;
+function check(name, test) { test(); passed++; console.log('PASS ' + name); }
+const original = JSON.stringify(defaultSummaryColumns);
+check('default field catalog is valid', () => catalog.validateSummaryFieldCatalog(defaultSummaryColumns));
+check('trim only display label', () => assert.equal(catalog.summaryFieldName('  新字段  '), '新字段'));
+for (const label of ['', ' \t ', '甲\n乙', '甲\u0000乙', '字'.repeat(81)]) check('reject invalid label ' + JSON.stringify(label), () => assert.throws(() => catalog.summaryFieldName(label)));
+check('accept 80 character label', () => assert.equal(catalog.summaryFieldName('字'.repeat(80)).length, 80));
+const added = catalog.addSummaryField(defaultSummaryColumns, 'custom_stable_a', '实践记录');
+check('new stable ID is not inferred from name', () => assert.equal(added.at(-1).id, 'custom_stable_a'));
+check('new column supports Markdown and managed images', () => assert.equal(added.at(-1).kind, 'mixed'));
+check('creation never mutates existing columns', () => assert.equal(JSON.stringify(defaultSummaryColumns), original));
+check('reject existing ID', () => assert.throws(() => catalog.addSummaryField(added, 'figure', '新名称')));
+check('reject invalid ID', () => assert.throws(() => catalog.addSummaryField(added, '../bad', '新名称')));
+check('reject duplicate display name', () => assert.throws(() => catalog.addSummaryField(added, 'custom_b', '  结构  ')));
+check('normalized case insensitive duplicate', () => assert.throws(() => catalog.addSummaryField([{ id: 'alpha', name: 'ＡＢＣ', kind: 'text', width: 120 }], 'beta', 'abc')));
+const renamed = catalog.renameSummaryField(added, 'figure', '模型结构');
+check('rename keeps stable ID and all other properties', () => { const old = added.find(c => c.id === 'figure'); assert.deepEqual(renamed.find(c => c.id === 'figure'), { ...old, name: '模型结构' }); });
+check('rename keeps unrelated columns and source input', () => { assert.equal(JSON.stringify(defaultSummaryColumns), original); assert.equal(renamed.length, added.length); assert.equal(added.find(c => c.id === 'figure').name, '结构'); });
+check('reject rename to another field name', () => assert.throws(() => catalog.renameSummaryField(added, 'figure', '数据集')));
+check('reject missing field rename', () => assert.throws(() => catalog.renameSummaryField(added, 'missing', '新名称')));
+check('layout roundtrip preserves name, ID, hidden state and sizing', () => {
+  const layout = { version: 2, columns: renamed.map(c => c.id === 'figure' ? { ...c, hidden: true, width: 333 } : c), sizing: { mode: 'manual', titleWidth: 299 }, rowHeights: { paper_a: 301 } };
+  const parsed = parseSummaryLayout(JSON.stringify(layout)); assert.deepEqual(parsed.columns, layout.columns); assert.deepEqual(parsed.raw.rowHeights, layout.rowHeights); assert.deepEqual(parsed.raw.sizing, layout.sizing);
+});
+const moved = catalog.reorderSummaryField(renamed, 'figure', 0);
+check('reorder changes only positions', () => { assert.equal(moved[0].id, 'figure'); assert.deepEqual([...moved].sort((a,b)=>a.id.localeCompare(b.id)), [...renamed].sort((a,b)=>a.id.localeCompare(b.id))); });
+check('reorder never mutates original list', () => assert.equal(renamed[0].id, 'online'));
+for (const position of [-1, 999, 1.5, NaN]) check('reject invalid position ' + position, () => assert.throws(() => catalog.reorderSummaryField(renamed, 'figure', position)));
+check('reject missing field reorder', () => assert.throws(() => catalog.reorderSummaryField(renamed, 'missing', 0)));
+check('catalog limit does not drop old columns', () => { const full = Array.from({ length: 24 }, (_, i) => ({ id: 'field_' + i, name: '字段' + i, kind: 'mixed', width: 220 })); assert.throws(() => catalog.addSummaryField(full, 'another', '新增')); assert.equal(full.length, 24); });
+console.log(JSON.stringify({ passed, failed: 0, scope: 'Pure catalog operations only; no frontend, IPC, note mutation or native proof.' }));
