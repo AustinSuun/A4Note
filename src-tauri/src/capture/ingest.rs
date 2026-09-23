@@ -8,6 +8,53 @@ use crate::database::{initialize_database,current_timestamp_ms,normalized_tags,s
 pub struct Artifact { pub id:String, pub role:String, pub source:PathBuf, pub hash:String }
 fn text<'a>(v:&'a Value,key:&str)->&'a str { v[key].as_str().unwrap_or("").trim() }
 fn normalize_doi(value:&str)->String { value.trim().to_lowercase().trim_start_matches("https://doi.org/").trim_start_matches("http://doi.org/").trim_start_matches("doi:").trim().to_string() }
+fn capture_title(paper_title: &str, metadata: &Value) -> String {
+    let title = paper_title.trim();
+    if !title.is_empty() && title != "未命名论文（待核对）" {
+        return title.to_string();
+    }
+    let identifiers = &metadata["identifiers"];
+    let arxiv = text(identifiers, "arxiv");
+    if !arxiv.is_empty() { return format!("arXiv {arxiv}"); }
+    let doi = text(identifiers, "doi");
+    if !doi.is_empty() { return format!("DOI {doi}"); }
+    "论文".to_string()
+}
+
+// Preserve the old 64-hex-digit filename's Windows path-length budget. The
+// verified full SHA-256 stays in paper_files.content_hash; a short prefix only
+// distinguishes files in Explorer. Never use raw webpage text as a path.
+pub(super) fn captured_file_name(title: &str, kind: &str, hash: &str, ext: &str) -> String {
+    if ext != "pdf" { return format!("{hash}.{ext}"); }
+    let label = match kind {
+        "source_pdf" => "原文",
+        "version_pdf" => "其他版本",
+        "supplement_pdf" => "补充材料",
+        _ => "PDF",
+    };
+    let short_hash = hash.get(..16).unwrap_or(hash);
+    let suffix = format!(" - {label} - {short_hash}.pdf");
+    let max_title_units = 68usize.saturating_sub(suffix.encode_utf16().count());
+    let mut stem = String::new();
+    let mut units = 0;
+    let mut space = false;
+    for character in title.chars() {
+        if character.is_whitespace() || character.is_control()
+            || "<>:\"/\\|?*".contains(character)
+            || matches!(character, '\u{061c}' | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}' | '\u{feff}')
+        {
+            space = !stem.is_empty();
+            continue;
+        }
+        let needed = character.len_utf16() + usize::from(space);
+        if units + needed > max_title_units { break; }
+        if space { stem.push(' '); units += 1; space = false; }
+        stem.push(character);
+        units += character.len_utf16();
+    }
+    let stem = stem.trim_matches(|c| matches!(c, ' ' | '.' | '-'));
+    format!("{}{suffix}", if stem.is_empty() { "论文" } else { stem })
+}
 pub fn snapshot(c:&Connection,id:&str,paper:&str,envelope:&Value,map:&Value)->Result<(),String> {
     c.execute("INSERT INTO paper_capture_records(capture_id,paper_id,envelope_json,file_map_json,created_at)
       VALUES(?1,?2,?3,?4,?5) ON CONFLICT(capture_id) DO UPDATE SET envelope_json=excluded.envelope_json,file_map_json=excluded.file_map_json
@@ -94,6 +141,8 @@ pub fn ingest(root:&Path,envelope:&Value,files:&[Artifact],target:Option<&str>)-
             tx.execute("INSERT OR IGNORE INTO paper_tags(paper_id,tag_id) VALUES(?1,?2)",params![paper,tag_id]).map_err(|e|e.to_string())?;
         }
     }
+    let paper_title:String=tx.query_row("SELECT title FROM papers WHERE id=?1",[&paper],|r|r.get(0)).map_err(|e|e.to_string())?;
+    let file_title=capture_title(&paper_title,m);
     let oldmap:Option<String>=tx.query_row("SELECT file_map_json FROM paper_capture_records WHERE capture_id=?1",[id],|r|r.get(0)).optional().map_err(|e|e.to_string())?;
     let mut map=oldmap.and_then(|s|serde_json::from_str::<Value>(&s).ok()).unwrap_or(json!({}));
     let mut has_source:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM paper_files WHERE paper_id=?1 AND type='source_pdf')",[&paper],|r|r.get(0)).map_err(|e|e.to_string())?;
@@ -104,11 +153,12 @@ pub fn ingest(root:&Path,envelope:&Value,files:&[Artifact],target:Option<&str>)-
         if actual!=artifact.hash { return Err("采集文件哈希发生变化，拒绝入库".into()); }
         let existing:Option<String>=tx.query_row("SELECT id FROM paper_files WHERE paper_id=?1 AND content_hash=?2 AND (?3=0 OR type='source_pdf') LIMIT 1",params![paper,actual,artifact.role=="fulltext" && !has_source],|r|r.get(0)).optional().map_err(|e|e.to_string())?;
         if let Some(file)=existing { map[&artifact.id]=json!(file);continue; }
+        let kind=if artifact.role=="fulltext" && !has_source { "source_pdf" } else if artifact.role=="fulltext" {"version_pdf"} else if ext=="pdf" {"supplement_pdf"} else {"supplement_file"};
         let directory=root.join("files").join("papers").join(&paper).join("captures").join(id);
         fs::create_dir_all(&directory).map_err(|e|e.to_string())?;
         let base=root.join("files").join("papers").canonicalize().map_err(|e|e.to_string())?;
         if !directory.canonicalize().map_err(|e|e.to_string())?.starts_with(&base) { return Err("文献存储目录越界".into()); }
-        let dest=directory.join(format!("{actual}.{ext}"));
+        let dest=directory.join(captured_file_name(&file_title,kind,&actual,ext));
         if !dest.exists() {
             let temp=directory.join(format!(".{}.part",Uuid::new_v4()));
             let written=(||->Result<(),String>{
@@ -125,8 +175,8 @@ pub fn ingest(root:&Path,envelope:&Value,files:&[Artifact],target:Option<&str>)-
         }
         if super::download::attachment::verify(&dest,ext)?.0!=actual { return Err("同名入库副本内容不一致，拒绝覆盖".into()); }
         let file=format!("file-{}",Uuid::new_v4());
-        let kind=if artifact.role=="fulltext" && !has_source { has_source=true;"source_pdf" } else if artifact.role=="fulltext" {"version_pdf"} else if ext=="pdf" {"supplement_pdf"} else {"supplement_file"};
         tx.execute("INSERT INTO paper_files(id,paper_id,type,path,language,content_hash,created_at) VALUES(?1,?2,?3,?4,'',?5,?6)",params![file,paper,kind,dest.to_string_lossy(),actual,now]).map_err(|e|e.to_string())?;
+        if kind=="source_pdf" { has_source=true; }
         map[&artifact.id]=json!(file);
     }
     snapshot(&tx,id,&paper,envelope,&map)?;
