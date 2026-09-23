@@ -117,7 +117,8 @@ ok(floatingControls.includes('data-corner={corner}') && floatingControls.include
 ok(scene.includes('useNoteLayoutFlip') && scene.includes("'--reader-side-target'") && css.includes('transition: grid-template-columns'), '侧栏经网格轨道连续滑开/收回，模式切换走 FLIP（3932f561）');
 const readerCss = fs.readFileSync('src/ui/styles/reader.css', 'utf8');
 ok(/\.note-history-title \{[^}]*font-size: var\(--ui-control-font-size/.test(readerCss) && /\.note-history-actions button \{[^}]*font-size:var\(--ui-control-font-size/.test(readerCss) && /\.note-history-excerpt \{[^}]*--ui-caption-font-size/.test(readerCss), '文档下拉：条目标题与操作按钮同为控件字号、摘要为说明字号（3932f561）');
-ok(css.includes('.note-mode-floating .note-save-state { display: none; }') && drawer.includes("noteMode !== 'floating' && <ReaderDrawerResizer") && css.includes('.reader-note-floating-corner[data-corner="nw"]'), '悬浮卡：去掉已保存与左缘拖宽条，四角柄样式存在（3932f561）');
+ok(css.includes('.reader-workspace-drawer .note-save-state.saved { display: none; }') && drawer.includes("noteMode !== 'floating' && <ReaderDrawerResizer") && css.includes('.reader-note-floating-corner[data-corner="nw"]'), '所有笔记形态去掉常态已保存、悬浮态无左缘拖宽条、四角柄样式存在（3932f561 spec 12）');
+ok(/\.reader-note-edge-handle \{[^}]*width: 30px; height: 96px/.test(css) && css.includes('transition: visibility 0s var(--note-transition-duration'), '收起把手放大到 30×96 且专注写作切换期间正文延迟隐藏（spec 12）');
 const hookSource = fs.readFileSync('src/features/reader/useNoteWorkbench.ts', 'utf8');
 ok(hookSource.includes('restoreMode') && hookSource.includes('previousMode'), '退出宽屏模式回到进入前的模式且保留宽屏偏好');
 const menuSource = fs.readFileSync('src/features/reader/ReaderNoteWorkbenchMenu.tsx', 'utf8');

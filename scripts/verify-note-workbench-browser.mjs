@@ -354,8 +354,10 @@ try {
   await ev("window.__edgeTest.setWidth(1300);window.__edgeTest.setMode('reading')");await settle();
   const edge = '.reader-note-edge-handle';
   const closedEdge = await boxOf(edge), shellEdge = await boxOf('.reader-workspace-shell');
-  check(closedEdge.width===22 && closedEdge.height===88 && Math.abs(closedEdge.right-shellEdge.right)<1,'收起把手22×88且停靠内容右边界',{closedEdge,shellEdge});
-  check(Math.abs(closedEdge.top+44-(shellEdge.top+shellEdge.height/2))<1,'把手垂直居中');
+  check(closedEdge.width===30 && closedEdge.height===96 && Math.abs(closedEdge.right-shellEdge.right)<1,'收起把手30×96且停靠内容右边界（spec 12 放大）',{closedEdge,shellEdge});
+  check(Math.abs(closedEdge.top+48-(shellEdge.top+shellEdge.height/2))<1,'把手垂直居中');
+  const closedLook=await ev(`(()=>{const h=document.querySelector('${edge}');const s=getComputedStyle(h);const l=getComputedStyle(h.querySelector('.reader-note-edge-label'));const rgb=s.backgroundColor.match(/[\\d.]+/g).map(Number);return {bg:s.backgroundColor,alpha:rgb.length>3?rgb[3]:1,white:rgb[0]>250&&rgb[1]>250&&rgb[2]>250,border:s.borderLeftWidth,shadow:s.boxShadow!=='none',ink:s.color,label:parseFloat(l.fontSize),icon:h.querySelector('svg').getBoundingClientRect().width}})()`);
+  check(closedLook.alpha>0.9&&!closedLook.white&&closedLook.border!=='0px'&&closedLook.shadow&&closedLook.label>=13&&closedLook.icon>=16,'收起把手常态可辨认：有色底、边框、阴影，字号 ≥13px、图标 ≥16px',closedLook);
   check(await ev("getComputedStyle(document.querySelector('.reader-note-edge-handle')).cursor === 'pointer'"),'边读边记手柄悬停光标为 pointer');
   check(await ev("!document.querySelector('.wb-harness-toolbar .reader-note-workbench-entry')"),'标题栏无笔记入口占位');
   check(await ev("document.querySelector('[data-shortcut-id=\"reader.notes.toggle\"]')?.matches('.reader-note-edge-handle')"),'快捷键锚点迁移至把手');

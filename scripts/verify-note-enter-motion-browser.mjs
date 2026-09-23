@@ -204,7 +204,7 @@ try {
   /* 2b. header layout in the docked column: picker left, controls right, save badge visible */
   const headerSplit = await ev(`(()=>{const h=document.querySelector('.note-document-header');const shell=h.querySelector('.note-history-shell');const t=h.querySelector('.note-document-trigger');const a=h.querySelector('.note-document-actions');const s=h.querySelector('.note-save-state');const r=x=>x.getBoundingClientRect();return {header:r(h).width,shell:r(shell).width,trigger:r(t).width,triggerLeft:r(t).left-r(h).left,actionsRight:r(h).right-r(a).right,save:getComputedStyle(s).display,resizer:!!document.querySelector('.reader-workspace-drawer .reader-drawer-resize-handle')}})()`);
   check(headerSplit.trigger < headerSplit.header * 0.6 && headerSplit.triggerLeft < 12 && headerSplit.actionsRight < 12, '分屏标题行：文档标题紧贴左侧、模式/编辑切换紧贴右侧', headerSplit);
-  check(headerSplit.save !== 'none', '分屏保留「已保存」状态', headerSplit.save);
+  check(headerSplit.save === 'none', '分屏同样不显示常态「已保存」（spec 12：所有形态）', headerSplit.save);
 
   /* 3. exit: the track slides shut with the ease-in token; drawer unmounts after the motion */
   const closeFirst = await firstFrame('.motion-close');

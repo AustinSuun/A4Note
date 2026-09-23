@@ -4,6 +4,10 @@
 .reader-workspace-shell.workspace-open.drawer-overlay { grid-template-columns: minmax(0, 1fr); gap: 0; }
 .reader-workspace-shell.writing-expanded > .reader-main-workspace,
 .reader-workspace-shell.drawer-overlay > .reader-main-workspace { visibility: hidden; overflow: hidden; pointer-events: none; }
+/* Keep the paper visible underneath while the sheet grows over it (FLIP / slide), hide it
+   only once the motion is over; leaving writing reveals it immediately. */
+.reader-workspace-shell > .reader-main-workspace { transition: visibility 0s 0s; }
+.reader-workspace-shell.writing-expanded > .reader-main-workspace { transition: visibility 0s var(--note-transition-duration, 220ms); }
 .reader-workspace-shell.writing-expanded > .reader-workspace-drawer,
 .reader-workspace-shell.note-mode-writing > .reader-workspace-drawer,
 .reader-workspace-shell.drawer-overlay > .reader-workspace-drawer { position: absolute; inset: 0; width: 100% !important; max-width: none; min-width: 0; border-radius: 8px; }
@@ -106,17 +110,20 @@
 .reader-note-edge-entry[data-note-docked="true"] { width: 16px; transition: right var(--note-transition-duration) var(--note-transition-ease); }
 .reader-workspace-shell[data-note-presence="exiting"] .reader-note-edge-entry[data-note-docked="true"] { transition-timing-function: var(--note-transition-ease-exit); }
 .reader-workspace-shell[data-note-resizing="true"] .reader-note-edge-entry { transition: none; }
+/* Collapsed bookmark (spec 12): must read against a white PDF page without hovering —
+   tinted surface, clear border and shadow, accent-strong ink, ~30px wide. */
 .reader-note-edge-handle {
   position: relative; isolation: isolate; overflow: visible;
-  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px;
-  box-sizing: border-box; flex: none; width: 22px; height: 88px; padding: 0;
-  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-right: 0; border-radius: 11px 0 0 11px;
-  background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--muted);
-  box-shadow: -3px 0 12px rgba(26,41,33,.09), inset 1px 0 rgba(255,255,255,.58);
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 7px;
+  box-sizing: border-box; flex: none; width: 30px; height: 96px; padding: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--line)); border-right: 0; border-radius: 13px 0 0 13px;
+  background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface)); color: var(--accent-strong);
+  box-shadow: -4px 0 14px rgba(26,41,33,.13), inset 1px 0 rgba(255,255,255,.5);
   backdrop-filter: blur(10px); cursor: pointer; touch-action: none;
   transition: background 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
-.reader-note-edge-handle::before { content: ''; position: absolute; right: 2px; top: 50%; width: 2px; height: 26px; border-radius: 999px; background: currentColor; opacity: .16; transform: translateY(-50%); }
+.reader-note-edge-handle > svg { width: 16px; height: 16px; flex: none; }
+.reader-note-edge-handle::before { content: ''; position: absolute; right: 3px; top: 50%; width: 2px; height: 30px; border-radius: 999px; background: currentColor; opacity: .22; transform: translateY(-50%); }
 /* Open state: a quiet grip riding the split line, in the same language as the workbench
    separator — no filled pill, the chevron only surfaces on hover/focus. The box keeps its
    16×58 hit area (widened further by ::after); only the painted grip (::before) scales, so
@@ -142,9 +149,24 @@
 .reader-workspace-shell[data-note-resizing="true"] .reader-note-edge-handle.active::before { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
 .reader-note-edge-handle.active:is(:hover, :focus-visible) svg { opacity: 1; transform: none; }
 .reader-note-edge-entry[data-note-docked="true"] .reader-note-edge-handle { cursor: pointer; }
-.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle { border-left: 0; border-right: 1px solid var(--accent); border-radius: 0 8px 8px 0; }
-.reader-note-edge-label { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 2px; font-size: 12px; line-height: 1; }
-.reader-note-edge-handle:not(.active):hover { background: color-mix(in srgb, var(--accent-soft) 82%, var(--surface)); color: var(--accent-strong); border-color: color-mix(in srgb, var(--accent) 68%, var(--line)); box-shadow: 0 5px 16px rgba(26,41,33,.14); }
+/* Writing sheet / narrow overlay: the same tab language mirrored to the left edge ("返回论文"),
+   chevron always visible because there is no split line to ride. */
+.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle,
+.reader-workspace-shell.drawer-overlay .reader-note-edge-handle.active {
+  width: 28px; height: 76px; border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--line)); border-left: 0; border-radius: 0 13px 13px 0;
+  background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface)); color: var(--accent-strong);
+  box-shadow: 4px 0 14px rgba(26,41,33,.13), inset -1px 0 rgba(255,255,255,.5);
+}
+.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle::before,
+.reader-workspace-shell.drawer-overlay .reader-note-edge-handle.active::before { display: none; }
+.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle svg,
+.reader-workspace-shell.drawer-overlay .reader-note-edge-handle.active svg { opacity: 1; transform: none; }
+.reader-note-edge-label { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 2px; font-size: var(--ui-control-font-size, 13px); font-weight: 600; line-height: 1; }
+.reader-note-edge-handle:not(.active):hover,
+.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle:hover,
+.reader-workspace-shell.drawer-overlay .reader-note-edge-handle.active:hover { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); box-shadow: -4px 0 18px rgba(26,41,33,.18); }
+.reader-note-edge-handle:not(.active):active,
+.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle:active { background: color-mix(in srgb, var(--accent) 24%, var(--surface)); }
 .reader-note-edge-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .reader-note-mode-switch { display: inline-flex; align-items: center; gap: 1px; flex-shrink: 0; }
 .reader-note-mode-switch button { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 26px; padding: 0; border: 0; border-radius: 4px; color: var(--muted); background: transparent; }
@@ -242,8 +264,8 @@
 /* The picker now opens under a left-aligned trigger, so anchor it to the trigger's left edge. */
 .reader-workspace-drawer .note-history-popover { left: 0; right: auto; max-width: calc(100cqw - 16px); }
 .reader-workspace-drawer .note-document-actions { margin-left: auto; }
-/* The floating card has no room for the save badge; split/writing keep it. */
-.reader-workspace-shell.note-mode-floating .note-save-state { display: none; }
+/* No resting "已保存" badge in any note layout (spec 12); saving / dirty / error feedback stays. */
+.reader-workspace-drawer .note-save-state.saved { display: none; }
 .reader-workspace-drawer .note-meta-row { justify-content: flex-start; gap: 5px 8px; min-height: 24px; padding: 3px 0; }
 .reader-workspace-drawer .note-save-state { margin-left: auto; white-space: nowrap; }
 .reader-workspace-drawer .note-workspace { display: flex; flex-direction: column; }
