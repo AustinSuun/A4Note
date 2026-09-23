@@ -8,8 +8,11 @@ import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } fro
 import { BookOpen, Check, ChevronDown, LoaderCircle, Pencil, Plus } from 'lucide-react';
 import type { Note, PaperDocument } from '../../core/types';
 import { zh } from '../../ui/zh';
-import { noteSaveStateText } from './readerHelpers';
+import { annotationLabelText, noteSaveStateText } from './readerHelpers';
+import { annotationCitationInsert, annotationCitationLabel } from './annotationCitation';
 import type { MarkdownLiveEditorHandle } from './MarkdownLiveEditor';
+import { MarkdownAuthoringDock } from '../explorer/MarkdownAuthoringDock';
+import type { MarkdownTemplate } from '../explorer/markdownTemplates';
 import type { NoteDraftPatch, NoteSaveInput } from './types';
 
 const claimedNoteRequests = new WeakSet<NoteDraftPatch>();
@@ -53,6 +56,7 @@ export function MarkdownNotePanel({
   onSave,
   onCreateNote,
   onNavigateAnnotation,
+  focusedAnnotationId = null,
 }: {
   paper: PaperDocument;
   draftPatch: NoteDraftPatch | null;
@@ -60,6 +64,7 @@ export function MarkdownNotePanel({
   onSave: (note: NoteSaveInput) => void | Promise<string | void>;
   onCreateNote: () => void | Promise<string | void>;
   onNavigateAnnotation: (annotationId: string) => void;
+  focusedAnnotationId?: string | null;
 }) {
   const endSpaceRef = useMarkdownEndSpace<HTMLElement>();
   const surfaceActive = useReaderNoteActive();
@@ -81,7 +86,11 @@ export function MarkdownNotePanel({
   const [actionError, setActionError] = useState('');
   const [summaryNoteId, setSummaryNoteId] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [sourceMode, setSourceMode] = useState(false);
   const editorRef = useRef<MarkdownLiveEditorHandle | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingCitation = useRef('');
   const historyRef = useRef<HTMLDivElement | null>(null);
   const historyTriggerRef = useRef<HTMLButtonElement | null>(null);
   const historyOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -196,6 +205,45 @@ export function MarkdownNotePanel({
   };
   const updateTitle = (next: string) => session.update(next, session.getSnapshot().content);
   const updateContent = (next: string) => session.update(session.getSnapshot().title, next);
+  const focusedAnnotation = paper.annotations.find(item => item.id === focusedAnnotationId) ?? null;
+  const focusedCitationLabel = focusedAnnotation
+    ? annotationCitationLabel(annotationLabelText(focusedAnnotation.type), zh.reader.annotationPage(focusedAnnotation.page))
+    : '';
+  const insertTemplate = (template: MarkdownTemplate) => editorRef.current?.insertTemplate(template.source, template.block);
+  const insertFormat = (before: string, after: string, placeholder: string) => editorRef.current?.insertMarkdown(before, after, placeholder);
+  const insertImageFile = (file: File | undefined) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') editorRef.current?.insertMarkdown('![', '](' + reader.result + ')', file.name.replace(/\.[^.]+$/, ''));
+    };
+    reader.readAsDataURL(file);
+  };
+  const insertFocusedCitation = () => {
+    if (!focusedAnnotation) return;
+    const snippet = annotationCitationInsert(focusedAnnotation.id);
+    if (!snippet) return;
+    if (mode === 'edit' && editorRef.current) {
+      editorRef.current.insertMarkdown('', '', snippet);
+      return;
+    }
+    pendingCitation.current = snippet;
+    setMode('edit');
+  };
+  useEffect(() => {
+    if (mode !== 'edit' || !pendingCitation.current) return;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      if (!pendingCitation.current) { window.clearInterval(timer); return; }
+      if (editorRef.current) {
+        editorRef.current.insertMarkdown('', '', pendingCitation.current);
+        pendingCitation.current = '';
+        window.clearInterval(timer);
+      } else if (attempts > 20) window.clearInterval(timer);
+    }, 50);
+    return () => window.clearInterval(timer);
+  }, [mode, selectedNoteId]);
   const renameCurrent = async () => {
     const nextTitle = renameValue.trim();
     if (!nextTitle) { setActionError('文档名称不能为空'); return; }
@@ -282,6 +330,7 @@ export function MarkdownNotePanel({
             {saveState === 'saving' ? <LoaderCircle className="spin" aria-hidden="true" /> : saveState === 'saved' ? <Check aria-hidden="true" /> : null}
             {noteSaveStateText(saveState)}
           </span>
+          {focusedAnnotation && <button type="button" className="note-citation-insert" onClick={insertFocusedCitation} title={"插入引用：" + focusedCitationLabel} aria-label={"插入引用 " + focusedCitationLabel}>{focusedCitationLabel}</button>}
           <div className="note-view-switch" role="group" aria-label={zh.reader.noteReadingMode}>
             <button type="button" className={mode === 'edit' ? 'active' : ''} onClick={() => setMode('edit')} title={zh.reader.noteEditingMode} aria-label={zh.reader.noteEditingMode}>
               <Pencil aria-hidden="true" />
@@ -301,9 +350,13 @@ export function MarkdownNotePanel({
         }}>放弃草稿</button>
       </div>}
       {mode === 'edit' ? (
+        <>
+          <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertFormat} onImage={() => imageInputRef.current?.click()} sourceMode={sourceMode} onToggleSource={() => setSourceMode(current => !current)} />
+          <input ref={imageInputRef} className="note-image-input" type="file" accept="image/*" hidden onChange={event => { insertImageFile(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} />
         <Suspense fallback={<div className="note-editor-loading"><LoaderCircle className="spin" aria-hidden="true" /></div>}>
-          <MarkdownLiveEditor key={selectedNoteId} ref={editorRef} markdown={content} onChange={updateContent} onBlur={() => void saveCurrent()} placeholder={zh.reader.notePlaceholder} />
+          <MarkdownLiveEditor key={selectedNoteId} ref={editorRef} markdown={content} sourceMode={sourceMode} onChange={updateContent} onBlur={() => void saveCurrent()} placeholder={zh.reader.notePlaceholder} />
         </Suspense>
+        </>
       ) : (
         <article ref={endSpaceRef} className="md-body markdown-preview note-preview-only">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</article>
       )}

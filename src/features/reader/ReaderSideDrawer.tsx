@@ -1,5 +1,6 @@
 import { ReaderNoteModeSwitch } from './ReaderNoteWorkbenchMenu';
 import type { NoteWorkbenchMode } from './noteWorkbench';
+import type { NotePanelPresencePhase } from './useNotePanelPresence';
 import { RetainedReaderNote, ReaderNoteLayoutActions } from './ReaderNoteActivity';
 import { ReaderDrawerResizer } from './ReaderDrawerResizer';
 import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
@@ -17,6 +18,8 @@ const workspacePanelTabs: ReaderSidePanelTab[] = ['notes', 'annotations', 'chat'
 
 export function ReaderSideDrawer({
   open,
+  noteActive,
+  notePresence,
   noteMode,
   onSelectNoteMode,
   width,
@@ -49,6 +52,8 @@ export function ReaderSideDrawer({
   onNavigateRelationTarget,
 }: {
   open: boolean;
+  noteActive: boolean;
+  notePresence: NotePanelPresencePhase;
   noteMode?: NoteWorkbenchMode;
   onSelectNoteMode?: (mode: NoteWorkbenchMode) => void;
   width: number;
@@ -100,11 +105,13 @@ export function ReaderSideDrawer({
 
   const notesPanel = panelById.get('notes');
   const notesView = notesPanel ? panelViews.find(view => view.id === notesPanel.panel.id) : undefined;
-  const notesActive = open && sidePanelTab === 'notes';
-  const retainNotes = notesActive || retainedPaper === paper.paperId;
+  const notesActive = noteActive && sidePanelTab === 'notes';
+  const notesPresented = sidePanelTab === 'notes' && notePresence !== 'hidden';
+  const notesShown = notesActive || notesPresented;
+  const retainNotes = notesShown || retainedPaper === paper.paperId;
   useEffect(() => { if (notesActive) setRetainedPaper(paper.paperId); }, [notesActive, paper.paperId]);
   useEffect(() => { if (!open) setAddMenuOpen(false); }, [open]);
-  if (!open && !retainNotes) return null;
+  if (!open && !retainNotes && !notesPresented) return null;
 
   const openWorkspaceTab = (tab: ReaderSidePanelTab) => {
     setOpenTabs((current) => (current.includes(tab) ? current : [...current, tab]));
@@ -131,10 +138,11 @@ export function ReaderSideDrawer({
 
   return (
     <aside
-      className={`reader-workspace-drawer${notesActive ? ' notes-active' : ''}`}
+      className={`reader-workspace-drawer${notesShown ? ' notes-active' : ''}`}
       data-reader-layer="sidebar"
-      aria-label="阅读工作面板" hidden={!open} inert={!open} aria-hidden={!open}
-      style={{ width: expanded || compact ? '100%' : width, display: open ? undefined : 'none' }}
+      data-note-presence={notesShown ? notePresence : undefined}
+      aria-label="阅读工作面板" hidden={!open && !notesPresented} inert={!open} aria-hidden={!open}
+      style={{ width: expanded || compact ? '100%' : width, display: open || notesPresented ? undefined : 'none' }}
       onPointerDown={(event) => event.stopPropagation()}
       onPointerUp={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}
@@ -142,7 +150,7 @@ export function ReaderSideDrawer({
       onKeyDown={event => { if (event.key === 'Escape' && addMenuOpen && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); setAddMenuOpen(false); } }}
     >
       {open && !expanded && !compact && <ReaderDrawerResizer width={width} maximum={maximumWidth} onChange={onWidthChange} />}
-      {!notesActive && <header className="reader-workspace-header">
+      {!notesShown && <header className="reader-workspace-header">
         <div className="reader-workspace-tabs" role="tablist" aria-label={zh.reader.openPanel}>
           {openTabs.map((tab) => {
             const panel = panelById.get(tab);
@@ -203,7 +211,7 @@ export function ReaderSideDrawer({
       </header>}
 
       <div className="workspace-panel-content">
-        {retainNotes && notesPanel && notesView && <RetainedReaderNote key={paper.paperId} active={notesActive}>
+        {retainNotes && notesPanel && notesView && <RetainedReaderNote key={paper.paperId} active={notesActive} visible={notesShown}>
           <ReaderNoteLayoutActions.Provider value={noteMode && onSelectNoteMode ? <ReaderNoteModeSwitch mode={noteMode} onSelectMode={onSelectNoteMode} /> : null}>
           {notesView.render({ panel: notesPanel.panel, sceneId: 'reader', selectedPaper: paper })}
                   </ReaderNoteLayoutActions.Provider>

@@ -23,6 +23,7 @@ const sourceFiles = [
   'src/features/reader/ReaderScene.tsx',
   'src/features/reader/useReaderDrawerLayout.ts',
   'src/features/reader/useReaderDrawerGesture.ts',
+  'src/features/reader/useNotePanelPresence.ts',
   'src/features/reader/ReaderSideDrawer.tsx',
   'src/features/reader/reader-writing-layout.css',
   'src/ui/styles/tokens.css',
@@ -83,8 +84,8 @@ const waitState = async (predicate) => {
   }
   throw Error('Timed out waiting for host state: ' + predicate);
 };
-/* transitions run for 200ms; settle before geometry assertions */
-const settle = () => pause(320);
+/* transitions run for 220ms; settle before geometry assertions */
+const settle = () => pause(340);
 const boxOf = selector => ev(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return {left:r.left,top:r.top,width:r.width,height:r.height,right:r.right,bottom:r.bottom}})()`);
 const dragBy = async (selector, dx, dy) => {
   const box = await boxOf(selector);
@@ -216,10 +217,15 @@ try {
   await settle();
   const shellRect = await boxOf('.reader-workspace-shell');
   const cardBox = await boxOf('.reader-workspace-drawer');
+  const dragBox = await boxOf('.reader-note-floating-drag');
+  const modeSwitchBox = await boxOf('.reader-note-mode-switch');
   snapshot = await state();
   const localCard = { left: cardBox.left - shellRect.left, top: cardBox.top - shellRect.top, width: cardBox.width, right: cardBox.right - shellRect.left };
   check(localCard.left >= -1 && localCard.top >= -1 && localCard.right <= snapshot.containerWidth + 1, '悬浮卡完全落在内容区内', localCard);
   check(Math.abs(localCard.left - Math.min(snapshot.floatingBox.left,snapshot.containerWidth-snapshot.floatingBox.width-28)) <= 2 && Math.abs(localCard.top - snapshot.floatingBox.top) <= 2 && Math.abs(localCard.width - snapshot.floatingBox.width) <= 2, '悬浮卡几何来自共享比例并为边缘把手保留28px操作区', { localCard, expected: snapshot.floatingBox, diag: snapshot.drawerDiag });
+  check(Math.abs((dragBox.left + dragBox.width / 2) - (cardBox.left + cardBox.width / 2)) <= 2 && dragBox.top >= cardBox.top && dragBox.top < cardBox.top + 14, 'Pill 拖动横条位于悬浮卡顶部中央', { dragBox, cardBox });
+  check(await ev("document.querySelector('.reader-note-floating-drag').textContent.trim() === '' && !!document.querySelector('.reader-note-floating-grip')"), '拖动入口无文字/图标噪音并保留可访问名称');
+  check(dragBox.bottom <= modeSwitchBox.top + 1 && await ev("(()=>{const n=document.querySelector('.reader-note-mode-switch [aria-label=\"边读边记\"]'),r=n.getBoundingClientRect();return n.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})()"), 'Pill 拖动热区不遮挡布局切换按钮', { dragBox, modeSwitchBox });
   await shot('04-floating');
   await dragBy('.reader-note-floating-drag', -180, 90);
   await settle();
@@ -291,11 +297,21 @@ try {
   /* 9. motion budget and reduced motion */
   const motion = await ev(`(()=>{const drawer=document.querySelector('.reader-workspace-drawer');
     return { duration:getComputedStyle(drawer).transitionDuration, shell:getComputedStyle(document.querySelector('.reader-workspace-shell')).getPropertyValue('--note-transition-duration').trim() }})()`);
-  check(/0\.2s|200ms/.test(motion.duration) && motion.shell === '200ms', '开合过渡落在 180-240ms', motion);
+  check(/0\.22s|220ms/.test(motion.duration) && motion.shell === '220ms', '开合过渡落在 180-240ms', motion);
   await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   const reduced = await ev("getComputedStyle(document.querySelector('.reader-workspace-drawer')).transitionDuration");
   check(reduced === '0s', 'prefers-reduced-motion 取消动画', reduced);
   await send('Emulation.setEmulatedMedia', { features: [] });
+  await ev("window.__edgeTest.setMode('split')");await settle();
+  await ev("window.__edgeTest.setMode('reading')");
+  await wait("document.querySelector('.reader-workspace-shell').dataset.notePresence === 'exiting'");
+  check(await ev("!!document.querySelector('.reader-workspace-drawer')"), '退场期间保留笔记面板 DOM');
+  await settle();
+  check(await ev("document.querySelector('.reader-workspace-shell').dataset.notePresence === 'hidden' && !document.querySelector('.reader-workspace-drawer')"), '退场结束后再卸载笔记面板');
+  await ev("window.__presenceLog=[];window.__edgeTest.setMode('split')");
+  await wait("!!document.querySelector('.reader-workspace-drawer')");
+  await settle();
+  check(await ev("window.__presenceLog.includes('entering')"), '入场阶段先挂载面板再播放滑入', await ev("window.__presenceLog"));
 
   /* 10. per-paper mode + active note persistence, corrupt preferences */
   await ev("document.querySelector('.reader-note-workbench-button').focus()");await key('ArrowDown','ArrowDown',40);
@@ -334,6 +350,7 @@ try {
   const closedEdge = await boxOf(edge), shellEdge = await boxOf('.reader-workspace-shell');
   check(closedEdge.width===22 && closedEdge.height===88 && Math.abs(closedEdge.right-shellEdge.right)<1,'收起把手22×88且停靠内容右边界',{closedEdge,shellEdge});
   check(Math.abs(closedEdge.top+44-(shellEdge.top+shellEdge.height/2))<1,'把手垂直居中');
+  check(await ev("getComputedStyle(document.querySelector('.reader-note-edge-handle')).cursor === 'pointer'"),'边读边记手柄悬停光标为 pointer');
   check(await ev("!document.querySelector('.wb-harness-toolbar .reader-note-workbench-entry')"),'标题栏无笔记入口占位');
   check(await ev("document.querySelector('[data-shortcut-id=\"reader.notes.toggle\"]')?.matches('.reader-note-edge-handle')"),'快捷键锚点迁移至把手');
   await click(edge);await settle();await ev("window.__edgeTest.setMode('split')");await settle();
@@ -358,7 +375,7 @@ try {
   for(const [x,y] of [[0,0],[.9,0],[0,.9],[.9,.9]]){await ev(`window.__edgeTest.setFloating({x:${x},y:${y},width:.42,height:.62})`);await settle();const c=await boxOf('.reader-workspace-drawer'),h=await boxOf(edge),d=await boxOf('.reader-note-floating-drag');check(c.right<h.left&&d.top>=shellEdge.top,'四角浮卡保留把手与拖动钮操作区 '+x+'/'+y,{c,h,d});}
   for(const zoom of [1,1.25,1.5]){await ev(`document.documentElement.style.zoom='${zoom}';document.documentElement.style.setProperty('--ui-zoom','${zoom}');window.__edgeTest.setWidth(${Math.floor(1500/zoom)});window.__edgeTest.setMode('floating')`);await settle();const h=await boxOf(edge),c=await boxOf('.reader-workspace-drawer');check(h.left>=c.right&&await ev("(()=>{const n=document.querySelector('.reader-note-edge-handle'),r=n.getBoundingClientRect();return n.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})()"),'浮动卡与把手均可操作 UI'+zoom,{h,c});}
   await ev("document.documentElement.style.zoom='1';document.documentElement.style.setProperty('--ui-zoom','1');window.__edgeTest.setMode('reading')");await settle();
-  const scrollBefore=await ev("document.querySelector('.pdf-document').scrollTop");rect=await boxOf(edge);await send('Input.dispatchMouseEvent',{type:'mouseWheel',x:rect.left+rect.width/2,y:rect.top+rect.height/2,deltaX:0,deltaY:120});await pause(150);check(await ev("document.querySelector('.pdf-document').scrollTop")>scrollBefore,'把手上滚轮继续滚动PDF');
+  await ev("document.querySelector('.pdf-document').scrollTop=0");const scrollBefore=await ev("document.querySelector('.pdf-document').scrollTop");rect=await boxOf(edge);await send('Input.dispatchMouseEvent',{type:'mouseWheel',x:rect.left+rect.width/2,y:rect.top+rect.height/2,deltaX:0,deltaY:120});await pause(150);const scrollAfter=await ev("document.querySelector('.pdf-document').scrollTop");check(scrollAfter>scrollBefore,'把手上滚轮继续滚动PDF',{scrollBefore,scrollAfter});
   await ev("document.documentElement.style.zoom='1.5';document.documentElement.style.setProperty('--ui-zoom','1.5');document.querySelector('.wb-harness').style.minWidth='980px';window.__edgeTest.setWidth(1600);window.__edgeTest.setMode('floating')");await settle();await settle();
   const bounded=await boxOf(edge);check(bounded.right<=1568&&await ev("(()=>{const n=document.querySelector('.reader-note-edge-handle'),r=n.getBoundingClientRect();return n.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2))})()"),'宿主最小宽度溢出时 Reader 自身约束在可见视口',bounded);
   check(errors.length === 0, '无运行时异常与控制台错误', errors);

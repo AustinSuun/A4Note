@@ -6,6 +6,7 @@ import 'katex/dist/katex.min.css';
 import type { PaperDocument } from '../../core/types';
 import { zh } from '../../ui/zh';
 import { annotationLabelText } from './readerHelpers';
+import { annotationCitationLabel } from './annotationCitation';
 import { MarkdownCallout, MarkdownCodeBlock, MarkdownFigure, MarkdownFootnoteBackref, MarkdownFootnoteRef, MarkdownFootnotesSection, MarkdownTable, remarkAsterInline, wikiLinkProtocol, wikiLinkTarget } from '../../shared/markdown';
 
 export function MarkdownReadContent({
@@ -23,7 +24,7 @@ export function MarkdownReadContent({
     const annotationId = rawAnnotationId.trim();
     const annotation = paper.annotations.find((item) => item.id === annotationId);
     if (!annotation) return source;
-    const label = `${annotationLabelText(annotation.type)} · ${zh.reader.annotationPage(annotation.page)}`;
+    const label = annotationCitationLabel(annotationLabelText(annotation.type), zh.reader.annotationPage(annotation.page));
     return `[${label}](a4note-annotation:${encodeURIComponent(annotation.id)})`;
   });
 

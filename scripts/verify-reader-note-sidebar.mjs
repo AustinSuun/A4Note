@@ -8,7 +8,7 @@ const css = read('src/ui/styles/reader.css');
 const retained = read('src/features/reader/ReaderNoteActivity.tsx');
 
 const checks = [
-  ['notes drawer removes the redundant workspace tab row from DOM', /\{!notesActive && <header className="reader-workspace-header">/.test(drawer)],
+  ['notes drawer removes the redundant workspace tab row from DOM', /\{!notesShown && <header className="reader-workspace-header">/.test(drawer)],
   ['notes drawer collapses to one content grid row', /\.reader-workspace-drawer\.notes-active\s*\{[^}]*grid-template-rows:minmax\(0,1fr\)/s.test(css)],
   ['document title is a popup trigger rather than an editable title input', /className=\{historyOpen \? 'note-document-trigger active'/.test(markdown) && !/<input\s+className="note-title-input"/.test(markdown)],
   ['picker exposes listbox semantics', /aria-haspopup="listbox"/.test(markdown) && /role="listbox"/.test(markdown) && /role="option"/.test(markdown)],

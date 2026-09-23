@@ -97,6 +97,9 @@ ok(!scene.includes('reader-note-reopen'), '旧的纵向“继续笔记”耳朵�
 ok(!drawer.includes('reader-writing-expand'), '旧“全宽/分栏”按钮已从笔记流程移除');
 ok(css.includes('note-mode-floating') && css.includes('note-mode-writing'), '样式覆盖悬浮与专注写作模式');
 ok(css.includes('prefers-reduced-motion'), '减少动效偏好被样式处理');
+ok(css.includes('data-note-presence="exiting"') && css.includes('data-note-motion-mode="floating"'), '三种布局具有显式进退场状态');
+ok(!/transition:[^;]*width/.test(css) && /transition:\s*transform[^;]*opacity/.test(css), '面板动效仅过渡 transform 与 opacity 合成器属性');
+ok(!/data-note-docked[^}]+cursor:\s*col-resize/s.test(css) && /data-note-docked[^}]+cursor:\s*pointer/s.test(css), '边读边记手柄使用 pointer 而非双向缩放光标');
 ok(/--authoring-content-max-width/.test(css), '正文列使用共享内容宽度 token');
 const tokens = fs.readFileSync('src/ui/styles/tokens.css', 'utf8');
 ok(/--authoring-content-max-width:\s*720px/.test(tokens), '共享正文列宽度 token 定义在 tokens.css');
@@ -108,6 +111,7 @@ const resizer = fs.readFileSync('src/features/reader/ReaderDrawerResizer.tsx', '
 ok(resizer.includes('ArrowLeft') && resizer.includes('Home'), '侧栏宽度提供键盘替代控制');
 ok(scene.includes('setSplitRatio'), '拖动侧栏后按论文持久化比例');
 ok(scene.includes('exitNoteMode()'), '专注写作可经 Escape 返回进入前的模式');
+ok(scene.includes('useNotePanelPresence') && scene.includes('reader-note-floating-grip'), 'Reader 使用保留式动效并渲染无文字 Pill 拖动横条');
 const hookSource = fs.readFileSync('src/features/reader/useNoteWorkbench.ts', 'utf8');
 ok(hookSource.includes('restoreMode') && hookSource.includes('previousMode'), '退出宽屏模式回到进入前的模式且保留宽屏偏好');
 const menuSource = fs.readFileSync('src/features/reader/ReaderNoteWorkbenchMenu.tsx', 'utf8');

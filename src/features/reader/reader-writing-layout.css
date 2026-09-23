@@ -5,6 +5,7 @@
 .reader-workspace-shell.writing-expanded > .reader-main-workspace,
 .reader-workspace-shell.drawer-overlay > .reader-main-workspace { visibility: hidden; overflow: hidden; pointer-events: none; }
 .reader-workspace-shell.writing-expanded > .reader-workspace-drawer,
+.reader-workspace-shell.note-mode-writing > .reader-workspace-drawer,
 .reader-workspace-shell.drawer-overlay > .reader-workspace-drawer { position: absolute; inset: 0; width: 100% !important; max-width: none; min-width: 0; border-radius: 8px; }
 .reader-workspace-shell .reader-workspace-drawer { min-width: 0; max-width: none; }
 .reader-workspace-shell .reader-drawer-resize-handle { width: 10px; left: 0; touch-action: none; cursor: col-resize; z-index: 10; }
@@ -52,22 +53,40 @@
 /* ---------------------------------------------------------------- note workbench (24ea34e5)
    Modes are presentation only: the paper note session and its CodeMirror instance stay
    mounted in every mode, the shell just re-lays out around it. */
-.reader-workspace-shell { --note-transition-duration: 200ms; }
-.reader-workspace-shell .reader-workspace-drawer { transition: width var(--note-transition-duration) ease, transform var(--note-transition-duration) ease, opacity var(--note-transition-duration) ease; }
+.reader-workspace-shell { --note-transition-duration: 220ms; --note-transition-ease: cubic-bezier(.22, 1, .36, 1); }
+.reader-workspace-shell > .reader-workspace-drawer.notes-active,
+.reader-workspace-shell > .reader-note-floating-controls {
+  opacity: 1; transform: translate3d(0, 0, 0) scale(1);
+  transform-origin: top center;
+  transition: transform var(--note-transition-duration) var(--note-transition-ease), opacity var(--note-transition-duration) var(--note-transition-ease);
+}
+.reader-workspace-shell:is([data-note-presence="entering"], [data-note-presence="exiting"]) > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { will-change: transform, opacity; }
+.reader-workspace-shell[data-note-presence="exiting"] > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { transition-timing-function: cubic-bezier(.4, 0, 1, 1); }
+.reader-workspace-shell[data-note-motion-mode="split"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > .reader-workspace-drawer.notes-active,
+.reader-workspace-shell[data-note-motion-mode="writing"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > .reader-workspace-drawer.notes-active {
+  opacity: 0; transform: translate3d(28px, 0, 0);
+}
+.reader-workspace-shell[data-note-motion-mode="floating"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) {
+  opacity: 0; transform: translate3d(0, 10px, 0) scale(.96);
+}
 /* Boundary bookmark: absolute sibling of the PDF/drawer, never a grid column. */
 .reader-note-edge-entry { position: absolute; top: 50%; transform: translateY(-50%); z-index: 60; display: flex; }
 .reader-note-edge-handle {
+  position: relative; isolation: isolate; overflow: hidden;
   display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px;
   box-sizing: border-box; flex: none; width: 22px; height: 88px; padding: 0;
-  border: 1px solid var(--line); border-right: 0; border-radius: 8px 0 0 8px;
-  background: var(--surface); color: var(--muted); box-shadow: -2px 1px 5px rgba(26,41,33,.1);
-  cursor: pointer; touch-action: none; transition: background 150ms, color 150ms;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-right: 0; border-radius: 11px 0 0 11px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--muted);
+  box-shadow: -3px 0 12px rgba(26,41,33,.09), inset 1px 0 rgba(255,255,255,.58);
+  backdrop-filter: blur(10px); cursor: pointer; touch-action: none;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
-.reader-note-edge-handle.active { width: 16px; height: 56px; background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
-.reader-note-edge-entry[data-note-docked="true"] .reader-note-edge-handle { cursor: col-resize; border-right: 1px solid var(--line); border-radius: 8px; }
+.reader-note-edge-handle::before { content: ''; position: absolute; right: 2px; top: 50%; width: 2px; height: 26px; border-radius: 999px; background: currentColor; opacity: .16; transform: translateY(-50%); }
+.reader-note-edge-handle.active { width: 16px; height: 56px; background: color-mix(in srgb, var(--accent-soft) 88%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 74%, var(--line)); color: var(--accent-strong); box-shadow: 0 4px 14px rgba(26,41,33,.12); }
+.reader-note-edge-entry[data-note-docked="true"] .reader-note-edge-handle { cursor: pointer; border-right: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-radius: 10px; }
 .reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle { border-left: 0; border-right: 1px solid var(--accent); border-radius: 0 8px 8px 0; }
 .reader-note-edge-label { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 2px; font-size: 12px; line-height: 1; }
-.reader-note-edge-handle:hover { background: var(--accent-soft); color: var(--accent-strong); }
+.reader-note-edge-handle:hover { background: color-mix(in srgb, var(--accent-soft) 82%, var(--surface)); color: var(--accent-strong); border-color: color-mix(in srgb, var(--accent) 68%, var(--line)); box-shadow: 0 5px 16px rgba(26,41,33,.14); }
 .reader-note-edge-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .reader-note-mode-switch { display: inline-flex; align-items: center; gap: 1px; flex-shrink: 0; }
 .reader-note-mode-switch button { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 26px; padding: 0; border: 0; border-radius: 4px; color: var(--muted); background: transparent; }
@@ -104,40 +123,62 @@
   border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 40px rgba(26,41,33,.24);
   background: var(--surface); overflow: hidden;
 }
-.reader-note-floating-controls { position: absolute; z-index: 45; display: flex; gap: 4px;
-  left: var(--floating-note-left, 50%); top: calc(var(--floating-note-top, 14%) - 26px); }
+.reader-note-floating-controls { position: absolute; z-index: 45; pointer-events: none;
+  left: var(--floating-note-left, 50%); top: var(--floating-note-top, 14%);
+  width: var(--floating-note-width, 42%); height: var(--floating-note-height, 62%); }
 .reader-note-floating-drag, .reader-note-floating-resize {
-  border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--muted);
-  font-size: var(--ui-caption-font-size, 11px); padding: 2px 8px; cursor: grab; touch-action: none;
+  position: absolute; pointer-events: auto; touch-action: none;
 }
-.reader-note-floating-resize { width: 18px; height: 18px; padding: 0; cursor: nwse-resize; }
-.reader-note-floating-resize::after { content: '\\25E2'; }
+.reader-note-floating-drag {
+  left: 50%; top: 5px; width: 68px; height: 22px; padding: 0; transform: translateX(-50%);
+  border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: grab;
+}
+.reader-note-floating-drag:active { cursor: grabbing; }
+.reader-note-floating-grip { display: block; width: 38px; height: 4px; margin: auto; border-radius: 999px; background: currentColor; opacity: .42; box-shadow: 0 1px 1px rgba(26,41,33,.12); }
+.reader-note-floating-drag:hover, .reader-note-floating-drag:focus-visible { background: color-mix(in srgb, var(--surface) 74%, transparent); color: var(--accent-strong); }
+.reader-note-floating-drag:hover .reader-note-floating-grip, .reader-note-floating-drag:focus-visible .reader-note-floating-grip { opacity: .72; }
+.reader-note-floating-resize { right: 4px; bottom: 4px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--muted); cursor: nwse-resize; }
+.reader-note-floating-resize::after { content: '◢'; }
 .reader-note-floating-drag:focus-visible, .reader-note-floating-resize:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* writing 专注写作: workbench fills the content area; the note column keeps its width. */
 .reader-workspace-shell.note-mode-writing { display: block; }
-.reader-workspace-shell.note-mode-writing > .reader-main-workspace { visibility: hidden; overflow: hidden; pointer-events: none; }
 
 /* shared authoring column: reader notes and standalone Markdown notes must not drift. */
 .reader-workspace-drawer .md-body, .reader-workspace-drawer .markdown-live-codemirror, .reader-workspace-drawer .markdown-reader-content {
   width: 100%; max-width: var(--authoring-content-max-width, 720px); margin-inline: auto;
 }
 @media (prefers-reduced-motion: reduce) {
-  .reader-workspace-shell .reader-workspace-drawer { transition: none; }
+  .reader-workspace-shell > .reader-workspace-drawer.notes-active,
+  .reader-workspace-shell > .reader-note-floating-controls,
+  .reader-note-edge-handle { transition: none; animation: none; }
 }
 
 .reader-workspace-drawer .note-document-header { min-height: 32px; padding: 0 0 3px; }
+/* Reserve the card's top-center drag lane so its generous pointer target never
+   masks the document/layout controls directly below the visible Pill. */
+.reader-workspace-shell.note-mode-floating > .reader-workspace-drawer .note-document-header { padding-top: 28px; }
 .reader-workspace-drawer .note-meta-row { justify-content: flex-start; gap: 5px 8px; min-height: 24px; padding: 3px 0; }
 .reader-workspace-drawer .note-save-state { margin-left: auto; white-space: nowrap; }
 .reader-workspace-drawer .note-workspace { display: flex; flex-direction: column; }
 .reader-workspace-drawer .note-workspace > :is(.markdown-live-codemirror,.markdown-preview,.note-editor-loading) { flex: 1 1 0; min-height: 0; }
-.reader-workspace-drawer .note-workspace > :is(.note-document-header,.note-meta-row,.note-save-error) { flex-shrink: 0; }
+.reader-workspace-drawer .note-workspace > :is(.note-document-header,.note-meta-row,.note-save-error,.markdown-authoring-dock) { flex-shrink: 0; }
+
+/* Float the shared Markdown dock over reader notes the same way standalone notes do. */
+.reader-workspace-drawer .note-workspace,
+.markdown-document-pane .note-workspace { position: relative; }
+:root .note-workspace > .markdown-authoring-dock { max-width: calc(100% - 12px); }
+.note-workspace:has(> .markdown-authoring-dock) .cm-content { padding-bottom: 88px; }
+.note-workspace:has(> .markdown-authoring-dock) .markdown-preview { padding-bottom: 88px; }
+.note-citation-insert { max-width: 9.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 26px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+.note-citation-insert:hover, .note-citation-insert:focus-visible { border-color: var(--accent-strong); color: var(--accent-strong); }
+.note-image-input { display: none; }
 
 /* Leave a real strip beside the card: the handle and all card controls remain hit-testable. */
-.reader-workspace-shell.note-mode-floating { --note-card-safe-height: min(var(--floating-note-height, 62%), calc(100% - 28px)); --note-card-safe-top: max(28px, min(var(--floating-note-top, 14%), calc(100% - max(200px, var(--note-card-safe-height))))); --note-card-safe-width: min(var(--floating-note-width, 42%), calc(100% - 28px)); --note-card-safe-left: max(0px, min(var(--floating-note-left, 50%), calc(100% - max(240px, var(--note-card-safe-width)) - 28px))); }
+.reader-workspace-shell.note-mode-floating { --note-card-safe-height: min(var(--floating-note-height, 62%), 100%); --note-card-safe-top: max(0px, min(var(--floating-note-top, 14%), calc(100% - max(200px, var(--note-card-safe-height))))); --note-card-safe-width: min(var(--floating-note-width, 42%), calc(100% - 28px)); --note-card-safe-left: max(0px, min(var(--floating-note-left, 50%), calc(100% - max(240px, var(--note-card-safe-width)) - 28px))); }
 .reader-workspace-shell.note-mode-floating > .reader-workspace-drawer { left: var(--note-card-safe-left); top: var(--note-card-safe-top); height: var(--note-card-safe-height); width: var(--note-card-safe-width) !important; max-width: calc(100% - 28px); min-width: min(240px, calc(100% - 28px)); }
-.reader-workspace-shell.note-mode-floating > .reader-note-floating-controls { left: var(--note-card-safe-left); top: calc(var(--note-card-safe-top) - 26px); }
-@media (prefers-reduced-motion: reduce) { .reader-note-edge-handle { transition: none; } }
+.reader-workspace-shell.note-mode-floating > .reader-note-floating-controls { left: var(--note-card-safe-left); top: var(--note-card-safe-top); width: var(--note-card-safe-width); height: var(--note-card-safe-height); }
+.reader-workspace-shell[data-note-presence="exiting"] > .reader-note-floating-controls { pointer-events: none; }
 
 /* The bookmark replaces the painted grip, not the full-height keyboard separator. */
 .reader-workspace-shell:has(.reader-note-edge-entry[data-note-docked="true"]) .reader-drawer-resize-handle:not(:focus-visible)::after { opacity: 0; }
