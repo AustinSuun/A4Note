@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-23T13:35:20+00:00",
+  "updatedAt": "2026-09-23T05:49:00Z",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "review",
     "owner": "Arena-Board",
-    "branch": "fix/markdown-toc-arena-board",
+    "branch": "docs/whiteboard-phase0-arena-board",
     "scope": [
+      "白板865d6308 Phase0低优先级仅讨论：只读核实资料接入/来源语义，比较Excalidraw、自研混合画布、tldraw及许可，提出未实测性能目标、阶段路线和用户决策；不开发原型，不改产品代码、依赖或数据库。详见docs/mcp-whiteboard-phase0-arena-board-2026-09-23.md。",
       "目录任务deb0ed49：仅独立工作树修复TOC样式与可访问标题折叠，不改正文/保存，不覆盖主工作树滚动修复。详见docs/mcp-markdown-toc-arena-board-2026-09-23.md。",
       "reader-note-panel-polish-arena：Arena 以用户授权的 dispatcher 会话发布并领取 3932f561 spec4（笔记面板修订）。侧栏改为网格轨道 220ms 连续滑开/收回（--reader-side-width 轨道 + --reader-side-target 定宽抽屉被裁切，PDF 列同步让位，把手随分隔线移动）；可见态模式切换改为 FLIP（useNoteLayoutFlip，presence 保持 entered，不再淡出重进）；浮卡从把手处生长（origin 指向右缘中高，pop-scale .88/lift 6px）；新组件 ReaderNoteFloatingControls 提供四角弧形缩放柄（resizeFloatingRect 对角固定、键盘 2%/5%）替换右下角 ◢；握把区 28→14px、悬浮态去已保存与左缘拖宽条、标题左/按钮右、Markdown 工具栏卡内 flex 换行；把手打开态改为中性握条（::before scale，悬停加宽显示 chevron）；文档下拉字号统一走 --ui-* 令牌（13/11/13/12/11/13px）。verify-note-enter-motion-browser 重写 68/68（旧代码 fc6be92 上 23/42 后中止），note-workbench-browser 94/94、note-workbench 65/65、sidebar 16/16 及 browser、reader/helpers/ui-state/architecture、tsc 0、build 通过、diagnostics 0；dev:live arena-polish before/after 各 35/38 图 + 2 主题×3 缩放矩阵：轨道滑开/收回 16 帧 16.66ms（最大 17.1ms）、FLIP 15 帧 16.66ms、pageerror/console 0。4d6411d + 4d86f75 已 ff 合入本地 main；未打包/安装/推送/发布。详见 docs/mcp-reader-note-panel-polish-arena-2026-09-23.md。更新：2026-09-23T13:40:00+08:00",
       "windows-package-0.1.30-arena：用户指示打包 exe。按约定 0.1.29→0.1.30（package.json/package-lock.json/Cargo.toml/Cargo.lock/tauri.conf.json 各 1 处，release.yml 发布说明更新），提交 db456c6（基线 4207317）。npm run package:windows 退出 0（4m39s，独立冷编译目录已清理）；artifacts/windows/latest/ a4note.exe 37690880 字节 SHA-256 12F07B74EE94EA05B8F88A203563B32EB506B54427A1B42B732E615A21119044、A4 Note_x64-setup.exe 22831450 字节 SHA-256 8332EB201276475CC3A4DFEE13EB7B655FCC62FBAB66772A1970A2AA0CFDCD80，certutil 独立重算与 build-info.json 一致，exe 版本资源 0.1.30，updaterSigned true，上一份 0.1.29 已归档。sourceDirty false。未安装/实测/推送/发布，未跑完整 verify。同日另完成用户授权的仓库瘦身：工作树 40→2、本地分支 80→2、.build/.tmp/历史 artifacts 清理，磁盘释放约 372 GB，分支 SHA 备份在 arena-tmp/branch-backup-2026-09-23.txt。详见 docs/mcp-windows-package-arena-2026-09-23.md。更新：2026-09-23T12:10:00+08:00",
@@ -146,6 +147,7 @@
     ]
   },
   "tracks": {
+    "whiteboardPhase0ArenaBoard": "review",
     "markdownTocArenaBoard": "review",
     "eraserAlignmentXingxu": "in_progress",
     "workbench": "done",
@@ -167,6 +169,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "Arena-Board：目录任务deb0ed49已合并本地main fcc2040并submit review rev53；随后领取白板865d6308并完成Phase0中文讨论方案，未派生开发任务。",
       "Arena-Board：目录折叠和缩放坐标修复已实现；同文档语义键、父子状态、跳级与重复标题、细中性引导线，独立worktree。",
       "reader-shortcut-overlay-arena：代码15ecbaacb9a5、任务分支9925dd1221b2已普通合并main 54993ca6018e；6张带DEV隔离状态条的原生截图作为开发者result上传，任务板submit review。执行Agent合并时18项未跟踪文件大小/SHA-256均未改变；其后文件所有者9项同字节归档、9项移走，用户已确认有意处理。",
       "reader-note-edge-xingxu：方案C边缘把手及新单行笔记头部兼容完成，196项原生验证通过；交付与main包含SHA见任务卡。",
@@ -487,6 +490,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "白板Phase0：源码/公开许可只读核实，明确事实F/建议S/待验证U。仅文档和双状态变更；不做UI或性能实测、不运行build/原生服务。文档格式与路径、diff白名单及test:agent-status作交付检查。",
       "Arena-Board：最终再次整合main1a2fdb2的Markdown滚动优化为a4238bc，只合并React import并集；build/reader/preview-layout/TOC-follow35/TOC浏览器67/滚动浏览器通过。测试服务限定允许node_modules junction真实路径解决字体403，未改生产服务。",
       "Arena-Board：完整npm run verify退出0，Rust215 passed/0 failed/5 ignored；真实组件浏览器67项、原生dev:live 8组/21张最终V2前后截图通过，错误0；原生隔离身份22/22；旧代码红测失败于缺少真实折叠按钮。旧reader源码/CSS契约已对齐实际交互。",
       "Arena-Board：目录代码95940e5，整合最新阅读器主线803a381为7cdbe38；仅双状态头部冲突，保留双方记录。整合版build、reader、agent-status、note-workbench66、TOC浏览器67、note-enter-motion-browser68通过，最终main交付SHA见任务卡。",
@@ -872,6 +876,7 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
+      "白板Phase0等待用户讨论首发场景、许可预算、存储、引用默认与第一批资料类型；审阅方案不等于批准开发，后续原型/依赖/迁移/开发必须另行授权。两项任务不自行归档。",
       "Arena-Board：目录开发验证全部通过，安全合并本地main后submit review（提交哈希见任务卡）；等待用户验收，不自动归档。随后领取白板Phase0，仅方案文档、不做产品代码。",
       "reader-shortcut-overlay-arena：任务板为review，等待用户独立验收并归档或退回；不自行验收、不打包/安装/推送/发布、不处理其他人的文件。",
       "reader-note-edge-xingxu：用户验收右边缘把手任务9b69c4b5；无打包安装推送发布授权。",
