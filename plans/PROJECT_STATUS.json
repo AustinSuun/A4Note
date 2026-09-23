@@ -3,7 +3,7 @@
   "updatedAt": "2026-09-23T13:35:20+00:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
-    "status": "in_progress",
+    "status": "review",
     "owner": "Arena-Board",
     "branch": "fix/markdown-toc-arena-board",
     "scope": [
@@ -488,6 +488,7 @@
     ],
     "verification": [
       "Arena-Board：完整npm run verify退出0，Rust215 passed/0 failed/5 ignored；真实组件浏览器67项、原生dev:live 8组/21张最终V2前后截图通过，错误0；原生隔离身份22/22；旧代码红测失败于缺少真实折叠按钮。旧reader源码/CSS契约已对齐实际交互。",
+      "Arena-Board：目录代码95940e5，整合最新阅读器主线803a381为7cdbe38；仅双状态头部冲突，保留双方记录。整合版build、reader、agent-status、note-workbench66、TOC浏览器67、note-enter-motion-browser68通过，最终main交付SHA见任务卡。",
       "reader-shortcut-overlay-arena：完整main npm run verify退出0（Rust215 passed/0 failed/5 ignored）；当前HEAD8c6483a快捷键浏览器491 checks、test:ui-state和test:agent-status通过；隔离WebView2三模式、无译文边界、Ctrl+滚轮176%→195%、毛玻璃94%/禁用97%/blur(12px)、pageerror/console.error=[]。先前共享根Vite扫描导致浏览器夹具超时，限制扫描/关闭watch后复验全绿。",
       "reader-note-edge-xingxu：browser84/core57/sidebar16+browser、Reader/UI-state/architecture、最新main完整verify含build/Rust215pass通过；原生158+18+20、diagnostics0，细节与受控测试边界见专属交接文档。",
       "layer-toolbar-height-xunzhou：test:layer-toolbar-geometry 42/42（旧布局 22/20 红测）、annotation-layer-picker 43/43、reader-popover-layout 166/166、annotation-layers 55、tsc 0、build 0、diagnostics 0；npm run verify 除 test:reader/test:ui-state 既有失败（干净基线复现同一断言，非本轮引入）外全部通过（Rust 215/0/5 ignored）；原生 dev:live 功能探针 14/14，pageerror 0。",

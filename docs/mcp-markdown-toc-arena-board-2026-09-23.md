@@ -28,7 +28,8 @@
 8. 完整 `npm run verify` 前两轮仅 `test:reader` 的旧源码契约失败：它要求箭头永远带 `open`、坐标不做缩放转换。已对齐 aria-expanded/toggle、反缩放坐标和实际生效的 scoped CSS 契约，保留无关断言；新增浏览器回归与 TOC follow 回归纳入 verify-all。最终全量退出0（231.8秒），`A4Note verification passed`；Rust 215 passed / 0 failed / 5 ignored。日志 `.tmp/toc-verify-green.log`、退出码 `.tmp/toc-verify-green-exit.txt`。
 9. MCP diagnostics：本工作树 explorer 范围 0 错误/警告；test:agent-status 和 diff --check 通过。
 10. `node scripts/verify-dev-live-runtime.mjs --cdp-port 9283 --expect-instance arena-toc --evidence .tmp/toc-runtime`：22通过/0失败，核验原生身份、隔离库位置、捕获禁用及DEV标识；未写 marker。取证后已停止本 Agent 的 dev:live，不干预其他开发实例。
-11. 全量通过后只更新交付文档、恢复过取证用的基线文件并原样恢复修复版本；未修改已通过的产品逻辑。后续提交/合并结果以任务卡 delivery commit 为准。
+11. 代码提交 `95940e5`。合并前 main 已前进到阅读器面板 `803a381`：在本任务分支整合为 `7cdbe38`，产品代码没有冲突；仅两个交接文档在头部插入处冲突，保留双方条目与范围后解决。整合版重新 build、test:reader、test:agent-status、note-workbench 66/66、TOC浏览器67/67、note-enter-motion-browser 68/68 全部通过。全量verify的通过记录对应目录代码提交前，最新整合版使用上述针对性复验，不冒充再次全量运行。
+12. 本地 main 以普通 fast-forward 方式接收已验证的任务分支；最终交付/合并 SHA 由任务卡 delivery 记录。只在 main 工作树干净且仍为预期提交时执行，main 变化则停止重核；不改根目录滚动分支的工作内容。
 
 ## 并行协作与边界
 
