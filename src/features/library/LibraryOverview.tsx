@@ -4,6 +4,8 @@ import { PaperSignals } from '../PaperSignals';
 import { SummaryRowResizer, type RowResizeActions } from './SummaryRowResizer';
 import { Pin } from 'lucide-react';
 import { ColumnSettings } from './ColumnSettings';
+import { SummaryFieldSettings } from './SummaryFieldSettings';
+import { validateSummaryFieldCatalog } from '../../core/summaryFieldCatalog';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -148,6 +150,20 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
       saveTimer.current = setTimeout(() => { void layout.current?.flush().catch(e => { if (mounted.current) setError(String(e)); }); }, 500);
     } catch (e) { setError(String(e)); }
   };
+  const saveCatalog = async (next: SummaryColumn[], baseline: SummaryColumn[]) => {
+    const session = layout.current;
+    if (!session) throw new Error('列设置尚未加载，未保存。');
+    try {
+      validateSummaryFieldCatalog(next);
+      const current = parseSummaryLayout(session.getSnapshot().content);
+      const actual = JSON.stringify(current.columns);
+      if (actual !== JSON.stringify(baseline) && actual !== JSON.stringify(next)) throw new Error('列设置已变化，请关闭并重新打开字段目录；未覆盖其他修改。');
+      const text = JSON.stringify({ ...current.raw, version: 2, columns: next }, null, 2) + '\n';
+      parseSummaryLayout(text); clearTimeout(saveTimer.current);
+      session.update(text); rawLayout.current = JSON.parse(text); setColumns(next);
+      await session.flush(); setError('');
+    } catch (reason) { setError(String(reason)); throw reason; }
+  };
   const commitWidths = (next: number[]) => {
     configure(columns.map(c => { const index = cols.findIndex(v => v.id === c.id); return index < 0 ? c : { ...c, width: next[index + 1] }; }), { mode: 'manual', titleWidth: next[0] });
   };
@@ -239,7 +255,7 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
       <button type="button" disabled={!layout.current} className={sizing.mode === 'window' ? 'active' : ''} aria-pressed={sizing.mode === 'window'} title="随窗口宽度自动分配列宽；拖动列边界切换为固定宽度" onClick={() => { cancelResize(); configure(columns, { ...sizing, mode: 'window' }); }}>适应窗口</button>
       <div className="summary-zoom" title="Ctrl/⌘＋滚轮缩放；普通滚轮浏览">
         <button type="button" aria-label="缩小综览" onClick={() => changeZoom(nextZoom.current - 10)}>−</button><button type="button" onClick={() => changeZoom(100)}>{Math.round(zoom)}%</button><button type="button" aria-label="放大综览" onClick={() => changeZoom(nextZoom.current + 10)}>＋</button>
-      </div><ColumnSettings disabled={!layout.current} columns={[
+      </div><SummaryFieldSettings columns={columns} disabled={!layout.current} onSave={saveCatalog} /><ColumnSettings disabled={!layout.current} columns={[
         { id: '__title', label: '论文名称', visible: true, fixed: true },
         ...columns.map(column => ({ id: column.id, label: column.name, visible: !column.hidden })),
       ]} onChange={(id, visible) => configure(columns.map(column => column.id === id ? { ...column, hidden: !visible } : column))} />

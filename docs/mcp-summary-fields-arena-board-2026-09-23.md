@@ -24,10 +24,19 @@
 
 - 新增 `src/core/summaryFieldCatalog.ts`：显示名与稳定ID分离，纯函数新增/重命名/排序，保留其它列属性；校验空名、控制字符、80字符上限、规范化重名、ID重复/非法及既有24列上限。调用方提供新ID，不从名称派生。
 - `scripts/verify-summary-field-catalog.mjs` 直接运行 **28项通过**，包含持久化格式往返保留ID/名称/显隐/列宽和行高；`tsc -b`及diff check通过。
-- 目录仍是纯逻辑，未接字段管理UI/目录持久化。新增同一无损块解析器和有序字段/自由区模型，保留原块及LF/CRLF；自由区修改、归类预览、明确追加/创建，以及paper+note身份/基线确认共60项检查通过。确认函数仅返回候选，不执行保存，不声称失败回滚已实现。
+- 目录现已接下述管理UI和既有配置保存。无损块解析器及有序字段/自由区模型保留原块及LF/CRLF；自由区修改、归类预览、明确追加/创建，以及paper+note身份/基线确认共60项检查通过。归类确认函数仅返回候选，不执行保存，不声称失败回滚已实现。
 - 新/自动总结模板为空，已有笔记不改写；JS补齐回归和9项Rust补齐测试通过，含有字段A/空白B/旧标记C三论文存储保留。此C为测试夹具，非原生UI联动验收。
 - `test:summary-fields` 已注册到统一verify。本轮 `npm run verify` 完整通过，Rust 231通过/0失败/5忽略，用时207837ms，日志 `.tmp/summary-model-verify.log`；包含28目录/60文档模型和原23 library-summary。build/tsc/architecture均通过。未执行Windows发行打包。
 - 已启动独立原生实例 `arena-summary`，1489/CDP9289，身份 `app.aster.research.dev.arena-summary.wb8149a51b9`；不得使用生产资料库。源码候选：reader-writing-layout.css:245将滚动根 `.markdown-live-codemirror` 连同正文限制为720px；需实际DOM/拖动验证，尚未修CSS。
+
+## 字段目录UI增量（本阶段，不等于整项交付）
+
+- 总览新增“管理字段”原生dialog：自定义UUID稳定ID、重命名、显隐、上下排序及草稿取消；修改显示名不修改旧字段标题/正文。不覆盖另一个排队任务的通用列设置弹层。
+- 使用既有summaryLayoutSession和期望内容保存；核对打开时目录，保留布局其他属性。失败仍显示错误并保留已暂存设置，禁止重试前改变候选，关闭按钮明确提示保留待重试设置。此机制仅用于目录；不能把它当作自由内容归类事务的实现。
+- 新增真实浏览器dialog回归10项（模拟保存回调），已加入test:summary-fields和统一verify链：取消/焦点、重复名、稳定ID、显隐/顺序、失败保留及同候选重试、保存中Escape不关闭。
+- 独立原生环境已实际保存并WebView刷新：figure仍为同一ID、显示名改为结构示意；自定义字段ID/隐藏/次序保留；A/B/C三篇noteId及完整正文逐字相同，B仍空白。最终记录`.tmp/shots/summary-fields-native/catalog-result.json`及`catalog-after-reload.png`，截图已目视检查。不是原生应用重启证明。
+- 本增量build/tsc、28目录+60模型+10浏览器、architecture/diff通过；前述207837ms完整verify属于模型/模板提交90be4fe，不冒充本UI增量的完整verify。
+- 原生测试初次被旧隐藏PDF层拦截；仅通过工作台closeTab关闭自有A测试标签后继续，没有隐藏CSS或force点击。第二次实际保存成功后，脚本未重新选择刷新后默认“列表”的“综览”而超时；最终reload脚本正确导航并完成上述3项检查。早期catalog-error.json不是最终结果。
 
 ## 后续实现阶段
 
@@ -42,4 +51,4 @@
 
 - 模式切换、异步保存及表格虚拟卸载必须绑定paperId/noteId/字段ID和文档代次；不能用显示标题猜归属。
 - 图片任务观察到隐藏PDF子层拦截其他场景鼠标，以及仅修改theme属性时的深色表格对比问题；这不是本任务已定位的竖线根因，不能混为一谈。正式主题验证走真实设置流程。
-- 本轮完整verify仅证明当前模型/模板增量回归通过，不等于完整任务验收。字段管理/正常分区UI、实际归类CAS保存与失败保留、适应空间摘要、侧栏真实DOM/多主题缩放、三论文双向UI/重启证据仍未完成。未合并main/submit，没有Windows打包、安装、推送、发布，也不自行验收归档。
+- 模型/模板的完整verify及目录增量检查不等于整项任务验收。单篇添加字段/正常分区UI、实际归类CAS保存与失败保留、适应空间摘要、侧栏真实DOM/多主题缩放、三论文双向UI/重启证据仍未完成。未合并main/submit，没有Windows打包、安装、推送、发布，也不自行验收归档。
