@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Folder, FolderOpen, FolderPlus, Library, Plus, Tag, Clock, FileDown, BookOpen, Star } from 'lucide-react';
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Folder, FolderOpen, Library, Plus, Tag, Clock, FileDown, BookOpen, Star } from 'lucide-react';
 import type { LibraryFolder, PaperDocument } from '../../core/types';
 import { FolderDraftRow as NewFolderTreeRow, TreeGuides } from '../../shared/tree';
 import { toggleTreeExpansion } from '../../core/treeExpansion';
@@ -216,9 +216,6 @@ export function LibrarySceneSidebar({
           <strong>文献库</strong>
           <span>{papers.length} 篇文献</span>
         </div>
-        <button type="button" className="library-sidebar-icon-button" disabled={folderSaving} onClick={() => startNewFolder('library')} title="新建文件夹" aria-label="新建文件夹">
-          <FolderPlus size={16} aria-hidden="true" />
-        </button>
       </div>
 
       {folderActionError && newFolderParentId === null && <p className="file-tree-hint error" role="alert">{folderActionError}</p>}
