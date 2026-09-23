@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-23T06:03:28.474Z",
+  "updatedAt": "2026-09-23T06:05:13.505Z",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "review",
     "owner": "Arena-Board",
     "branch": "docs/whiteboard-phase0-arena-board",
     "scope": [
-      "capture-readable-pdf-arena：独立分支已完成新采集PDF“标题 - 原文/其他版本/补充材料 - 16位校验码.pdf”命名；旧文件、译文路径、ID目录未动。详见docs/mcp-capture-readable-pdf-filenames-arena-2026-09-23.md。",
+      "capture-readable-pdf-arena：已合入本地main da9695d：独立分支完成新采集PDF“标题 - 原文/其他版本/补充材料 - 16位校验码.pdf”命名；旧文件、译文路径、ID目录未动。详见docs/mcp-capture-readable-pdf-filenames-arena-2026-09-23.md。",
       "白板865d6308 Phase0低优先级仅讨论：只读核实资料接入/来源语义，比较Excalidraw、自研混合画布、tldraw及许可，提出未实测性能目标、阶段路线和用户决策；不开发原型，不改产品代码、依赖或数据库。详见docs/mcp-whiteboard-phase0-arena-board-2026-09-23.md。",
       "目录任务deb0ed49：仅独立工作树修复TOC样式与可访问标题折叠，不改正文/保存，不覆盖主工作树滚动修复。详见docs/mcp-markdown-toc-arena-board-2026-09-23.md。",
       "reader-note-panel-polish-arena：Arena 以用户授权的 dispatcher 会话发布并领取 3932f561 spec4（笔记面板修订）。侧栏改为网格轨道 220ms 连续滑开/收回（--reader-side-width 轨道 + --reader-side-target 定宽抽屉被裁切，PDF 列同步让位，把手随分隔线移动）；可见态模式切换改为 FLIP（useNoteLayoutFlip，presence 保持 entered，不再淡出重进）；浮卡从把手处生长（origin 指向右缘中高，pop-scale .88/lift 6px）；新组件 ReaderNoteFloatingControls 提供四角弧形缩放柄（resizeFloatingRect 对角固定、键盘 2%/5%）替换右下角 ◢；握把区 28→14px、悬浮态去已保存与左缘拖宽条、标题左/按钮右、Markdown 工具栏卡内 flex 换行；把手打开态改为中性握条（::before scale，悬停加宽显示 chevron）；文档下拉字号统一走 --ui-* 令牌（13/11/13/12/11/13px）。verify-note-enter-motion-browser 重写 68/68（旧代码 fc6be92 上 23/42 后中止），note-workbench-browser 94/94、note-workbench 65/65、sidebar 16/16 及 browser、reader/helpers/ui-state/architecture、tsc 0、build 通过、diagnostics 0；dev:live arena-polish before/after 各 35/38 图 + 2 主题×3 缩放矩阵：轨道滑开/收回 16 帧 16.66ms（最大 17.1ms）、FLIP 15 帧 16.66ms、pageerror/console 0。4d6411d + 4d86f75 已 ff 合入本地 main；未打包/安装/推送/发布。详见 docs/mcp-reader-note-panel-polish-arena-2026-09-23.md。更新：2026-09-23T13:40:00+08:00",
@@ -171,7 +171,7 @@
   },
   "lastHandoff": {
     "completed": [
-      "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；已独立提交，准备安全合入本地main。",
+      "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。",
       "Arena-Board：目录任务deb0ed49已合并本地main fcc2040并submit review rev53；随后领取白板865d6308并完成Phase0中文讨论方案，未派生开发任务。",
       "Arena-Board：目录折叠和缩放坐标修复已实现；同文档语义键、父子状态、跳级与重复标题、细中性引导线，独立worktree。",
       "reader-shortcut-overlay-arena：代码15ecbaacb9a5、任务分支9925dd1221b2已普通合并main 54993ca6018e；6张带DEV隔离状态条的原生截图作为开发者result上传，任务板submit review。执行Agent合并时18项未跟踪文件大小/SHA-256均未改变；其后文件所有者9项同字节归档、9项移走，用户已确认有意处理。",
@@ -945,6 +945,6 @@
       "PDF重开/绘制已测试，但双栏同步、长文档、选区/批注、缩放坐标与页面失败提示位置还需真实Windows手验；未量化实际EXE冷启动/可交互时间。",
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。"
     ],
-    "updatedAt": "2026-09-23T06:03:28.474Z"
+    "updatedAt": "2026-09-23T06:05:13.505Z"
   }
 }
