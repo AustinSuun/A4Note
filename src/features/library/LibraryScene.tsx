@@ -296,6 +296,7 @@ export function LibraryScene({
         onClose={closePaperMenu}
         onRead={() => onOpenPaper(menuPaper.paperId)} onDetails={() => onDetailOpenChange(true)}
         onRelations={onOpenRelations} onEdit={onOpenMetadataEdit} onTags={onOpenTagsEdit}
+        onRevealSourcePdf={() => onRevealSourcePdf(menuPaper.paperId)}
         onTranslation={onOpenTranslationImport} onCopy={onCopyBibtex} onDelete={onDeletePaper}
         onMove={(folderId) => onMovePapersToFolder([menuPaper.paperId], folderId)} />}
     </section>
