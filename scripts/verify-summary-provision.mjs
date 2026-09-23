@@ -11,10 +11,16 @@ function load(path, imports = {}) {
 const fields = load('src/core/librarySummary.ts');
 const template = load('src/core/summaryNoteTemplate.ts', { './librarySummary': fields });
 const initial = template.summaryNoteTemplate('');
-assert.equal(fields.summaryFields(initial).size, fields.defaultSummaryColumns.filter(c => !c.source).length);
+assert.equal(initial, '');
+assert.equal(fields.summaryFields(initial).size, 0);
+assert.doesNotMatch(initial, /a4-summary|请保留|## /);
 assert.equal(fields.summaryFields(initial).has('venue'), false);
 const layout = JSON.stringify({ version: 2, columns: [{ id: 'custom', name: '自定义', kind: 'text', width: 150 }] });
-assert.equal(fields.summaryFields(template.summaryNoteTemplate(layout)).get('custom').value, '');
+assert.equal(template.summaryNoteTemplate(layout), initial);
+assert.equal(fields.summaryFields(template.summaryNoteTemplate(layout)).has('custom'), false);
+const explicit = fields.updateSummaryField(initial, { id: 'custom', name: '自定义' }, '仅当前论文');
+assert.equal(fields.summaryFields(explicit).get('custom').value, '仅当前论文');
+assert.equal(fields.summaryFields(initial).size, 0);
 assert.throws(() => template.summaryNoteTemplate('{broken'));
 function fixture(invoke) {
   const published = []; let invalidated = 0;
@@ -38,7 +44,8 @@ assert.equal(f.api.summaryProvisionSnapshot().scanned, 51);
 assert.equal(f.api.summaryProvisionSnapshot().created, 1);
 assert.equal(f.api.summaryProvisionSnapshot().failed, 1);
 assert.equal(f.published.length, 1); assert.equal(f.invalidated(), 1);
-assert.ok(calls[1][1].content.includes('a4-summary:custom'));
+assert.equal(calls[1][1].content, '');
+assert.equal(f.published[0].file.content, '');
 let fail = true;
 const retry = fixture(async name => { if (fail) throw new Error('IPC unavailable'); return name === 'read_summary_layout' ? { content: '' } : blank; });
 await retry.api.provisionLibrarySummaries(); // Does not reject PDF import/list.

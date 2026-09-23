@@ -75,6 +75,7 @@ const steps = [
   ['node', ['scripts/verify-markdown-toc-follow.mjs']],
   ['node', ['scripts/verify-markdown-toc-collapse-browser.mjs']],
   ['npm', ['run', 'test:library-summary']],
+  ['npm', ['run', 'test:summary-fields']],
   ['node', ['scripts/verify-summary-provision.mjs']],
   ['npm', ['run', 'test:startup-safety']],
   ['npm', ['run', 'test:reliability']],
