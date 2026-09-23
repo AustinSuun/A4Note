@@ -1,0 +1,15 @@
+.summary-document-editor { flex: 1 1 0; min-height: 180px; overflow: auto; padding: 8px; overscroll-behavior: contain; }
+.summary-document-hint { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.summary-document-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 0; }
+.summary-document-add label { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.summary-document-add select { max-width: 100%; background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 5px; border-radius: 4px; }
+.summary-document-section { margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 6px; }
+.summary-document-section.free { border-style: dashed; }
+.summary-document-section > header { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.summary-document-section > header strong { flex: 1; overflow-wrap: anywhere; }
+.summary-document-preview { min-height: 28px; overflow-wrap: anywhere; }
+.summary-document-preview img { max-width: 100%; max-height: 400px; object-fit: contain; }
+.summary-document-editor .markdown-live-codemirror { height: auto; min-height: 130px; max-width: none; overflow: visible; }
+.summary-document-editor .markdown-live-codemirror .cm-editor { height: auto !important; min-height: 130px; }
+.summary-document-editor .markdown-live-codemirror .cm-scroller { overflow: visible; }
+.summary-document-editor .markdown-live-codemirror .cm-content { min-height: 130px; padding-bottom: 28px; }

@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-23T16:16:57.717Z",
+  "updatedAt": "2026-09-23T16:44:08.994Z",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "Arena-Board",
     "branch": "fix/summary-note-fields-arena-board",
     "scope": [
+      "Arena-Board / 总览7603 spec9：完整总结窗口已接字段/自由区编辑、单篇明确添加现有字段、高级源码和共享Markdown编辑器。22项原始行尾/字段保护检查加入统一链，28+60+22+10及build/tsc/architecture通过；原生4项验证B实际字段/自由内容保存和总览回显，A/C全文不变。B夹具已被明确编辑，不再为空。阅读器分区/单篇新建自定义字段/归类CAS/自适应摘要/侧栏/最终verify及重启仍待完成，不交付。",
       "Arena-Board / 总览7603 spec9：字段目录UI已接现有配置会话保存，支持新增稳定ID、重命名、显隐、排序及取消；10浏览器检查通过（模拟保存失败/重试），独立原生实际写盘+WebView刷新3项通过，三论文身份及正文完全不变。build/tsc/architecture通过。整项仍未交付：单篇添加/正常分区/归类CAS/自适应摘要/侧栏修复及最终全verify/原生重启待完成。未合并main或领取下一卡。",
       "Arena-Board / 总览字段7603aaaf spec9：无损字段/自由区模型、身份/基线归类候选保护和空白按需模板已实现；28目录+60文档+23既有summary、JS补齐及9项Rust补齐通过；整套npm run verify通过（231 Rust/0失败/5忽略，207837ms）。正常分区/目录UI、实际CAS归类保存、适应空间摘要、侧栏DOM与原生三论文联动仍未完成，不交付。独立arena-summary实例1489/CDP9289已启动，未用生产库。",
       "Arena-Board / 总览字段7603aaaf spec9：图片任务已合并main f891c15并submit review/rev27后顺序领取，独立worktree fix/summary-note-fields-arena-board；5张参考已校验哈希并目视查看。稳定ID字段目录纯函数基础及28项回归、tsc通过；尚未接UI/持久化/按需模板/无损分区和归类。侧栏竖线根因未量测，不臆断或只隐藏。详见docs/mcp-summary-fields-arena-board-2026-09-23.md，当前非交付。",
@@ -176,6 +177,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "Arena-Board / 总览7603 spec9：完整总结窗口已接字段/自由区编辑、单篇明确添加现有字段、高级源码和共享Markdown编辑器。22项原始行尾/字段保护检查加入统一链，28+60+22+10及build/tsc/architecture通过；原生4项验证B实际字段/自由内容保存和总览回显，A/C全文不变。B夹具已被明确编辑，不再为空。阅读器分区/单篇新建自定义字段/归类CAS/自适应摘要/侧栏/最终verify及重启仍待完成，不交付。",
       "Arena-Board / 总览7603 spec9：字段目录UI已接现有配置会话保存，支持新增稳定ID、重命名、显隐、排序及取消；10浏览器检查通过（模拟保存失败/重试），独立原生实际写盘+WebView刷新3项通过，三论文身份及正文完全不变。build/tsc/architecture通过。整项仍未交付：单篇添加/正常分区/归类CAS/自适应摘要/侧栏修复及最终全verify/原生重启待完成。未合并main或领取下一卡。",
       "总览字段模型/空模板增量完成；旧块与自由段落不重写，确认提案核对paper+note身份和原文基线；确认函数尚不执行IO。",
       "总览字段：仅纯字段目录模型基础完成，产品未接线；图片前置任务已交付本地main f891c15/任务板review。",
@@ -502,6 +504,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
+      "完整总结分区增量：22编辑补丁纯检查+既有28/60/10通过；原生editor-result.json 4项，无pageerror；editor-normal-saved.png已目视。最新完整verify仍是90be4fe模型提交，本次不冒充整项验收。",
       "目录UI增量：28目录+60模型+10浏览器；原生catalog-result.json 3项、catalog-after-reload.png已目视；build/tsc/architecture/diff。完整verify最近属于90be4fe模型提交，未冒充本UI增量完整verify。",
       "总览模型增量整套 npm run verify 通过，231 Rust通过/0失败/5忽略，207837ms；.tmp/summary-model-verify.log。28目录+60文档+23原summary；原生测试夹具启动不等于UI联动验收。",
       "总览字段基础：node scripts/verify-summary-field-catalog.mjs 28/28，tsc -b及diff check通过。5张reference下载哈希一致并目视查看。未运行本任务原生/完整verify，不冒充字段联动或持久化验收。",
@@ -893,6 +896,7 @@
       "capture-readable-pdf-arena：定向Rust ingest_tests 8/8，独立工作树npm run verify退出0（Rust 220通过/5忽略），git diff --check通过。"
     ],
     "next": [
+      "继续7603：阅读器分区与工具栏/标注桥接、单篇新建自定义字段、选区CRLF映射及真正归类CAS事务；自适应摘要/侧栏DOM/双向与重启/完整verify后才合并main和submit。",
       "继续同一任务：单篇按需添加及正常字段/自由区编辑，再接带身份/基线保护的实际归类CAS保存，处理CRLF，最后自适应摘要/真实滚动/主题/重启/完整verify。",
       "继续当前7603 spec9：接目录管理/正常字段+自由区编辑和真实CAS保存；先保留来源直到保存成功，处理CRLF偏移。720px约束整个CM滚动根为侧栏候选根因，须原生DOM定位再修复。完成剩余UI/多主题缩放/3论文重启/最终verify后再合并main和submit。",
       "继续同一7603 spec9：无损字段/自由区区间模型及显式归类保存方案→全局目录/按需模板→共享正常分区UI→实际空间表格与侧栏根因→3论文原生/重启/完整verify，再合并main并submit。未完成前不领取第二任务。",
@@ -965,6 +969,6 @@
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。",
       "capture-readable-pdf-arena：未在用户真实资料库或已安装桌面端验收；仅新采集PDF生效，旧哈希名仍保留。"
     ],
-    "updatedAt": "2026-09-23T16:16:57.717Z"
+    "updatedAt": "2026-09-23T16:44:08.994Z"
   }
 }
