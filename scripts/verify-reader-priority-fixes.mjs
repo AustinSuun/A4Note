@@ -29,6 +29,7 @@ function hooks() {
   const react = {
     useState(initial) { const i = index++; if (!(i in slots)) slots[i] = typeof initial === 'function' ? initial() : initial; return [slots[i], value => slots[i] = typeof value === 'function' ? value(slots[i]) : value]; },
     useRef(initial) { const i = index++; return slots[i] ??= { current: initial }; },
+    useId() { const i = index++; return slots[i] ??= `hook-id-${i}`; },
     useEffect(fn, deps) { const i = index++; if (!same(slots[i]?.deps, deps)) effects.push(() => { slots[i]?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); },
     useLayoutEffect() { index++; },
     useMemo(fn) { index++; return fn(); },
@@ -61,19 +62,34 @@ const zh = { reader: { pageStatus: (p, t) => `${p}/${t}`, fitWidth: 'FIT', zoomO
   runtime.dispose();
 }
 
-// Page entry: focus protects draft; Enter commits once; Escape cancels; a different paper resets.
+// Page entry: keep the existing draft/Enter/Escape/paper assertions; model the new label blur boundary.
+// Browser pointer/focus ordering is exercised by verify-reader-page-control-browser.mjs, not this hook shim.
 {
-  const h = hooks(); const jumps = [];
-  const { ReaderPageControl } = load('src/features/reader/ReaderPageControl.tsx', { react: h.react, 'react/jsx-runtime': jsx,
-    '../../ui/zh': { zh }, '../../workbench/DocumentToolbar': { useDocumentToolbarActive: () => true }, './ReaderNoteActivity': { useReaderNoteActive: () => true } });
-  let page = 1, paperId = 'p';
-  const render = () => find(h.render(() => ReaderPageControl({ paperId, readerPageState: { currentPage: page, totalPages: 30 }, onJumpToPage: p => jumps.push(p) })), n => n.type === 'input').props;
-  let input = render(); h.flush(); input.onFocus(); input.onChange({ target: { value: '23' } }); page = 2; input = render(); h.flush(); input = render();
+  const h = hooks(); const jumps = [], frames = [];
+  const { ReaderPageControl } = load('src/features/reader/ReaderPageControl.tsx', {
+    react: { ...h.react, useLayoutEffect: h.react.useEffect }, 'react/jsx-runtime': jsx,
+    '../../ui/zh': { zh }, '../../workbench/DocumentToolbar': { useDocumentToolbarActive: () => true }, './ReaderNoteActivity': { useReaderNoteActive: () => true },
+  }, { Node: class {}, requestAnimationFrame: fn => frames.push(fn) });
+  let page = 1, paperId = 'p', tree;
+  const render = () => {
+    tree = h.render(() => ReaderPageControl({ paperId, readerPageState: { currentPage: page, totalPages: 30 }, onJumpToPage: p => jumps.push(p) }));
+    return find(tree, n => n.type === 'input').props;
+  };
+  const focus = { currentTarget: { select() {} } };
+  const blur = () => {
+    tree.props.onBlur({ relatedTarget: null, currentTarget: { isConnected: true, contains: () => false, ownerDocument: { hasFocus: () => true, activeElement: null } } });
+    frames.splice(0).forEach(fn => fn());
+  };
+  const key = key => ({ key, nativeEvent: {}, preventDefault() {}, stopPropagation() {}, currentTarget: { blur } });
+  let input = render(); h.flush(); input.onFocus(focus); input.onChange({ target: { value: '23' } }); page = 2; input = render(); h.flush(); input = render();
   check(input.value, '23', 'page change must not overwrite editing');
-  input.onKeyDown({ key: 'Enter', nativeEvent: {}, preventDefault() {}, currentTarget: { blur: () => input.onBlur() } }); check(jumps, [23], 'one jump for Enter+blur');
-  input = render(); input.onFocus(); input.onChange({ target: { value: '29' } }); input = render(); input.onKeyDown({ key: 'Escape', nativeEvent: {}, preventDefault() {}, stopPropagation() {}, currentTarget: { blur: () => input.onBlur() } }); check(jumps, [23], 'Escape does not submit');
+  check(tree.type, 'label', 'whole page status labels the same editable input');
+  input.onKeyDown(key('Enter')); check(jumps, [23], 'one jump for Enter+blur');
+  input = render(); h.flush(); input.onFocus(focus); input.onChange({ target: { value: '29' } }); input = render(); h.flush(); input.onKeyDown(key('Escape')); check(jumps, [23], 'Escape does not submit');
   input = render(); check(input.value, '2', 'Escape restores current');
-  input.onFocus(); input.onChange({ target: { value: '12' } }); paperId = 'other'; page = 1; render(); h.flush(); check(render().value, '1', 'new paper reset');
+  input.onFocus(focus); input.onChange({ target: { value: '12' } }); paperId = 'other'; page = 1; render(); h.flush(); check(render().value, '1', 'new paper reset');
+  input = render(); h.flush(); input.onFocus(focus); input.onChange({ target: { value: '13' } }); input = render(); h.flush(); blur(); blur(); check(jumps, [23, 13], 'group blur consumes valid draft once');
+  input = render(); h.flush(); input.onFocus(focus); input.onChange({ target: { value: '31' } }); input = render(); h.flush(); blur(); check(jumps, [23, 13], 'out of range is rejected rather than clamped');
 }
 
 // Actual resource component with a simulated native persistence boundary.

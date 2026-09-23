@@ -317,3 +317,13 @@ later   明确不在阶段 2 做
 - `getBoundingClientRect()` 已包含界面 CSS zoom/transform 和滚动；预览中心必须用百分比，不能把 viewport 像素偏移再次当作 local CSS left/top。
 - 工具尺寸是 local CSS 直径；命中半径以该层 computed layout width/height 换成百分比，不能除以已缩放的 DOM rect。DPR 不参与 CSS 坐标换算。
 - `npm run test:pdf-eraser-alignment` 使用真实 PdfReader 与文字层，联合覆盖 UI zoom、PDF zoom、DPR、侧栏、滚动、窄窗和 compositor scale；与 `test:pdf-eraser-precision` 的精确线段裁剪/页外契约共同防回归。
+
+## 页码入口交互契约
+
+左上角“当前页 / 总页数”是同一个页码编辑入口，包含数字、斜线、总数与空隙；总页数只读。Tab 可进入，首次聚焦选中当前值，保留可访问名称与焦点提示。
+
+- 输入只修改草稿，外部滚动与普通重渲染不覆盖草稿；点击控件内部不提交。
+- Enter 或真正离开整个控件时提交一次；Escape 取消并恢复实际当前页。
+- 只接受 `1..totalPages` 内的整数；未修改、已在目标页、空值、非法值及越界值不调用跳转，不做静默钳制。
+- 草稿绑定论文、PDF 文件/阅读模式和页数修订；切换文档、页数改变或控件被保留但隐藏时丢弃旧草稿。失焦判定等待当前点击完成，不能把切换文档的点击误当作向新文档提交旧草稿。
+- 自动回归：`npm run test:reader-page-control`（纯校验与真实组件浏览器测试，已纳入完整验证）；桌面取证仍必须使用 `dev:live` 独立测试库与测试 PDF。

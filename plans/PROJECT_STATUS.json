@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-23T07:13:20.918Z",
+  "updatedAt": "2026-09-24T08:34:27+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
-    "status": "review",
-    "owner": "Arena-Board",
-    "branch": "fix/markdown-managed-images-arena-board",
+    "status": "in_progress",
+    "owner": "星序",
+    "branch": "fix/reader-page-control-xingxu",
     "scope": [
+      "reader-page-control-xingxu：f4ea1a89 spec2，独立worktree基于main f891c15。隔离16页PDF复现总页数点击不聚焦及编辑中内部点击提前跳页；浏览器旧版23通过/32失败。局部修复整段点击、Enter/整体失焦提交、Esc取消及文档/页数变更草稿保护，补自动化与原生证据。不触碰其他工作区，不打包安装发布。",
       "Arena-Board / 图片托管d3cdee12 spec1：三类入口共享受限图片落盘/粘贴/选择器、paperId显式读取、字段真缩略图与键盘查看完成。实现3b209ba，保留main0a43b66抓取/阅读器改动后整合95424a0；整合版PowerShell完整verify退出0/198.328秒（Rust230/0/5ignored），纯52/浏览器18、原生25项及3组几何，errors=[]。本地main已普通ff至95424a0，21份开发者结果附件已上传，准备submit待用户验收；未打包/推送/发布。详见docs/mcp-managed-images-arena-board-2026-09-23.md。",
       "白板865d6308 Phase0低优先级仅讨论：只读核实资料接入/来源语义，比较Excalidraw、自研混合画布、tldraw及许可，提出未实测性能目标、阶段路线和用户决策；不开发原型，不改产品代码、依赖或数据库。详见docs/mcp-whiteboard-phase0-arena-board-2026-09-23.md。",
       "目录任务deb0ed49：仅独立工作树修复TOC样式与可访问标题折叠，不改正文/保存，不覆盖主工作树滚动修复。详见docs/mcp-markdown-toc-arena-board-2026-09-23.md。",

@@ -44,6 +44,7 @@ const steps = [
   ['npm', ['run', 'test:agent-protocol']],
   ['npm', ['run', 'test:pdfjs']],
   ['npm', ['run', 'test:reader']],
+  ['npm', ['run', 'test:reader-page-control']],
   ['npm', ['run', 'test:markdown-safety']],
   ['npm', ['run', 'test:managed-images']],
   ['npm', ['run', 'test:reader-helpers']],
