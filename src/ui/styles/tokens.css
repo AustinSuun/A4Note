@@ -55,8 +55,8 @@
   --motion-panel-ease-in: cubic-bezier(.4, 0, 1, 1);
   --motion-panel-ease-pop: cubic-bezier(.34, 1.3, .64, 1);
   --motion-panel-slide-distance: 28px;
-  --motion-panel-pop-lift: 10px;
-  --motion-panel-pop-scale: .96;
+  --motion-panel-pop-lift: 6px;
+  --motion-panel-pop-scale: .88;
   font-family: var(--font-sans);
   font-size: var(--ui-font-size);
 }

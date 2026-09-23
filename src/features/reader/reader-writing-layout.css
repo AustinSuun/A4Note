@@ -4,6 +4,10 @@
 .reader-workspace-shell.workspace-open.drawer-overlay { grid-template-columns: minmax(0, 1fr); gap: 0; }
 .reader-workspace-shell.writing-expanded > .reader-main-workspace,
 .reader-workspace-shell.drawer-overlay > .reader-main-workspace { visibility: hidden; overflow: hidden; pointer-events: none; }
+/* Keep the paper visible underneath while the sheet grows over it (FLIP / slide), hide it
+   only once the motion is over; leaving writing reveals it immediately. */
+.reader-workspace-shell > .reader-main-workspace { transition: visibility 0s 0s; }
+.reader-workspace-shell.writing-expanded > .reader-main-workspace { transition: visibility 0s var(--note-transition-duration, 220ms); }
 .reader-workspace-shell.writing-expanded > .reader-workspace-drawer,
 .reader-workspace-shell.note-mode-writing > .reader-workspace-drawer,
 .reader-workspace-shell.drawer-overlay > .reader-workspace-drawer { position: absolute; inset: 0; width: 100% !important; max-width: none; min-width: 0; border-radius: 8px; }
@@ -53,8 +57,7 @@
 /* ---------------------------------------------------------------- note workbench (24ea34e5)
    Modes are presentation only: the paper note session and its CodeMirror instance stay
    mounted in every mode, the shell just re-lays out around it. */
-/* Enter/exit budget comes from the shared motion tokens (src/ui/styles/tokens.css). Only
-   transform and opacity ever transition, so the PDF column never re-flows mid-motion. */
+/* Enter/exit budget comes from the shared motion tokens (src/ui/styles/tokens.css). */
 .reader-workspace-shell {
   --note-transition-duration: var(--motion-panel-duration, 220ms);
   --note-transition-ease: var(--motion-panel-ease-out, cubic-bezier(.22, 1, .36, 1));
@@ -64,47 +67,107 @@
   --note-pop-lift: var(--motion-panel-pop-lift, 10px);
   --note-pop-scale: var(--motion-panel-pop-scale, .96);
 }
+/* Docked column (task 3932f561): the note track slides open and closed the way the workbench
+   sidebar does — the grid track animates while the drawer keeps its target width and is
+   clipped by the shell. The PDF column therefore gives way continuously and nothing inside
+   the drawer re-flows mid-motion. ReaderScene sets --reader-side-width to 0 while the panel is
+   hidden/entering/exiting and to --reader-side-target once entered. */
+.reader-workspace-shell.workspace-open:not([data-note-resizing="true"]) {
+  transition: grid-template-columns var(--note-transition-duration) var(--note-transition-ease);
+}
+.reader-workspace-shell.workspace-open[data-note-presence="exiting"] { transition-timing-function: var(--note-transition-ease-exit); }
+.reader-workspace-shell.workspace-open:not(.note-mode-floating):not(.note-mode-writing):not(.drawer-overlay):not(.writing-expanded) > .reader-workspace-drawer.notes-active {
+  width: var(--reader-side-target, 100%) !important; justify-self: start;
+}
 .reader-workspace-shell > .reader-workspace-drawer.notes-active,
 .reader-workspace-shell > .reader-note-floating-controls {
   opacity: 1; transform: translate3d(0, 0, 0) scale(1);
   /* ReaderScene derives --note-pop-origin from the floating card position (noteEnterMotion.ts)
-     so the pop grows out of the side the card sits on; docked panels only translate. */
-  transform-origin: var(--note-pop-origin, 50% 0%);
+     so the pop grows out of the boundary bookmark; docked panels ride their grid track. */
+  transform-origin: var(--note-pop-origin, 100% 50%);
   transition: transform var(--note-transition-duration) var(--note-transition-ease), opacity var(--note-transition-duration) var(--note-transition-ease);
 }
 .reader-workspace-shell:is([data-note-presence="entering"], [data-note-presence="exiting"]) > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { will-change: transform, opacity; }
-/* 'entering' is a one-frame snap to the start pose: no transition runs towards it, so a
-   mode switch replays the whole entrance instead of retargeting a half-finished fade. */
+/* 'entering' is a one-frame snap to the start pose: no transition runs towards it. */
 .reader-workspace-shell[data-note-presence="entering"] > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { transition-duration: 0s; }
 .reader-workspace-shell[data-note-presence="exiting"] > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { transition-timing-function: var(--note-transition-ease-exit); }
 /* Floating card: back-out easing only while settling in; exit keeps the plain ease-in. */
 .reader-workspace-shell[data-note-motion-mode="floating"][data-note-presence="entered"] > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { transition-timing-function: var(--note-transition-ease-pop); }
-.reader-workspace-shell[data-note-motion-mode="split"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > .reader-workspace-drawer.notes-active,
-.reader-workspace-shell[data-note-motion-mode="writing"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > .reader-workspace-drawer.notes-active {
-  opacity: 0; transform: translate3d(var(--note-slide-distance), 0, 0);
+/* Writing sheet and the narrow-window overlay have no track: they slide in from the right edge. */
+.reader-workspace-shell[data-note-motion-mode="writing"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > .reader-workspace-drawer.notes-active,
+.reader-workspace-shell.drawer-overlay[data-note-motion-mode="split"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > .reader-workspace-drawer.notes-active {
+  opacity: 0; transform: translate3d(calc(var(--note-slide-distance) * 2), 0, 0);
 }
 .reader-workspace-shell[data-note-motion-mode="floating"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) {
   opacity: 0; transform: translate3d(0, var(--note-pop-lift), 0) scale(var(--note-pop-scale));
 }
+/* Mode switch while visible (useNoteLayoutFlip): the drawer is painted for one frame at its
+   previous box through an inline FLIP transform; the frame after, the shared transform
+   transition carries it to the new box. */
+.reader-workspace-shell[data-note-flip="true"] > :is(.reader-workspace-drawer, .reader-note-floating-controls) { transition: none !important; }
 /* Boundary bookmark: absolute sibling of the PDF/drawer, never a grid column. */
-.reader-note-edge-entry { position: absolute; top: 50%; transform: translateY(-50%); z-index: 60; display: flex; }
+.reader-note-edge-entry { position: absolute; top: 50%; transform: translateY(-50%); z-index: 60; display: flex; justify-content: center; }
+.reader-note-edge-entry[data-note-docked="true"] { width: 16px; transition: right var(--note-transition-duration) var(--note-transition-ease); }
+.reader-workspace-shell[data-note-presence="exiting"] .reader-note-edge-entry[data-note-docked="true"] { transition-timing-function: var(--note-transition-ease-exit); }
+.reader-workspace-shell[data-note-resizing="true"] .reader-note-edge-entry { transition: none; }
+/* Collapsed bookmark (spec 12): must read against a white PDF page without hovering —
+   tinted surface, clear border and shadow, accent-strong ink, ~30px wide. */
 .reader-note-edge-handle {
-  position: relative; isolation: isolate; overflow: hidden;
-  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px;
-  box-sizing: border-box; flex: none; width: 22px; height: 88px; padding: 0;
-  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-right: 0; border-radius: 11px 0 0 11px;
-  background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--muted);
-  box-shadow: -3px 0 12px rgba(26,41,33,.09), inset 1px 0 rgba(255,255,255,.58);
+  position: relative; isolation: isolate; overflow: visible;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 7px;
+  box-sizing: border-box; flex: none; width: 30px; height: 96px; padding: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--line)); border-right: 0; border-radius: 13px 0 0 13px;
+  background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface)); color: var(--accent-strong);
+  box-shadow: -4px 0 14px rgba(26,41,33,.13), inset 1px 0 rgba(255,255,255,.5);
   backdrop-filter: blur(10px); cursor: pointer; touch-action: none;
   transition: background 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
-.reader-note-edge-handle::before { content: ''; position: absolute; right: 2px; top: 50%; width: 2px; height: 26px; border-radius: 999px; background: currentColor; opacity: .16; transform: translateY(-50%); }
-.reader-note-edge-handle.active { width: 16px; height: 56px; background: color-mix(in srgb, var(--accent-soft) 88%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 74%, var(--line)); color: var(--accent-strong); box-shadow: 0 4px 14px rgba(26,41,33,.12); }
-.reader-note-edge-entry[data-note-docked="true"] .reader-note-edge-handle { cursor: pointer; border-right: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-radius: 10px; }
-.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle { border-left: 0; border-right: 1px solid var(--accent); border-radius: 0 8px 8px 0; }
-.reader-note-edge-label { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 2px; font-size: 12px; line-height: 1; }
-.reader-note-edge-handle:hover { background: color-mix(in srgb, var(--accent-soft) 82%, var(--surface)); color: var(--accent-strong); border-color: color-mix(in srgb, var(--accent) 68%, var(--line)); box-shadow: 0 5px 16px rgba(26,41,33,.14); }
-.reader-note-edge-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.reader-note-edge-handle > svg { width: 16px; height: 16px; flex: none; }
+.reader-note-edge-handle::before { content: ''; position: absolute; right: 3px; top: 50%; width: 2px; height: 30px; border-radius: 999px; background: currentColor; opacity: .22; transform: translateY(-50%); }
+/* Open state: a quiet grip riding the split line, in the same language as the workbench
+   separator — no filled pill, the chevron only surfaces on hover/focus. The box keeps its
+   16×58 hit area (widened further by ::after); only the painted grip (::before) scales, so
+   the hover grow is compositor-only and the chevron is never stretched. */
+.reader-note-edge-handle.active {
+  width: 16px; height: 56px; border: 0; border-radius: 999px; background: transparent; box-shadow: none;
+  color: var(--accent-strong); backdrop-filter: none;
+}
+.reader-note-edge-handle.active::before {
+  right: auto; top: 0; width: 100%; height: 100%; opacity: 1; z-index: -1;
+  background: color-mix(in srgb, var(--line) 72%, var(--muted));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface) 90%, transparent), 0 1px 3px rgba(26,41,33,.12);
+  transform: scale(.5, .8);
+  transition: transform 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+.reader-note-edge-handle.active::after { content: ''; position: absolute; inset: -8px -6px; }
+.reader-note-edge-handle.active svg { opacity: 0; transform: scale(.6); transition: opacity 150ms ease, transform 150ms ease; }
+.reader-note-edge-handle.active:is(:hover, :focus-visible)::before,
+.reader-workspace-shell[data-note-resizing="true"] .reader-note-edge-handle.active::before {
+  transform: none; background: var(--accent-soft);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface) 90%, transparent), 0 2px 8px rgba(26,41,33,.16);
+}
+.reader-workspace-shell[data-note-resizing="true"] .reader-note-edge-handle.active::before { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.reader-note-edge-handle.active:is(:hover, :focus-visible) svg { opacity: 1; transform: none; }
+.reader-note-edge-entry[data-note-docked="true"] .reader-note-edge-handle { cursor: pointer; }
+/* Writing sheet / narrow overlay: the same tab language mirrored to the left edge ("返回论文"),
+   chevron always visible because there is no split line to ride. */
+.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle,
+.reader-workspace-shell.drawer-overlay .reader-note-edge-handle.active {
+  width: 28px; height: 76px; border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--line)); border-left: 0; border-radius: 0 13px 13px 0;
+  background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface)); color: var(--accent-strong);
+  box-shadow: 4px 0 14px rgba(26,41,33,.13), inset -1px 0 rgba(255,255,255,.5);
+}
+.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle::before,
+.reader-workspace-shell.drawer-overlay .reader-note-edge-handle.active::before { display: none; }
+.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle svg,
+.reader-workspace-shell.drawer-overlay .reader-note-edge-handle.active svg { opacity: 1; transform: none; }
+.reader-note-edge-label { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 2px; font-size: var(--ui-control-font-size, 13px); font-weight: 600; line-height: 1; }
+.reader-note-edge-handle:not(.active):hover,
+.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle:hover,
+.reader-workspace-shell.drawer-overlay .reader-note-edge-handle.active:hover { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); box-shadow: -4px 0 18px rgba(26,41,33,.18); }
+.reader-note-edge-handle:not(.active):active,
+.reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle:active { background: color-mix(in srgb, var(--accent) 24%, var(--surface)); }
+.reader-note-edge-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .reader-note-mode-switch { display: inline-flex; align-items: center; gap: 1px; flex-shrink: 0; }
 .reader-note-mode-switch button { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 26px; padding: 0; border: 0; border-radius: 4px; color: var(--muted); background: transparent; }
 .reader-note-mode-switch button[aria-pressed="true"], .reader-note-mode-switch button:hover { background: var(--accent-soft); color: var(--accent-strong); }
@@ -140,23 +203,40 @@
   border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 40px rgba(26,41,33,.24);
   background: var(--surface); overflow: hidden;
 }
+.reader-workspace-shell.note-mode-floating > .reader-workspace-drawer > .workspace-panel-content { flex: 1 1 auto; min-width: 0; box-sizing: border-box; }
 .reader-note-floating-controls { position: absolute; z-index: 45; pointer-events: none;
   left: var(--floating-note-left, 50%); top: var(--floating-note-top, 14%);
   width: var(--floating-note-width, 42%); height: var(--floating-note-height, 62%); }
-.reader-note-floating-drag, .reader-note-floating-resize {
+.reader-note-floating-drag, .reader-note-floating-corner {
   position: absolute; pointer-events: auto; touch-action: none;
 }
+/* Drag lane: a slim pill hugging the top edge; the header below only reserves 14px for it. */
 .reader-note-floating-drag {
-  left: 50%; top: 5px; width: 68px; height: 22px; padding: 0; transform: translateX(-50%);
+  left: 50%; top: 2px; width: 68px; height: 16px; padding: 0; transform: translateX(-50%);
   border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: grab;
 }
 .reader-note-floating-drag:active { cursor: grabbing; }
 .reader-note-floating-grip { display: block; width: 38px; height: 4px; margin: auto; border-radius: 999px; background: currentColor; opacity: .42; box-shadow: 0 1px 1px rgba(26,41,33,.12); }
 .reader-note-floating-drag:hover, .reader-note-floating-drag:focus-visible { background: color-mix(in srgb, var(--surface) 74%, transparent); color: var(--accent-strong); }
 .reader-note-floating-drag:hover .reader-note-floating-grip, .reader-note-floating-drag:focus-visible .reader-note-floating-grip { opacity: .72; }
-.reader-note-floating-resize { right: 4px; bottom: 4px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--muted); cursor: nwse-resize; }
-.reader-note-floating-resize::after { content: '◢'; }
-.reader-note-floating-drag:focus-visible, .reader-note-floating-resize:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Corner grips (task 3932f561): four arcs just outside the card's rounded corners, the way
+   mobile picture-in-picture windows are resized. Each drags its own corner while the
+   opposite one stays put; keyboard arrows do the same in 2%/5% steps. */
+.reader-note-floating-corner {
+  width: 26px; height: 26px; padding: 0; border: 0; background: transparent; color: var(--muted); opacity: .55;
+  transition: opacity 150ms ease, color 150ms ease, transform 150ms ease;
+}
+.reader-note-floating-corner::before { content: ''; position: absolute; inset: 0; border: 3px solid transparent; }
+.reader-note-floating-corner[data-corner="nw"] { left: -8px; top: -8px; cursor: nwse-resize; }
+.reader-note-floating-corner[data-corner="nw"]::before { border-top-color: currentColor; border-left-color: currentColor; border-top-left-radius: 18px; }
+.reader-note-floating-corner[data-corner="ne"] { right: -8px; top: -8px; cursor: nesw-resize; }
+.reader-note-floating-corner[data-corner="ne"]::before { border-top-color: currentColor; border-right-color: currentColor; border-top-right-radius: 18px; }
+.reader-note-floating-corner[data-corner="sw"] { left: -8px; bottom: -8px; cursor: nesw-resize; }
+.reader-note-floating-corner[data-corner="sw"]::before { border-bottom-color: currentColor; border-left-color: currentColor; border-bottom-left-radius: 18px; }
+.reader-note-floating-corner[data-corner="se"] { right: -8px; bottom: -8px; cursor: nwse-resize; }
+.reader-note-floating-corner[data-corner="se"]::before { border-bottom-color: currentColor; border-right-color: currentColor; border-bottom-right-radius: 18px; }
+.reader-note-floating-corner:is(:hover, :focus-visible, [data-active="true"]) { opacity: 1; color: var(--accent-strong); transform: scale(1.08); }
+.reader-note-floating-drag:focus-visible, .reader-note-floating-corner:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 10px; }
 
 /* writing 专注写作: workbench fills the content area; the note column keeps its width. */
 .reader-workspace-shell.note-mode-writing { display: block; }
@@ -167,15 +247,25 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .reader-workspace-shell { --note-transition-duration: 0s; }
+  .reader-workspace-shell.workspace-open,
   .reader-workspace-shell > .reader-workspace-drawer.notes-active,
   .reader-workspace-shell > .reader-note-floating-controls,
-  .reader-note-edge-handle { transition: none; animation: none; }
+  .reader-note-edge-entry,
+  .reader-note-edge-handle,
+  .reader-note-floating-corner { transition: none; animation: none; }
 }
 
 .reader-workspace-drawer .note-document-header { min-height: 32px; padding: 0 0 3px; }
-/* Reserve the card's top-center drag lane so its generous pointer target never
-   masks the document/layout controls directly below the visible Pill. */
-.reader-workspace-shell.note-mode-floating > .reader-workspace-drawer .note-document-header { padding-top: 28px; }
+/* Reserve only the slim drag lane above the header so the grip never masks the controls. */
+.reader-workspace-shell.note-mode-floating > .reader-workspace-drawer .note-document-header { padding-top: 14px; }
+/* Header row: the document picker hugs the left, layout/mode controls hug the right. */
+.reader-workspace-drawer .note-document-header > .note-history-shell { flex: 0 1 auto; min-width: 0; max-width: calc(100% - 96px); }
+.reader-workspace-drawer .note-document-trigger { width: auto; max-width: 100%; }
+/* The picker now opens under a left-aligned trigger, so anchor it to the trigger's left edge. */
+.reader-workspace-drawer .note-history-popover { left: 0; right: auto; max-width: calc(100cqw - 16px); }
+.reader-workspace-drawer .note-document-actions { margin-left: auto; }
+/* No resting "已保存" badge in any note layout (spec 12); saving / dirty / error feedback stays. */
+.reader-workspace-drawer .note-save-state.saved { display: none; }
 .reader-workspace-drawer .note-meta-row { justify-content: flex-start; gap: 5px 8px; min-height: 24px; padding: 3px 0; }
 .reader-workspace-drawer .note-save-state { margin-left: auto; white-space: nowrap; }
 .reader-workspace-drawer .note-workspace { display: flex; flex-direction: column; }
@@ -188,6 +278,10 @@
 :root .note-workspace > .markdown-authoring-dock { max-width: calc(100% - 12px); }
 .note-workspace:has(> .markdown-authoring-dock) .cm-content { padding-bottom: 88px; }
 .note-workspace:has(> .markdown-authoring-dock) .markdown-preview { padding-bottom: 88px; }
+/* Inside the floating card the dock spans the card and wraps to its width, so it can never
+   overflow the card edge and follows every drag-resize without script. */
+.reader-workspace-shell.note-mode-floating .note-workspace > .markdown-authoring-dock { left: 10px; right: 10px; bottom: 10px; width: auto; max-width: none; transform: none; }
+.reader-workspace-shell.note-mode-floating .note-workspace > .markdown-authoring-dock .markdown-authoring-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; width: 100%; box-sizing: border-box; overflow: visible; }
 .note-citation-insert { max-width: 9.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 26px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
 .note-citation-insert:hover, .note-citation-insert:focus-visible { border-color: var(--accent-strong); color: var(--accent-strong); }
 .note-image-input { display: none; }

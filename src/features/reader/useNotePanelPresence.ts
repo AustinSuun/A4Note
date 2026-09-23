@@ -22,6 +22,8 @@ export function useNotePanelPresence(visible: boolean, mode: NoteWorkbenchMode):
     phase: visible ? 'entered' : 'hidden',
     mode: visualMode(mode),
   }));
+  const phaseRef = useRef(presence.phase);
+  phaseRef.current = presence.phase;
 
   useLayoutEffect(() => {
     const currentGeneration = ++generation.current;
@@ -31,6 +33,12 @@ export function useNotePanelPresence(visible: boolean, mode: NoteWorkbenchMode):
 
     if (visible) {
       const nextMode = visualMode(mode);
+      if (phaseRef.current === 'entered' || phaseRef.current === 'entering') {
+        /* Mode switch while the panel is on screen: useNoteLayoutFlip carries it between
+           the two layouts, so it stays 'entered' instead of fading out to re-enter. */
+        setPresence(current => current.phase === 'entered' && current.mode === nextMode ? current : { phase: 'entered', mode: nextMode });
+        return undefined;
+      }
       setPresence({ phase: reducedMotion ? 'entered' : 'entering', mode: nextMode });
       if (!reducedMotion) {
         frame = window.requestAnimationFrame(() => {
