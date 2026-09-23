@@ -239,6 +239,8 @@
 /* Header row: the document picker hugs the left, layout/mode controls hug the right. */
 .reader-workspace-drawer .note-document-header > .note-history-shell { flex: 0 1 auto; min-width: 0; max-width: calc(100% - 96px); }
 .reader-workspace-drawer .note-document-trigger { width: auto; max-width: 100%; }
+/* The picker now opens under a left-aligned trigger, so anchor it to the trigger's left edge. */
+.reader-workspace-drawer .note-history-popover { left: 0; right: auto; max-width: calc(100cqw - 16px); }
 .reader-workspace-drawer .note-document-actions { margin-left: auto; }
 /* The floating card has no room for the save badge; split/writing keep it. */
 .reader-workspace-shell.note-mode-floating .note-save-state { display: none; }
