@@ -11,3 +11,5 @@
 - node scripts/verify-note-workbench.mjs
 - node scripts/verify-reader-note-sidebar.mjs
 - tsc -p tsconfig.app.json --noEmit
+
+隔离窗 `dev:live --instance chengqiao-reader-note` 底部条为「DEV chengqiao-reader-note · 独立测试库（原生已核验 …）」。阅读态渲染了标题、粗体、斜体、列表、引用、代码、链接、表格和公式，并显示已保存。
