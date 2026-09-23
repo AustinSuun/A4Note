@@ -1,4 +1,5 @@
 ﻿# A4 Note Agent 状态
+- Arena-Board / 图片托管d3cdee12 spec1：独立worktree实现managedImageInsertion纯事务与52项模拟回归；tsc/architecture/build通过。尚未接入剪贴板/UI/受限Rust资产接口，未完成三类入口、缩略图、原生证据和完整verify；不得视为可用功能或交付。详见docs/mcp-managed-images-arena-board-2026-09-23.md。 更新：2026-09-23T06:07:19.646Z。
 - Arena-Board / 白板865d6308 Phase0：目录任务已交付main fcc2040/review后顺序领取；低优先级仅讨论方案已形成，覆盖自由白板/线索/讲课、源码数据矩阵、引用/快照与删除语义、三路线和许可、未实测性能候选、分阶段估算与用户决策。只改docs/mcp-whiteboard-phase0-arena-board-2026-09-23.md与双状态，未改产品代码/依赖/数据库，未安装/原型/新服务/性能实测/派生任务；交付检查为文档/diff白名单与test:agent-status。等待用户讨论，后续开发需另获批准，不自行归档。更新：2026-09-23T05:49:00Z。
 - Arena-Board 目录最终并行兼容：main1a2fdb2滚动修复已整合a4238bc；唯一源码冲突是React import并集，滚动算法/readPreview缓存均保留。build/reader/preview-layout/TOC-follow35/TOC浏览器67/滚动浏览器通过；测试Vite限定允许依赖junction真实路径，解决字体403，不改产品服务。
 - Arena-Board 目录最终整合：代码95940e5，最新阅读器main803a381已整合为7cdbe38，产品无冲突、双状态保留双方交接。整合版build/reader/agent-status、note-workbench66、TOC浏览器67、note-enter-motion-browser68通过；仅干净且未前进的main执行普通ff，最终交付SHA见任务卡。

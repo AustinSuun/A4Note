@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-23T05:49:00Z",
+  "updatedAt": "2026-09-23T06:08:26.896Z",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
-    "status": "review",
+    "status": "in_progress",
     "owner": "Arena-Board",
-    "branch": "docs/whiteboard-phase0-arena-board",
+    "branch": "fix/markdown-managed-images-arena-board",
     "scope": [
+      "Arena-Board / 图片托管d3cdee12 spec1：独立worktree实现managedImageInsertion纯事务与52项模拟回归；tsc/architecture/build通过。尚未接入剪贴板/UI/受限Rust资产接口，未完成三类入口、缩略图、原生证据和完整verify；不得视为可用功能或交付。详见docs/mcp-managed-images-arena-board-2026-09-23.md。",
       "白板865d6308 Phase0低优先级仅讨论：只读核实资料接入/来源语义，比较Excalidraw、自研混合画布、tldraw及许可，提出未实测性能目标、阶段路线和用户决策；不开发原型，不改产品代码、依赖或数据库。详见docs/mcp-whiteboard-phase0-arena-board-2026-09-23.md。",
       "目录任务deb0ed49：仅独立工作树修复TOC样式与可访问标题折叠，不改正文/保存，不覆盖主工作树滚动修复。详见docs/mcp-markdown-toc-arena-board-2026-09-23.md。",
       "reader-note-panel-polish-arena：Arena 以用户授权的 dispatcher 会话发布并领取 3932f561 spec4（笔记面板修订）。侧栏改为网格轨道 220ms 连续滑开/收回（--reader-side-width 轨道 + --reader-side-target 定宽抽屉被裁切，PDF 列同步让位，把手随分隔线移动）；可见态模式切换改为 FLIP（useNoteLayoutFlip，presence 保持 entered，不再淡出重进）；浮卡从把手处生长（origin 指向右缘中高，pop-scale .88/lift 6px）；新组件 ReaderNoteFloatingControls 提供四角弧形缩放柄（resizeFloatingRect 对角固定、键盘 2%/5%）替换右下角 ◢；握把区 28→14px、悬浮态去已保存与左缘拖宽条、标题左/按钮右、Markdown 工具栏卡内 flex 换行；把手打开态改为中性握条（::before scale，悬停加宽显示 chevron）；文档下拉字号统一走 --ui-* 令牌（13/11/13/12/11/13px）。verify-note-enter-motion-browser 重写 68/68（旧代码 fc6be92 上 23/42 后中止），note-workbench-browser 94/94、note-workbench 65/65、sidebar 16/16 及 browser、reader/helpers/ui-state/architecture、tsc 0、build 通过、diagnostics 0；dev:live arena-polish before/after 各 35/38 图 + 2 主题×3 缩放矩阵：轨道滑开/收回 16 帧 16.66ms（最大 17.1ms）、FLIP 15 帧 16.66ms、pageerror/console 0。4d6411d + 4d86f75 已 ff 合入本地 main；未打包/安装/推送/发布。详见 docs/mcp-reader-note-panel-polish-arena-2026-09-23.md。更新：2026-09-23T13:40:00+08:00",
@@ -165,10 +166,12 @@
       "owner": "星序",
       "summary": "shortcut-hint-size-xingxu：星序已领取63b530ee spec2，独立分支fix/shortcut-hint-size-xingxu/worktree .worktrees/hint-size-xingxu，基线main9714b06。范围仅共享快捷键提示字号/键帽、实际测量避让与鼠标侧键短标签及回归；不改图层入口/文本标注并行任务。先在隔离dev:live测量当前11px键帽和底部密集锚点，再增大并验证缩放/长组合键/侧键/弹窗。未修改产品、未打包安装发布。"
     },
-    "readerNoteEdgeXingxu": "done"
+    "readerNoteEdgeXingxu": "done",
+    "managedImagesArena": "in_progress"
   },
   "lastHandoff": {
     "completed": [
+      "图片托管：仅完成独立事务基础与模拟回归，非任务完成；未改现有编辑器接线。",
       "Arena-Board：目录任务deb0ed49已合并本地main fcc2040并submit review rev53；随后领取白板865d6308并完成Phase0中文讨论方案，未派生开发任务。",
       "Arena-Board：目录折叠和缩放坐标修复已实现；同文档语义键、父子状态、跳级与重复标题、细中性引导线，独立worktree。",
       "reader-shortcut-overlay-arena：代码15ecbaacb9a5、任务分支9925dd1221b2已普通合并main 54993ca6018e；6张带DEV隔离状态条的原生截图作为开发者result上传，任务板submit review。执行Agent合并时18项未跟踪文件大小/SHA-256均未改变；其后文件所有者9项同字节归档、9项移走，用户已确认有意处理。",
@@ -490,6 +493,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "图片托管基础：52项纯事务断言、tsc -b、architecture、npm run build、agent-status、diff-check通过；build有分块体积/动态导入警告。尚无真实剪贴板/后端/原生截图/完整verify证明。",
       "白板Phase0：源码/公开许可只读核实，明确事实F/建议S/待验证U。仅文档和双状态变更；不做UI或性能实测、不运行build/原生服务。文档格式与路径、diff白名单及test:agent-status作交付检查。",
       "Arena-Board：最终再次整合main1a2fdb2的Markdown滚动优化为a4238bc，只合并React import并集；build/reader/preview-layout/TOC-follow35/TOC浏览器67/滚动浏览器通过。测试服务限定允许node_modules junction真实路径解决字体403，未改生产服务。",
       "Arena-Board：完整npm run verify退出0，Rust215 passed/0 failed/5 ignored；真实组件浏览器67项、原生dev:live 8组/21张最终V2前后截图通过，错误0；原生隔离身份22/22；旧代码红测失败于缺少真实折叠按钮。旧reader源码/CSS契约已对齐实际交互。",
@@ -876,6 +880,7 @@
       "npm run verify (Markdown list edit-state stabilization; blocked because build failed at LibrarySceneSidebar.tsx:192)"
     ],
     "next": [
+      "继续同一图片任务：先实现受限资产后端与服务端像素/路径校验，再接共享编辑器和三类资源上下文；不要领取第二项或发布未完成实现。",
       "白板Phase0等待用户讨论首发场景、许可预算、存储、引用默认与第一批资料类型；审阅方案不等于批准开发，后续原型/依赖/迁移/开发必须另行授权。两项任务不自行归档。",
       "Arena-Board：目录开发验证全部通过，安全合并本地main后submit review（提交哈希见任务卡）；等待用户验收，不自动归档。随后领取白板Phase0，仅方案文档、不做产品代码。",
       "reader-shortcut-overlay-arena：任务板为review，等待用户独立验收并归档或退回；不自行验收、不打包/安装/推送/发布、不处理其他人的文件。",
@@ -916,6 +921,7 @@
       "依赖更新后保留MDX→js-yaml override直至上游解除旧精确锁；后续升级继续分别执行PDF/Markdown行为回归和audit。"
     ],
     "risks": [
+      "图片任务尚未合并main/submit。新用户已授权队列完成后打包/推送/发布，与旧历史未授权条目区分；发布预检最新v0.1.29，实际发布前重查远端。",
       "layer-toolbar-height-xunzhou：npm run verify 的 test:reader/test:ui-state 两步失败为既有阻塞（qinglan 3781dfd 简化文本工具控件后 verify 源码契约未同步，8a3b1ed 已记录；本轮 stash 干净基线复现同一断言，非本轮引入，未代改他人脚本）。参考图附件本轮环境无法目视查看，结论全部来自运行时量测。仅 dev favicon.ico 404 为已知环境噪音。",
       "reader-selection-outline-xunzhou：修复只收窄 Reader 侧栏标题按钮的鼠标 active 样式，不改选择/打开/展开/移除事件，也不改其它场景焦点样式。未打包、安装、发布或写入生产资料库；根目录并行脏改动未触碰。",
       "reader-annotation-toast-drag-xunzhou：本轮不吞掉锁定层、无可写层或持久化失败反馈；证据用的 900ms 延迟与写入拒绝注入已撤销，不在提交中。未安装、打包、发布或接触正式资料库。",
@@ -939,6 +945,6 @@
       "PDF重开/绘制已测试，但双栏同步、长文档、选区/批注、缩放坐标与页面失败提示位置还需真实Windows手验；未量化实际EXE冷启动/可交互时间。",
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。"
     ],
-    "updatedAt": "2026-09-23T11:53:39+08:00"
+    "updatedAt": "2026-09-23T06:08:26.896Z"
   }
 }
