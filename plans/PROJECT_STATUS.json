@@ -487,6 +487,7 @@
       "Markdown 列表编辑态稳定性修复：移除源码态专用行内边距，源码 marker 使用与渲染 marker 相同的宽度预算，缩进空格不再与行层级内边距叠加；任务列表源码 marker 不移动 checkbox 或正文。"
     ],
     "verification": [
+      "Arena-Board：最终再次整合main1a2fdb2的Markdown滚动优化为a4238bc，只合并React import并集；build/reader/preview-layout/TOC-follow35/TOC浏览器67/滚动浏览器通过。测试服务限定允许node_modules junction真实路径解决字体403，未改生产服务。",
       "Arena-Board：完整npm run verify退出0，Rust215 passed/0 failed/5 ignored；真实组件浏览器67项、原生dev:live 8组/21张最终V2前后截图通过，错误0；原生隔离身份22/22；旧代码红测失败于缺少真实折叠按钮。旧reader源码/CSS契约已对齐实际交互。",
       "Arena-Board：目录代码95940e5，整合最新阅读器主线803a381为7cdbe38；仅双状态头部冲突，保留双方记录。整合版build、reader、agent-status、note-workbench66、TOC浏览器67、note-enter-motion-browser68通过，最终main交付SHA见任务卡。",
       "reader-shortcut-overlay-arena：完整main npm run verify退出0（Rust215 passed/0 failed/5 ignored）；当前HEAD8c6483a快捷键浏览器491 checks、test:ui-state和test:agent-status通过；隔离WebView2三模式、无译文边界、Ctrl+滚轮176%→195%、毛玻璃94%/禁用97%/blur(12px)、pageerror/console.error=[]。先前共享根Vite扫描导致浏览器夹具超时，限制扫描/关闭watch后复验全绿。",

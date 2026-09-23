@@ -33,6 +33,8 @@
 
 ## 并行协作与边界
 
+最终合并门禁再次发现 main 已前进到 `1a2fdb2`（含滚动优化和阅读器着色调整），自动停止了旧基线的ff操作，没有覆盖主线。在本分支整合为 `a4238bc`：唯一源码冲突是 React import 行，取并集保留滚动的 useCallback 与目录的 CSSProperties；memoized readPreview 及滚动算法完整保留。再次 build、reader、preview-layout-stability、TOC follow 35项、TOC浏览器67项通过。滚动浏览器首轮仅因本工作树 node_modules junction 的 KaTeX 字体被Vite 403拒绝，给测试专用服务增加已安装依赖真实路径的限定allowlist后复验通过（未放开产品服务、未忽略控制台错误）。`scripts/verify-markdown-scroll-browser.mjs` 因此有最小测试环境兼容改动；其余滚动实现来自最新main，不属于本任务重写。
+
 - 未修改 `3932f561` 阅读器面板任务的文件；本任务不改 `src/features/reader/**`。
 - 主工作树另有 `fix/markdown-fast-scroll-arena` 正在修改 MarkdownResourceTab 的滚动逻辑等文件。本 Agent 所有变更在独立工作树，未覆盖/暂存/提交其未提交内容；合并前需要核对最新 main，出现真实冲突不强行处理。
 - 折叠状态是会话级，不承诺关闭应用后恢复；重复同名同级标题插入到既有重复项之前时身份属于尽力匹配，未引入写入源文档的永久 ID。

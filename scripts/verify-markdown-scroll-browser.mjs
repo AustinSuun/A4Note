@@ -31,7 +31,8 @@ fs.writeFileSync(path.join(dir, 'regression.html'), '<!doctype html><html><head>
 const errors=[];let server,browser;
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 try {
-  server=await createServer({ configFile:false, root:process.cwd(), cacheDir:path.join(dir,'vite-cache'), plugins:[react()], resolve:{alias:[{find:'./useTextDocument',replacement:path.join(dir,'regression-mock.ts')}]}, server:{host:'127.0.0.1',port:0,watch:{ignored:['**/.tmp/**','**/.build/**','**/.worktrees/**','**/node_modules/**','**/src-tauri/target/**']}}, logLevel:'error' });
+  // Worktree dependencies may be a junction; allow only its resolved package root.
+  server=await createServer({ configFile:false, root:process.cwd(), cacheDir:path.join(dir,'vite-cache'), plugins:[react()], resolve:{alias:[{find:'./useTextDocument',replacement:path.join(dir,'regression-mock.ts')}]}, server:{host:'127.0.0.1',port:0,fs:{allow:[process.cwd(),fs.realpathSync(path.resolve('node_modules'))]},watch:{ignored:['**/.tmp/**','**/.build/**','**/.worktrees/**','**/node_modules/**','**/src-tauri/target/**']}}, logLevel:'error' });
   await server.listen();
   browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--no-sandbox']});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
