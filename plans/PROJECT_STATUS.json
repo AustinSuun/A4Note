@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-23T17:56:42.523Z",
+  "updatedAt": "2026-09-23T18:34:39.541Z",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "Arena-Board",
     "branch": "fix/summary-note-fields-arena-board",
     "scope": [
+      "Arena-Board / 总览7603 spec9：指定总结阅读器/完整总结接真实选区、CRLF原始偏移、目标预览、明确追加/新建或取消，flush后复核身份/原文再commitContent。新增浏览器25、字段链213、原生UI5及C测试1取消/实际行盒检查通过。截图问题已修复保存状态和下拉裁字；最终全verify退出0/217817ms，Rust231/0失败/5忽略。旧独立MD归类暂禁用以免逻辑来源切换写错，仍缺该身份约束与原生异常/恢复矩阵、摘要/侧栏根因/其余验收，不submit、不领下一卡。",
       "Arena-Board / 总览7603 spec9：归类事务基础commitContent已加入note/file会话并由总结适配器真实委托；实际CAS成功后才发布，失败原文保留，保存期间新编辑/ABA锁住自动覆盖并保留旧恢复基线。新增48会话/适配器检查，字段链188、原生会话API5通过（不冒充归类UI）；全verify退出0/207889ms，Rust231通过/0失败/5忽略。选区CRLF映射、预览确认/取消切换UI、自适应摘要、侧栏根因及余下验收未完成，继续in_progress，不领下一卡。",
       "Arena-Board / 总览7603 spec9：阅读器/完整总结单篇新建字段入口已复用现有目录管理和公共CAS保存；保存目录只预选新ID，明确添加才改本篇；总览订阅目录实时更新，内层目录键盘不误触父笔记。新增浏览器11项、字段链140项、原生5项通过（失败保留仅浏览器模拟，原生含三篇保护及reload）；全verify退出0/208689ms，Rust231通过/0失败/5忽略。仍缺显式归类选区/真实CAS、自适应摘要/侧栏根因及余下主题缩放图片标注冲突/真正重启验收，不submit，不领下一卡。",
       "Arena-Board / 总览7603 spec9：阅读器指定总结已接同源字段/自由分区及只读视图，格式/模板/图片/选区方法桥接当前编辑区，非活动与只读保护；普通笔记分支保留。9项新增浏览器、字段链129、note-workbench66通过；原生4项证明阅读器与总览双向保存回到同一笔记且自由原文/A/C保留。全套verify退出0/244175ms，Rust231通过/0失败/5忽略。仍缺单篇自定义入口、显式归类真实CAS、自适应摘要/侧栏根因/主题缩放图片标注冲突完整验收；不交付，不领下一卡。",
@@ -180,6 +181,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "Arena-Board / 总览7603 spec9：指定总结阅读器/完整总结接真实选区、CRLF原始偏移、目标预览、明确追加/新建或取消，flush后复核身份/原文再commitContent。新增浏览器25、字段链213、原生UI5及C测试1取消/实际行盒检查通过。截图问题已修复保存状态和下拉裁字；最终全verify退出0/217817ms，Rust231/0失败/5忽略。旧独立MD归类暂禁用以免逻辑来源切换写错，仍缺该身份约束与原生异常/恢复矩阵、摘要/侧栏根因/其余验收，不submit、不领下一卡。",
       "Arena-Board / 总览7603 spec9：归类事务基础commitContent已加入note/file会话并由总结适配器真实委托；实际CAS成功后才发布，失败原文保留，保存期间新编辑/ABA锁住自动覆盖并保留旧恢复基线。新增48会话/适配器检查，字段链188、原生会话API5通过（不冒充归类UI）；全verify退出0/207889ms，Rust231通过/0失败/5忽略。选区CRLF映射、预览确认/取消切换UI、自适应摘要、侧栏根因及余下验收未完成，继续in_progress，不领下一卡。",
       "Arena-Board / 总览7603 spec9：阅读器/完整总结单篇新建字段入口已复用现有目录管理和公共CAS保存；保存目录只预选新ID，明确添加才改本篇；总览订阅目录实时更新，内层目录键盘不误触父笔记。新增浏览器11项、字段链140项、原生5项通过（失败保留仅浏览器模拟，原生含三篇保护及reload）；全verify退出0/208689ms，Rust231通过/0失败/5忽略。仍缺显式归类选区/真实CAS、自适应摘要/侧栏根因及余下主题缩放图片标注冲突/真正重启验收，不submit，不领下一卡。",
       "Arena-Board / 总览7603 spec9：阅读器指定总结已接同源字段/自由分区及只读视图，格式/模板/图片/选区方法桥接当前编辑区，非活动与只读保护；普通笔记分支保留。9项新增浏览器、字段链129、note-workbench66通过；原生4项证明阅读器与总览双向保存回到同一笔记且自由原文/A/C保留。全套verify退出0/244175ms，Rust231通过/0失败/5忽略。仍缺单篇自定义入口、显式归类真实CAS、自适应摘要/侧栏根因/主题缩放图片标注冲突完整验收；不交付，不领下一卡。",
@@ -510,6 +512,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
+      "归类UI最终全verify退出0/217817ms，Rust231/0/5ignored；字段链213含新增25；assignment-ui-result.json原生UI5、geometry.json实际行盒与C取消，修后reader-preview-fixed.png已目视。首轮测量normal行高断言失败，最终重新全验。",
       "事务基础全verify退出0/207889ms，Rust231/0/5ignored；字段链188，新增48会话检查、transaction-v3-result.json原生API5项。原生钩子前两次测试装置失败有记录，不是UI验收。",
       "单篇目录入口全verify退出0/208689ms，Rust231/0/5ignored；字段链140（新增浏览器11），原生per-note-catalog-result.json 5项、截图per-note-catalog-full.png已目视。首轮遗漏聚焦后打开完整总结按钮，续测核对基线而非重复创建。",
       "阅读器分区增量整套npm run verify退出0/244175ms（Rust231/0/5ignored），.tmp/summary-reader-verify.log UTF16；字段链129，原生reader-result.json 4项，无pageerror，reader-from-overview.png已目视。仅默认窄窗，不冒充主题/缩放/标注/冲突整项验收。",
@@ -905,6 +908,7 @@
       "capture-readable-pdf-arena：定向Rust ingest_tests 8/8，独立工作树npm run verify退出0（Rust 220通过/5忽略），git diff --check通过。"
     ],
     "next": [
+      "继续7603：旧独立MD来源的后端原子身份保护后再开放归类；指定总结原生故障/并发切换/恢复矩阵；摘要实际空间/侧栏DOM根因/多主题缩放图片标注完整验收。B现有figure、自定义字段、finding，无原自由段；C测试1仍自由，不重跑旧一遍式脚本。完成后main/submit，再逐卡，最后打包推送发布。",
       "继续7603：共享Markdown编辑器读取真实选区快照并映射CRLF原始偏移；接明确目标预览/追加或取消，flush后复核scope+baseline再commitContent；异步切换保护、并发草稿导出/重读UI和旧版总结身份约束专项。再做摘要/侧栏/主题缩放等最终验收，最后main/submit。B已有两次API明确归类，不重跑旧夹具脚本。",
       "继续7603：显式选区归类与真正CAS成功后发布、CRLF映射和并发草稿保护；自适应摘要/侧栏根因/多主题缩放图片标注冲突/真正重启；最终整合main/submit后才领下一卡。B新增custom-2dc280fb-2670-4d5c-99ed-eeef275ec250，不重跑一次性新建夹具脚本。",
       "继续7603：先设计并实现不提前移除原文的实际归类CAS事务和选区CRLF映射，SummaryNoteSession新事务方法不能漏掉真实note委托；单篇新建字段、自适应摘要、侧栏根因及余下验收，最后整合main/submit。",
@@ -981,6 +985,6 @@
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。",
       "capture-readable-pdf-arena：未在用户真实资料库或已安装桌面端验收；仅新采集PDF生效，旧哈希名仍保留。"
     ],
-    "updatedAt": "2026-09-23T17:56:42.523Z"
+    "updatedAt": "2026-09-23T18:34:39.541Z"
   }
 }

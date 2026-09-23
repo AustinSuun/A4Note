@@ -34,6 +34,7 @@ export interface MarkdownLivePreviewEditorHandle {
   scrollToLine: (lineNumber: number) => void;
   getLineAtViewportY: (y: number) => number | null;
   hasSelection: () => boolean;
+  getSelection: () => { source: string; from: number; to: number; text: string } | null;
   insertMarkdown: (before: string, after?: string, placeholder?: string) => void;
   clearFormatting: () => void;
   insertTemplate: (source: string, block: boolean) => void;
@@ -1961,6 +1962,12 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
           container.scrollTo({ top: Math.max(0, top), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         });
         view.focus();
+      },
+      getSelection: () => {
+        const view = viewRef.current;
+        if (!view || view.state.selection.ranges.length !== 1) return null;
+        const { from, to } = view.state.selection.main;
+        return from === to ? null : { source: view.state.doc.toString(), from, to, text: view.state.sliceDoc(from, to) };
       },
       hasSelection: () => {
         const selection = viewRef.current?.state.selection.main;

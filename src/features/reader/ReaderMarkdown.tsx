@@ -346,7 +346,7 @@ export function MarkdownNotePanel({
       {selectedNoteId && selectedNoteId === summaryNoteId && (!sourceMode || mode === 'read') ? <>
         {mode === 'edit' && <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertFormat} onImage={() => editorRef.current?.pickImages()} sourceMode={false} onToggleSource={() => setSourceMode(true)} />}
         <Suspense fallback={<div className="note-editor-loading"><LoaderCircle className="spin" aria-hidden="true" /></div>}>
-          <SummaryDocumentEditor key={`${paper.paperId}:${selectedNoteId}`} ref={editorRef} paper={paper} scope={`${paper.paperId}:${selectedNoteId}`} source={content} getCurrent={() => session.getSnapshot().content} onChange={updateContent} onBlur={() => void saveCurrent()} onSource={() => { setMode('edit'); setSourceMode(true); }} readOnly={mode !== 'edit'} surfaceActive={surfaceActive} onNavigateAnnotation={onNavigateAnnotation} />
+          <SummaryDocumentEditor key={`${paper.paperId}:${selectedNoteId}`} ref={editorRef} paper={paper} scope={`${paper.paperId}:${selectedNoteId}`} source={content} getCurrent={() => session.getSnapshot().content} onChange={updateContent} onBlur={() => void saveCurrent()} onSource={() => { setMode('edit'); setSourceMode(true); }} readOnly={mode !== 'edit'} surfaceActive={surfaceActive} onNavigateAnnotation={onNavigateAnnotation} onAssign={async (plan, stillCurrent) => { await session.flush(); if (!stillCurrent() || session.getSnapshot().paperId !== paper.paperId || session.getSnapshot().noteId !== selectedNoteId) throw new Error('笔记或预览已变化，请重新选择。'); await session.commitContent(plan.baseline, plan.next); }} />
         </Suspense>
       </> : mode === 'edit' ? (
         <>

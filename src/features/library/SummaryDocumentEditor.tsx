@@ -1,8 +1,9 @@
-import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, lazy, Suspense, useEffect, useLayoutEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { PaperDocument } from '../../core/types';
 import { parseSummaryLayout, type SummaryColumn } from '../../core/librarySummary';
 import { summaryDocument, replaceSummaryFreeText, type SummarySegment } from '../../core/summaryDocument';
-import { replaceSummaryFieldText, summaryEditorPatch } from '../../core/summaryEditorPatch';
+import { replaceSummaryFieldText, summaryEditorPatch, summaryEditorSelection } from '../../core/summaryEditorPatch';
+import { SummaryAssignmentDialog, type AssignmentDraft, type AssignmentCommit } from './SummaryAssignmentDialog';
 import { paperNoteImageDocument } from '../../core/paperImageReference';
 import { summaryLayoutSession, uploadSummaryImage } from '../../platform/library/summaries';
 import { saveSummaryFieldCatalog } from '../../platform/library/summaryFieldCatalog';
@@ -18,15 +19,21 @@ type Props = {
   paper: PaperDocument; scope: string; source: string; getCurrent: () => string;
   onChange: (value: string) => void; onBlur: () => void; onSource: () => void;
   readOnly?: boolean; surfaceActive?: boolean; onNavigateAnnotation?: (id: string) => void;
+  onAssign?: AssignmentCommit;
 };
-export const SummaryDocumentEditor = forwardRef<MarkdownLiveEditorHandle, Props>(function SummaryDocumentEditor({ paper, scope, source, getCurrent, onChange, onBlur, onSource, readOnly = false, surfaceActive = true, onNavigateAnnotation = () => {} }, forwardedRef) {
+export const SummaryDocumentEditor = forwardRef<MarkdownLiveEditorHandle, Props>(function SummaryDocumentEditor({ paper, scope, source, getCurrent, onChange, onBlur, onSource, readOnly = false, surfaceActive = true, onNavigateAnnotation = () => {}, onAssign }, forwardedRef) {
   const [columns, setColumns] = useState<SummaryColumn[]>([]), [catalogError, setCatalogError] = useState('');
   const [active, setActive] = useState<string | null>(null), [choice, setChoice] = useState(''), [error, setError] = useState('');
   const editor = useRef<MarkdownLiveEditorHandle>(null);
   const catalog = useRef<TextDocumentSession | null>(null);
+  const [assignment, setAssignment] = useState<AssignmentDraft | null>(null);
+  const alive = useRef(false), context = useRef({ scope, readOnly, surfaceActive, getCurrent });
+  context.current = { scope, readOnly, surfaceActive, getCurrent };
+  useLayoutEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   useImperativeHandle(forwardedRef, () => {
     const perform = (action: (target: MarkdownLiveEditorHandle) => void) => {
       if (readOnly || !surfaceActive) return;
+      if (assignment) { setError('请先完成或取消归类预览。'); return; }
       if (editor.current) action(editor.current);
       else setError('请先点击要编辑的字段或自由区域，待编辑器加载后重试格式、模板或引用操作。');
     };
@@ -34,12 +41,13 @@ export const SummaryDocumentEditor = forwardRef<MarkdownLiveEditorHandle, Props>
       pickImages: () => perform(target => target.pickImages()),
       setMarkdown: value => perform(target => target.setMarkdown(value)),
       focus: () => perform(target => target.focus()),
-      hasSelection: () => !readOnly && surfaceActive && (editor.current?.hasSelection() ?? false),
+      hasSelection: () => !readOnly && surfaceActive && !assignment && (editor.current?.hasSelection() ?? false),
+      getSelection: () => !readOnly && surfaceActive && !assignment ? editor.current?.getSelection() ?? null : null,
       insertMarkdown: (before, after, placeholder) => perform(target => target.insertMarkdown(before, after, placeholder)),
       insertTemplate: (value, block) => perform(target => target.insertTemplate(value, block)),
       clearFormatting: () => perform(target => target.clearFormatting()),
     };
-  }, [readOnly, surfaceActive]);
+  }, [readOnly, surfaceActive, assignment]);
   const parsed = useMemo(() => { try { return { document: summaryDocument(source), error: '' }; } catch (reason) { return { document: null, error: String(reason) }; } }, [source]);
   useEffect(() => {
     let alive = true, stop: (() => void) | undefined;
@@ -102,6 +110,17 @@ export const SummaryDocumentEditor = forwardRef<MarkdownLiveEditorHandle, Props>
         <header><strong>{segment.kind === 'field' ? `总览字段 · ${title}` : title}</strong>
           {!readOnly && surfaceActive && <button type="button" aria-label={`编辑${title}`} onClick={() => { setActive(segment.key); setError(''); }}>编辑</button>}
           {!readOnly && surfaceActive && active === segment.key && <button type="button" onClick={() => editor.current?.pickImages()}>添加图片到此区域</button>}
+          {!readOnly && surfaceActive && active === segment.key && segment.kind === 'free' && onAssign && <button type="button" disabled={!!catalogError} onMouseDown={event => event.preventDefault()} onClick={() => {
+            try {
+              if (source !== getCurrent()) throw new Error('笔记已变化，请重新选择。');
+              const selected = editor.current?.getSelection();
+              if (!selected) throw new Error('请在当前自由区域中明确选择一段文字。');
+              const raw = summaryEditorSelection(segment.value, selected);
+              if (!raw.text.trim()) throw new Error('不能归类空白选区。');
+              setAssignment({ scope, baseline: source, selection: { from: segment.start + raw.from, to: segment.start + raw.to, text: raw.text } }); setError('');
+            } catch (reason) { setError(String(reason)); }
+          }}>归类选中文本</button>}
+          {!readOnly && surfaceActive && active === segment.key && segment.kind === 'free' && !onAssign && <small>此来源暂不支持归类事务，可使用高级源码编辑。</small>}
         </header>
         <Suspense fallback={<p>加载编辑器…</p>}>
           {!readOnly && surfaceActive && active === segment.key ? <Editor ref={editor} markdown={segment.value} documentPath={paperNoteImageDocument(paper.paperId, scope)} imageUpload={file => uploadSummaryImage(paper.paperId, file)} placeholder={segment.kind === 'field' ? '填写此字段' : '自由记录，不会自动进入字段'} onChange={value => edit(segment, value)} onBlur={onBlur} />
@@ -110,5 +129,8 @@ export const SummaryDocumentEditor = forwardRef<MarkdownLiveEditorHandle, Props>
       </section>;
     })}
     {error && <p role="alert" className="summary-warning">{error}</p>}
+    {assignment && onAssign && !readOnly && surfaceActive && <SummaryAssignmentDialog draft={assignment} columns={columns} commit={onAssign}
+      valid={() => alive.current && context.current.scope === assignment.scope && !context.current.readOnly && context.current.surfaceActive && context.current.getCurrent() === assignment.baseline && !!catalog.current && !catalog.current.pending() && !catalog.current.getSnapshot().error}
+      onClose={fieldId => { setAssignment(null); if (fieldId) setActive(`field:${fieldId}`); requestAnimationFrame(() => editor.current?.focus()); }} />}
   </div>;
 });

@@ -1,5 +1,18 @@
 import { summaryFieldBlocks, updateSummaryField, type SummaryColumn } from './librarySummary';
 
+export type SummaryEditorSelection = { source: string; from: number; to: number; text: string };
+/** A single CM selection, checked against the complete normalized editor snapshot. */
+export function summaryEditorSelection(raw: string, selection: SummaryEditorSelection): { from: number; to: number; text: string } {
+  const normalized = raw.replace(/\r\n?|\n/g, '\n');
+  const { from, to } = selection;
+  if (selection.source !== normalized || !Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to > normalized.length || from >= to || normalized.slice(from, to) !== selection.text) throw new Error('编辑器选区已变化，请重新选择原文。');
+  const offsets = [0];
+  for (let i = 0; i < raw.length;) { if (raw[i++] === '\r' && raw[i] === '\n') i++; offsets.push(i); }
+  const splitsSurrogate = (at: number) => { const a = raw.charCodeAt(at - 1), z = raw.charCodeAt(at); return a >= 0xd800 && a <= 0xdbff && z >= 0xdc00 && z <= 0xdfff; };
+  if (splitsSurrogate(offsets[from]) || splitsSurrogate(offsets[to])) throw new Error('选区不能拆开Unicode字符。');
+  return { from: offsets[from], to: offsets[to], text: raw.slice(offsets[from], offsets[to]) };
+}
+
 /** Map CodeMirror's LF document back to raw offsets; untouched mixed EOLs stay intact. */
 export function summaryEditorPatch(raw: string, edited: string): string {
   const normalized = raw.replace(/\r\n?|\n/g, '\n');
