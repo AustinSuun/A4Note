@@ -1,8 +1,9 @@
+import { paperNoteImageDocument } from '../../core/paperImageReference';
 import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
 import { useReaderNoteActive, useReaderNoteRequests, useReaderNoteLayoutActions, useReaderNoteCreateAction } from './ReaderNoteActivity';
 import { preferredNoteIdFor, rememberPreferredNoteId } from './noteWorkbench';
 import { OverviewNoteBadge } from './OverviewNoteBadge';
-import { createSummaryNote, editSummary, loadSummary } from '../../platform/library/summaries';
+import { createSummaryNote, editSummary, loadSummary, uploadSummaryImage } from '../../platform/library/summaries';
 import { acquireLibraryNoteSession, existingLibraryNoteSession } from '../../platform/library/noteDocuments';
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { BookOpen, Check, ChevronDown, LoaderCircle, Pencil, Plus } from 'lucide-react';
@@ -89,7 +90,6 @@ export function MarkdownNotePanel({
   const [templateOpen, setTemplateOpen] = useState(false);
   const [sourceMode, setSourceMode] = useState(false);
   const editorRef = useRef<MarkdownLiveEditorHandle | null>(null);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const pendingCitation = useRef('');
   const historyRef = useRef<HTMLDivElement | null>(null);
   const historyTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -211,14 +211,6 @@ export function MarkdownNotePanel({
     : '';
   const insertTemplate = (template: MarkdownTemplate) => editorRef.current?.insertTemplate(template.source, template.block);
   const insertFormat = (before: string, after: string, placeholder: string) => editorRef.current?.insertMarkdown(before, after, placeholder);
-  const insertImageFile = (file: File | undefined) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') editorRef.current?.insertMarkdown('![', '](' + reader.result + ')', file.name.replace(/\.[^.]+$/, ''));
-    };
-    reader.readAsDataURL(file);
-  };
   const insertFocusedCitation = () => {
     if (!focusedAnnotation) return;
     const snippet = annotationCitationInsert(focusedAnnotation.id);
@@ -351,10 +343,9 @@ export function MarkdownNotePanel({
       </div>}
       {mode === 'edit' ? (
         <>
-          <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertFormat} onImage={() => imageInputRef.current?.click()} sourceMode={sourceMode} onToggleSource={() => setSourceMode(current => !current)} />
-          <input ref={imageInputRef} className="note-image-input" type="file" accept="image/*" hidden onChange={event => { insertImageFile(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} />
+          <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertFormat} onImage={() => editorRef.current?.pickImages()} sourceMode={sourceMode} onToggleSource={() => setSourceMode(current => !current)} />
         <Suspense fallback={<div className="note-editor-loading"><LoaderCircle className="spin" aria-hidden="true" /></div>}>
-          <MarkdownLiveEditor key={selectedNoteId} ref={editorRef} markdown={content} sourceMode={sourceMode} onChange={updateContent} onBlur={() => void saveCurrent()} placeholder={zh.reader.notePlaceholder} />
+          <MarkdownLiveEditor documentPath={paperNoteImageDocument(paper.paperId, selectedNoteId ?? 'unsaved')} imageUpload={surfaceActive ? file => uploadSummaryImage(paper.paperId, file) : undefined} key={`${paper.paperId}:${selectedNoteId}`} ref={editorRef} markdown={content} sourceMode={sourceMode} onChange={updateContent} onBlur={() => void saveCurrent()} placeholder={zh.reader.notePlaceholder} />
         </Suspense>
         </>
       ) : (

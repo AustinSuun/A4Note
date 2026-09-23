@@ -45,6 +45,7 @@ const steps = [
   ['npm', ['run', 'test:pdfjs']],
   ['npm', ['run', 'test:reader']],
   ['npm', ['run', 'test:markdown-safety']],
+  ['npm', ['run', 'test:managed-images']],
   ['npm', ['run', 'test:reader-helpers']],
   ['npm', ['run', 'test:pdf-rotated-text']],
   ['npm', ['run', 'test:pdf-crosspage-selection']],

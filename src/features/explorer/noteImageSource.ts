@@ -1,3 +1,4 @@
+import { paperImageReference } from '../../core/paperImageReference';
 /** Resolve image paths without changing the Markdown destination. No arbitrary schemes/UNC. */
 const imageTypes: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', avif: 'image/avif', bmp: 'image/bmp', ico: 'image/x-icon' };
 export function directNoteImage(source: string) {
@@ -28,5 +29,5 @@ export function resolveNoteImagePath(documentPath: string, source: string): { pa
   return { path: joined, mime };
 }
 export function canPreviewNoteImage(documentPath: string, source: string) {
-  return directNoteImage(source) || Boolean(resolveNoteImagePath(documentPath, source));
+  return directNoteImage(source) || Boolean(paperImageReference(documentPath, source)) || Boolean(resolveNoteImagePath(documentPath, source));
 }

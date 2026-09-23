@@ -101,7 +101,7 @@ export async function uploadSummaryImage(paperId: string, file: File): Promise<s
   const bitmap = await createImageBitmap(file);
   const pixels = bitmap.width * bitmap.height; bitmap.close();
   if (pixels > 16_000_000) throw new Error('图片尺寸过大，请先缩小到1600万像素以内');
-  return invoke<string>('import_summary_image', { paperId, bytes: Array.from(new Uint8Array(await file.arrayBuffer())) });
+  return invoke<string>('import_summary_image', { paperId, mime: file.type, bytes: Array.from(new Uint8Array(await file.arrayBuffer())) });
 }
 export async function summaryImage(paperId: string, name: string): Promise<Blob> {
   const bytes = await limited(() => invoke<number[]>('read_summary_image', { paperId, name }));

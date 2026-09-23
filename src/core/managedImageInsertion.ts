@@ -11,7 +11,7 @@ export interface ImageInsertionTarget<Scope> {
 export function managedImageMarkdown(reference: string, alt = '图片'): string {
   // Backend returns an unencoded portable path, never a URL or an absolute path.
   const parts = reference.split('/');
-  if (parts.length !== 2 || parts.some(part => !part || part === '.' || part === '..' || /[\\:%?#<>\u0000-\u001f\u007f]/u.test(part)) ||
+  if (parts.length !== 2 || parts.some(part => !part || part === '.' || part === '..' || /[\\:<>\u0000-\u001f\u007f]/u.test(part)) ||
       !/\.assets$|^(?:summary|note)-assets$/u.test(parts[0]) || !/^[a-zA-Z0-9-]+\.(?:png|jpe?g|webp)$/u.test(parts[1])) {
     throw new Error('图片写入结果不是安全的托管相对路径，未修改正文。');
   }

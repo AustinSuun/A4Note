@@ -1,3 +1,4 @@
+import { SummaryCompactImages, SummaryManagedImage } from './SummaryManagedImages';
 import { SummaryEditableCell } from './SummaryEditableCell';
 import { PaperSignals } from '../PaperSignals';
 import { SummaryRowResizer, type RowResizeActions } from './SummaryRowResizer';
@@ -10,7 +11,7 @@ import { remarkAsterInline } from '../../shared/markdown/remarkAsterInline';
 import type { PaperDocument } from '../../core/types';
 import type { TextDocumentSession } from '../../core/textDocumentSession';
 import { defaultSummaryColumns, summarySizing, fitSummaryWidths, type SummarySizing, summaryPaperMetadata, parseSummaryLayout, summaryExcerpt, summaryFields, summaryRowHeight, type SummaryColumn } from '../../core/librarySummary';
-import { editSummary, invalidateSummaryPreviews, loadSummary, onSummaryChange, openSummaryUrl, summaryImage, summaryLayoutSession, type SummaryFile } from '../../platform/library/summaries';
+import { editSummary, invalidateSummaryPreviews, loadSummary, onSummaryChange, openSummaryUrl, summaryLayoutSession, type SummaryFile } from '../../platform/library/summaries';
 import { SummaryEditor } from './SummaryEditor';
 import './summary.css';
 interface Props { papers: PaperDocument[]; selectedIds: string[]; selectedId?: string; onSelect(id: string): void; onSelection(ids: string[]): void; onOpen(id: string): void }
@@ -312,19 +313,14 @@ const SummaryRow = memo(function SummaryRow({ paper, columns, zoom, top, height,
       if (column.source) return <div key={column.id} className="summary-cell" title="来自论文信息，请在论文详情中编辑"><p className="summary-excerpt">{value || '—'}</p></div>;
       return <SummaryEditableCell key={column.id} paperId={paper.paperId} column={column} value={value}
         unavailable={error || parsed.error || (!file ? '正在读取总览 MD…' : undefined)} onRepair={() => onEdit()}>
-        {!value ? null : zoom < 120 ? <p className="summary-excerpt">{summaryExcerpt(shown, zoom)}</p> : <>{note && <small>↗ 引用已有笔记，不复制正文</small>}{noteId && !note ? <span className="summary-warning">引用的笔记不存在</span> : <SummaryRich paperId={paper.paperId} value={shown} />}</>}
+        {!value ? null : zoom < 120 ? <div className="summary-compact-content"><SummaryCompactImages paperId={paper.paperId} value={shown} /><p className="summary-excerpt">{summaryExcerpt(shown, zoom).replaceAll('〔图片〕', '')}</p></div> : <>{note && <small>↗ 引用已有笔记，不复制正文</small>}{noteId && !note ? <span className="summary-warning">引用的笔记不存在</span> : <SummaryRich paperId={paper.paperId} value={shown} />}</>}
       </SummaryEditableCell>;
     })}
   </div>;
 });
 const SummaryRich = memo(function SummaryRich({ paperId, value }: { paperId: string; value: string }) {
   return <div className="summary-rich"><ReactMarkdown remarkPlugins={[remarkGfm, remarkAsterInline]} skipHtml components={{
-    img: ({ src, alt }) => typeof src === 'string' && /^summary-assets\/[a-zA-Z0-9-]+\.(png|jpg|webp)$/.test(src) ? <SummaryImage paperId={paperId} name={src.split('/')[1]} alt={alt ?? '结构图'} /> : <span className="summary-muted">〔非托管图片未加载〕</span>,
+    img: ({ src, alt, title }) => <SummaryManagedImage paperId={paperId} source={typeof src === 'string' ? src : undefined} alt={alt} title={title} />,
     a: ({ href, children }) => <a href={href && /^https?:\/\//i.test(href) ? href : undefined} onClick={event => { event.preventDefault(); if (href) void openSummaryUrl(href).catch(() => {}); }}>{children}</a>,
   }}>{value}</ReactMarkdown></div>;
 });
-function SummaryImage({ paperId, name, alt }: { paperId: string; name: string; alt: string }) {
-  const [url, setUrl] = useState(''), [failed, setFailed] = useState(false);
-  useEffect(() => { let active = true, objectUrl = ''; setUrl(''); setFailed(false); void summaryImage(paperId, name).then(blob => { if (active) { objectUrl = URL.createObjectURL(blob); setUrl(objectUrl); } }).catch(() => { if (active) setFailed(true); }); return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); }; }, [paperId, name]);
-  return url ? <img src={url} alt={alt} loading="lazy" decoding="async" /> : <span className="summary-muted">{failed ? '图片不可用' : '图片加载中…'}</span>;
-}

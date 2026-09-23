@@ -19,7 +19,7 @@ mod library_access;
 mod library_annotations;
 mod library_import;
 mod library_notes;
-mod library_summaries;
+mod library_summaries; mod managed_image_io; mod markdown_images;
 mod library_summary_notes;
 mod library_summary_provision;
 mod library_papers;
@@ -68,7 +68,7 @@ pub fn run() {
             project_commands::open_path_in_vscode,
             project_commands::open_external_url,
             project_commands::read_text_file_preview,
-            project_commands::read_text_file,
+            project_commands::read_text_file, markdown_images::import_markdown_image,
             project_commands::write_text_file,
             project_commands::rename_text_file,
             project_commands::move_path,

@@ -1,3 +1,4 @@
+import { uploadMarkdownImage } from '../../platform/projects';
 import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
 import { Bold, BookOpen, CalendarDays, Check, CheckSquare, ChevronDown, ChevronRight, Clipboard, ClipboardPaste, Code2, Eraser, ExternalLink, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Highlighter, ImagePlus, Italic, Link as LinkIcon, List, ListChecks, ListOrdered, ListTree, LoaderCircle, Minus, Pencil, Pilcrow, Plus, Quote, Scissors, Sigma, Strikethrough, Table2, Tag, Tags, Trash2, UserRound, X } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
@@ -332,7 +333,6 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
   const [newPropertyValue, setNewPropertyValue] = useState('');
   const [newPropertyType, setNewPropertyType] = useState<PropertyType>('text');
   const liveEditorRef = useRef<MarkdownLivePreviewEditorHandle | null>(null);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
   const contentScrollerRef = useRef<HTMLDivElement | null>(null);
   const endSpaceRef = useMarkdownEndSpace(contentScrollerRef);
@@ -602,14 +602,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
     if (url) insertMarkdown('![', '](' + url + ')', '\u56fe\u7247\u8bf4\u660e');
   };
 
-  const insertImageFile = (file: File | undefined) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') insertMarkdown('![', '](' + reader.result + ')', file.name.replace(/\.[^.]+$/, ''));
-    };
-    reader.readAsDataURL(file);
-  };
+
 
   const openEditorContextMenu = (event: MouseEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -1000,7 +993,6 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
         {createPortal(viewControls, documentToolbar!.controlsHost!)}
         {createPortal(saveIndicator, documentToolbar!.saveHost!)}
       </> : <header className="markdown-resource-toolbar">{viewControls}{saveIndicator}</header>}
-        <input ref={imageInputRef} className="markdown-image-input" type="file" accept="image/*" onChange={(event) => { insertImageFile(event.target.files?.[0]); event.target.value = ''; }} />
       {(saveError || operationError) && <div className="file-tab-hint error" role="alert">
         <span>{saveError || operationError}</span>
         {saveError && <>
@@ -1013,7 +1005,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
           <button type="button" onClick={() => { if (window.confirm('重新加载会丢弃当前编辑草稿，请先导出需要保留的内容。继续？')) void reload(); }}>重新加载磁盘版本</button>
         </>}
       </div>}
-      {mode === 'edit' && !loading && !error && <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertMarkdown} onImage={() => imageInputRef.current?.click()} sourceMode={editSurface === 'source'} onToggleSource={() => setEditSurface((surface) => surface === 'live' ? 'source' : 'live')} />}
+      {mode === 'edit' && !loading && !error && <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertMarkdown} onImage={() => liveEditorRef.current?.pickImages()} sourceMode={editSurface === 'source'} onToggleSource={() => setEditSurface((surface) => surface === 'live' ? 'source' : 'live')} />}
       <div className={`markdown-resource-body mode-${mode}${tocOpen ? ' has-toc' : ''}`}>
         <div ref={endSpaceRef} className="markdown-resource-content">
         {loading && <p className="file-tab-hint">{'\u6b63\u5728\u52a0\u8f7d\u6587\u4ef6\u2026'}</p>}
@@ -1059,7 +1051,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
             </>}
           </aside>}
           <div className="markdown-editor-context-shell" onContextMenu={openEditorContextMenu}>
-            <MarkdownLivePreviewEditor key={editSurface} ref={liveEditorRef} documentPath={path} markdown={editSurface === 'live' ? bodyWithoutTitle : body} sourceMode={editSurface === 'source'} sessionId={editorSessionId} onChange={editSurface === 'live' ? updateEditorBody : updateSourceBody} onBlur={saveImmediately} onOpenWikiLink={openWikiLink} placeholder={'\u5f00\u59cb\u5199\u2026'} />
+            <MarkdownLivePreviewEditor key={editSurface} ref={liveEditorRef} documentPath={path} markdown={editSurface === 'live' ? bodyWithoutTitle : body} sourceMode={editSurface === 'source'} sessionId={editorSessionId} imageUpload={active ? file => uploadMarkdownImage(path, file) : undefined} onChange={editSurface === 'live' ? updateEditorBody : updateSourceBody} onBlur={saveImmediately} onOpenWikiLink={openWikiLink} placeholder={'\u5f00\u59cb\u5199\u2026'} />
             {editorContextMenu && createPortal(<div className={`markdown-editor-context-menu${editorContextMenu.submenuSide === 'left' ? ' submenu-left' : ''}${editorContextMenu.verticalSide === 'bottom' ? ' menu-bottom' : ''}`} style={{ left: editorContextMenu.x, top: editorContextMenu.y }} onClick={(event) => event.stopPropagation()} role="menu" aria-label="Markdown 编辑菜单">
               <button type="button" onClick={() => { closeEditorContextMenu(); setTemplateOpen(true); }}><Plus size={17} aria-hidden="true" /><span>全部样式模板（{markdownTemplates.length}）…</span></button>
               <button type="button" onClick={() => { insertLink(); closeEditorContextMenu(); }}><LinkIcon size={17} aria-hidden="true" /><span>新增链接</span></button>
@@ -1097,7 +1089,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
                 <button type="button" aria-haspopup="menu" aria-expanded={editorMenuSection === 'insert'} onFocus={() => setEditorMenuSection('insert')} onClick={() => setEditorMenuSection((section) => section === 'insert' ? null : 'insert')}><Plus size={17} aria-hidden="true" /><span>插入</span><ChevronRight size={16} aria-hidden="true" /></button>
                 {editorMenuSection === 'insert' && <div className="markdown-editor-submenu" role="menu" aria-label="插入">
                   <button type="button" onClick={() => { closeEditorContextMenu(); setTemplateOpen(true); }}><Plus size={17} aria-hidden="true" /><span>全部模板…</span></button>
-                  <button type="button" onClick={() => { imageInputRef.current?.click(); closeEditorContextMenu(); }}><ImagePlus size={17} aria-hidden="true" /><span>本地图片</span></button>
+                  <button type="button" onClick={() => { liveEditorRef.current?.pickImages(); closeEditorContextMenu(); }}><ImagePlus size={17} aria-hidden="true" /><span>本地图片</span></button>
                   <button type="button" onClick={() => { insertImageUrl(); closeEditorContextMenu(); }}><ImagePlus size={17} aria-hidden="true" /><span>图片地址</span></button>
                   <button type="button" onClick={() => { closeEditorContextMenu(); insertTemplate(markdownTemplates.find((item) => item.id === 'footnote')!); }}><span className="markdown-editor-menu-glyph">¹</span><span>脚注</span></button>
                   <button type="button" onClick={() => { closeEditorContextMenu(); insertTemplate(markdownTemplates.find((item) => item.id === 'table')!); }}><Table2 size={17} aria-hidden="true" /><span>表格</span></button>

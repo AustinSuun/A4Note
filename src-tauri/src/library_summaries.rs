@@ -1,5 +1,5 @@
 //! Legacy Markdown summaries, routed to the designated note only after explicit creation.
-use std::{fs, path::{Path, PathBuf}, io::Write};
+use std::{fs, path::{Path, PathBuf}};
 use rusqlite::{Connection, OptionalExtension};
 use serde::Serialize;
 use tauri::AppHandle;
@@ -7,7 +7,8 @@ use crate::{app_paths::app_data_root, workspace_fs::text_file_io};
 static SUMMARY_MUTATIONS: std::sync::Mutex<()> = std::sync::Mutex::new(());
 pub(crate) fn mutation() -> Result<std::sync::MutexGuard<'static, ()>, String> { SUMMARY_MUTATIONS.lock().map_err(|_| "总结文件操作锁不可用".into()) }
 const MAX_SUMMARY: u64 = 2 * 1024 * 1024;
-const MAX_IMAGE: usize = 3 * 1024 * 1024;
+#[cfg(test)]
+const MAX_IMAGE: usize = crate::managed_image_io::MAX_IMAGE;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SummaryFile { pub path: String, pub content: String, pub exists: bool, pub note_id: Option<String>, pub title: Option<String> }
@@ -113,38 +114,25 @@ pub async fn save_summary_layout(app: AppHandle, content: String, expected_conte
         text_file_io::create_text(&path, &content)
     } else { text_file_io::atomic_write(&path, &content, Some(&expected_content)) }
 }
-fn image_extension(bytes: &[u8]) -> Result<&'static str, String> {
-    if bytes.len() > MAX_IMAGE { return Err("图片不得超过3MB".into()); }
-    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") { Ok("png") }
-    else if bytes.starts_with(&[0xff, 0xd8, 0xff]) { Ok("jpg") }
-    else if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" { Ok("webp") }
-    else { Err("仅支持PNG、JPEG、WebP图片".into()) }
-}
+#[cfg(test)]
+fn image_extension(bytes: &[u8]) -> Result<&'static str, String> { crate::managed_image_io::validate(bytes, None) }
 fn image_path(root: &Path, id: &str, name: &str) -> Result<PathBuf, String> {
     if name.is_empty() || name.len() > 80 || !name.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'.') || name.starts_with('.') { return Err("无效的图片引用".into()); }
     safe_child(&safe_child(&paper_dir(root, id)?, "summary-assets")?, name)
 }
 #[tauri::command]
-pub async fn import_summary_image(app: AppHandle, paper_id: String, bytes: Vec<u8>) -> Result<String, String> {
+pub async fn import_summary_image(app: AppHandle, paper_id: String, bytes: Vec<u8>, mime: Option<String>) -> Result<String, String> {
     let _access = crate::library_access::operation()?;
     let _mutation = mutation()?;
-    let ext = image_extension(&bytes)?;
-    let name = format!("{}.{}", uuid::Uuid::new_v4(), ext);
-    let path = image_path(&app_data_root(&app)?, &paper_id, &name)?;
-    fs::create_dir_all(path.parent().ok_or("缺少图片目录")?).map_err(|e| e.to_string())?;
-    let mut file = fs::OpenOptions::new().create_new(true).write(true).open(&path).map_err(|e| e.to_string())?;
-    let result = file.write_all(&bytes).and_then(|_| file.sync_all());
-    if let Err(e) = result { drop(file); let _ = fs::remove_file(&path); return Err(e.to_string()); }
+    let directory = safe_child(&paper_dir(&app_data_root(&app)?, &paper_id)?, "summary-assets")?;
+    let name = crate::managed_image_io::create(&directory, &bytes, mime.as_deref())?;
     Ok(format!("summary-assets/{name}"))
 }
 #[tauri::command]
 pub async fn read_summary_image(app: AppHandle, paper_id: String, name: String) -> Result<Vec<u8>, String> {
     let _access = crate::library_access::operation()?;
     let path = image_path(&app_data_root(&app)?, &paper_id, &name)?;
-    if fs::metadata(&path).map_err(|e| e.to_string())?.len() > MAX_IMAGE as u64 { return Err("图片过大".into()); }
-    let bytes = fs::read(path).map_err(|e| e.to_string())?;
-    image_extension(&bytes)?;
-    Ok(bytes)
+    crate::managed_image_io::read(path.parent().ok_or("缺少图片目录")?, &name)
 }
 #[cfg(test)]
 mod tests {
@@ -185,7 +173,7 @@ mod tests {
     }
     #[test] fn summary_assets_are_bounded_and_scoped() {
         let f=Fixture::new();for n in ["../x.png","a/b.png","..",".hidden"] { assert!(image_path(&f.0,"p1",n).is_err()); }
-        assert!(image_extension(b"<svg><script/></svg>").is_err());assert!(image_extension(&vec![0;MAX_IMAGE+1]).is_err());assert_eq!(image_extension(b"\x89PNG\r\n\x1a\n").unwrap(),"png");
+        assert!(image_extension(b"<svg><script/></svg>").is_err());assert!(image_extension(&vec![0;MAX_IMAGE+1]).is_err());assert!(image_extension(b"\x89PNG\r\n\x1a\n").is_err());
     }
     #[test] fn summary_exclusive_create_never_clobbers_another_writer() {
         let f=Fixture::new();let a=ensure(&f.0,"p1").unwrap();assert!(text_file_io::create_text(Path::new(&a.path),"overwrite").is_err());assert_eq!(read(Path::new(&a.path)).unwrap().content,a.content);

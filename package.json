@@ -58,6 +58,7 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "package:windows": "node scripts/package-windows-release.mjs",
+    "test:managed-images": "node --experimental-strip-types scripts/verify-managed-image-insertion.mjs && node scripts/verify-managed-images-browser.mjs",
     "test:markdown-safety": "node --experimental-strip-types scripts/verify-markdown-safety.mjs",
     "test:library-behavior": "node --experimental-strip-types scripts/verify-library-behavior.mjs",
     "test:startup-safety": "node scripts/verify-startup-safety.mjs",

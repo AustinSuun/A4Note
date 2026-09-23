@@ -1,35 +1,55 @@
-# 图片本地托管任务：实现进度（未交付）
+# Markdown 图片本地托管：实现与验证
 
-任务：d3cdee12-3c10-4383-b94e-dda8bf829664，领取 spec 1 / revision 2。
-分支：fix/markdown-managed-images-arena-board，独立 worktree 基线 b427f75。
+任务 `d3cdee12-3c10-4383-b94e-dda8bf829664`，spec 1；执行者 Arena-Board。
+分支 `fix/markdown-managed-images-arena-board`。开发者验证不等于用户验收。
 
-## 范围与执行顺序
+## 实现边界
 
-用户授权逐个完成任务，随后尝试打包、推送和发布。当前只领取图片任务；总览字段联动、页码控件、论文菜单仍未领取，不抢占在线 Agent 的阅读器面板任务。发布必须单独执行，不能把未完成实现打进正式版本。白板仍仅讨论。
+- 阅读器普通笔记、指定总览笔记（显式字段和自由正文）、独立工作区 Markdown，共用 CodeMirror 图片粘贴/文件选择事务；实时与源码模式共用同一通路。纯文本仍交给原编辑器，混合文本随图片成功后一次提交。
+- 绑定文档身份、编辑代次、选区和编辑器实例。异步期间切文档、移动选区、编辑/撤销或卸载使事务失效；批量全部成功才插入一次可撤销修改。显示保存中/失败提示，忙碌时拒绝重入，排除错误后重新粘贴/选择即可重试。
+- `managed_image_io.rs` 共享后端校验与新建：PNG/JPEG/WebP、3MB、1600万像素、魔数/MIME 一致、完整有界解码；UUID 文件名、create_new、sync_all，部分写失败清除未发布文件，不覆盖旧文件。
+- `markdown_images.rs` 的独立文件接口只接受持久化 folder workspace 根内的现有可写 Markdown；无路径、根外、只读、非普通文件和 symlink/reparse 拒绝。Windows 使用文件/祖先目录句柄固定路径，保留必要的读取权限，拒绝重解析目录。图片保存到 `<文件名>.assets/UUID.ext`，正文是可迁移的相对引用，可从文件树找到资源目录。
+- 阅读器数据库笔记复用 `AsterData/files/papers/<paperId>/summary-assets/`，不假设数据库笔记有文件系统父目录。`paper-note://paperId/noteId` 只是内部解析上下文；保存正文仍用稳定的 `summary-assets/UUID.ext` 引用。编辑/阅读/表格均显式带 paperId，B 论文不能借同名文件读取 A 的图片。
+- 原有安全 data:image、合法旧链接和 summary-assets 仍走既有读取兼容；不自动迁移、删除旧图，不增加任意 file://、脚本引用或通用文件写入权限。图片错误显示可识别的提示，正文仍可修复引用。
+- 总览紧凑单元格按 Markdown AST 提取当前字段中的真图片节点，代码示例不是图片，自由正文不分配到任何字段。缩略图受当前 cell 高度/宽度约束，ResizeObserver 复测；object-fit 保留比例。复用 MarkdownFigure 放大查看和 Enter/Escape 焦点返回，操作不触发单元格编辑；缩略图角标绝对定位，避免挤出图片区域。
 
-## 已实现的独立部分
+## 自动化证据
 
-- `src/core/managedImageInsertion.ts`：不依赖浏览器/文件系统的写盘后插入事务。绑定稳定文档身份、单调编辑代次、选区；异步过程中切文档、改选区、编辑或撤销导致事务失效，不把引用插进另一文档。
-- 单次批量图片全部写入成功才提交一次正文修改；混合纯文本一起提交；失败不改正文；并发导入拒绝且可重试。失效后不擅自删除已生成资产（可能被其他文档引用）。
-- 托管引用格式检查拒绝绝对路径、URL、data URI、穿越及非法格式；为同名资源目录的非 ASCII 字符编码，转义 alt 文本。
-- `scripts/verify-managed-image-insertion.mjs`：52 项纯事务断言通过。测试使用模拟写盘，不是后端落盘或真实 ClipboardEvent 证明。
-- `tsc -b`、architecture boundary、`npm run build`、agent-status 和 `git diff --check` 通过。构建仍有大分块与动态/静态混合导入警告，不等同于无警告；尚未运行完整 verify。
+- 纯插入事务：52 项；真实 CodeMirror 浏览器测试：18 项、errors=[]。后者用模拟 IPC，覆盖剪贴板、选择器、混合/纯文本、并发/切换/选区/撤销及错误，不冒充原生写盘。
+- Windows Rust：225 passed / 0 failed / 5 ignored。新增覆盖格式/MIME/字节和像素上限、损坏数据、授权工作区、只读、目录重解析、原子唯一文件、JPEG/WebP 及注入部分写失败后的清理。5 个 ignored 为套件中的既有忽略项，不计作通过。
+- PowerShell 完整 `npm run verify` 两轮通过：`.tmp/image-full-verify-v2.log`（192.702秒），最终缩略图角标样式之后 `.tmp/image-full-verify-v3.log`（184.389秒）。包含 build、TypeScript、架构和 Rust。
+- 首轮完整 verify 的 reader 静态源码契约与架构直接组件预期失败已修复：保持 sessionId 接线顺序，并验证 MarkdownReadContent→PaperNoteImage→MarkdownFigure 的显式 paperId 链；未降低架构行数限制或跳过测试。
+- `src` diagnostics：0。构建仍有既有分块/混合导入与 Rust dead_code 警告，不宣称零警告。
 
-## 源码调查与必须完成的剩余工作
+## 隔离原生验证
 
-1. 共享 CodeMirror 当前没有图片粘贴写盘通路。ReaderMarkdown 和 MarkdownResourceTab 的图片按钮仍用 data URI。事务模块尚未接线，产品行为尚未改变。
-2. `library_summaries.rs` 的现有图片导入只按魔数和 3MB 上限检查；1600 万像素上限目前在前端。新受限后端必须补服务端尺寸/格式校验，不能把前端校验当成安全边界。
-3. 现有 summary-assets 路径检查处理 symlink/越界 canonical path，但需补 Windows reparse 的显式拒绝和新接口边界测试；普通笔记按 paperId 隔离，复用资料维护/备份闸门。
-4. 独立 Markdown 应写文件旁同名 `.assets` 目录。现有通用文件接口接受绝对路径，不能直接把它当作新图片接口的已授权工作区边界。需要完成授权来源、文件身份、只读、symlink/reparse 和原子新建的设计与实现。
-5. Reader 数据库笔记没有磁盘父路径；编辑与阅读须显式携带 paperId / noteId / 是否总览的资源上下文。共享加载器当前只有磁盘路径解析，尚未接入托管解析。
-6. 接入真实 ClipboardEvent、按钮、忙碌/失败提示、文档切换 epoch、混合内容规则与重试；保留纯文本、旧 data URI 和合法旧链接，不自动迁移。
-7. 与 7603aaaf 协调字段内外图片、紧凑缩略图和放大查看；不推断自由图片归属。不要覆盖 3932f561 的阅读器布局修改。
-8. 补后端/浏览器测试，隔离 dev:live 三类入口前后、重开、离线、错误与竞态证据；完整 PowerShell verify、双状态更新、干净 main 安全合并，再 submit。当前没有这些完成证据。
+只使用自己的 fixture，不复制生产资料库。实例 `arena-images`，1487/CDP9287；身份 `app.aster.research.dev.arena-images.w393dcc7ea8`。截图保留已核验 DEV 状态条，IPC 使用实际 Tauri 后端。
 
-## 发布预检（只读）
+证据目录：`.tmp/shots/managed-images-native/`，执行脚本在本 worktree `.tmp/native-image-{seed,standalone,reader,restart,errors,layout}.mjs`。
 
-- origin：git@github.com:AustinSuun/A4Note.git。
-- `gh release list --repo AustinSuun/A4Note --limit 5` 成功，查询时最新正式发布 v0.1.29；源码版本 0.1.30。
-- 后续版本须重新检查远端 tag / Release / main 状态，不假设预检永久有效。
-- 标准命令 `npm run package:windows`；使用隔离 Cargo 构建和 artifacts/windows/latest，不拷贝根目录 EXE、不覆盖已发布资产。
-- 当前未执行新打包、推送、发布、安装；未将本任务合并 main 或提交验收。此文档是工作进度，不是完成报告。
+| 记录 | 结果与覆盖 |
+| --- | --- |
+| standalone-result.json | 5项：真实 Windows Bitmap 剪贴板→Ctrl+V、相对引用与磁盘文件、阅读、键盘放大、WebView重载 |
+| reader-result.json | 8项：普通笔记、指定总览字段/自由正文实际粘贴、与总览同源回读、论文隔离、表格仅字段图、键盘查看/焦点恢复 |
+| restart-result.json | 7项：停止原本人的 launcher 并启动新的 a4note.exe 后，普通/总览正文逐字一致；表格/普通/总览/独立 MD 重开加载；放大与焦点恢复 |
+| error-retry-result.json | 5项：真实文件只读拒绝且正文/磁盘/资源列表不变；恢复权限后源码模式真实粘贴重试；单步撤销；原生文件选择器同一落盘通路；撤销保存后原文逐字恢复 |
+| layout-result.json | 3组受控几何压力检查：100%及50%总览缩放，原生按钮操作；角标定位、图片边界、比例保持和键盘查看 |
+
+上述最终运行均 pageerror/console error=[]。首次 harness 失败（选择笔记默认阅读、模块导入、等待图片异步加载及显示名称）已修正后重跑；不将失败轮当通过。
+
+“离线”证据的精确范围：原生 WebView 阻断所有非回环 HTTP，允许 Vite 回环及 *.localhost 原生 IPC；真实后端从磁盘重新读取，不是浏览器数据缓存截图。未物理断开操作系统网络，不声称完成整机空气隔离测试。
+
+只读验证恢复 fixture 原权限；重试/选择器撤销产生的两张未引用测试资产故意保留，符合不擅自清理资源的策略。未制造真正磁盘满，部分写失败由 Rust 故障注入覆盖。
+
+## 分工与已知限制
+
+- 字段目录/稳定ID/重命名、自由内容归属操作、标记隐藏、常规单元格文本可用空间及侧栏竖线，属于后续总览任务 `7603aaaf…`；本任务不推断字段、不重写其文本截断策略。
+- 主题压力检查只是临时修改 theme 属性，不是完整设置主题流程；现有总览深色背景/文字对比问题仍可见，不能据几何通过宣称深色视觉验收通过。
+- 原生重开时发现缓存的隐藏 PDF 子层能拦截其他场景鼠标。本任务未修改这些布局/图层文件；测试通过“阅读”场景选择已打开论文，或先关闭自己的 PDF 标签再测独立 Markdown，未 force-click 或用 CSS 隐藏问题。此场景遮挡需另外跟踪，不属于图片资产正确性的证明。
+- 安全/错误/竞态采用原生、Rust和浏览器分层证据；没有把所有组合都宣称为人工或原生截图验收。
+
+## 合并、任务板与发布
+
+实现与最终样式在独立 worktree 已验证。发现本地 main 已前进至 `0a43b66`（抓取 PDF 可读文件名与阅读器交付记录），须保留其改动，整合后复核再安全合并 main、上传 result 证据并 submit。最终交付/合并 SHA 以任务卡追加记录为准。
+
+当前未打包、安装、推送或发布本任务。用户已授权队列完成后单独执行发布流程；标准命令 `npm run package:windows`，重新检查远端版本/tag/签名，保留并归档 latest，不覆盖已发布版本。白板仍仅讨论，不实施。

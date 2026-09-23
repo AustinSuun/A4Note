@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { MarkdownLivePreviewEditor, type MarkdownLivePreviewEditorHandle } from '../explorer/MarkdownLivePreviewEditor';
 
 export type MarkdownLiveEditorHandle = {
+  pickImages: () => void;
   setMarkdown: (markdown: string) => void;
   focus: () => void;
   hasSelection: () => boolean;
@@ -15,12 +16,15 @@ export const MarkdownLiveEditor = forwardRef<MarkdownLiveEditorHandle, {
   markdown: string;
   placeholder: string;
   sourceMode?: boolean;
+  documentPath?: string;
+  imageUpload?: (file: File) => Promise<string>;
   onChange: (markdown: string) => void;
   onBlur: () => void;
-}>(function MarkdownLiveEditor({ markdown, placeholder, sourceMode = false, onChange, onBlur }, forwardedRef) {
+}>(function MarkdownLiveEditor({ markdown, placeholder, sourceMode = false, documentPath, imageUpload, onChange, onBlur }, forwardedRef) {
   const editorRef = useRef<MarkdownLivePreviewEditorHandle | null>(null);
 
   useImperativeHandle(forwardedRef, () => ({
+    pickImages: () => editorRef.current?.pickImages(),
     setMarkdown: (nextMarkdown) => editorRef.current?.setMarkdown(nextMarkdown),
     focus: () => editorRef.current?.focus(),
     hasSelection: () => editorRef.current?.hasSelection() ?? false,
@@ -32,6 +36,8 @@ export const MarkdownLiveEditor = forwardRef<MarkdownLiveEditorHandle, {
   return (
     <MarkdownLivePreviewEditor
       ref={editorRef}
+      documentPath={documentPath}
+      imageUpload={imageUpload}
       markdown={markdown}
       placeholder={placeholder}
       sourceMode={sourceMode}

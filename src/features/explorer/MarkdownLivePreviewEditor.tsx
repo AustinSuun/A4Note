@@ -1,3 +1,4 @@
+import { useManagedImagePaste } from './useManagedImagePaste';
 import { markdownCaretComfort } from './markdownCaretComfort';
 import { markdownSingleSelection } from './markdownSelectionPolicy';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
@@ -26,6 +27,8 @@ import { loadNoteImage } from './noteImageLoader';
 import { imageSourceTitle, readImageTitle, withImageLayout, type ImageLayout } from '../../shared/markdown/imageLayout';
 
 export interface MarkdownLivePreviewEditorHandle {
+  pickImages: () => void;
+  insertImages: (files: readonly File[]) => Promise<void>;
   setMarkdown: (markdown: string) => void;
   focus: () => void;
   scrollToLine: (lineNumber: number) => void;
@@ -41,6 +44,7 @@ interface MarkdownLivePreviewEditorProps {
   placeholder: string;
   sourceMode?: boolean;
   documentPath?: string;
+  imageUpload?: (file: File) => Promise<string>;
   /** Identifies the editor instance that owns a change callback. */
   sessionId?: number;
   onChange: (markdown: string, context?: { previousMarkdown: string; sourceMode: boolean; sessionId: number }) => void;
@@ -1782,9 +1786,11 @@ function replaceEditorDocument(view: EditorView, markdown: string) {
 
 /** CodeMirror 6 Markdown editor with Obsidian-like inactive-line syntax hiding. */
 export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHandle, MarkdownLivePreviewEditorProps>(
-  function MarkdownLivePreviewEditor({ markdown, placeholder: emptyPlaceholder, sourceMode = false, documentPath = '', sessionId = 0, onChange, onBlur, onOpenWikiLink }, forwardedRef) {
+  function MarkdownLivePreviewEditor({ markdown, placeholder: emptyPlaceholder, sourceMode = false, documentPath = '', sessionId = 0, onChange, onBlur, onOpenWikiLink, imageUpload }, forwardedRef) {
     const hostRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
+    const imagePaste = useManagedImagePaste(viewRef, `${documentPath}#${sessionId}`, imageUpload);
+    const imagePasteRef = useRef(imagePaste); imagePasteRef.current = imagePaste;
     const modeRef = useRef(sourceMode);
     const imagePathCompartment = useRef(new Compartment());
     const onChangeRef = useRef(onChange);
@@ -1805,6 +1811,7 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
         doc: markdown,
         extensions: [
           imagePathCompartment.current.of(noteDocumentPath.of(documentPath)),
+          imagePaste.extension,
           basicSetup,
           markdownSingleSelection,
           markdownLanguage({ codeLanguages }),
@@ -1920,6 +1927,8 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
     }, [sourceMode]);
 
     useImperativeHandle(forwardedRef, () => ({
+      pickImages: () => imagePasteRef.current.pick(),
+      insertImages: (files) => imagePasteRef.current.insert(files),
       setMarkdown: (nextMarkdown) => {
         const view = viewRef.current;
         if (!view || nextMarkdown === view.state.doc.toString()) return;
@@ -1997,6 +2006,6 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
       },
     }), []);
 
-    return <div ref={hostRef} className={'markdown-live-codemirror' + (sourceMode ? ' source-mode' : ' live-mode')} aria-label={sourceMode ? 'Markdown 源码编辑器' : 'Markdown 实时预览编辑器'} />;
+    return <><div ref={hostRef} className={'markdown-live-codemirror' + (sourceMode ? ' source-mode' : ' live-mode')} aria-label={sourceMode ? 'Markdown 源码编辑器' : 'Markdown 实时预览编辑器'} />{imagePaste.feedback}</>;
   },
 );

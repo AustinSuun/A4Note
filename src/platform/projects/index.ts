@@ -32,3 +32,5 @@ export { getPluginSandboxCapabilities, runPluginSandboxed, type PluginProcessRes
 
 export { acquireTextDocument, reloadTextDocument } from './textDocuments';
 export { resolveProjectWikiLink } from './wikiLinks';
+
+export { uploadMarkdownImage } from './markdownImages';

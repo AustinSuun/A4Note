@@ -33,3 +33,6 @@ lopdf = "0.34"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 
 base64 = "0.22"
+
+# Managed clipboard images: bounded decoding, raster formats only.
+image = { version = "0.25.8", default-features = false, features = ["png", "jpeg", "webp"] }

@@ -1,3 +1,5 @@
+import { PaperNoteImage } from './PaperNoteImage';
+import { directNoteImage } from '../explorer/noteImageSource';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -7,7 +9,7 @@ import type { PaperDocument } from '../../core/types';
 import { zh } from '../../ui/zh';
 import { annotationLabelText } from './readerHelpers';
 import { annotationCitationLabel } from './annotationCitation';
-import { MarkdownCallout, MarkdownCodeBlock, MarkdownFigure, MarkdownFootnoteBackref, MarkdownFootnoteRef, MarkdownFootnotesSection, MarkdownTable, remarkAsterInline, wikiLinkProtocol, wikiLinkTarget } from '../../shared/markdown';
+import { MarkdownCallout, MarkdownCodeBlock, MarkdownFootnoteBackref, MarkdownFootnoteRef, MarkdownFootnotesSection, MarkdownTable, remarkAsterInline, wikiLinkProtocol, wikiLinkTarget } from '../../shared/markdown';
 
 export function MarkdownReadContent({
   markdown,
@@ -32,9 +34,9 @@ export function MarkdownReadContent({
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkMath, remarkAsterInline]}
       rehypePlugins={[rehypeKatex]}
-      urlTransform={(url) => (url.startsWith('a4note-annotation:') || url.startsWith(wikiLinkProtocol) ? url : defaultUrlTransform(url))}
+      urlTransform={(url, key) => ((key === 'src' && directNoteImage(url)) || url.startsWith('a4note-annotation:') || url.startsWith(wikiLinkProtocol) ? url : defaultUrlTransform(url))}
       components={{
-        img: ({ src, alt, title }) => <MarkdownFigure src={typeof src === 'string' ? src : undefined} alt={alt} title={title} />,
+        img: ({ src, alt, title }) => <PaperNoteImage paperId={paper.paperId} src={typeof src === 'string' ? src : undefined} alt={alt} title={title} />,
         blockquote: MarkdownCallout,
         pre: MarkdownCodeBlock,
         table: MarkdownTable,
