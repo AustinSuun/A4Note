@@ -1,5 +1,5 @@
 ﻿# A4 Note Agent 状态
-- windows-package-xingxu-0131：用户授权打包EXE，锁定最新main ef31ab0（包含页码7015ef6与文献库列设置定位）。独立worktree windows-package-xingxu-0131，按既有版本惯例0.1.30→0.1.31；通过标准package:windows构建，产物输出到仓库artifacts/windows/latest并自动归档旧包。正在构建与校验；不合并未完成分支，不安装/启动新产物、不操作正式资料、不推送/发布。 更新：2026-09-24T02:03:35+00:00
+- windows-package-xingxu-0131：用户授权EXE打包完成，0.1.31/windows-x64，固定源码71b09a8（基线ef31ab0，含页码与最新文献库定位改动）。标准package:windows退出0/312.103秒，独立前端与Cargo目录；EXE/安装包SHA256、Windows版本资源、安装包更新签名及可信注释的Ed25519密码学验签通过；旧0.1.30整目录归档并复核5文件哈希。960已跟踪文件构建前后逐字节一致；build-info.sourceDirty=true。产物D:/WorkSpace/Aster/artifacts/windows/latest。仅本地打包，未安装/启动新产物/操作正式资料/推送/发布，未本轮完整verify或GUI功能验收。详见docs/mcp-windows-package-xingxu-2026-09-24.md。 更新：2026-09-23T18:11:40.344Z
 - library-column-settings-arena：Arena 完成 ae98615a spec2。根因：App 用 CSS zoom 缩放根元素，ColumnSettings 把视口像素 rect 直接写进 body portal 的 fixed left/top，渲染位置=值×zoom（80% 时左偏约 300px 即用户截图，125% 右偏）。新增 portalPlacement.ts（viewportScale/anchoredPlacement/pointPlacement/toCssPixels），ColumnSettings 与 PaperContextMenu 改为视口像素计算后换算一次；删除命令栏独立详情图标（行末「…」与右键「详情」仍开详情面板）。新增 test:library-column-settings-browser 21/21（旧代码 19/21 红测，已入 verify-all），context-menu 22/22、ui-state、tsc 0、build、architecture 通过；dev:live arena-library 前后：854×392@80%/100%、桌面 125%/100%、深色、综览共用、行菜单详情，pageerror/console 0。详见 docs/mcp-library-column-settings-arena-2026-09-24.md。更新：2026-09-24T02:05:00+08:00
 - reader-page-control-xingxu：星序完成 f4ea1a89 spec2。整段点击聚焦、草稿隔离、Enter/整体失焦单次提交、Esc/非法/未变取消、文档/页数变更丢弃草稿；按住外部按钮切文档等待释放与click后判定。实现da96422，用户授权的e54e56b仅隔离storage测试子进程并增跨线程标志回归，存储业务代码不变。保留存储/菜单主线后078594a完整verify69步通过；再保留cd6329侧栏提交形成0ee25bc，Reader/Rust无差异，13项相关整合回归全过，不宣称最终快照再跑70步全套。纯34/浏览器59/优先级74、原生59及12张after截图通过，errors=[]；默认并行Rust三轮236/0/5及整合复跑通过，诊断0。交付与本地main包含SHA见任务卡，待用户检查；未打包安装推送发布。详见docs/mcp-reader-page-control-xingxu-2026-09-24.md。更新：2026-09-23T17:29:37.749Z
 - library-sidebar-top-folder-arena：Arena 完成 5e3bdbd4 spec2。删除 LibrarySceneSidebar 标题行的 FolderPlus「新建文件夹」按钮与导入，标题/篇数/分割线不变、无占位热区；「文件类」旁「＋ 新建文件类」、右键新建子文件夹、草稿行与创建逻辑保持。新增 test:library-sidebar-browser 13/13（已入 verify-all；旧代码 9/13 红测），tsc 0、build、architecture 通过；dev:live arena-library 前后截图（浅/深色标题行、＋ 草稿行、150%、980 窄窗，pageerror/console 0）。详见 docs/mcp-library-sidebar-top-folder-arena-2026-09-24.md。更新：2026-09-24T01:40:00+08:00
@@ -81,7 +81,7 @@ annotation-popover-swatch-chengchuan：澄川完成 23528921 标注工具弹窗�
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-24T02:03:35+00:00
+更新时间：2026-09-23T18:11:40.344Z
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 
