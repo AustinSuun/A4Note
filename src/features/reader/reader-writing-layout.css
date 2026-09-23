@@ -53,21 +53,38 @@
 /* ---------------------------------------------------------------- note workbench (24ea34e5)
    Modes are presentation only: the paper note session and its CodeMirror instance stay
    mounted in every mode, the shell just re-lays out around it. */
-.reader-workspace-shell { --note-transition-duration: 220ms; --note-transition-ease: cubic-bezier(.22, 1, .36, 1); }
+/* Enter/exit budget comes from the shared motion tokens (src/ui/styles/tokens.css). Only
+   transform and opacity ever transition, so the PDF column never re-flows mid-motion. */
+.reader-workspace-shell {
+  --note-transition-duration: var(--motion-panel-duration, 220ms);
+  --note-transition-ease: var(--motion-panel-ease-out, cubic-bezier(.22, 1, .36, 1));
+  --note-transition-ease-exit: var(--motion-panel-ease-in, cubic-bezier(.4, 0, 1, 1));
+  --note-transition-ease-pop: var(--motion-panel-ease-pop, cubic-bezier(.34, 1.3, .64, 1));
+  --note-slide-distance: var(--motion-panel-slide-distance, 28px);
+  --note-pop-lift: var(--motion-panel-pop-lift, 10px);
+  --note-pop-scale: var(--motion-panel-pop-scale, .96);
+}
 .reader-workspace-shell > .reader-workspace-drawer.notes-active,
 .reader-workspace-shell > .reader-note-floating-controls {
   opacity: 1; transform: translate3d(0, 0, 0) scale(1);
-  transform-origin: top center;
+  /* ReaderScene derives --note-pop-origin from the floating card position (noteEnterMotion.ts)
+     so the pop grows out of the side the card sits on; docked panels only translate. */
+  transform-origin: var(--note-pop-origin, 50% 0%);
   transition: transform var(--note-transition-duration) var(--note-transition-ease), opacity var(--note-transition-duration) var(--note-transition-ease);
 }
 .reader-workspace-shell:is([data-note-presence="entering"], [data-note-presence="exiting"]) > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { will-change: transform, opacity; }
-.reader-workspace-shell[data-note-presence="exiting"] > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { transition-timing-function: cubic-bezier(.4, 0, 1, 1); }
+/* 'entering' is a one-frame snap to the start pose: no transition runs towards it, so a
+   mode switch replays the whole entrance instead of retargeting a half-finished fade. */
+.reader-workspace-shell[data-note-presence="entering"] > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { transition-duration: 0s; }
+.reader-workspace-shell[data-note-presence="exiting"] > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { transition-timing-function: var(--note-transition-ease-exit); }
+/* Floating card: back-out easing only while settling in; exit keeps the plain ease-in. */
+.reader-workspace-shell[data-note-motion-mode="floating"][data-note-presence="entered"] > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) { transition-timing-function: var(--note-transition-ease-pop); }
 .reader-workspace-shell[data-note-motion-mode="split"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > .reader-workspace-drawer.notes-active,
 .reader-workspace-shell[data-note-motion-mode="writing"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > .reader-workspace-drawer.notes-active {
-  opacity: 0; transform: translate3d(28px, 0, 0);
+  opacity: 0; transform: translate3d(var(--note-slide-distance), 0, 0);
 }
 .reader-workspace-shell[data-note-motion-mode="floating"]:is([data-note-presence="hidden"], [data-note-presence="entering"], [data-note-presence="exiting"]) > :is(.reader-workspace-drawer.notes-active, .reader-note-floating-controls) {
-  opacity: 0; transform: translate3d(0, 10px, 0) scale(.96);
+  opacity: 0; transform: translate3d(0, var(--note-pop-lift), 0) scale(var(--note-pop-scale));
 }
 /* Boundary bookmark: absolute sibling of the PDF/drawer, never a grid column. */
 .reader-note-edge-entry { position: absolute; top: 50%; transform: translateY(-50%); z-index: 60; display: flex; }
@@ -149,6 +166,7 @@
   width: 100%; max-width: var(--authoring-content-max-width, 720px); margin-inline: auto;
 }
 @media (prefers-reduced-motion: reduce) {
+  .reader-workspace-shell { --note-transition-duration: 0s; }
   .reader-workspace-shell > .reader-workspace-drawer.notes-active,
   .reader-workspace-shell > .reader-note-floating-controls,
   .reader-note-edge-handle { transition: none; animation: none; }

@@ -8,6 +8,7 @@ import { ReaderNoteWorkbenchMenu } from './ReaderNoteWorkbenchMenu';
 import { NOTE_WORKBENCH_COMMANDS, modeForNoteWorkbenchCommand, splitWidthPx, type NoteWorkbenchMode } from './noteWorkbench';
 import { useNoteWorkbench } from './useNoteWorkbench';
 import { useNotePanelPresence } from './useNotePanelPresence';
+import { floatingPopOrigin } from './noteEnterMotion';
 import { useReaderDrawerLayout } from './useReaderDrawerLayout';
 import './reader-writing-layout.css';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
@@ -130,6 +131,7 @@ export function ReaderScene({
     '--floating-note-top': `${floatingRect.y * 100}%`,
     '--floating-note-width': `${floatingRect.width * 100}%`,
     '--floating-note-height': `${floatingRect.height * 100}%`,
+    '--note-pop-origin': floatingPopOrigin(floatingRect),
   } as CSSProperties) : undefined;
   const startFloatingDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
     const container = drawer.containerRef.current;

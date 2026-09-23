@@ -106,7 +106,8 @@ try {
   fs.writeFileSync(path.join(own, 'host.tsx'), HOST_SOURCE);
   fs.writeFileSync(path.join(own, 'host.html'), HOST_HTML);
 
-  server = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(own, run + '-vite-cache'), plugins: [react()], server: { host: '127.0.0.1', port: 0, strictPort: false }, logLevel: 'error' });
+  /* keep the watcher off dev:live targets, WebView profiles and sibling worktrees or the first page load stalls in the repo root */
+  server = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(own, run + '-vite-cache'), plugins: [react()], server: { host: '127.0.0.1', port: 0, strictPort: false, watch: { ignored: ['**/.build/**', '**/.tmp/**', '**/.worktrees/**', '**/node_modules/**', '**/src-tauri/target/**'] } }, logLevel: 'error' });
   await server.listen();
   const url = 'http://127.0.0.1:' + server.config.server.port + '/.tmp/note-workbench-browser/host.html';
 

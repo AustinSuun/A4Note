@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { NoteWorkbenchMode } from './noteWorkbench';
 
+/** Mirrors --motion-panel-duration (src/ui/styles/tokens.css); the exit timer only has
+ *  to outlive the CSS transition, it never drives the animation itself. */
 export const NOTE_PANEL_MOTION_MS = 220;
 
 export type NotePanelPresencePhase = 'hidden' | 'entering' | 'entered' | 'exiting';
@@ -33,6 +35,10 @@ export function useNotePanelPresence(visible: boolean, mode: NoteWorkbenchMode):
       if (!reducedMotion) {
         frame = window.requestAnimationFrame(() => {
           if (generation.current !== currentGeneration) return;
+          /* Resolve the 'entering' start pose before flipping to 'entered'; without this
+             flush a commit that lands in the same rendering opportunity would give the
+             transition nothing to start from and the panel would simply appear. */
+          void document.documentElement.offsetWidth;
           setPresence(current => current.mode === nextMode ? { ...current, phase: 'entered' } : current);
         });
       }

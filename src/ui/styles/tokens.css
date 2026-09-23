@@ -46,6 +46,17 @@
   --markdown-collapse-control-size: clamp(24px, calc(var(--document-font-size) * 1.4), 34px);
   --document-line-height: 1.65;
   --md-paragraph-gap: calc(var(--document-font-size) * .625);
+  /* Motion tokens for panel presence (reader note workbench, task 1f484418).
+     Docked panels slide (translate + opacity), the floating card pops (scale + opacity,
+     slight back-out overshoot on the way in). Consumers animate transform/opacity only;
+     prefers-reduced-motion zeroes the duration in reader-writing-layout.css. */
+  --motion-panel-duration: 220ms;
+  --motion-panel-ease-out: cubic-bezier(.22, 1, .36, 1);
+  --motion-panel-ease-in: cubic-bezier(.4, 0, 1, 1);
+  --motion-panel-ease-pop: cubic-bezier(.34, 1.3, .64, 1);
+  --motion-panel-slide-distance: 28px;
+  --motion-panel-pop-lift: 10px;
+  --motion-panel-pop-scale: .96;
   font-family: var(--font-sans);
   font-size: var(--ui-font-size);
 }
