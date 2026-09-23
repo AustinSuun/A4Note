@@ -18,10 +18,10 @@ function Harness() {
   const surface = useRef<HTMLDivElement>(null);
   const pages = useMemo(() => [{ pageNumber: 1, baseWidth: 612, baseHeight: 792, pdfPage: null as never, textItems: LINES.map((text, i) => ({ text, x: 10, y: 10 + i * 5, width: 80, height: 3, fontSize: 11 })) }] as unknown as PageMeta[], []);
   useShortcutCommands(createAppShortcutCommands({
-    scenes: [{ id: 'library', label: '文献库', key: '2' }, { id: 'reader', label: '阅读器', key: '3' }], hasPaper: true, pdfMode, focusedAnnotation: false, canUndo: false, canRedo: false,
+    scenes: [{ id: 'library', label: '文献库', key: '2' }, { id: 'reader', label: '阅读器', key: '3' }], hasPaper: true, pdfMode, hasSourcePdf: true, hasTranslatedPdf: true, focusedAnnotation: false, canUndo: false, canRedo: false,
     palette: hit('palette'), openScene: setScene, importPdf: hit('import'), librarySearch: hit('library-search'),
     pdfSearch: () => { events.push(requestPdfFind() ? 'pdf-search:dispatched' : 'pdf-search:no-surface'); },
-    undo: hit('undo'), redo: hit('redo'), deleteAnnotation: hit('delete'), cancel: () => { events.push('cancel'); return true; }, selectTool: t => events.push(t), pdfZoom: hit('pdf-zoom'), fitWidth: hit('fit'), uiZoom: hit('ui-zoom'),
+    undo: hit('undo'), redo: hit('redo'), deleteAnnotation: hit('delete'), cancel: () => { events.push('cancel'); return true; }, selectTool: t => events.push(t), selectReaderFileMode: () => {}, pdfZoom: hit('pdf-zoom'), fitWidth: hit('fit'), uiZoom: hit('ui-zoom'),
   }));
   useShortcutContext(scene, false);
   const props = useShortcutProps(), store = useShortcuts();

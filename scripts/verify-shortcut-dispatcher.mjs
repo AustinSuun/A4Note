@@ -8,8 +8,27 @@ eq(key('z').events, ['undo'], 'executes once');
 eq(key('z').event.defaultPrevented, true, 'handled key consumed');
 eq(key('q').event.defaultPrevented, false, 'unmatched key not consumed');
 eq(key('z', undefined, { repeat: true }).events, [], 'undo does not repeat');
-eq(key('=', undefined, { repeat: true }).events, ['pdf-zoom'], 'PDF zoom can repeat');
-eq(key('=', undefined, { altKey: true }).events, ['ui-zoom'], 'UI zoom distinct');
+eq(key('=', undefined, { repeat: true }).events, [], 'legacy PDF keyboard zoom removed');
+eq(key('-', undefined, { repeat: true }).events, [], 'legacy PDF zoom-out removed');
+eq(key('=', undefined, { altKey: true }).events, [], 'legacy UI keyboard zoom removed');
+eq(key('0', undefined, { altKey: true }).events, [], 'legacy UI zoom reset removed');
+eq(key('F1').events, ['mode-source'], 'Ctrl+F1 switches to source view');
+eq(key('F2').events, ['mode-translated'], 'Ctrl+F2 switches to translated view');
+eq(key('F3').events, ['mode-parallel'], 'Ctrl+F3 switches to parallel view');
+eq(key('Enter').events, ['scene'], 'hiding a redundant reader hint does not disable its existing shortcut');
+r.options.hasTranslatedPdf = false;
+eq(key('F2').events, [], 'missing translation disables view switch');
+eq(key('F3').events, [], 'missing translation disables comparison');
+r.options.hasTranslatedPdf = true;
+store.save({ schemaVersion: 1, bindings: {
+  'reader.zoomIn': [{ type: 'keyboard', key: '=', ctrl: true }],
+  'global.zoomReset': [{ type: 'keyboard', key: '0', ctrl: true, alt: true }],
+} });
+eq(key('=').events, [], 'saved obsolete PDF zoom binding does not revive');
+eq(store.bindings('reader.zoomIn').length, 0, 'fixed gesture stays out of keyboard binding registry');
+eq(key('0', undefined, { altKey: true }).events, [], 'saved obsolete UI reset binding does not revive');
+eq(store.bindings('global.zoomReset').length, 0, 'removed zoom reset is not offered as an editable keyboard command');
+store.save({ schemaVersion: 1, bindings: {} });
 for (const kind of ['input','textarea','select','contenteditable','cm']) {
   eq(key('z', new Element(kind)).events, [], `${kind} native undo protected`);
   eq(key('h', new Element(kind)).event.defaultPrevented, false, `${kind} annotation tool not consumed`);

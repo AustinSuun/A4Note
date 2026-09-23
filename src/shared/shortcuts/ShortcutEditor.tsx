@@ -83,7 +83,7 @@ export function ShortcutEditor({ sceneId }: { sceneId?: string }) {
   const filtered = commands.filter(c => `${c.title} ${c.id} ${c.group}`.toLowerCase().includes(query.toLowerCase()));
   return <section className="shortcut-editor" id={sceneId ? 'reader-shortcut-editor' : 'setting-shortcuts'} aria-label={sceneId ? '阅读器快捷键' : '工作台快捷键'}>
     <div className="shortcut-editor-intro">
-      <p className="shortcut-editor-lead">按住 <kbd>Ctrl</kbd> 约 150ms 查看当前快捷键。PDF 缩放使用 <kbd>Ctrl</kbd> 与加号、减号或 0；全局界面缩放还需按住 <kbd>Alt</kbd>。</p>
+      <p className="shortcut-editor-lead">按住 <kbd>Ctrl</kbd> 约 150ms 查看当前快捷键。缩放使用 <kbd>Ctrl</kbd> + 鼠标滚轮：阅读 PDF 场景下缩放 PDF，其他场景缩放界面；<kbd>Ctrl</kbd> + 0 仍用于 PDF 适合宽度。</p>
       <p className="shortcut-editor-note"><span className="shortcut-editor-note-badge">实验性</span> 鼠标第 4/5 键取决于驱动支持；系统保留键可能无法捕获。输入框、输入法与模态弹窗会保护各自操作。</p>
     </div>
     <div className="shortcut-editor-toolbar"><label className="shortcut-search-label"><span>筛选命令</span><input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索命令或工作台" /></label>
@@ -94,6 +94,7 @@ export function ShortcutEditor({ sceneId }: { sceneId?: string }) {
     <div className="shortcut-editor-list" role="list" aria-label="快捷键命令">
       {filtered.map(c => {
         const bindings = bindingsForCommand(c, store.overrides);
+        const gesture = c.fixedGesture;
         const isRecording = recordingId === c.id;
         return <div key={c.id} className={`shortcut-editor-row${isRecording ? ' is-capturing' : ''}`} data-shortcut-row={c.id} role="listitem">
           <div className="shortcut-editor-command"><strong>{c.title}</strong><small>{c.group}</small></div>
@@ -102,9 +103,13 @@ export function ShortcutEditor({ sceneId }: { sceneId?: string }) {
               <span className="shortcut-inline-capture-label">正在更改</span>
               {candidate === null ? <strong>{preview || '请按下新快捷键或鼠标侧键'}</strong> : <ShortcutKeycaps bindings={candidate} empty="将清除快捷键" />}
               <small>Esc 取消 · Delete / Backspace 清除</small>
-            </div> : <ShortcutKeycaps bindings={bindings} />}
+            </div> : gesture ? <span className="shortcut-keycaps" role="img" aria-label={gesture.description} title={gesture.description}>
+              {gesture.keys.map((key, index) => <span className="shortcut-keycap-part" key={key}>
+                {index > 0 && <span className="shortcut-keycap-plus" aria-hidden="true">+</span>}<kbd>{key}</kbd>
+              </span>)}
+            </span> : <ShortcutKeycaps bindings={bindings} />}
           </div>
-          <div className="shortcut-editor-actions">{isRecording ? <>
+          <div className="shortcut-editor-actions">{gesture ? <span className="shortcut-editor-gesture-note">固定手势</span> : isRecording ? <>
             <button className="shortcut-button-primary" ref={saveButton} type="button" disabled={candidate === null} onClick={save}>{conflicts.length ? '替换并保存' : warnings.length ? '确认风险并保存' : '保存更改'}</button>
             <button type="button" disabled={candidate === null} onClick={() => { setRestoringDefault(false); setCandidate(null); setPreview(''); }}>重新输入</button>
             <button type="button" onClick={finish}>取消</button>

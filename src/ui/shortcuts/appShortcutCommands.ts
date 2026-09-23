@@ -1,28 +1,38 @@
 import type { ShortcutBinding, ShortcutCommand } from '../../core/shortcuts';
 import type { ReaderTool } from '../../core/types';
+type ReaderFileMode = 'source' | 'translated' | 'parallel';
 export type AppShortcutOptions = {
   scenes: { id: string; label: string; key?: string }[];
-  hasPaper: boolean; pdfMode: boolean; focusedAnnotation: boolean; canUndo: boolean; canRedo: boolean;
+  hasPaper: boolean; pdfMode: boolean; hasSourcePdf: boolean; hasTranslatedPdf: boolean;
+  focusedAnnotation: boolean; canUndo: boolean; canRedo: boolean;
   palette: () => void; openScene: (id: string) => void; importPdf: () => void; librarySearch: () => void;
   pdfSearch: () => void; undo: () => void; redo: () => void; deleteAnnotation: () => void; cancel: () => boolean;
-  selectTool: (tool: ReaderTool) => void; pdfZoom: (delta: number) => void; fitWidth: () => void; uiZoom: (delta: number | null) => void;
+  selectTool: (tool: ReaderTool) => void; selectReaderFileMode: (mode: ReaderFileMode) => void;
+  pdfZoom: (delta: number) => void; fitWidth: () => void; uiZoom: (delta: number | null) => void;
 };
 const key = (key: string, extra: Partial<Extract<ShortcutBinding, { type: 'keyboard' }>> = {}): ShortcutBinding => ({ type: 'keyboard', key, ctrl: true, ...extra });
+const wheel = (direction: 'up' | 'down') => ({
+  keys: ['Ctrl', direction === 'up' ? '滚轮↑' : '滚轮↓'],
+  compactKeys: [direction === 'up' ? '滚轮↑' : '滚轮↓'],
+  description: `Ctrl+鼠标滚轮向${direction === 'up' ? '上' : '下'}`,
+});
 export function createAppShortcutCommands(a: AppShortcutOptions): ShortcutCommand[] {
   const global = { kind: 'global' } as const, workbench = { kind: 'workbench' } as const, reader = { kind: 'scene', sceneId: 'reader' } as const;
   const pdf = () => a.hasPaper && a.pdfMode;
   return [
     { id: 'global.palette', title: '命令面板', group: '工作台', scope: workbench, defaultBindings: [key('k'), key('p', { shift: true })], allowInEditable: true, execute: a.palette },
-    ...a.scenes.map((s): ShortcutCommand => ({ id: `scene.${s.id}`, title: `打开${s.label}`, group: '场景切换', scope: workbench, defaultBindings: s.key ? [key(s.key)] : [], execute: () => a.openScene(s.id) })),
+    ...a.scenes.map((s): ShortcutCommand => ({ id: `scene.${s.id}`, title: `打开${s.label}`, group: '场景切换', scope: workbench, defaultBindings: s.key ? [key(s.key)] : [], showInHints: (context) => context.activeSceneId !== s.id, execute: () => a.openScene(s.id) })),
     { id: 'library.importPdf', title: '导入 PDF', group: '工作台', scope: workbench, defaultBindings: [key('o')], execute: a.importPdf },
     { id: 'library.search', title: '搜索文献库', group: '工作台', scope: workbench, defaultBindings: [key('f')], inactiveSceneIds: ['reader'], execute: a.librarySearch },
-    { id: 'library.openReader', title: '阅读选中文献', group: '工作台', scope: workbench, defaultBindings: [key('Enter')], isEnabled: () => a.hasPaper, execute: () => a.openScene('reader') },
-    { id: 'global.zoomIn', title: '放大界面', group: '全局界面缩放', scope: global, defaultBindings: [key('=', { alt: true }), key('+', { alt: true, shift: true })], allowInEditable: true, allowRepeat: true, execute: () => a.uiZoom(.1) },
-    { id: 'global.zoomOut', title: '缩小界面', group: '全局界面缩放', scope: global, defaultBindings: [key('-', { alt: true })], allowInEditable: true, allowRepeat: true, execute: () => a.uiZoom(-.1) },
-    { id: 'global.zoomReset', title: '重置界面缩放', group: '全局界面缩放', scope: global, defaultBindings: [key('0', { alt: true })], allowInEditable: true, execute: () => a.uiZoom(null) },
+    { id: 'library.openReader', title: '阅读选中文献', group: '工作台', scope: workbench, defaultBindings: [key('Enter')], showInHints: (context) => context.activeSceneId !== 'reader', isEnabled: () => a.hasPaper, execute: () => a.openScene('reader') },
+    { id: 'global.zoomIn', title: '放大界面', group: '全局界面缩放', scope: global, defaultBindings: [], fixedGesture: wheel('up'), isVisible: (context) => context.activeSceneId !== 'reader' || !pdf() },
+    { id: 'global.zoomOut', title: '缩小界面', group: '全局界面缩放', scope: global, defaultBindings: [], fixedGesture: wheel('down'), isVisible: (context) => context.activeSceneId !== 'reader' || !pdf() },
+    { id: 'reader.file.source', title: '原文视图', group: '阅读视图', scope: reader, defaultBindings: [key('F1')], isVisible: pdf, isEnabled: () => pdf() && a.hasSourcePdf, execute: () => a.selectReaderFileMode('source') },
+    { id: 'reader.file.translated', title: '译文视图', group: '阅读视图', scope: reader, defaultBindings: [key('F2')], isVisible: pdf, isEnabled: () => pdf() && a.hasTranslatedPdf, execute: () => a.selectReaderFileMode('translated') },
+    { id: 'reader.file.parallel', title: '对照视图', group: '阅读视图', scope: reader, defaultBindings: [key('F3')], isVisible: pdf, isEnabled: () => pdf() && a.hasSourcePdf && a.hasTranslatedPdf, execute: () => a.selectReaderFileMode('parallel') },
     { id: 'reader.search', title: '搜索当前 PDF', group: '阅读', scope: reader, defaultBindings: [key('f')], isEnabled: pdf, execute: a.pdfSearch },
-    { id: 'reader.zoomIn', title: '放大 PDF', group: '阅读', scope: reader, defaultBindings: [key('='), key('+', { shift: true })], isEnabled: pdf, allowRepeat: true, execute: () => a.pdfZoom(.1) },
-    { id: 'reader.zoomOut', title: '缩小 PDF', group: '阅读', scope: reader, defaultBindings: [key('-')], isEnabled: pdf, allowRepeat: true, execute: () => a.pdfZoom(-.1) },
+    { id: 'reader.zoomIn', title: '放大 PDF', group: '阅读', scope: reader, defaultBindings: [], fixedGesture: wheel('up'), isVisible: pdf },
+    { id: 'reader.zoomOut', title: '缩小 PDF', group: '阅读', scope: reader, defaultBindings: [], fixedGesture: wheel('down'), isVisible: pdf },
     { id: 'reader.fitWidth', title: 'PDF 适合宽度', group: '阅读', scope: reader, defaultBindings: [key('0')], isEnabled: pdf, execute: a.fitWidth },
     { id: 'reader.undo', title: '撤销标注', group: '标注操作', scope: reader, defaultBindings: [key('z')], isEnabled: () => pdf() && a.canUndo, execute: a.undo },
     { id: 'reader.redo', title: '重做标注', group: '标注操作', scope: reader, defaultBindings: [key('y'), key('z', { shift: true })], isEnabled: () => pdf() && a.canRedo, execute: a.redo },

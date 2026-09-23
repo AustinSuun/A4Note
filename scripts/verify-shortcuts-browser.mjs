@@ -39,7 +39,37 @@ try {
   check(await key('Control+h'),['highlight'],'one dispatch under StrictMode');
   for(const selector of ['#input','#textarea','#select','#editable','#cm']) check(await key('Control+z',selector),[],selector+' protects undo');
   check(await key('Control+Alt+Enter','#textarea'),['reader.notes.mode.focus'],'writing command explicit editable opt-in');
-  check(await key('Control+='),['pdf-zoom'],'PDF zoom command');check(await key('Control+Alt+='),['ui-zoom'],'UI zoom separate');
+  check(await key('Control+='),[],'legacy PDF zoom key removed');check(await key('Control+-'),[],'legacy PDF zoom-out key removed');
+  check(await key('Control+Alt+='),[],'legacy UI zoom key removed');check(await key('Control+Alt+0'),[],'legacy UI reset key removed');
+  check(await key('Control+F1'),['file-source'],'source view shortcut');
+  check(await key('Control+F2'),['file-translated'],'translated view shortcut');
+  check(await key('Control+F3'),['file-parallel'],'parallel view shortcut');
+  check(await page.locator('[data-file-mode="parallel"]').getAttribute('aria-pressed'),'true','view switch updates selected control');
+  check(await page.locator('[data-file-mode="parallel"]').getAttribute('aria-keyshortcuts'),'Control+F3','view switch is discoverable on toolbar');
+  await page.evaluate(()=>window.__shortcutsTest.setHasTranslation(false));
+  await page.waitForFunction(()=>document.querySelector('[data-file-mode="translated"]')?.disabled);
+  check(await key('Control+F2'),[],'translation absent disables translated shortcut');
+  check(await key('Control+F3'),[],'translation absent disables comparison shortcut');
+  await page.evaluate(()=>window.__shortcutsTest.setHasTranslation(true));
+  await page.waitForFunction(()=>!document.querySelector('[data-file-mode="translated"]')?.disabled);
+  await page.locator('#canvas').hover();await page.keyboard.down('Control');await page.mouse.wheel(0,-120);await page.keyboard.up('Control');
+  check(await events(),['pdf-zoom'],'Ctrl+wheel outside PDF page zooms reader PDF');
+  const inputWheelConsumed=await page.evaluate(()=>{const event=new WheelEvent('wheel',{bubbles:true,cancelable:true,ctrlKey:true,deltaY:100});document.getElementById('input').dispatchEvent(event);return event.defaultPrevented;});
+  check(inputWheelConsumed,true,'Ctrl+wheel over an input does not zoom the browser');
+  check(await events(),['pdf-zoom'],'Ctrl+wheel over an input still zooms the reader');
+  const pdfOwnsWheel=await page.evaluate(()=>{const n=document.createElement('div');n.className='pdf-document';document.body.append(n);const event=new WheelEvent('wheel',{bubbles:true,cancelable:true,ctrlKey:true,deltaY:-120});n.dispatchEvent(event);n.remove();return event.defaultPrevented;});
+  check(pdfOwnsWheel,true,'Ctrl+wheel inside PDF document never reaches browser zoom');
+  check(await events(),[],'PDF native wheel handler is not double-dispatched');
+  await page.getByRole('button',{name:'Modal',exact:true}).click();
+  const modalWheelConsumed=await page.evaluate(()=>{const event=new WheelEvent('wheel',{bubbles:true,cancelable:true,ctrlKey:true,deltaY:100});document.querySelector('[role="dialog"]').dispatchEvent(event);return event.defaultPrevented;});
+  check(modalWheelConsumed,true,'modal Ctrl+wheel cannot zoom the browser');check(await events(),[],'modal wheel cannot zoom the reader');
+  await page.getByRole('button',{name:'Modal',exact:true}).click();
+  const hiddenModalWheel=await page.evaluate(()=>{const n=document.createElement('div');n.role='dialog';n.setAttribute('aria-modal','true');n.hidden=true;document.body.append(n);const event=new WheelEvent('wheel',{bubbles:true,cancelable:true,ctrlKey:true,deltaY:-120});document.getElementById('canvas').dispatchEvent(event);n.remove();return event.defaultPrevented;});
+  check(hiddenModalWheel,true,'invisible dialog cannot block Ctrl+wheel');check(await events(),['pdf-zoom'],'hidden modal does not intercept reader zoom');
+  await page.getByRole('button',{name:'Library',exact:true}).click();
+  await page.locator('#canvas').hover();await page.keyboard.down('Control');await page.mouse.wheel(0,120);await page.keyboard.up('Control');
+  check(await events(),['ui-zoom'],'Ctrl+wheel outside reader zooms interface');
+  await page.getByRole('button',{name:'Reader',exact:true}).click();
   await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(200);
   check(await page.locator('.shortcut-hints').evaluate(n=>getComputedStyle(n).pointerEvents),'none','hints never intercept pointers');
   check(await page.locator('.shortcut-hints').getAttribute('aria-hidden'),'true','hints do not duplicate accessible controls');
@@ -49,6 +79,12 @@ try {
   check(await page.locator('[data-hint-id="reader.undo"] .shortcut-hint-label').innerText(),'撤销标注','spec3: unanchored keys have real action on their right');
   check(await page.locator('[data-hint-id="reader.tool.highlight"] .shortcut-hint-keys').textContent(),'H','primary effective binding by its button');
   check(await page.locator('[data-hint-id="reader.zoomIn"]').getAttribute('data-hint-placement'),'adjacent','right-side zoom no longer relegated to panel');
+  check(await page.locator('[data-hint-id="reader.zoomIn"] .shortcut-hint-keys').textContent(),'滚轮↑','reader zoom hint shows fixed Ctrl+wheel gesture');
+  check(await page.locator('[data-hint-id="reader.file.parallel"] .shortcut-hint-keys').textContent(),'F3','file mode hint appears beside control');
+  check((await page.locator('[data-shortcut-id="reader.zoomIn"]').getAttribute('title')).includes('Ctrl+鼠标滚轮向上'),true,'zoom tooltip matches wheel gesture');
+  const backdrop=await page.locator('[data-hint-id="reader.undo"]').evaluate(n=>{const s=getComputedStyle(n,'::before');return {content:s.content,background:s.backgroundColor,blur:s.backdropFilter};});
+  check(backdrop.content!=='none'&&backdrop.background!=='rgba(0, 0, 0, 0)'&&backdrop.blur.includes('blur('),true,'floating action hints have translucent frosted backing');
+  check(await page.locator('[data-hint-id="reader.undo"] kbd').first().evaluate(n=>getComputedStyle(n).backdropFilter.includes('blur(')),true,'keycaps also shield document text');
   await page.screenshot({path:path.join(evidence,'01-reader-hints.png')});
   const initialSize=await page.locator('[data-hint-id="reader.tool.highlight"] kbd').evaluate(n=>({font:parseFloat(getComputedStyle(n).fontSize),height:n.getBoundingClientRect().height}));
   fs.writeFileSync(path.join(evidence,'initial-size.json'),JSON.stringify(initialSize));
@@ -57,6 +93,9 @@ try {
   check(await page.locator('[data-hint-id="reader.undo"] .shortcut-hint-keys').textContent(),'Ctrl+Z','floating hints keep full combination');
   await page.keyboard.up('Control');await page.waitForTimeout(180);
   check(await page.locator('.shortcut-hints').evaluate(n=>getComputedStyle(n).opacity),'0','release hides hints');
+  check(await page.locator('[data-shortcut-row="reader.zoomIn"] .shortcut-keycaps').getAttribute('aria-label'),'Ctrl+鼠标滚轮向上','settings display fixed zoom gesture');
+  check(await page.locator('[data-shortcut-row="reader.zoomIn"] button').count(),0,'fixed wheel gesture cannot be recorded or cleared');
+  check((await page.locator('.shortcut-editor-lead').innerText()).includes('Ctrl + 鼠标滚轮'),true,'settings instructions use wheel instead of old zoom keys');
   // The fixture renders a standalone editor and mock canvas together; the real
   // app opens settings above the dock in a modal. Hide only the mock dock for
   // editing, then restore it for the dedicated anchor/occlusion geometry matrix.
@@ -91,7 +130,7 @@ try {
   await cdp.detach();
   await page.getByRole('button',{name:'恢复本组默认'}).click();await page.getByRole('button',{name:'确认恢复'}).click();check(await key('Control+h'),['highlight'],'group reset');check(await key('Control+u'),['underline'],'reset restores conflict victim');
   await page.getByRole('button',{name:'Library',exact:true}).click();check(await key('Control+h'),[],'scene isolation');check(await key('Control+f'),['library-search'],'library search preserved');
-  await page.getByRole('button',{name:'恢复本组默认'}).click();await page.getByRole('button',{name:'确认恢复'}).click();check(await page.getByRole('alert').count(),0,'default library/reader CtrlF not false conflict');
+  await page.getByRole('button',{name:'恢复本组默认'}).click();await page.getByRole('button',{name:'确认恢复'}).click();check(await page.getByRole('alert').allTextContents(),[],'default library/reader CtrlF not false conflict');
   await page.getByRole('button',{name:'Reader',exact:true}).click();check(await key('Control+f'),['pdf-search'],'reader search preserved');
   await page.getByRole('button',{name:'Modal',exact:true}).click();check(await key('Control+h'),[],'modal protection');await page.getByRole('button',{name:'Modal',exact:true}).click();
   await page.setViewportSize({width:800,height:600});await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(180);
@@ -188,6 +227,23 @@ try {
   await page.locator('#hint-obstacle').evaluate(n=>n.remove());await page.waitForTimeout(180);
   }
   await page.keyboard.up('Control');await page.waitForTimeout(180);
+  // A disabled row must mute its ink, not its entire glass card. Fading the
+  // parent makes the PDF text show through the action label again.
+  await page.setViewportSize({width:1280,height:900});
+  await page.evaluate(()=>{window.__disabledProbe=window.__shortcutsTest.store.register('disabled-probe',[{
+    id:'reader.disabledProbe',title:'不可用操作',group:'阅读',scope:{kind:'scene',sceneId:'reader'},
+    defaultBindings:[{type:'keyboard',key:'F10',ctrl:true}],isEnabled:()=>false,
+  }]);});
+  await page.locator('#canvas').focus();await page.keyboard.down('Control');
+  await page.waitForFunction(()=>document.querySelector('[data-hint-id="reader.disabledProbe"]')?.dataset.hintPlacement==='floating');
+  const disabledGlass=await page.locator('[data-hint-id="reader.disabledProbe"]').evaluate(n=>({
+    opacity:getComputedStyle(n).opacity,visible:getComputedStyle(n).visibility,
+    background:getComputedStyle(n,'::before').backgroundColor,blur:getComputedStyle(n,'::before').backdropFilter,
+  }));
+  check(disabledGlass.opacity,'1','disabled floating row does not fade its glass card');
+  check(disabledGlass.visible,'visible','disabled floating action remains visible');
+  check(/0\.97/.test(disabledGlass.background)&&disabledGlass.blur.includes('blur(12px)'),true,'disabled floating row shields underlying PDF text');
+  await page.keyboard.up('Control');await page.evaluate(()=>window.__disabledProbe());
   check(errors,[],'no browser console/page errors');
 } finally {
   fs.writeFileSync(path.join(evidence,'result.json'),JSON.stringify({checks,errors,kind:'real-browser-component-harness-not-native-desktop'},null,2));
