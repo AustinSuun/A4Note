@@ -43,7 +43,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          A4NOTE_RELEASE_NOTES: '阅读器标注工具栏：图层入口高度与同排工具对齐、清理旧容器残边，工具栏恢复紧凑高度；精简阅读器笔记侧栏，标题栏改为书签边界按钮并支持覆盖菜单朝内容展开；修复彩虹树参考线缩放对齐并恢复垂直参考线；放大快捷键提示并保护内联面板；移除阅读清单展开/关闭按钮绿框；任务卡标题栏空白条可拖拽。另包含0.1.28排版改进：Markdown正文默认16px并收紧段落间距，修复脚注上标、返回定位和不透明预览，改进表格、选区、文末留白与图片控制，笔记文件树类型标签、紧凑双排悬浮栏与更轻毛玻璃，PDF交互与标注撤销/保存队列。更新前资料库备份不含外部Markdown文件，请先备份重要资料。配套浏览器插件0.6.5不变。'
+          A4NOTE_RELEASE_NOTES: '阅读器笔记面板入场动效：常规笔记从右侧滑入、悬浮速记按所在位置弹出并带轻微回弹，模式切换、重开与快捷键触发均重放，遵循系统减弱动效设置；阅读界面新增 Ctrl+F1/F2/F3 原文、译文、对照切换快捷键，缩放快捷键统一为 Ctrl+鼠标滚轮，快捷键提示浮层改为毛玻璃高对比度背板；阅读笔记复用主 Markdown 编辑器；资料库右键菜单可打开 PDF 所在文件夹。更新前请先备份重要资料。配套浏览器插件0.6.5不变。'
         run: |
           npm run package:windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
