@@ -17,6 +17,7 @@ import type { MarkdownTemplate } from '../explorer/markdownTemplates';
 import type { NoteDraftPatch, NoteSaveInput } from './types';
 
 const claimedNoteRequests = new WeakSet<NoteDraftPatch>();
+const SummaryDocumentEditor = lazy(() => import('../library/SummaryDocumentEditor').then(module => ({ default: module.SummaryDocumentEditor })));
 
 const MarkdownLiveEditor = lazy(() =>
   import('./MarkdownLiveEditor').then((module) => ({ default: module.MarkdownLiveEditor })),
@@ -118,9 +119,10 @@ export function MarkdownNotePanel({
     if (!surfaceActive || !acceptsRequests || !draftPatch?.append || claimedNoteRequests.has(draftPatch)) return;
     claimedNoteRequests.add(draftPatch);
     const snapshot = session.getSnapshot();
-    session.update(snapshot.title, `${snapshot.content.trimEnd()}${draftPatch.append}`);
+    const prefix = selectedNoteId && selectedNoteId === summaryNoteId ? snapshot.content : snapshot.content.trimEnd();
+    session.update(snapshot.title, `${prefix}${draftPatch.append}`);
     setMode('edit'); onDraftPatchConsumed();
-  }, [draftPatch, onDraftPatchConsumed, session, surfaceActive, acceptsRequests]);
+  }, [draftPatch, onDraftPatchConsumed, session, surfaceActive, acceptsRequests, selectedNoteId, summaryNoteId]);
   useEffect(() => {
     if (!surfaceActive || saveState !== 'dirty') return;
     const timer = window.setTimeout(() => { void session.flush().catch(() => {}); }, 900);
@@ -341,7 +343,12 @@ export function MarkdownNotePanel({
           if (window.confirm('放弃未保存修改并回到上次保存的内容？建议先导出草稿。')) void session.discard().then(() => setActionError('')).catch((error) => setActionError(String(error)));
         }}>放弃草稿</button>
       </div>}
-      {mode === 'edit' ? (
+      {selectedNoteId && selectedNoteId === summaryNoteId && (!sourceMode || mode === 'read') ? <>
+        {mode === 'edit' && <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertFormat} onImage={() => editorRef.current?.pickImages()} sourceMode={false} onToggleSource={() => setSourceMode(true)} />}
+        <Suspense fallback={<div className="note-editor-loading"><LoaderCircle className="spin" aria-hidden="true" /></div>}>
+          <SummaryDocumentEditor key={`${paper.paperId}:${selectedNoteId}`} ref={editorRef} paper={paper} scope={`${paper.paperId}:${selectedNoteId}`} source={content} getCurrent={() => session.getSnapshot().content} onChange={updateContent} onBlur={() => void saveCurrent()} onSource={() => { setMode('edit'); setSourceMode(true); }} readOnly={mode !== 'edit'} surfaceActive={surfaceActive} onNavigateAnnotation={onNavigateAnnotation} />
+        </Suspense>
+      </> : mode === 'edit' ? (
         <>
           <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertFormat} onImage={() => editorRef.current?.pickImages()} sourceMode={sourceMode} onToggleSource={() => setSourceMode(current => !current)} />
         <Suspense fallback={<div className="note-editor-loading"><LoaderCircle className="spin" aria-hidden="true" /></div>}>

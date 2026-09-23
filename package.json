@@ -63,7 +63,7 @@
     "test:library-behavior": "node --experimental-strip-types scripts/verify-library-behavior.mjs",
     "test:startup-safety": "node scripts/verify-startup-safety.mjs",
     "test:reliability": "node --experimental-strip-types scripts/verify-reliability.mjs",
-    "test:summary-fields": "node scripts/verify-summary-field-catalog.mjs && node scripts/verify-summary-document.mjs && node scripts/verify-summary-editor-patch.mjs && node scripts/verify-summary-catalog-browser.mjs",
+    "test:summary-fields": "node scripts/verify-summary-field-catalog.mjs && node scripts/verify-summary-document.mjs && node scripts/verify-summary-editor-patch.mjs && node scripts/verify-summary-catalog-browser.mjs && node scripts/verify-summary-reader-bridge-browser.mjs",
     "test:library-summary": "node --experimental-strip-types scripts/verify-library-summary.mjs",
     "test:capture-native": "node scripts/verify-capture-native.mjs",
     "test:capture-native-process": "node scripts/verify-native-process.mjs",

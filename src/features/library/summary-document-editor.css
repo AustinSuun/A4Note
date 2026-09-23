@@ -13,3 +13,8 @@
 .summary-document-editor .markdown-live-codemirror .cm-editor { height: auto !important; min-height: 130px; }
 .summary-document-editor .markdown-live-codemirror .cm-scroller { overflow: visible; }
 .summary-document-editor .markdown-live-codemirror .cm-content { min-height: 130px; padding-bottom: 28px; }
+.summary-document-editor button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+.summary-document-editor button:disabled { opacity: .5; cursor: default; }
+.summary-document-editor button:focus-visible, .summary-document-editor select:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+.note-workspace > .summary-document-editor { min-height: 0; }
+.note-workspace:has(> .markdown-authoring-dock) > .summary-document-editor { padding-bottom: 96px; }
