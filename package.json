@@ -70,7 +70,8 @@
     "test:extension-updates": "node scripts/verify-extension-updates.mjs",
     "test:note-workbench-browser": "node scripts/verify-note-workbench-browser.mjs",
     "test:note-enter-motion-browser": "node scripts/verify-note-enter-motion-browser.mjs",
-    "test:tree-guides-browser": "node scripts/verify-tree-guides-browser.mjs"
+    "test:tree-guides-browser": "node scripts/verify-tree-guides-browser.mjs",
+    "test:markdown-scroll-browser": "node scripts/verify-markdown-scroll-browser.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",

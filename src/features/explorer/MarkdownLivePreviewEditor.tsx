@@ -1713,8 +1713,20 @@ function createMeasurementDecorations(view: EditorView): MeasurementDecorations 
     for (const cursor = buildLiveDecorations(view.state, false, mode).iter(); cursor.value; cursor.next()) ranges.push(cursor.value.range(cursor.from, cursor.to));
     return Decoration.set(ranges, true);
   };
+  const rendered = build('rendered');
+  const source = build('source');
+  const tableIdle = build('table-idle');
+  const intrinsicWidgetLines = new Set<number>();
+  rendered.between(0, view.state.doc.length, (from, to, value) => {
+    const widget = value.spec.widget;
+    if (!(widget instanceof ImageWidget || widget instanceof LatexWidget || widget instanceof TableWidget || widget instanceof CalloutMarkerWidget)) return;
+    const first = view.state.doc.lineAt(from).number;
+    const last = view.state.doc.lineAt(to).number;
+    for (let line = first; line <= last; line += 1) intrinsicWidgetLines.add(line);
+  });
   return {
-    rendered: build('rendered'), source: build('source'), tableIdle: build('table-idle'), at: build,
+    rendered, source, tableIdle, at: build,
+    needsMixedStates: from => intrinsicWidgetLines.has(view.state.doc.lineAt(from).number),
     widgetDOM: widget => widget instanceof ImageWidget ? widget.measurementDOM(view) : widget.toDOM(view),
   };
 }
