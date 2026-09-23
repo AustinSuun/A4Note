@@ -741,10 +741,33 @@ pub fn dismiss_library_storage_prompt(app: AppHandle) -> Result<(), String> {
 mod tests {
     use super::*;
     use rusqlite::params;
-    use std::sync::Mutex;
-
-    // Migrations share process-wide state; keep the tests that run one sequential.
-    static SERIAL: Mutex<()> = Mutex::new(());
+    // The real migration/cancellation flags are process-wide. A module-local mutex
+    // cannot protect unrelated import tests running on libtest's other workers.
+    // Run only flag-mutating cases in child test processes; keep production state,
+    // all original assertions and the parent suite's default parallelism intact.
+    fn run_in_isolated_process(case: &str) -> bool {
+        let name = format!("storage::tests::{case}");
+        const CHILD_CASE: &str = "ASTER_STORAGE_TEST_CHILD_CASE";
+        if std::env::var(CHILD_CASE).as_deref() == Ok(name.as_str()) {
+            return false;
+        }
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([name.as_str(), "--exact", "--nocapture", "--color", "never"])
+            .env(CHILD_CASE, &name)
+            .output()
+            .expect("start isolated storage test process");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // A typo in the exact filter must fail, not silently execute zero tests.
+        assert!(
+            output.status.success()
+                && stdout.contains(&format!("test {name} ... ok"))
+                && stdout.contains("1 passed; 0 failed"),
+            "isolated storage test {name} failed ({:?})\n{stdout}\n{stderr}",
+            output.status.code()
+        );
+        true
+    }
 
     struct Fixture {
         base: PathBuf,
@@ -843,8 +866,34 @@ mod tests {
     }
 
     #[test]
+    fn migration_state_is_process_wide_and_cleans_up() {
+        if run_in_isolated_process("migration_state_is_process_wide_and_cleans_up") {
+            return;
+        }
+        assert!(ensure_not_migrating().is_ok());
+        let guard = begin_migration().unwrap();
+        assert!(migration_active());
+        assert!(begin_migration().is_err(), "a second migration must be refused");
+        let blocked = std::thread::spawn(|| {
+            let blocked = ensure_not_migrating().is_err();
+            request_cancel();
+            blocked
+        })
+        .join()
+        .unwrap();
+        assert!(blocked, "other threads must see the same active migration");
+        assert!(CANCEL_REQUESTED.load(Ordering::Acquire));
+        drop(guard);
+        assert!(!migration_active());
+        assert!(!CANCEL_REQUESTED.load(Ordering::Acquire));
+        assert!(ensure_not_migrating().is_ok());
+    }
+
+    #[test]
     fn migration_moves_files_rewrites_paths_and_can_return_to_default() {
-        let _serial = SERIAL.lock().unwrap();
+        if run_in_isolated_process("migration_moves_files_rewrites_paths_and_can_return_to_default") {
+            return;
+        }
         let fixture = Fixture::new("migrate");
         let original = fixture.seed_paper("paper-a", &[("source.pdf", b"%PDF-a"), ("captures/c1/x.pdf", b"%PDF-c"), ("总结.md", "# 摘要".as_bytes())]);
         fixture.seed_paper("paper-b", &[("translated.zh.file-1.pdf", b"%PDF-t")]);
@@ -875,7 +924,9 @@ mod tests {
 
     #[test]
     fn migration_refuses_conflicts_and_cancellation_without_touching_the_database() {
-        let _serial = SERIAL.lock().unwrap();
+        if run_in_isolated_process("migration_refuses_conflicts_and_cancellation_without_touching_the_database") {
+            return;
+        }
         let fixture = Fixture::new("conflict");
         let original = fixture.seed_paper("paper-a", &[("source.pdf", b"%PDF-a"), ("notes.pdf", b"%PDF-n")]);
         let external = fixture.base.join("external");
@@ -905,7 +956,6 @@ mod tests {
 
     #[test]
     fn switching_without_migration_keeps_old_bindings_and_reports_both_roots() {
-        let _serial = SERIAL.lock().unwrap();
         let fixture = Fixture::new("switch");
         let original = fixture.seed_paper("paper-a", &[("source.pdf", b"%PDF-a")]);
         let external = fixture.base.join("external");
