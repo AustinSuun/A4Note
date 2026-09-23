@@ -86,6 +86,7 @@ pub fn browser_files(root:&Path,envelope:&Value,result:&Value)->Result<Vec<Artif
 pub fn ingest(root:&Path,envelope:&Value,files:&[Artifact],target:Option<&str>)->Result<Value,String> {
     let _access=crate::library_access::operation()?;
     let _lock=crate::library_import::IMPORT_LOCK.lock().map_err(|_|"import_lock_unavailable")?;
+    crate::storage::ensure_not_migrating()?;
     let id=text(envelope,"captureId");
     if Uuid::parse_str(id).map(|v|v.to_string()!=id).unwrap_or(true) { return Err("invalid_capture_id".into()); }
     let db=root.join("aster.db");initialize_database(&db)?;
@@ -154,9 +155,10 @@ pub fn ingest(root:&Path,envelope:&Value,files:&[Artifact],target:Option<&str>)-
         let existing:Option<String>=tx.query_row("SELECT id FROM paper_files WHERE paper_id=?1 AND content_hash=?2 AND (?3=0 OR type='source_pdf') LIMIT 1",params![paper,actual,artifact.role=="fulltext" && !has_source],|r|r.get(0)).optional().map_err(|e|e.to_string())?;
         if let Some(file)=existing { map[&artifact.id]=json!(file);continue; }
         let kind=if artifact.role=="fulltext" && !has_source { "source_pdf" } else if artifact.role=="fulltext" {"version_pdf"} else if ext=="pdf" {"supplement_pdf"} else {"supplement_file"};
-        let directory=root.join("files").join("papers").join(&paper).join("captures").join(id);
+        let papers=crate::storage::papers_root(root);
+        let directory=papers.join(&paper).join("captures").join(id);
         fs::create_dir_all(&directory).map_err(|e|e.to_string())?;
-        let base=root.join("files").join("papers").canonicalize().map_err(|e|e.to_string())?;
+        let base=papers.canonicalize().map_err(|e|e.to_string())?;
         if !directory.canonicalize().map_err(|e|e.to_string())?.starts_with(&base) { return Err("文献存储目录越界".into()); }
         let dest=directory.join(captured_file_name(&file_title,kind,&actual,ext));
         if !dest.exists() {

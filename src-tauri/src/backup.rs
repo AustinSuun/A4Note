@@ -113,7 +113,7 @@ fn validate_database(path: &Path) -> Result<(), String> {
     }
     Ok(())
 }
-fn hash_file(path: &Path) -> Result<String, String> {
+pub(crate) fn hash_file(path: &Path) -> Result<String, String> {
     let mut file = fs::File::open(path).map_err(io)?;
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 65536];
@@ -205,7 +205,25 @@ fn durable_json(path: &Path, value: &impl Serialize) -> Result<(), String> {
 fn normalized_path(path: &str) -> String {
     path.replace('\\', "/").trim_end_matches('/').to_string()
 }
-fn suffix_under(path: &str, root: &str) -> Option<String> {
+/// Where the interrupted-restore scratch directory for the papers tree lives: the data
+/// root for the default layout (unchanged journal compatibility), otherwise the custom
+/// files root so the swap stays a same-volume rename.
+fn restore_scratch_home(files: &Path, root: &Path) -> PathBuf {
+    if files.starts_with(root) {
+        root.to_path_buf()
+    } else {
+        files.parent().map(Path::to_path_buf).unwrap_or_else(|| root.to_path_buf())
+    }
+}
+/// Rename when both sides share a volume, otherwise copy and remove the source.
+fn move_dir(from: &Path, to: &Path) -> Result<(), String> {
+    if fs::rename(from, to).is_ok() {
+        return Ok(());
+    }
+    copy_dir_recursive(from, to)?;
+    fs::remove_dir_all(from).map_err(io)
+}
+pub(crate) fn suffix_under(path: &str, root: &str) -> Option<String> {
     let path = normalized_path(path);
     let root = normalized_path(root);
     let prefix = format!("{root}/");
@@ -283,7 +301,7 @@ pub(crate) fn create_backup_for_root(root: &Path, prefix: &str) -> Result<PathBu
     let result = (|| {
         snapshot_database(&db, &staging.join("aster.db"))?;
         validate_database(&staging.join("aster.db"))?;
-        let source_files = root.join("files/papers");
+        let source_files = crate::storage::papers_root(root);
         let target_files = staging.join("files/papers");
         if source_files.exists() {
             copy_dir_recursive(&source_files, &target_files)?;
@@ -323,10 +341,10 @@ pub(crate) fn recover_interrupted_restore(root: &Path) -> Result<(), String> {
     Uuid::parse_str(&journal.token)
         .map_err(|_| "恢复日志无效，请保留目录并手动检查安全备份".to_string())?;
     let old_db = root.join(format!(".restore-old-{}.db", journal.token));
-    let old_files = root.join(format!(".restore-old-files-{}", journal.token));
     let staging = root.join(format!(".restore-stage-{}", journal.token));
     let db = root.join("aster.db");
-    let files = root.join("files/papers");
+    let files = crate::storage::papers_root(root);
+    let old_files = restore_scratch_home(&files, root).join(format!(".restore-old-files-{}", journal.token));
     if old_db.exists() {
         if db.exists() {
             fs::remove_file(&db).map_err(io)?;
@@ -403,14 +421,17 @@ fn restore_with_checkpoint(
             &staged_db,
             &staged_files,
             manifest.as_ref().map(|m| m.files_root.as_str()),
-            &root.join("files/papers"),
+            &crate::storage::papers_root(root),
         )?;
         validate_database(&staged_db)?;
         checkpoint(0)?;
         let safety = create_backup_for_root(root, "aster-pre-restore")?;
         let db = root.join("aster.db");
-        let files = root.join("files/papers");
-        fs::create_dir_all(root.join("files")).map_err(io)?;
+        let files = crate::storage::papers_root(root);
+        let files_home = restore_scratch_home(&files, root);
+        if let Some(parent) = files.parent() {
+            fs::create_dir_all(parent).map_err(io)?;
+        }
         // No live SQLite handles may exist here (maintenance command gate).
         // Refuse an unmanaged WAL rather than orphan a second process's transaction.
         for suffix in ["-wal", "-shm", "-journal"] {
@@ -426,7 +447,9 @@ fn restore_with_checkpoint(
             },
         )?;
         let old_db = root.join(format!(".restore-old-{token}.db"));
-        let old_files = root.join(format!(".restore-old-files-{token}"));
+        // Sibling of the papers tree so the swap stays a same-volume rename even
+        // when the files root lives on another drive.
+        let old_files = files_home.join(format!(".restore-old-files-{token}"));
         let promoted: Result<(), String> = (|| {
             fs::rename(&db, &old_db).map_err(io)?;
             checkpoint(1)?;
@@ -436,7 +459,7 @@ fn restore_with_checkpoint(
             checkpoint(2)?;
             fs::rename(&staged_db, &db).map_err(io)?;
             checkpoint(3)?;
-            fs::rename(&staged_files, &files).map_err(io)?;
+            move_dir(&staged_files, &files)?;
             checkpoint(4)?;
             fs::remove_file(root.join(JOURNAL)).map_err(io)?;
             Ok(())

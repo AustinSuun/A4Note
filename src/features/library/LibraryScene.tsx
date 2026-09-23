@@ -1,5 +1,6 @@
 import './library-typography.css';
 import { SummaryProvisionNotice } from './SummaryProvisionNotice';
+import { LibraryStorageNotice } from './LibraryStorageNotice';
 import { PaperSignals } from '../PaperSignals';
 import { LibraryNotesView } from './LibraryNotesView';
 import { LibraryViewSwitch } from './LibraryViewSwitch';
@@ -153,6 +154,7 @@ export function LibraryScene({
       <div className={`library-layout ${detailVisible ? 'detail-open' : ''}`.trim()}>
         <section className="library-main">
           <SummaryProvisionNotice />
+          <LibraryStorageNotice />
           <div className="library-commandbar">
             <LibraryViewSwitch view={view} onChange={setView} />
             <label className="library-search-field">

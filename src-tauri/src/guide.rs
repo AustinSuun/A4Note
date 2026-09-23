@@ -44,7 +44,7 @@ pub(crate) fn seed_default_guide(root: &Path, database_path: &Path) -> Result<()
     if guide_exists(&transaction)? {
         return repair_missing_builtin_pdf(&transaction, root);
     }
-    let pdf_path = root.join("files").join("papers").join(GUIDE_PAPER_ID).join("source.pdf");
+    let pdf_path = crate::storage::papers_root(root).join(GUIDE_PAPER_ID).join("source.pdf");
     create_missing_pdf(&pdf_path)?;
     let now = current_timestamp_ms();
     transaction.execute(
@@ -78,7 +78,7 @@ fn guide_exists(connection: &Connection) -> Result<bool, String> {
 }
 
 fn repair_missing_builtin_pdf(connection: &Connection, root: &Path) -> Result<(), String> {
-    let path = root.join("files").join("papers").join(GUIDE_PAPER_ID).join("source.pdf");
+    let path = crate::storage::papers_root(root).join(GUIDE_PAPER_ID).join("source.pdf");
     let bound_path: Option<String> = connection.query_row(
         "SELECT path FROM paper_files WHERE id = ?1 AND paper_id = ?2 AND type = 'source_pdf'",
         params![GUIDE_FILE_ID, GUIDE_PAPER_ID], |row| row.get(0),
