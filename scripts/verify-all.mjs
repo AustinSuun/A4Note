@@ -15,6 +15,7 @@ if (!tauriMainSource.includes('#![cfg_attr(not(debug_assertions), windows_subsys
 
 const isWindows = process.platform === 'win32';
 const steps = [
+  ['node', ['scripts/verify-chrome-debug-port.mjs']],
   ['node', ['scripts/verify-file-tree-display-name.mjs']],
   ['node', ['scripts/verify-markdown-end-space.mjs']],
   ['node', ['scripts/verify-annotation-history.mjs']],

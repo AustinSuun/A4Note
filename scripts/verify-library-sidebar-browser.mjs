@@ -4,6 +4,7 @@
 // Evidence: .tmp/shots/library-sidebar-browser/<run>/.
 //   node scripts/verify-library-sidebar-browser.mjs
 import fs from 'node:fs';
+import { waitForChromeDebugPort } from './wait-for-chrome-debug-port.mjs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createServer } from 'vite';
@@ -72,8 +73,7 @@ try {
     '--headless=new', '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check',
     '--disable-extensions', '--disable-background-networking', '--disable-component-update', '--user-data-dir=' + profile, '--window-size=900,800', 'about:blank',
   ], { stdio: 'ignore' });
-  for (let index = 0; index < 150 && !fs.existsSync(path.join(profile, 'DevToolsActivePort')); index += 1) await pause(100);
-  const port = Number(fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+  const port = await waitForChromeDebugPort(profile);
   const tabs = await (await fetch('http://127.0.0.1:' + port + '/json/list')).json();
   ws = new WebSocket(tabs.find(tab => tab.type === 'page').webSocketDebuggerUrl);
   await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });

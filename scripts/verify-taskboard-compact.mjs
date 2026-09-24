@@ -24,7 +24,7 @@ const pause = ms => new Promise(r => setTimeout(r, ms));
 const ok = (value, message) => { assert(value, message); checks++; };
 const rpc = (method, params = {}) => new Promise((resolve, reject) => {
   const id = ++seq;
-  const timer = setTimeout(() => { pending.delete(id); reject(Error('CDP timeout ' + method)); }, 12000);
+  const timer = setTimeout(() => { pending.delete(id); reject(Error('CDP timeout ' + method)); }, 30000); // CI cold Chromium can spend >12s parsing the fixture; assertions are unchanged.
   pending.set(id, m => { clearTimeout(timer); m.error ? reject(Error(JSON.stringify(m.error))) : resolve(m.result); });
   ws.send(JSON.stringify({ id, method, params }));
 });

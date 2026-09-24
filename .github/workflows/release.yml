@@ -43,7 +43,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          A4NOTE_RELEASE_NOTES: '总览笔记与文献库同源联动：按需自定义字段、明确选区归类、冲突保护、图片缩略图与空间自适应摘要；修复笔记滚动根与深浅主题对比度。包含已合入的存储目录迁移、PDF页码及库导航改进。包含按住Ctrl500ms后显示提示的快捷键修复；未合入的笔记面板扩展优化不在此版。更新前请备份重要资料；浏览器扩展0.6.5保持不变。'
+          A4NOTE_RELEASE_NOTES: '新增阅读器笔记面板三态模式记忆与按论文隔离；收紧面板边距，滚动条贴右且正文舒适限宽；改进悬浮圆弧缩放手柄、入口可见性和长短按提示。包含0.1.32的总览字段联动、图片托管、快捷键提示延迟及已有资料库存储/页码修复。更新前请备份重要资料；浏览器扩展保持0.6.5。'
         run: |
           npm run package:windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -86,6 +86,12 @@ const waitState = async (predicate) => {
 };
 /* transitions run for 220ms; settle before geometry assertions */
 const settle = () => pause(340);
+// Page.reload acknowledges before the old document disappears. Do not accept its stale hook state.
+const reload = async () => {
+  await ev('window.__reloadSentinel = true');
+  await send('Page.reload');
+  await wait('window.__reloadSentinel === undefined && !!window.__wbState');
+};
 const boxOf = selector => ev(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return {left:r.left,top:r.top,width:r.width,height:r.height,right:r.right,bottom:r.bottom}})()`);
 const dragBy = async (selector, dx, dy) => {
   const box = await boxOf(selector);
@@ -143,7 +149,7 @@ try {
   await send('Page.navigate', { url });
   await wait('!!window.__wbState && !!document.querySelector(".reader-note-workbench-button")');
   await ev('localStorage.clear()');
-  await send('Page.reload');
+  await reload();
   await pause(500);
   await wait('!!document.querySelector(".reader-note-workbench-button")');
   await waitState();
@@ -296,7 +302,7 @@ try {
     const token=getComputedStyle(document.documentElement).getPropertyValue('--authoring-content-max-width').trim();
     return { maxWidth:getComputedStyle(body).maxWidth, width:body.getBoundingClientRect().width, header:header.getBoundingClientRect().width, token }})()`);
   check(column.token === '720px', '共享 token 定义在 tokens.css', column.token);
-  check(column.maxWidth === '720px', '侧栏正文列使用共享 max-width', column.maxWidth);
+  check(column.maxWidth === 'none', '外层滚动壳不再受正文720px限制（真实正文列由native套件验证）', column.maxWidth);
   const chrome = await ev(`(()=>{const header=document.querySelector('.reader-workspace-header');const s=getComputedStyle(header);return {maxWidth:s.maxWidth,width:header.getBoundingClientRect().width}})()`);
   check(chrome.maxWidth === 'none', '标题栏等 chrome 不受正文列宽度限制', chrome);
 
@@ -324,9 +330,12 @@ try {
   await wait('!!document.querySelector(".reader-note-workbench-menu")');
   await click('.reader-note-workbench-menu [role=menuitemradio]:nth-of-type(3)');
   await wait('window.__wbState.mode === "writing"');
+  await ev(`window.__paperWrites=[];window.__originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k==='a4note.reader.noteWorkbench.paper-b')window.__paperWrites.push(JSON.parse(v));return window.__originalSetItem.call(this,k,v)}`);
   await click('.wb-harness-paper[data-paper="paper-b"]');
   await wait('window.__wbState.paperId === "paper-b"');
   check((await state()).mode === 'reading', '切换到另一篇论文时使用该论文自己的模式', (await state()).mode);
+  const paperWrites=await ev('Storage.prototype.setItem=window.__originalSetItem;window.__paperWrites');
+  check(paperWrites.length>0&&paperWrites.every(p=>p.mode==='reading'),'切换论文时没有短暂写入上一论文模式',paperWrites);
   await click('.reader-note-workbench-button');
   await wait('window.__wbState.drawerOpen === true');
   await click('.wb-harness-note');
@@ -345,7 +354,7 @@ try {
   /* 11. reload restores the persisted per-paper state */
   await click('.wb-harness-paper[data-paper="paper-a"]');
   await pause(150);
-  await send('Page.reload');
+  await reload();
   const reloaded = await waitState("state.paperId === 'paper-a'");
   check(reloaded.mode === 'writing', '重启后按论文恢复模式', reloaded.mode);
   check(Math.abs(reloaded.prefs.splitRatio - 0.37) > 0.001, '重启后保留拖动过的侧栏比例', reloaded.prefs.splitRatio);
@@ -388,6 +397,29 @@ try {
   await ev("document.querySelector('.pdf-document').scrollTop=0");const scrollBefore=await ev("document.querySelector('.pdf-document').scrollTop");rect=await boxOf(edge);await send('Input.dispatchMouseEvent',{type:'mouseWheel',x:rect.left+rect.width/2,y:rect.top+rect.height/2,deltaX:0,deltaY:120});await pause(150);const scrollAfter=await ev("document.querySelector('.pdf-document').scrollTop");check(scrollAfter>scrollBefore,'把手上滚轮继续滚动PDF',{scrollBefore,scrollAfter});
   await ev("document.documentElement.style.zoom='1.5';document.documentElement.style.setProperty('--ui-zoom','1.5');document.querySelector('.wb-harness').style.minWidth='980px';window.__edgeTest.setWidth(1600);window.__edgeTest.setMode('floating')");await settle();await settle();
   const bounded=await boxOf(edge);check(bounded.right<=1568&&await ev("(()=>{const n=document.querySelector('.reader-note-edge-handle'),r=n.getBoundingClientRect();return n.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2))})()"),'宿主最小宽度溢出时 Reader 自身约束在可见视口',bounded);
+  // Task 23671e62: open-mode memory, responsive fallback and visible floating guidance.
+  await ev("document.documentElement.style.zoom='1';document.querySelector('.wb-harness').style.minWidth='';window.__edgeTest.setWidth(1300)");await settle();
+  for (const mode of ['split', 'floating', 'writing']) {
+    await ev(`window.__edgeTest.setMode('${mode}')`);await settle();
+    await ev("window.__edgeTest.setMode('reading')");await settle();
+    check((await state()).prefs.lastOpenMode===mode, `${mode} 关闭保留明确模式`);
+    await click(edge);await settle();check((await state()).mode===mode, `${mode} 入口重开恢复同模式`);
+  }
+  await ev("window.__edgeTest.setMode('floating')");await settle();
+  const floatingEdge=await boxOf(edge);check(floatingEdge.width===24&&floatingEdge.height===72,'悬浮手柄适度放大24×72',floatingEdge);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:floatingEdge.left+12,y:floatingEdge.top+36});await pause(80);
+  const hintVisible=()=>ev("(()=>{const h=document.querySelector('.reader-note-edge-hint');return h?.textContent==='短按收起 · 长按切换模式'&&getComputedStyle(h).visibility==='visible'})()");
+  check(await hintVisible(),'悬浮手柄hover显示长短按引导');
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:10,y:10});await key('Tab','Tab',9);await ev("document.querySelector('.reader-note-edge-handle').focus()");
+  check(await hintVisible(),'悬浮手柄键盘焦点显示长短按引导');
+  await key('ArrowDown','ArrowDown',40);check(await ev("!!document.querySelector('.reader-note-workbench-menu')&&!document.querySelector('.reader-note-edge-hint')"),'菜单打开后隐藏引导且键盘菜单可达');await key('Escape','Escape',27);
+  await ev("window.__edgeTest.setMode('split');window.__edgeTest.setWidth(900)");await settle();
+  check((await state()).mode==='floating'&&(await state()).prefs.lastOpenMode==='split','临时悬浮保留split偏好');
+  await click(edge);await settle();await click(edge);await settle();
+  await ev("window.__edgeTest.setWidth(1300)");await settle();check((await state()).mode==='split','窄窗关闭重开后回宽恢复split');
+  await ev("window.__edgeTest.setMode('floating')");await settle();await click(edge);await settle();
+  await reload();await waitState("state.paperId === 'paper-a' && state.mode === 'reading'");await click(edge);await settle();
+  check((await state()).mode==='floating','关闭后重载仍按floating重开');
   check(errors.length === 0, '无运行时异常与控制台错误', errors);
 } catch (error) {
   check(false, '执行失败', String(error && error.stack ? error.stack : error));
