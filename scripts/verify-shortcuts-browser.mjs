@@ -70,7 +70,7 @@ try {
   await page.locator('#canvas').hover();await page.keyboard.down('Control');await page.mouse.wheel(0,120);await page.keyboard.up('Control');
   check(await events(),['ui-zoom'],'Ctrl+wheel outside reader zooms interface');
   await page.getByRole('button',{name:'Reader',exact:true}).click();
-  await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(200);
+  await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(650);
   check(await page.locator('.shortcut-hints').evaluate(n=>getComputedStyle(n).pointerEvents),'none','hints never intercept pointers');
   check(await page.locator('.shortcut-hints').getAttribute('aria-hidden'),'true','hints do not duplicate accessible controls');
   check(await page.locator('.shortcut-hint-panel').count(),0,'spec2: boxed command list removed');
@@ -133,7 +133,7 @@ try {
   await page.getByRole('button',{name:'恢复本组默认'}).click();await page.getByRole('button',{name:'确认恢复'}).click();check(await page.getByRole('alert').allTextContents(),[],'default library/reader CtrlF not false conflict');
   await page.getByRole('button',{name:'Reader',exact:true}).click();check(await key('Control+f'),['pdf-search'],'reader search preserved');
   await page.getByRole('button',{name:'Modal',exact:true}).click();check(await key('Control+h'),[],'modal protection');await page.getByRole('button',{name:'Modal',exact:true}).click();
-  await page.setViewportSize({width:800,height:600});await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(180);
+  await page.setViewportSize({width:800,height:600});await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(650);
   check(await page.locator('.shortcut-hints').evaluate(n=>getComputedStyle(n).transitionDuration),'0s','reduced motion');
   await page.screenshot({path:path.join(evidence,'02-narrow-hints.png')});await page.keyboard.up('Control');
   await page.screenshot({path:path.join(evidence,'03-reader-editor.png')});
@@ -147,7 +147,7 @@ try {
     await page.setViewportSize({width,height});
     await page.evaluate(z=>{document.documentElement.style.zoom=String(z);document.documentElement.style.setProperty('--ui-zoom',String(z));},zoom);
     const dockBefore=await page.locator('#tool-dock').boundingBox();
-    await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(180);
+    await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(650);
     const geometry=await page.evaluate(()=>{
       const paintStyle=document.createElement('style');paintStyle.textContent='.shortcut-hints [data-hint-id] kbd { pointer-events: auto !important; }';document.head.append(paintStyle);
       const coveredKeys=[...document.querySelectorAll('[data-hint-id] kbd')].filter(n=>{const r=n.getBoundingClientRect();return [[r.left+4,r.top+4],[r.right-4,r.bottom-4],[r.left+r.width/2,r.top+r.height/2]].some(([x,y])=>document.elementFromPoint(x,y)!==n);}).length;
@@ -197,7 +197,7 @@ try {
   // While Ctrl stays down, reflow and dynamic anchors must remeasure without a
   // new keydown, including non-window resize and portal/menu visibility changes.
   await page.evaluate(()=>{document.documentElement.style.zoom='1';document.documentElement.style.setProperty('--ui-zoom','1');});
-  await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(180);
+  await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(650);
   const before=await page.locator('[data-hint-id="reader.tool.highlight"]').boundingBox();
   await page.locator('#tool-dock').evaluate(n=>n.style.bottom='180px');await page.waitForTimeout(120);
   const after=await page.locator('[data-hint-id="reader.tool.highlight"]').boundingBox();
@@ -217,7 +217,7 @@ try {
   await page.keyboard.up('Control');await page.waitForTimeout(180);
   await page.keyboard.down('Control');await page.keyboard.up('Control');await page.waitForTimeout(200);
   check(await page.locator('.shortcut-hints').evaluate(n=>getComputedStyle(n).opacity),'0','quick Ctrl tap never leaves overlay visible');
-  await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(180);
+  await page.locator('#canvas').focus();await page.keyboard.down('Control');await page.waitForTimeout(650);
   for (const surface of ['tooltip','annotation-inline-actions','annotation-color-palette']) {
   const oldHint=await page.locator('[data-hint-id="reader.tool.highlight"]').boundingBox();
   await page.evaluate(({rect,surface})=>{const n=document.createElement('div');n.id='hint-obstacle';if(surface==='tooltip')n.role='tooltip';else n.className=surface;Object.assign(n.style,{position:'fixed',left:(rect.x-8)+'px',top:(rect.y-2)+'px',width:(rect.width+16)+'px',height:(rect.height+4)+'px',zIndex:'20000',background:'red'});document.body.append(n);},{rect:oldHint,surface});

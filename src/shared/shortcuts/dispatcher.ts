@@ -1,6 +1,13 @@
 import { canDispatchShortcut, resolveKeyboardCommand, resolveMouseCommand, type ShortcutCommand } from '../../core/shortcuts';
 import { ShortcutStore } from './store';
 
+/**
+ * Time users must keep Ctrl held before the hint overlay appears. Long enough
+ * that executing an already-memorized chord (Ctrl+B, Ctrl+H, Ctrl+Z, …) or a
+ * quick Ctrl tap never flashes the overlay; hints are for deliberate discovery.
+ */
+export const HINT_HOLD_DELAY_MS = 500;
+
 export function eventTargetIsEditable(target: EventTarget | null) {
   if (!(target instanceof Element)) return false;
   return target.matches('input, textarea, select') || (target instanceof HTMLElement && target.isContentEditable)
@@ -54,7 +61,7 @@ export function attachShortcutDispatcher(store: ShortcutStore, win: Window = win
         timer = setTimeout(() => {
           timer = undefined;
           if (controlDown && !usedChord && doc.hasFocus() && doc.visibilityState !== 'hidden' && !store.recording && !modalIsOpen(doc) && !store.context.modalOpen) store.setHint(true);
-        }, 150);
+        }, HINT_HOLD_DELAY_MS);
       }
       return;
     }
