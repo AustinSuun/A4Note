@@ -43,7 +43,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          A4NOTE_RELEASE_NOTES: '总览笔记与文献库同源联动：按需自定义字段、明确选区归类、冲突保护、图片缩略图与空间自适应摘要；修复笔记滚动根与深浅主题对比度。包含已合入的存储目录迁移、PDF页码及库导航改进。尚未合入的笔记面板扩展优化与快捷键提示延迟不在此版。更新前请备份重要资料；浏览器扩展0.6.5保持不变。'
+          A4NOTE_RELEASE_NOTES: '总览笔记与文献库同源联动：按需自定义字段、明确选区归类、冲突保护、图片缩略图与空间自适应摘要；修复笔记滚动根与深浅主题对比度。包含已合入的存储目录迁移、PDF页码及库导航改进。包含按住Ctrl500ms后显示提示的快捷键修复；未合入的笔记面板扩展优化不在此版。更新前请备份重要资料；浏览器扩展0.6.5保持不变。'
         run: |
           npm run package:windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
