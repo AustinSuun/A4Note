@@ -304,7 +304,7 @@ export function ReaderScene({
               onFitWidth={onFitWidth}
             />
             <div className="reader-layout">
-              {contentMode === 'pdf' && <ReaderPageControl paperId={paper.paperId} readerPageState={readerPageState} onJumpToPage={onJumpToPage} />}
+              {contentMode === 'pdf' && <ReaderPageControl paperId={paper.paperId} documentKey={JSON.stringify([paper.sourceFileId, fileMode, currentTranslatedFileId, activeParallelFileKind])} readerPageState={readerPageState} onJumpToPage={onJumpToPage} />}
               <ReaderDocumentPane
                 paper={paper}
                 contentMode={contentMode}

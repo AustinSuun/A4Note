@@ -32,7 +32,10 @@ fn safe_child(parent: &Path, name: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 fn managed_root(root: &Path) -> Result<PathBuf, String> {
-    let files = safe_child(root, "files")?;
+    // The files tree may be relocated (storage.rs); the reparse-point checks stay.
+    let files = crate::storage::files_root(root);
+    fs::create_dir_all(&files).map_err(|e| e.to_string())?;
+    crate::dev_environment::safe_path(&files).map_err(|_| "文件存储目录经过符号链接/联接点，拒绝读写总结".to_string())?;
     safe_child(&files, "papers")
 }
 fn paper_dir(root: &Path, id: &str) -> Result<PathBuf, String> {

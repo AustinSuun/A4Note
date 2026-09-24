@@ -16,6 +16,12 @@
       "Arena-Board / 总览7603 spec9：字段目录UI已接现有配置会话保存，支持新增稳定ID、重命名、显隐、排序及取消；10浏览器检查通过（模拟保存失败/重试），独立原生实际写盘+WebView刷新3项通过，三论文身份及正文完全不变。build/tsc/architecture通过。整项仍未交付：单篇添加/正常分区/归类CAS/自适应摘要/侧栏修复及最终全verify/原生重启待完成。未合并main或领取下一卡。",
       "Arena-Board / 总览字段7603aaaf spec9：无损字段/自由区模型、身份/基线归类候选保护和空白按需模板已实现；28目录+60文档+23既有summary、JS补齐及9项Rust补齐通过；整套npm run verify通过（231 Rust/0失败/5忽略，207837ms）。正常分区/目录UI、实际CAS归类保存、适应空间摘要、侧栏DOM与原生三论文联动仍未完成，不交付。独立arena-summary实例1489/CDP9289已启动，未用生产库。",
       "Arena-Board / 总览字段7603aaaf spec9：图片任务已合并main f891c15并submit review/rev27后顺序领取，独立worktree fix/summary-note-fields-arena-board；5张参考已校验哈希并目视查看。稳定ID字段目录纯函数基础及28项回归、tsc通过；尚未接UI/持久化/按需模板/无损分区和归类。侧栏竖线根因未量测，不臆断或只隐藏。详见docs/mcp-summary-fields-arena-board-2026-09-23.md，当前非交付。",
+      "windows-package-xingxu-0131：用户授权EXE打包完成，0.1.31/windows-x64，固定源码71b09a8（基线ef31ab0，含页码与最新文献库定位改动）。标准package:windows退出0/312.103秒，独立前端与Cargo目录；EXE/安装包SHA256、Windows版本资源、安装包更新签名及可信注释的Ed25519密码学验签通过；旧0.1.30整目录归档并复核5文件哈希。960已跟踪文件构建前后逐字节一致；build-info.sourceDirty=true。产物D:/WorkSpace/Aster/artifacts/windows/latest。仅本地打包，未安装/启动新产物/操作正式资料/推送/发布，未本轮完整verify或GUI功能验收。详见docs/mcp-windows-package-xingxu-2026-09-24.md。",
+      "library-column-settings-arena：Arena 完成 ae98615a spec2。根因：App 用 CSS zoom 缩放根元素，ColumnSettings 把视口像素 rect 直接写进 body portal 的 fixed left/top，渲染位置=值×zoom（80% 时左偏约 300px 即用户截图，125% 右偏）。新增 portalPlacement.ts（viewportScale/anchoredPlacement/pointPlacement/toCssPixels），ColumnSettings 与 PaperContextMenu 改为视口像素计算后换算一次；删除命令栏独立详情图标（行末「…」与右键「详情」仍开详情面板）。新增 test:library-column-settings-browser 21/21（旧代码 19/21 红测，已入 verify-all），context-menu 22/22、ui-state、tsc 0、build、architecture 通过；dev:live arena-library 前后：854×392@80%/100%、桌面 125%/100%、深色、综览共用、行菜单详情，pageerror/console 0。详见 docs/mcp-library-column-settings-arena-2026-09-24.md。更新：2026-09-24T02:05:00+08:00",
+      "reader-page-control-xingxu：星序完成 f4ea1a89 spec2。整段点击聚焦、草稿隔离、Enter/整体失焦单次提交、Esc/非法/未变取消、文档/页数变更丢弃草稿；按住外部按钮切文档等待释放与click后判定。实现da96422，用户授权的e54e56b仅隔离storage测试子进程并增跨线程标志回归，存储业务代码不变。保留存储/菜单主线后078594a完整verify69步通过；再保留cd6329侧栏提交形成0ee25bc，Reader/Rust无差异，13项相关整合回归全过，不宣称最终快照再跑70步全套。纯34/浏览器59/优先级74、原生59及12张after截图通过，errors=[]；默认并行Rust三轮236/0/5及整合复跑通过，诊断0。交付与本地main包含SHA见任务卡，待用户检查；未打包安装推送发布。详见docs/mcp-reader-page-control-xingxu-2026-09-24.md。",
+      "library-sidebar-top-folder-arena：Arena 完成 5e3bdbd4 spec2。删除 LibrarySceneSidebar 标题行的 FolderPlus「新建文件夹」按钮与导入，标题/篇数/分割线不变、无占位热区；「文件类」旁「＋ 新建文件类」、右键新建子文件夹、草稿行与创建逻辑保持。新增 test:library-sidebar-browser 13/13（已入 verify-all；旧代码 9/13 红测），tsc 0、build、architecture 通过；dev:live arena-library 前后截图（浅/深色标题行、＋ 草稿行、150%、980 窄窗，pageerror/console 0）。详见 docs/mcp-library-sidebar-top-folder-arena-2026-09-24.md。更新：2026-09-24T01:40:00+08:00",
+      "library-context-menu-header-arena：Arena 完成 bab38e7e spec2。删除 PaperContextMenu 顶部 .library-context-title 展示行与对应 CSS，菜单首项直接是「阅读」，role=menu 的 aria-label 仍含完整论文标题；操作项、禁用逻辑、文件夹子菜单、视口钳制定位与键盘/点外关闭均未改。新增 test:library-context-menu-browser 22/22（三轮稳定，已入 verify-all；旧代码 14/20 红测），tsc 0、build、ui-state、architecture 通过；dev:live arena-library 前后截图（浅/深色主菜单与子菜单、行末「…」、右下角锚点，pageerror/console 0）。详见 docs/mcp-library-context-menu-header-arena-2026-09-24.md。更新：2026-09-24T01:25:00+08:00",
+      "library-files-root-arena：Arena 发布并领取 6557dc15（用户要求插件下载的 PDF 与译文不要写 C 盘）。新增 src-tauri/src/storage.rs：<AsterData>/storage.json 配置、files_root/papers_root 统一解析（import/capture ingest+attach/summaries/guide/backup/diagnostics/delete 全部改走）、目录校验（绝对/非链接/不在 AsterData 内/隔离实例留在实例目录/生产在 AppData 外/可写）、Windows 剩余空间与推荐盘（剩余最多的非系统固定盘 X:\\A4Note\\files）、复制→SHA-256 校验→事务改写 paper_files.path→写配置→删旧的可取消迁移（失败/取消回滚、持导入锁阻塞并发导入采集、进度事件），采集缓存随文件根、capture.db 留原处；备份恢复支持外部文件根（同卷 rename/跨卷复制）。前端设置 → 资料库新增「文件存储位置」（当前目录/占用/磁盘剩余/推荐、选择目录、使用推荐、恢复默认、打开文件夹、迁移进度与取消）与资料库场景一次性推荐提示（可不再提示，老用户不静默迁移）。验证：cargo test 235/0/5 两轮；tsc 0、build、settings-ui 116/116、新增 test:library-storage-browser 31/31（入 verify-all）；dev:live 隔离实例 arena-storage 原生取证：使用推荐位置迁移 3 文件、旧目录消失、storage.json 指向新目录，真实 import_pdf/译文导入落在新目录且默认目录不存在，深色 150% 不裁切，恢复默认迁回，pageerror/console 0。详见 docs/mcp-library-files-root-arena-2026-09-24.md。更新：2026-09-24T00:55:00+08:00",
       "Arena-Board / 图片托管d3cdee12 spec1：三类入口共享受限图片落盘/粘贴/选择器、paperId显式读取、字段真缩略图与键盘查看完成。实现3b209ba，保留main0a43b66抓取/阅读器改动后整合95424a0；整合版PowerShell完整verify退出0/198.328秒（Rust230/0/5ignored），纯52/浏览器18、原生25项及3组几何，errors=[]。本地main已普通ff至95424a0，21份开发者结果附件已上传，准备submit待用户验收；未打包/推送/发布。详见docs/mcp-managed-images-arena-board-2026-09-23.md。",
       "白板865d6308 Phase0低优先级仅讨论：只读核实资料接入/来源语义，比较Excalidraw、自研混合画布、tldraw及许可，提出未实测性能目标、阶段路线和用户决策；不开发原型，不改产品代码、依赖或数据库。详见docs/mcp-whiteboard-phase0-arena-board-2026-09-23.md。",
       "目录任务deb0ed49：仅独立工作树修复TOC样式与可访问标题折叠，不改正文/保存，不覆盖主工作树滚动修复。详见docs/mcp-markdown-toc-arena-board-2026-09-23.md。",
@@ -178,7 +184,9 @@
     },
     "readerNoteEdgeXingxu": "done",
     "managedImagesArena": "in_progress",
-    "captureReadablePdfArena": "done"
+    "captureReadablePdfArena": "done",
+    "readerPageControlXingxu": "review",
+    "windowsPackageXingxu0131": "done"
   },
   "lastHandoff": {
     "completed": [
@@ -191,6 +199,9 @@
       "Arena-Board / 总览7603 spec9：字段目录UI已接现有配置会话保存，支持新增稳定ID、重命名、显隐、排序及取消；10浏览器检查通过（模拟保存失败/重试），独立原生实际写盘+WebView刷新3项通过，三论文身份及正文完全不变。build/tsc/architecture通过。整项仍未交付：单篇添加/正常分区/归类CAS/自适应摘要/侧栏修复及最终全verify/原生重启待完成。未合并main或领取下一卡。",
       "总览字段模型/空模板增量完成；旧块与自由段落不重写，确认提案核对paper+note身份和原文基线；确认函数尚不执行IO。",
       "总览字段：仅纯字段目录模型基础完成，产品未接线；图片前置任务已交付本地main f891c15/任务板review。",
+      "windows-package-xingxu-0131：用户授权EXE打包完成，0.1.31/windows-x64，固定源码71b09a8（基线ef31ab0，含页码与最新文献库定位改动）。标准package:windows退出0/312.103秒，独立前端与Cargo目录；EXE/安装包SHA256、Windows版本资源、安装包更新签名及可信注释的Ed25519密码学验签通过；旧0.1.30整目录归档并复核5文件哈希。960已跟踪文件构建前后逐字节一致；build-info.sourceDirty=true。产物D:/WorkSpace/Aster/artifacts/windows/latest。仅本地打包，未安装/启动新产物/操作正式资料/推送/发布，未本轮完整verify或GUI功能验收。详见docs/mcp-windows-package-xingxu-2026-09-24.md。",
+      "reader-page-control-xingxu：星序完成 f4ea1a89 spec2。整段点击聚焦、草稿隔离、Enter/整体失焦单次提交、Esc/非法/未变取消、文档/页数变更丢弃草稿；按住外部按钮切文档等待释放与click后判定。实现da96422，用户授权的e54e56b仅隔离storage测试子进程并增跨线程标志回归，存储业务代码不变。保留存储/菜单主线后078594a完整verify69步通过；再保留cd6329侧栏提交形成0ee25bc，Reader/Rust无差异，13项相关整合回归全过，不宣称最终快照再跑70步全套。纯34/浏览器59/优先级74、原生59及12张after截图通过，errors=[]；默认并行Rust三轮236/0/5及整合复跑通过，诊断0。交付与本地main包含SHA见任务卡，待用户检查；未打包安装推送发布。详见docs/mcp-reader-page-control-xingxu-2026-09-24.md。",
+
       "图片托管实现3b209ba，安全整合95424a0已普通ff合入干净本地main，保留抓取命名与阅读器最新交付；21份开发者结果已上传，不等于用户验收。",
       "Arena-Board：目录任务deb0ed49已合并本地main fcc2040并submit review rev53；随后领取白板865d6308并完成Phase0中文讨论方案，未派生开发任务。",
       "Arena-Board：目录折叠和缩放坐标修复已实现；同文档语义键、父子状态、跳级与重复标题、细中性引导线，独立worktree。",
@@ -514,6 +525,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
+      "最新增量2766f82：浏览器图片24/摘要14/滚动20、原生CAS4/布局26/阅读缩放8/表格7通过；419312ms及367270ms全verify退出0，但主题改动与main6b59170整合后需完整重跑。",
       "归类UI最终全verify退出0/217817ms，Rust231/0/5ignored；字段链213含新增25；assignment-ui-result.json原生UI5、geometry.json实际行盒与C取消，修后reader-preview-fixed.png已目视。首轮测量normal行高断言失败，最终重新全验。",
       "事务基础全verify退出0/207889ms，Rust231/0/5ignored；字段链188，新增48会话检查、transaction-v3-result.json原生API5项。原生钩子前两次测试装置失败有记录，不是UI验收。",
       "单篇目录入口全verify退出0/208689ms，Rust231/0/5ignored；字段链140（新增浏览器11），原生per-note-catalog-result.json 5项、截图per-note-catalog-full.png已目视。首轮遗漏聚焦后打开完整总结按钮，续测核对基线而非重复创建。",
@@ -522,6 +534,9 @@
       "目录UI增量：28目录+60模型+10浏览器；原生catalog-result.json 3项、catalog-after-reload.png已目视；build/tsc/architecture/diff。完整verify最近属于90be4fe模型提交，未冒充本UI增量完整verify。",
       "总览模型增量整套 npm run verify 通过，231 Rust通过/0失败/5忽略，207837ms；.tmp/summary-model-verify.log。28目录+60文档+23原summary；原生测试夹具启动不等于UI联动验收。",
       "总览字段基础：node scripts/verify-summary-field-catalog.mjs 28/28，tsc -b及diff check通过。5张reference下载哈希一致并目视查看。未运行本任务原生/完整verify，不冒充字段联动或持久化验收。",
+      "windows-package-xingxu-0131：标准Windows打包退出0/312.103秒；两份产物SHA256与metadata一致，版本资源0.1.31，更新签名/可信注释Ed25519验签通过，旧包5文件归档哈希一致、960源码文件逐字节一致。未完整verify、GUI/安装测试。",
+      "reader-page-control-xingxu：旧浏览器23/55→最终59/59，纯34、优先级74；隔离原生59项/12after+3before，errors=[]。首次整合verify真实记录Rust234/1/5；用户授权只改cfg(test)隔离全局迁移状态，默认并行三轮236/0/5；完整verify68步通过，再保留bf29菜单后078594a完整69步退出0/命令211529ms。再保留cd6329侧栏后0ee25bc的build、库侧栏/菜单/存储/行为、页码纯与浏览器/优先级、Reader/UI-state/架构/状态/cargo共13项通过，未声称该最终快照重跑70步。Reader同da96422、Rust业务未改，src诊断0。",
+
       "图片托管整合后完整verify退出0/198.328秒，Rust230通过/0失败/5忽略；整合前两轮也通过。52纯事务/18浏览器、原生25项及3组几何errors=[]，src诊断0。离线为非回环HTTP阻断；主题属性压力不等于完整主题验收。",
       "白板Phase0：源码/公开许可只读核实，明确事实F/建议S/待验证U。仅文档和双状态变更；不做UI或性能实测、不运行build/原生服务。文档格式与路径、diff白名单及test:agent-status作交付检查。",
       "Arena-Board：最终再次整合main1a2fdb2的Markdown滚动优化为a4238bc，只合并React import并集；build/reader/preview-layout/TOC-follow35/TOC浏览器67/滚动浏览器通过。测试服务限定允许node_modules junction真实路径解决字体403，未改生产服务。",
@@ -910,6 +925,7 @@
       "capture-readable-pdf-arena：定向Rust ingest_tests 8/8，独立工作树npm run verify退出0（Rust 220通过/5忽略），git diff --check通过。"
     ],
     "next": [
+      "当前7603：保留双方历史记录解决文档合并冲突，产品代码自动整合main6b59170；重新完整verify、隔离原生冷启动检查、结果附件及本地main安全ff后submit。其余卡已由他人提交的不得重复领取；发行前核对最新队列、版本和现有0.1.31产物。",
       "继续当前7603：原生应用内确认、宽窗拖动/收起与主题缩放、手动行高列宽、最终全verify/完整重启后main整合submit。A现有figure2/free1张受管图片，B已归类，C测试1仍自由，不重跑一次性变更脚本。",
       "继续7603：旧独立MD来源的后端原子身份保护后再开放归类；指定总结原生故障/并发切换/恢复矩阵；摘要实际空间/侧栏DOM根因/多主题缩放图片标注完整验收。B现有figure、自定义字段、finding，无原自由段；C测试1仍自由，不重跑旧一遍式脚本。完成后main/submit，再逐卡，最后打包推送发布。",
       "继续7603：共享Markdown编辑器读取真实选区快照并映射CRLF原始偏移；接明确目标预览/追加或取消，flush后复核scope+baseline再commitContent；异步切换保护、并发草稿导出/重读UI和旧版总结身份约束专项。再做摘要/侧栏/主题缩放等最终验收，最后main/submit。B已有两次API明确归类，不重跑旧夹具脚本。",
@@ -919,6 +935,9 @@
       "继续同一任务：单篇按需添加及正常字段/自由区编辑，再接带身份/基线保护的实际归类CAS保存，处理CRLF，最后自适应摘要/真实滚动/主题/重启/完整verify。",
       "继续当前7603 spec9：接目录管理/正常字段+自由区编辑和真实CAS保存；先保留来源直到保存成功，处理CRLF偏移。720px约束整个CM滚动根为侧栏候选根因，须原生DOM定位再修复。完成剩余UI/多主题缩放/3论文重启/最终verify后再合并main和submit。",
       "继续同一7603 spec9：无损字段/自由区区间模型及显式归类保存方案→全局目录/按需模板→共享正常分区UI→实际空间表格与侧栏根因→3论文原生/重启/完整verify，再合并main并submit。未完成前不领取第二任务。",
+      "windows-package-xingxu-0131：用户可从artifacts/windows/latest选择0.1.31 EXE或安装包自行试用。此轮不自动安装、运行、更新任务验收状态、推送或发布；本地latest.json不表示远程Release已创建。",
+      "reader-page-control-xingxu：交付到review后由用户检查整段页码点击、草稿/提交/取消及换文档；最终交付与main包含关系见任务卡结构化delivery。开发者证据不等于独立验收，不自行归档，不自动打包安装推送发布。",
+
       "提交当前图片任务待用户验收，然后逐个领取总览7603 spec9、其他新queued任务；不领取别人的进行中任务。全部执行队列完成后另行按标准命令打包、检查版本/签名、推送发布；白板仍仅讨论。",
       "白板Phase0等待用户讨论首发场景、许可预算、存储、引用默认与第一批资料类型；审阅方案不等于批准开发，后续原型/依赖/迁移/开发必须另行授权。两项任务不自行归档。",
       "Arena-Board：目录开发验证全部通过，安全合并本地main后submit review（提交哈希见任务卡）；等待用户验收，不自动归档。随后领取白板Phase0，仅方案文档、不做产品代码。",
@@ -961,8 +980,11 @@
       "capture-readable-pdf-arena：如需真实浏览器采集时看到新文件名，须另行构建并安装包含该源码的桌面版本；只重载插件不能使已安装桌面行为改变。旧PDF不自动迁移。"
     ],
     "risks": [
-      "本轮完整verify仅验证模型/模板增量，不代表任务已完成；纯归类候选不提供失败保存保证。不得把测试1自动归字段，不领取第二张卡；main/Windows打包/推送发布尚未进行。",
-      "必须保留原字段外内容及顺序；测试1不得自动归结构；保存冲突/取消/切文档不能丢原文。稳定ID不随名称改变，不向其它笔记批量补空字段。当前只有基础纯函数，没有完整产品功能。",
+      "当前7603仍是开发者验证，不能自验收；全局主题不在此卡范围，只修复本卡总览/阅读笔记背景。隔离夹具不是正式资料库，当前整合版本未打包或发布。",
+      "历史阶段记录：本轮完整verify仅验证模型/模板增量，不代表任务已完成；纯归类候选不提供失败保存保证。不得把测试1自动归字段，不领取第二张卡；main/Windows打包/推送发布尚未进行。",
+      "历史阶段记录：必须保留原字段外内容及顺序；测试1不得自动归结构；保存冲突/取消/切文档不能丢原文。稳定ID不随名称改变，不向其它笔记批量补空字段。当前只有基础纯函数，没有完整产品功能。",
+      "reader-page-control-xingxu：使用合成16页PDF和独立dev:live资料库；CSS100/125/150%为受控压力，不等于系统多显示器覆盖。5项Rust既有忽略未新增。额外修复仅测试隔离，未复测存储设置原生UI，不改变业务或接管其他卡。完整69步与随后13项差异回归分别记录，不混称最终快照70步全量。",
+
       "本任务不自动清理未引用资产、不迁移旧图；表格字段/自由区/文本布局归总览7603任务。原生发现既有隐藏PDF层拦截其他场景点击，关闭自身PDF标签绕开并记录；主题属性压力出现既有深色表格对比问题，不宣称视觉验收。未打包/推送/发布。",
       "layer-toolbar-height-xunzhou：npm run verify 的 test:reader/test:ui-state 两步失败为既有阻塞（qinglan 3781dfd 简化文本工具控件后 verify 源码契约未同步，8a3b1ed 已记录；本轮 stash 干净基线复现同一断言，非本轮引入，未代改他人脚本）。参考图附件本轮环境无法目视查看，结论全部来自运行时量测。仅 dev favicon.ico 404 为已知环境噪音。",
       "reader-selection-outline-xunzhou：修复只收窄 Reader 侧栏标题按钮的鼠标 active 样式，不改选择/打开/展开/移除事件，也不改其它场景焦点样式。未打包、安装、发布或写入生产资料库；根目录并行脏改动未触碰。",
@@ -988,6 +1010,7 @@
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。",
       "capture-readable-pdf-arena：未在用户真实资料库或已安装桌面端验收；仅新采集PDF生效，旧哈希名仍保留。"
     ],
-    "updatedAt": "2026-09-24T03:06:24.515545+00:00"
+    "updatedAt": "2026-09-24T10:13:25.385092+00:00"
+
   }
 }

@@ -140,6 +140,9 @@ pub(crate) fn import_pdf_into_root(
     request: ImportPdfRequest,
 ) -> Result<ImportPdfResult, String> {
     let _import_guard = IMPORT_LOCK.lock().map_err(|_| "Import lock unavailable".to_string())?;
+    // A storage migration holds the import lock for its whole run; once the lock is ours
+    // the files root is settled, so new files land in the right tree.
+    crate::storage::ensure_not_migrating()?;
     let source_path = PathBuf::from(&request.original_path);
     if !source_path.exists() {
         return Err("PDF file not found; cannot import".to_string());
@@ -173,12 +176,13 @@ pub(crate) fn import_pdf_into_root(
         .clone()
         .unwrap_or_else(|| format!("paper-{}", Uuid::new_v4()));
     let file_id = format!("file-{}", Uuid::new_v4());
-    let paper_dir = root.join("files").join("papers").join(&paper_id);
+    let papers_root = crate::storage::papers_root(root);
+    let paper_dir = papers_root.join(&paper_id);
     validate_paper_storage_id(&paper_id)?;
     if paper_exists(&root.join("aster.db"), &paper_id)? {
         return Err("文献ID已存在，拒绝覆盖原文献".to_string());
     }
-    fs::create_dir_all(root.join("files").join("papers")).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&papers_root).map_err(|error| error.to_string())?;
     // Own a fresh directory exclusively; never overwrite unregistered leftovers.
     fs::create_dir(&paper_dir).map_err(|error| format!("无法创建文献目录（不会覆盖已有文件）：{error}"))?;
 
@@ -219,6 +223,7 @@ pub(crate) fn import_translation_into_root(
     request: ImportTranslationRequest,
 ) -> Result<ImportTranslationResult, String> {
     let _import_guard = IMPORT_LOCK.lock().map_err(|_| "Import lock unavailable".to_string())?;
+    crate::storage::ensure_not_migrating()?;
     let source_path = PathBuf::from(&request.original_path);
     if !source_path.exists() {
         return Err("Translated PDF file not found; cannot import".to_string());
@@ -231,7 +236,7 @@ pub(crate) fn import_translation_into_root(
 
     validate_paper_storage_id(&request.paper_id)?;
     let file_id = format!("file-{}", Uuid::new_v4());
-    let paper_dir = root.join("files").join("papers").join(&request.paper_id);
+    let paper_dir = crate::storage::papers_root(root).join(&request.paper_id);
     fs::create_dir_all(&paper_dir).map_err(|error| error.to_string())?;
     let language = normalized_file_token(request.language.as_deref().unwrap_or("manual"));
     let target_path = paper_dir.join(format!("translated.{language}.{file_id}.pdf"));

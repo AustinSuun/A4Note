@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Columns3 } from 'lucide-react';
+import { anchoredPlacement, toCssPixels, viewportScale } from './portalPlacement';
 import './column-settings.css';
 
 type ColumnOption = { id: string; label: string; visible: boolean; fixed?: boolean };
@@ -17,9 +18,9 @@ export function ColumnSettings({ columns, disabled = false, onChange }: {
     if (!open) return;
     const place = () => {
       if (!trigger.current || !panel.current) return;
+      // Measure in viewport px, then convert to the zoomed CSS px `position: fixed` uses.
       const button = trigger.current.getBoundingClientRect(), box = panel.current.getBoundingClientRect();
-      const left = Math.max(8, Math.min(button.right - box.width, window.innerWidth - box.width - 8));
-      const top = Math.max(8, Math.min(button.bottom + box.height + 12 <= window.innerHeight ? button.bottom + 4 : button.top - box.height - 4, window.innerHeight - box.height - 8));
+      const { left, top } = toCssPixels(anchoredPlacement(button, box, { width: window.innerWidth, height: window.innerHeight }), viewportScale(panel.current));
       setPosition(current => current.left === left && current.top === top ? current : { left, top });
     };
     place();

@@ -32,6 +32,7 @@ export const SETTINGS_CATALOG: SettingsAnchor[] = [
   { id: 'setting-line-height', section: 'appearance', title: '文档行距', description: '紧凑或舒适的正文行距。', keywords: ['行距', '行高', 'line height'] },
   { id: 'setting-document-layout', section: 'appearance', title: '文档版式', description: '流式或窄栏版式。', keywords: ['版式', '布局', '宽度', '窄栏'] },
   { id: 'setting-library-paths', section: 'library', title: '资料库位置', description: '资料库根目录、数据库与文件库路径。', keywords: ['路径', '根目录', '数据库', '文件库', '位置'] },
+  { id: 'setting-library-storage', section: 'library', title: '文件存储位置', description: '原文、采集与译文 PDF 及附件的保存目录，可迁移到其它磁盘。', keywords: ['存储', '位置', '磁盘', 'C盘', '迁移', 'PDF', '译文', '采集'] },
   { id: 'setting-backup', section: 'library', title: '创建资料库备份', description: '把资料库数据库与库内附件打包备份。', keywords: ['备份', 'backup', '导出'] },
   { id: 'setting-restore', section: 'library', title: '从备份恢复', description: '用备份替换当前资料库。', keywords: ['恢复', '还原', 'restore', '回滚'] },
   { id: 'setting-scenes', section: 'library', title: '场景开关', description: '启用或停用工作台场景。', keywords: ['场景', '开关', '工作台'] },

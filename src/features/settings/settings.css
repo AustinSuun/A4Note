@@ -209,3 +209,12 @@
   .settings-section-nav button { min-height: 36px; justify-content: center; }
   .settings-section-body { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* --- library file storage location (task 6557dc15) ---------------------- */
+.settings-storage-recommend { margin: 0; padding: 6px 8px; border-radius: 8px; background: var(--accent-soft, rgba(72,131,93,.12)); color: var(--ink); font-size: var(--ui-caption-font-size); line-height: 1.5; overflow-wrap: anywhere; }
+.settings-storage-recommend code { color: var(--accent-strong, var(--accent)); }
+.settings-storage-migrate { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 4px; color: var(--ink); font-size: var(--ui-body-small-font-size); line-height: 1.5; cursor: pointer; }
+.settings-storage-migrate input { flex: 0 0 auto; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--accent); }
+.settings-storage-progress { display: grid; gap: 6px; margin-top: 10px; }
+.settings-storage-progress-bar { position: relative; height: 6px; border-radius: 999px; background: rgba(36,59,49,.12); overflow: hidden; }
+.settings-storage-progress-bar span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); transition: width .2s linear; }

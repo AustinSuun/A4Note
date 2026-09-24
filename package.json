@@ -1,7 +1,7 @@
 {
   "name": "a4note",
   "private": true,
-  "version": "0.1.30",
+  "version": "0.1.31",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -24,6 +24,7 @@
     "test:resource-openers": "node --experimental-strip-types scripts/verify-resource-openers.mjs",
     "test:agent-protocol": "node --experimental-strip-types scripts/verify-agent-protocol.mjs",
     "test:pdfjs": "node scripts/verify-pdfjs.mjs",
+    "test:reader-page-control": "node --experimental-strip-types scripts/verify-reader-page-control.mjs && node scripts/verify-reader-page-control-browser.mjs",
     "test:reader": "node scripts/verify-reader-rendering.mjs",
     "test:reader-helpers": "node --experimental-strip-types scripts/verify-reader-helpers.mjs",
     "test:reader-popover-layout": "node scripts/verify-reader-popover-layout-browser.mjs",
@@ -72,6 +73,10 @@
     "test:extension-updates": "node scripts/verify-extension-updates.mjs",
     "test:note-workbench-browser": "node scripts/verify-note-workbench-browser.mjs",
     "test:note-enter-motion-browser": "node scripts/verify-note-enter-motion-browser.mjs",
+    "test:library-storage-browser": "node scripts/verify-library-storage-browser.mjs",
+    "test:library-context-menu-browser": "node scripts/verify-library-context-menu-browser.mjs",
+    "test:library-sidebar-browser": "node scripts/verify-library-sidebar-browser.mjs",
+    "test:library-column-settings-browser": "node scripts/verify-library-column-settings-browser.mjs",
     "test:tree-guides-browser": "node scripts/verify-tree-guides-browser.mjs",
     "test:markdown-scroll-browser": "node scripts/verify-markdown-scroll-browser.mjs"
   },
