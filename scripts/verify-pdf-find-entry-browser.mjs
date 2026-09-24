@@ -74,7 +74,7 @@ try {
   check(await page.locator('.pdf-find-bar').count(), 0, 'non-PDF mode: nothing opens');
   await page.evaluate(() => window.__findTest.setPdfMode(true)); await page.waitForSelector('.pdf-reader-surface');
   // 7. Ctrl hint overlay: reader.search still appears, as a floating scene hint (no anchor).
-  await page.locator('#canvas').focus(); await page.keyboard.down('Control'); await page.waitForTimeout(250);
+  await page.locator('#canvas').focus(); await page.keyboard.down('Control'); await page.waitForTimeout(650);
   const hint = page.locator('[data-hint-id="reader.search"]');
   check(await hint.count(), 1, 'Ctrl overlay lists reader.search');
   check(await hint.getAttribute('data-hint-placement'), 'floating', 'reader.search hint floats (no button anchor)');

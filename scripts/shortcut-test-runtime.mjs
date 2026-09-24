@@ -38,7 +38,7 @@ export function shortcutTestRuntime() {
     return exports;
   }
   const { ShortcutStore } = load('src/shared/shortcuts/store.ts');
-  const { attachShortcutDispatcher } = load('src/shared/shortcuts/dispatcher.ts');
+  const { attachShortcutDispatcher, HINT_HOLD_DELAY_MS } = load('src/shared/shortcuts/dispatcher.ts');
   const { createAppShortcutCommands } = load('src/ui/shortcuts/appShortcutCommands.ts');
   const persisted = new Map();
   const storage = { getItem: key => persisted.get(key) ?? null, setItem: (key, value) => persisted.set(key, value) };
@@ -56,6 +56,6 @@ export function shortcutTestRuntime() {
     const event = win.emit('keydown', { key, target, ctrlKey: true, ...extra });
     return { events: [...events], event };
   }
-  return { Element, doc, win, store, key, events, commands, options, storage, persisted, ShortcutStore, dispose,
+  return { Element, doc, win, store, key, events, commands, options, storage, persisted, ShortcutStore, dispose, HINT_HOLD_DELAY_MS,
     advance(ms) { clock += ms; for (const [id, timer] of [...timers]) if (timer.at <= clock) { timers.delete(id); timer.fn(); } } };
 }
