@@ -105,7 +105,7 @@ export function ReaderScene({
   const runWorkbenchCommand = (command: string) => {
     const mode = modeForNoteWorkbenchCommand(command);
     if (mode) { applyNoteMode(mode); return; }
-    if (command === NOTE_WORKBENCH_COMMANDS.toggle) applyNoteMode(visibleNoteMode === 'reading' ? workbench.prefs.wideMode : 'reading');
+    if (command === NOTE_WORKBENCH_COMMANDS.toggle) applyNoteMode(visibleNoteMode === 'reading' ? workbench.prefs.lastOpenMode : 'reading');
   };
   useReaderWritingShortcuts(drawer.containerRef, runWorkbenchCommand);
   useEffect(() => {
@@ -260,7 +260,7 @@ export function ReaderScene({
               temporary={notesVisible && workbench.temporary}
               onToggle={() => visibleNoteMode === 'writing' ? exitNoteMode() : runWorkbenchCommand(NOTE_WORKBENCH_COMMANDS.toggle)}
               onSelectMode={applyNoteMode}
-              onNewNote={() => { if (noteCreate.current.create) noteCreate.current.create(); else noteCreate.current.pending = true; applyNoteMode(visibleNoteMode === 'reading' ? workbench.prefs.wideMode : visibleNoteMode); }}
+              onNewNote={() => { if (noteCreate.current.create) noteCreate.current.create(); else noteCreate.current.pending = true; applyNoteMode(visibleNoteMode === 'reading' ? workbench.prefs.lastOpenMode : visibleNoteMode); }}
               docked={(sidePanelOpen || notePanelPresented) && !floatingPresented && !writingExpanded && notePresentationMode !== 'writing'}
               overlay={overlay}
               drawerWidth={drawer.width}
@@ -363,7 +363,7 @@ export function ReaderScene({
             focusedAnnotationId={focusedAnnotationId}
             noteDraftPatch={noteDraftPatch}
             onSidePanelOpenChange={open => { onSidePanelOpenChange(open); if (!open && sidePanelTab === 'notes') workbench.setMode('reading'); }}
-            onSidePanelTabChange={tab => { onSidePanelTabChange(tab); if (tab === 'notes' && workbench.mode === 'reading') workbench.setMode(workbench.prefs.wideMode); }}
+            onSidePanelTabChange={tab => { onSidePanelTabChange(tab); if (tab === 'notes' && workbench.mode === 'reading') workbench.setMode(workbench.prefs.lastOpenMode); }}
             onNoteDraftPatchConsumed={onNoteDraftPatchConsumed}
             onNoteSave={onNoteSave}
             onCreateNote={onCreateNote}

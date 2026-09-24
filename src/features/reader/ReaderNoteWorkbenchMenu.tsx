@@ -56,6 +56,7 @@ export function ReaderNoteWorkbenchMenu({ mode, onToggle, onSelectMode, temporar
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const menuId = useId();
+  const hintId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({ visibility: 'hidden' });
   const closed = mode === 'reading';
@@ -121,6 +122,7 @@ export function ReaderNoteWorkbenchMenu({ mode, onToggle, onSelectMode, temporar
       style={{ top: edgeTop, ...(mode === 'writing' || overlay ? { left: 0, right: 'auto' } : { right: docked ? `max(0px, calc(var(--reader-side-width, ${drawerWidth}px) - ${closed ? 16 : 8}px))` : 0 }) }}>
       <button type="button" ref={buttonRef} className={`reader-note-workbench-button reader-note-edge-handle${closed ? '' : ' active'}`}
         {...shortcutProps(NOTE_WORKBENCH_COMMANDS.toggle, label)} title={label} aria-label={label}
+        aria-describedby={mode === 'floating' && !open ? hintId : undefined}
         aria-pressed={!closed} aria-expanded={open} aria-haspopup="menu" aria-controls={open ? menuId : undefined}
         onPointerDown={gestures.onPointerDown}
         onClick={event => { if (event.detail === 0 || !gestures.consumeClick()) onToggle(); }}
@@ -137,6 +139,7 @@ export function ReaderNoteWorkbenchMenu({ mode, onToggle, onSelectMode, temporar
         {closed ? <><NotebookPen size={14} aria-hidden="true" /><span className="reader-note-edge-label">笔记</span></> :
           mode === 'writing' ? <ChevronLeft size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
       </button>
+      {mode === 'floating' && !open && <span id={hintId} role="tooltip" className="reader-note-edge-hint">短按收起 · 长按切换模式</span>}
       {open && createPortal(
         <div ref={menuRef} style={menuStyle}
           className="reader-note-workbench-menu"

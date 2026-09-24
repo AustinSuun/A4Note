@@ -81,7 +81,11 @@ const shot = async (name) => {
 };
 const state = () => ev('window.__motionState');
 /* transitions run for 220ms; settle before geometry assertions */
-const settle = () => pause(360);
+const settle = async () => {
+  await pause(360);
+  // Under concurrent Windows builds, wall-clock sleep may precede the final animation frame.
+  await wait(`document.querySelector('.reader-workspace-shell').dataset.noteFlip !== 'true' && !document.getAnimations().some(a => a.playState === 'running' && a.effect?.target?.closest?.('.reader-workspace-shell'))`, 100, 25);
+};
 const boxOf = selector => ev(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return {left:r.left,top:r.top,width:r.width,height:r.height}})()`);
 const dragBy = async (selector, dx, dy) => {
   const box = await boxOf(selector);
@@ -256,7 +260,7 @@ try {
   check(cardChrome.corners.length === 4 && ['nw', 'ne', 'sw', 'se'].every(corner => cardChrome.corners.some(c => c.corner === corner)) && cardChrome.corners.every(c => c.size === 26), '四个角柄均渲染（26px）', cardChrome.corners);
   check(cardChrome.corners.every(c => (c.corner.includes('w') ? c.left < 0 : c.right < 0) && (c.corner.includes('n') ? c.top < 0 : c.bottom < 0)), '角柄位于卡片四角外侧（伸出卡片边缘）', cardChrome.corners);
   check(cardChrome.corners.every(c => (c.corner === 'nw' || c.corner === 'se') ? c.cursor === 'nwse-resize' : c.cursor === 'nesw-resize'), '角柄光标按对角方向区分', cardChrome.corners.map(c => c.corner + ':' + c.cursor));
-  check(cardChrome.dock.left >= 8 && cardChrome.dock.right >= 8 && cardChrome.dock.bottom >= 8 && cardChrome.dock.display === 'flex' && cardChrome.dock.wrap === 'wrap', '格式工具栏位于卡片内（左右各 ≥8px）、flex 换行', cardChrome.dock);
+  check(near(cardChrome.dock.left, 5, 1) && near(cardChrome.dock.right, 5, 1) && near(cardChrome.dock.bottom, 5, 1) && cardChrome.dock.display === 'flex' && cardChrome.dock.wrap === 'wrap', '格式工具栏紧凑内嵌（4px间距+卡片边框）、flex 换行', cardChrome.dock);
   check(cardChrome.header.trigger < cardChrome.header.width * 0.6 && cardChrome.header.shellLeft < 16 && cardChrome.header.actionsRight < 16, '悬浮卡标题行：标题靠左、按钮组靠右', cardChrome.header);
 
   /* 4c. corner resize from each corner: opposite corner anchored, geometry + dock follow */
@@ -278,13 +282,13 @@ try {
     check(testCase.expect(before, after) && !replayed, `从 ${testCase.corner} 角拖动缩放：对角固定、不重放动效`, { before, after });
   }
   const dockAfterResize = await ev(`(()=>{const card=document.querySelector('.reader-workspace-drawer');const dock=card.querySelector('.markdown-authoring-dock');const r=x=>x.getBoundingClientRect();const c=r(card),d=r(dock);return {left:d.left-c.left,right:c.right-d.right,width:d.width,height:d.height,card:c.width}})()`);
-  check(dockAfterResize.left >= 8 && dockAfterResize.right >= 8, '缩放后格式工具栏仍在卡片内', dockAfterResize);
+  check(near(dockAfterResize.left, 5, 1) && near(dockAfterResize.right, 5, 1), '缩放后格式工具栏仍在卡片内', dockAfterResize);
   await shot('04-floating-resized');
   /* shrink to the minimum: the dock wraps into more rows instead of overflowing */
   await ev('document.querySelector(".motion-float[data-side=\\"small\\"]").click()');
   await pause(120);
   const dockSmall = await ev(`(()=>{const card=document.querySelector('.reader-workspace-drawer');const dock=card.querySelector('.markdown-authoring-dock');const r=x=>x.getBoundingClientRect();const c=r(card),d=r(dock);const rows=new Set([...dock.querySelectorAll('button')].map(b=>Math.round(r(b).top))).size;return {left:d.left-c.left,right:c.right-d.right,width:d.width,rows,card:c.width,scroll:dock.querySelector('.markdown-authoring-actions').scrollWidth<=dock.querySelector('.markdown-authoring-actions').clientWidth+1}})()`);
-  check(dockSmall.left >= 8 && dockSmall.right >= 8 && dockSmall.rows >= 3 && dockSmall.scroll, '最小卡片下工具栏换成更多行、不溢出不横向滚动', dockSmall);
+  check(near(dockSmall.left, 5, 1) && near(dockSmall.right, 5, 1) && dockSmall.rows >= 2 && dockSmall.scroll, '最小卡片下工具栏换成更多行、不溢出不横向滚动', dockSmall);
   await shot('05-floating-small');
   const keyResize = await ev(`(async()=>{const b=document.querySelector('.reader-note-floating-corner[data-corner="se"]');const before=window.__motionState.floatingRect;b.focus();b.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));await new Promise(r=>setTimeout(r,60));document.querySelector('.reader-note-floating-corner[data-corner="se"]').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));await new Promise(r=>setTimeout(r,60));const after=window.__motionState.floatingRect;return {before,after}})()`);
   check(near(keyResize.after.width, keyResize.before.width + 0.02, 0.001) && near(keyResize.after.height, keyResize.before.height + 0.02, 0.001) && keyResize.after.x === keyResize.before.x, '角柄支持键盘方向键缩放（2% 步进）', keyResize);

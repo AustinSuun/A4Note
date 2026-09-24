@@ -22,6 +22,7 @@ import {
   preferredNoteIdFor,
   rememberPreferredNoteId,
   saveNoteWorkbenchPrefs,
+  selectNoteWorkbenchMode,
   splitWidthPx,
 } from '../src/features/reader/noteWorkbench.ts';
 
@@ -41,6 +42,7 @@ ok(normalizeNoteWorkbenchPrefs({ previousMode: 'teleport' }).previousMode === 'r
 ok(defaultNoteWorkbenchPrefs().previousMode === 'reading', '默认返回模式为 PDF 专注');
 ok(NOTE_WORKBENCH_NARROW_BREAKPOINT === 980 && NOTE_WORKBENCH_WIDE_BREAKPOINT === 1200, '断点常量为 980/1200');
 
+ok(normalizeNoteWorkbenchPrefs({ mode: 'floating' }).lastOpenMode === 'floating', '悬浮模式持久化为可重开的最近模式');
 // ---------------------------------------------------------------- preferences
 ok(clampSplitRatio(0.9) === 0.62 && clampSplitRatio(0.01) === 0.26, 'split 比例夹在 26%-62%');
 ok(clampSplitRatio('nonsense') === SPLIT_RATIO_DEFAULT, '非法 split 比例回退默认值');
@@ -51,6 +53,22 @@ ok(normalized.floating.x <= 0.9 && normalized.floating.y >= 0, '悬浮卡坐标�
 ok(normalizeNoteWorkbenchPrefs(null).mode === 'reading' && normalizeNoteWorkbenchPrefs('x').floating.width === FLOATING_RECT_DEFAULT.width, 'null/字符串偏好安全回退');
 ok(clampFloatingRect({ width: 4, height: 0.01 }).width === 0.96 && clampFloatingRect({ height: 0.01 }).height === 0.22, '悬浮卡尺寸夹在 22%-96%');
 ok(clampFloatingRect({ width: 4 }).height === FLOATING_RECT_DEFAULT.height, '缺失尺寸字段回退默认值');
+
+// Last-open preference is distinct from both current visibility and responsive fallback.
+for (const mode of ['split', 'floating', 'writing']) {
+  const selected = selectNoteWorkbenchMode(defaultNoteWorkbenchPrefs(), mode);
+  const closed = selectNoteWorkbenchMode(selected, 'reading');
+  ok(closed.mode === 'reading' && closed.lastOpenMode === mode, `${mode} 关闭保留最近明确模式`);
+  ok(selectNoteWorkbenchMode(closed, closed.lastOpenMode).mode === mode, `${mode} 关闭后同模式恢复`);
+  ok(normalizeNoteWorkbenchPrefs(JSON.parse(JSON.stringify(closed))).lastOpenMode === mode, `${mode} 持久化重载闭环`);
+  ok(normalizeNoteWorkbenchPrefs({ mode: 'reading', previousMode: mode }).lastOpenMode === mode, `${mode} 旧版关闭偏好迁移`);
+}
+ok(normalizeNoteWorkbenchPrefs({ lastOpenMode: 'reading', wideMode: 'writing' }).lastOpenMode === 'writing', '无效的reading偏好回退旧版writing');
+ok(normalizeNoteWorkbenchPrefs({ lastOpenMode: 'invalid' }).lastOpenMode === 'split', '损坏最近模式安全回退split');
+const requestedSplit = selectNoteWorkbenchMode(defaultNoteWorkbenchPrefs(), 'split');
+ok(resolveNoteWorkbenchMode(requestedSplit, 800).mode === 'floating' && requestedSplit.lastOpenMode === 'split', '窄窗临时悬浮不覆盖明确split');
+const reopenedSplit = selectNoteWorkbenchMode(selectNoteWorkbenchMode(requestedSplit, 'reading'), requestedSplit.lastOpenMode);
+ok(resolveNoteWorkbenchMode(reopenedSplit, 1400).mode === 'split', '窄窗关闭后宽窗重开恢复明确split');
 
 // ---------------------------------------------------------------- geometry
 ok(splitWidthPx(1440, SPLIT_RATIO_DEFAULT) === Math.round(1440 * SPLIT_RATIO_DEFAULT), '宽容器 split 宽度按比例');

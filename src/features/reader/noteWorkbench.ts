@@ -56,6 +56,8 @@ export type NoteWorkbenchPrefs = {
   mode: NoteWorkbenchMode;
   /** mode to return to when leaving a wide mode (Escape / 收起). */
   previousMode: NoteWorkbenchMode;
+  /** Last explicitly selected open mode; temporary responsive fallback never overwrites it. */
+  lastOpenMode: Exclude<NoteWorkbenchMode, 'reading'>;
   /** note that was being edited in this paper, restored on the next visit. */
   activeNoteId: string | null;
   /** last split/writing choice, restored when the window is wide again. */
@@ -94,7 +96,7 @@ export function clampFloatingRect(value: unknown): FloatingCardRect {
 }
 
 export function defaultNoteWorkbenchPrefs(): NoteWorkbenchPrefs {
-  return { mode: 'reading', previousMode: 'reading', activeNoteId: null, wideMode: 'split', splitRatio: SPLIT_RATIO_DEFAULT, floating: { ...FLOATING_RECT_DEFAULT } };
+  return { mode: 'reading', previousMode: 'reading', lastOpenMode: 'split', activeNoteId: null, wideMode: 'split', splitRatio: SPLIT_RATIO_DEFAULT, floating: { ...FLOATING_RECT_DEFAULT } };
 }
 
 /** Corrupt or partial preferences fall back per field instead of throwing. */
@@ -105,10 +107,23 @@ export function normalizeNoteWorkbenchPrefs(raw: unknown): NoteWorkbenchPrefs {
   return {
     mode: isNoteWorkbenchMode(source.mode) ? source.mode : fallback.mode,
     previousMode: isNoteWorkbenchMode(source.previousMode) ? source.previousMode : fallback.previousMode,
+    // Migrate legacy closed preferences from previousMode before the old wide-only choice.
+    lastOpenMode: [source.mode, source.lastOpenMode, source.previousMode, source.wideMode]
+      .find((mode): mode is Exclude<NoteWorkbenchMode, 'reading'> => isNoteWorkbenchMode(mode) && mode !== 'reading') ?? fallback.lastOpenMode,
     activeNoteId: typeof source.activeNoteId === 'string' && source.activeNoteId ? source.activeNoteId : null,
     wideMode: source.wideMode === 'writing' || source.wideMode === 'split' ? source.wideMode : fallback.wideMode,
     splitRatio: clampSplitRatio(source.splitRatio),
     floating: clampFloatingRect(source.floating),
+  };
+}
+
+/** Record a user transition, not the resolved narrow-window presentation. */
+export function selectNoteWorkbenchMode(current: NoteWorkbenchPrefs, mode: NoteWorkbenchMode): NoteWorkbenchPrefs {
+  return {
+    ...current, mode,
+    previousMode: current.mode === mode ? current.previousMode : current.mode,
+    lastOpenMode: mode === 'reading' ? current.lastOpenMode : mode,
+    wideMode: mode === 'split' || mode === 'writing' ? mode : current.wideMode,
   };
 }
 

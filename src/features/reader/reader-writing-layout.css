@@ -161,6 +161,25 @@
 .reader-workspace-shell.drawer-overlay .reader-note-edge-handle.active::before { display: none; }
 .reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle svg,
 .reader-workspace-shell.drawer-overlay .reader-note-edge-handle.active svg { opacity: 1; transform: none; }
+/* Floating has no split divider to hint its position: give it a visible compact tab. */
+.reader-note-edge-entry[data-note-mode="floating"] .reader-note-edge-handle.active {
+  width: 24px; height: 72px; border: 1px solid color-mix(in srgb, var(--accent) 48%, var(--line));
+  border-right: 0; border-radius: 9px 0 0 9px;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent-strong);
+  box-shadow: -2px 0 8px rgba(26,41,33,.12);
+}
+.reader-note-edge-entry[data-note-mode="floating"] .reader-note-edge-handle.active::before { display: none; }
+.reader-note-edge-entry[data-note-mode="floating"] .reader-note-edge-handle.active svg { opacity: 1; transform: none; }
+.reader-note-edge-entry[data-note-mode="floating"] .reader-note-edge-handle.active:is(:hover, :focus-visible) {
+  background: color-mix(in srgb, var(--accent) 26%, var(--surface)); border-color: var(--accent);
+}
+.reader-note-edge-hint {
+  position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%);
+  width: max-content; max-width: 240px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px;
+  background: var(--surface); color: var(--ink); box-shadow: 0 3px 12px rgba(26,41,33,.16);
+  font-size: var(--ui-control-font-size, 13px); line-height: 1.4; pointer-events: none; visibility: hidden;
+}
+.reader-note-edge-handle:is(:hover, :focus-visible) + .reader-note-edge-hint { visibility: visible; }
 .reader-note-edge-label { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 2px; font-size: var(--ui-control-font-size, 13px); font-weight: 600; line-height: 1; }
 .reader-note-edge-handle:not(.active):hover,
 .reader-note-edge-entry[data-note-mode="writing"] .reader-note-edge-handle:hover,
@@ -226,21 +245,26 @@
   width: 26px; height: 26px; padding: 0; border: 0; background: transparent; color: var(--muted); opacity: .55;
   transition: opacity 150ms ease, color 150ms ease, transform 150ms ease;
 }
-.reader-note-floating-corner::before { content: ''; position: absolute; inset: 0; border: 3px solid transparent; }
-.reader-note-floating-corner[data-corner="nw"] { left: -8px; top: -8px; cursor: nwse-resize; }
-.reader-note-floating-corner[data-corner="nw"]::before { border-top-color: currentColor; border-left-color: currentColor; border-top-left-radius: 18px; }
-.reader-note-floating-corner[data-corner="ne"] { right: -8px; top: -8px; cursor: nesw-resize; }
-.reader-note-floating-corner[data-corner="ne"]::before { border-top-color: currentColor; border-right-color: currentColor; border-top-right-radius: 18px; }
-.reader-note-floating-corner[data-corner="sw"] { left: -8px; bottom: -8px; cursor: nesw-resize; }
-.reader-note-floating-corner[data-corner="sw"]::before { border-bottom-color: currentColor; border-left-color: currentColor; border-bottom-left-radius: 18px; }
-.reader-note-floating-corner[data-corner="se"] { right: -8px; bottom: -8px; cursor: nwse-resize; }
-.reader-note-floating-corner[data-corner="se"]::before { border-bottom-color: currentColor; border-right-color: currentColor; border-bottom-right-radius: 18px; }
+.reader-note-floating-corner::before { content: ''; position: absolute; inset: 0; border: 4px solid transparent; }
+.reader-note-floating-corner[data-corner="nw"] { left: -4px; top: -4px; cursor: nwse-resize; }
+.reader-note-floating-corner[data-corner="nw"]::before { border-top-color: currentColor; border-left-color: currentColor; border-top-left-radius: 14px; }
+.reader-note-floating-corner[data-corner="ne"] { right: -4px; top: -4px; cursor: nesw-resize; }
+.reader-note-floating-corner[data-corner="ne"]::before { border-top-color: currentColor; border-right-color: currentColor; border-top-right-radius: 14px; }
+.reader-note-floating-corner[data-corner="sw"] { left: -4px; bottom: -4px; cursor: nesw-resize; }
+.reader-note-floating-corner[data-corner="sw"]::before { border-bottom-color: currentColor; border-left-color: currentColor; border-bottom-left-radius: 14px; }
+.reader-note-floating-corner[data-corner="se"] { right: -4px; bottom: -4px; cursor: nwse-resize; }
+.reader-note-floating-corner[data-corner="se"]::before { border-bottom-color: currentColor; border-right-color: currentColor; border-bottom-right-radius: 14px; }
 .reader-note-floating-corner:is(:hover, :focus-visible, [data-active="true"]) { opacity: 1; color: var(--accent-strong); transform: scale(1.08); }
 .reader-note-floating-drag:focus-visible, .reader-note-floating-corner:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 10px; }
 
 /* writing 专注写作: workbench fills the content area; the note column keeps its width. */
 .reader-workspace-shell.note-mode-writing { display: block; }
 
+/* Keep note-specific compact chrome while preserving the integrated summary scroll/dock fixes. */
+.reader-workspace-drawer.notes-active > .workspace-panel-content { padding: 0; }
+.reader-workspace-drawer.notes-active .note-workspace { height: 100%; background: var(--surface); }
+.reader-workspace-drawer.notes-active .markdown-authoring-dock { background: var(--surface); border-color: var(--line); }
+.reader-workspace-drawer .markdown-live-codemirror .cm-content { box-sizing: border-box; min-width: 0; }
 /* Limit prose, never its scrollport: a capped editor shell leaves the scrollbar inside a widened pane. */
 .reader-workspace-drawer .md-body,
 .reader-workspace-drawer .markdown-live-codemirror .cm-content {
@@ -288,15 +312,15 @@
 .note-workspace:has(> .markdown-authoring-dock) .markdown-preview { padding-bottom: var(--note-dock-inset, 88px); }
 /* Inside the floating card the dock spans the card and wraps to its width, so it can never
    overflow the card edge and follows every drag-resize without script. */
-.reader-workspace-shell.note-mode-floating .note-workspace > .markdown-authoring-dock { left: 10px; right: 10px; bottom: 10px; width: auto; max-width: none; transform: none; }
+.reader-workspace-shell.note-mode-floating .note-workspace > .markdown-authoring-dock { left: 4px; right: 4px; bottom: 4px; width: auto; max-width: none; transform: none; }
 .reader-workspace-shell.note-mode-floating .note-workspace > .markdown-authoring-dock .markdown-authoring-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; width: 100%; box-sizing: border-box; overflow: auto; }
 .note-citation-insert { max-width: 9.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 26px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
 .note-citation-insert:hover, .note-citation-insert:focus-visible { border-color: var(--accent-strong); color: var(--accent-strong); }
 .note-image-input { display: none; }
 
 /* Leave a real strip beside the card: the handle and all card controls remain hit-testable. */
-.reader-workspace-shell.note-mode-floating { --note-card-safe-height: min(var(--floating-note-height, 62%), 100%); --note-card-safe-top: max(0px, min(var(--floating-note-top, 14%), calc(100% - max(200px, var(--note-card-safe-height))))); --note-card-safe-width: min(var(--floating-note-width, 42%), calc(100% - 28px)); --note-card-safe-left: max(0px, min(var(--floating-note-left, 50%), calc(100% - max(240px, var(--note-card-safe-width)) - 28px))); }
-.reader-workspace-shell.note-mode-floating > .reader-workspace-drawer { left: var(--note-card-safe-left); top: var(--note-card-safe-top); height: var(--note-card-safe-height); width: var(--note-card-safe-width) !important; max-width: calc(100% - 28px); min-width: min(240px, calc(100% - 28px)); }
+.reader-workspace-shell.note-mode-floating { --note-card-safe-height: min(var(--floating-note-height, 62%), 100%); --note-card-safe-top: max(0px, min(var(--floating-note-top, 14%), calc(100% - max(200px, var(--note-card-safe-height))))); --note-card-safe-width: min(var(--floating-note-width, 42%), calc(100% - 32px)); --note-card-safe-left: max(0px, min(var(--floating-note-left, 50%), calc(100% - max(240px, var(--note-card-safe-width)) - 32px))); }
+.reader-workspace-shell.note-mode-floating > .reader-workspace-drawer { left: var(--note-card-safe-left); top: var(--note-card-safe-top); height: var(--note-card-safe-height); width: var(--note-card-safe-width) !important; max-width: calc(100% - 32px); min-width: min(240px, calc(100% - 32px)); }
 .reader-workspace-shell.note-mode-floating > .reader-note-floating-controls { left: var(--note-card-safe-left); top: var(--note-card-safe-top); width: var(--note-card-safe-width); height: var(--note-card-safe-height); }
 .reader-workspace-shell[data-note-presence="exiting"] > .reader-note-floating-controls { pointer-events: none; }
 

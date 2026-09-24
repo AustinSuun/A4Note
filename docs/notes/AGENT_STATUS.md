@@ -1,4 +1,5 @@
 ﻿# A4 Note Agent 状态
+- note-panel-xingxu：23671e62 spec7代码与验证完成待交付。e441c93+本卡补丁PowerShell完整verify73步骤退出0（Rust238/0/5），原生最终159/errors[]/HTTP[]、5before+22after及14源码指纹通过；深色150/写作预览/末行已目视检查。冷启动一次404保留日志，补齐URL记录后双reload与最终复跑无错误，不声称根因已修。保留bfd88ad仅动效宿主偏好隔离测试/状态增量，产品源码无变化，继续双宿主动效复验和交付门禁；尚未提交review，本任务不打包安装推送发布。 更新：2026-09-24T03:23:59.489Z
 - Arena-Board / 0.1.32发布验证修订：e441c93候选包标准构建443773ms退出0，987跟踪文件逐字一致、Windows版本32、安装包/EXE哈希、Ed25519/BLAKE2b及可信注释验签和旧0.1.31的5文件归档均通过。PR17首次必需CI仅note-enter-motion-browser失败（正常场景走0s减少动态效果）；其余含Rust238/0失败/5忽略通过。现显式设置正常场景no-preference，保留独立reduce分支全部断言，新增宿主偏好检查；本地正常及模拟宿主reduce均69/69。仅测试环境修正，无产品代码改变；将重建匹配新提交的签名包并重跑保护检查，未绕过保护/未发布失败快照。发布范围含总览与30f476f快捷键延迟；23671未合入仍排除。
 - Arena-Board / 用户明确授权本轮打包、推送及仓库发布：已整合main9edc5d2与新合入快捷键延迟30f476f，在独立release/0.1.32-arena将桌面版本推进0.1.32。既有完整verify(c7f1f10)与整合原生26+8+7+4通过；本次只改版本/发布说明/状态文档，待标准Windows签名构建、配对扩展、实际哈希/密码学验签、远程快进推送和不可变Release核验。当前未声称构建或发布成功；旧0.1.31包将由标准脚本原样归档。未合入的23671不纳入本次发行；ce00快捷键延迟已合入本次发行，不抢任务/不自验收，不安装或触碰正式资料。
 - shortcut-hint-delay-tinglan：听澜 / ce00c501 spec1快捷键提示按住延迟：矩阵显示阈值150→500ms，集中到dispatcher唯一导出常量HINT_HOLD_DELAY_MS，按住才显示，熟悉组合键(Ctrl+B/H/Z)不再闪现；usedChord组合抑制与松开/失焦/可见性/场景/弹窗/录制/IME清除路径不变。回归脚本随常量透传(runtime再导出)并更新等待，新增300ms快按不闪现断言。core52/dispatcher63/layout36/settings22、shortcuts-browser491、find-entry35、architecture、tsc/build、diagnostics0通过；整合9edc5d2后重放同组通过。dev:live tinglan(原生已核验条)实拍300ms隐藏/900ms显示(9 hints)/松开消失，pageerror/console0，证据.tmp/shots/shortcut-hint-delay/。基线6b59170，实现30f476f已ff合入本地main；未打包/安装/推送/发布。详见docs/mcp-shortcut-hint-delay-tinglan-2026-09-24.md。更新：2026-09-24T10:52:40+08:00
@@ -93,7 +94,7 @@ annotation-popover-swatch-chengchuan：澄川完成 23528921 标注工具弹窗�
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-23T18:11:40.344Z
+更新时间：2026-09-24T03:23:59.489Z
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 

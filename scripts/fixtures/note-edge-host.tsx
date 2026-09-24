@@ -42,7 +42,7 @@ function Host() {
   const runCommand = (command) => {
     const next = modeForNoteWorkbenchCommand(command);
     if (next) { workbench.setMode(next); return; }
-    if (command === NOTE_WORKBENCH_COMMANDS.toggle) workbench.setMode(mode === 'reading' ? workbench.prefs.wideMode : 'reading');
+    if (command === NOTE_WORKBENCH_COMMANDS.toggle) workbench.setMode(mode === 'reading' ? workbench.prefs.lastOpenMode : 'reading');
   };
 
   useEffect(() => {
