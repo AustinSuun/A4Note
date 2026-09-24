@@ -150,8 +150,17 @@ try {
   await send('Runtime.enable');
   await send('Page.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 1568, height: 760, deviceScaleFactor: 1, mobile: false });
+  // Windows CI may inherit reduced motion from its host. Pin the normal-motion
+  // cases explicitly; section 9 still verifies the real reduced-motion branch.
+  if (process.env.NOTE_MOTION_SIMULATE_HOST_REDUCED === '1') {
+    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  }
+  const hostReducedMotion = await ev('matchMedia("(prefers-reduced-motion: reduce)").matches');
+  await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
   await send('Page.navigate', { url });
   await wait('!!window.__motionState && window.__motionState.mode === "reading"');
+  check(await ev('matchMedia("(prefers-reduced-motion: reduce)").matches') === false,
+    '普通动效场景显式 no-preference，不继承宿主的 reduced-motion', { hostReducedMotion });
   await settle();
 
   /* 1. tokens exist on :root and the shell consumes them */
