@@ -25,6 +25,7 @@ export function TabHost({ items, activeTabId, fallback }: TabHostProps) {
           key={item.id}
           className={item.id === activeTabId ? 'workbench-tab-frame active' : 'workbench-tab-frame hidden'}
           aria-hidden={item.id !== activeTabId}
+          inert={item.id !== activeTabId}
         >
           <DocumentToolbarActiveContext.Provider value={item.id === activeTabId}>{item.content}</DocumentToolbarActiveContext.Provider>
         </div>

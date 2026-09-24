@@ -64,7 +64,7 @@ export const SummaryDocumentEditor = forwardRef<MarkdownLiveEditorHandle, Props>
   const available = columns.filter(c => !c.source && !document.segments.some(s => s.kind === 'field' && s.id === c.id));
   const label = (segment: SummarySegment, index: number) => segment.kind === 'field' ? columns.find(c => c.id === segment.id)?.name ?? `未登记字段 ${segment.id}` : `自由内容 ${document.segments.slice(0, index + 1).filter(s => s.kind === 'free' && (s.value.trim() || s.key === active || document.segments.length === 1)).length}`;
   const edit = (segment: SummarySegment, value: string) => {
-    if (readOnly || !surfaceActive) return;
+    if (readOnly || !surfaceActive || segment.kind === 'technical') return;
     try {
       let nextValue = summaryEditorPatch(segment.value, value);
       let next: string;
@@ -104,6 +104,7 @@ export const SummaryDocumentEditor = forwardRef<MarkdownLiveEditorHandle, Props>
       }}>在末尾写自由内容</button>
     </div>}
     {document.segments.map((segment, index) => {
+      if (segment.kind === 'technical') return null;
       if (segment.kind === 'free' && !segment.value.trim() && segment.key !== active && document.segments.length > 1) return null;
       const title = label(segment, index);
       return <section className={`summary-document-section ${segment.kind}`} key={segment.key} data-summary-segment={segment.key}>

@@ -1,6 +1,7 @@
 import { summaryFieldBlocks, updateSummaryField, type SummaryColumn } from './librarySummary';
 
 export type SummarySegment =
+  | { kind: 'technical'; key: string; start: number; end: number; value: string }
   | { kind: 'free'; key: string; start: number; end: number; value: string }
   | { kind: 'field'; key: string; id: string; start: number; end: number; bodyStart: number; bodyEnd: number; value: string };
 export type SummaryDocument = { source: string; segments: SummarySegment[] };
@@ -10,7 +11,18 @@ export type SummaryAssignment = { scope: string; baseline: string; next: string;
 export function summaryDocument(source: string): SummaryDocument {
   const segments: SummarySegment[] = [];
   let cursor = 0;
-  for (const field of summaryFieldBlocks(source).values()) {
+  const fields = summaryFieldBlocks(source);
+  // Recognize only the exact former generated preamble, never similar user prose or code.
+  // Keep its raw interval in the document; normal views omit it, source/export retain it.
+  const prefix = source.slice(0, fields.values().next().value?.blockStart ?? 0);
+  const legacy = /^(?:\uFEFF)?# [^\r\n]+\r?\n(?:\r?\n)*(此笔记的字段与论文总览同步。请保留 a4-summary 字段标记；可在字段外自由写作。\r?\n)/.exec(prefix);
+  if (legacy) {
+    const start = legacy[0].length - legacy[1].length;
+    segments.push({ kind: 'free', key: 'free:0', start: 0, end: start, value: source.slice(0, start) });
+    cursor = legacy[0].length;
+    segments.push({ kind: 'technical', key: `technical:${start}`, start, end: cursor, value: source.slice(start, cursor) });
+  }
+  for (const field of fields.values()) {
     if (field.blockStart > cursor) segments.push({ kind: 'free', key: `free:${cursor}`, start: cursor, end: field.blockStart, value: source.slice(cursor, field.blockStart) });
     segments.push({ kind: 'field', key: `field:${field.id}`, id: field.id, start: field.blockStart, end: field.blockEnd, bodyStart: field.start, bodyEnd: field.end, value: field.value });
     cursor = field.blockEnd;

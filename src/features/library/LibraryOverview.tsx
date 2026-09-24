@@ -12,7 +12,8 @@ import remarkGfm from 'remark-gfm';
 import { remarkAsterInline } from '../../shared/markdown/remarkAsterInline';
 import type { PaperDocument } from '../../core/types';
 import type { TextDocumentSession } from '../../core/textDocumentSession';
-import { defaultSummaryColumns, summarySizing, fitSummaryWidths, type SummarySizing, summaryPaperMetadata, parseSummaryLayout, summaryExcerpt, summaryFields, summaryRowHeight, type SummaryColumn } from '../../core/librarySummary';
+import { defaultSummaryColumns, summarySizing, fitSummaryWidths, type SummarySizing, summaryPaperMetadata, parseSummaryLayout, summaryFields, summaryRowHeight, type SummaryColumn } from '../../core/librarySummary';
+import { SummaryExcerpt } from './SummaryExcerpt';
 import { editSummary, invalidateSummaryPreviews, loadSummary, onSummaryChange, openSummaryUrl, summaryLayoutSession, type SummaryFile } from '../../platform/library/summaries';
 import { SummaryEditor } from './SummaryEditor';
 import './summary.css';
@@ -330,10 +331,10 @@ const SummaryRow = memo(function SummaryRow({ paper, columns, zoom, top, height,
       const value = column.source === 'venue' ? paper.venue : parsed.fields.get(column.id)?.value ?? '';
       const noteId = /^\[[^\]]*\]\(a4note-note:([^\s)]+)\)$/.exec(value.trim())?.[1]; const note = noteId ? paper.notes.find(n => n.id === noteId) : undefined;
       const shown = note ? `${note.title}\n${note.content}` : value;
-      if (column.source) return <div key={column.id} className="summary-cell" title="来自论文信息，请在论文详情中编辑"><p className="summary-excerpt">{value || '—'}</p></div>;
+      if (column.source) return <div key={column.id} className="summary-cell" title="来自论文信息，请在论文详情中编辑">{zoom < 120 ? <SummaryExcerpt value={value || '—'} /> : <p className="summary-excerpt">{value || '—'}</p>}</div>;
       return <SummaryEditableCell key={column.id} paperId={paper.paperId} column={column} value={value}
         unavailable={error || parsed.error || (!file ? '正在读取总览 MD…' : undefined)} onRepair={() => onEdit()}>
-        {!value ? null : zoom < 120 ? <div className="summary-compact-content"><SummaryCompactImages paperId={paper.paperId} value={shown} /><p className="summary-excerpt">{summaryExcerpt(shown, zoom).replaceAll('〔图片〕', '')}</p></div> : <>{note && <small>↗ 引用已有笔记，不复制正文</small>}{noteId && !note ? <span className="summary-warning">引用的笔记不存在</span> : <SummaryRich paperId={paper.paperId} value={shown} />}</>}
+        {!value ? null : zoom < 120 ? <div className="summary-compact-content"><SummaryCompactImages paperId={paper.paperId} value={shown} /><SummaryExcerpt value={shown} /></div> : <>{note && <small>↗ 引用已有笔记，不复制正文</small>}{noteId && !note ? <span className="summary-warning">引用的笔记不存在</span> : <SummaryRich paperId={paper.paperId} value={shown} />}</>}
       </SummaryEditableCell>;
     })}
   </div>;

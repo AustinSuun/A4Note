@@ -49,7 +49,7 @@
   .reader-workspace-drawer .reader-workspace-header { grid-template-columns: minmax(0, 1fr) auto; }
   .reader-workspace-drawer .reader-workspace-actions { display: flex; gap: 3px; padding: 0; }
   .reader-workspace-drawer .note-document-header { flex-wrap: nowrap; gap: 4px; }
-  .reader-workspace-drawer .note-history-shell { min-width: 0; width: 0; flex: 1 1 0; }
+  .reader-workspace-drawer .note-history-shell { min-width: 0; flex: 1 1 0; }
   .reader-workspace-drawer .workspace-panel-content { padding: 4px 8px; }
   .reader-workspace-drawer .note-document-actions { gap: 2px; }
 }
@@ -241,9 +241,15 @@
 /* writing 专注写作: workbench fills the content area; the note column keeps its width. */
 .reader-workspace-shell.note-mode-writing { display: block; }
 
-/* shared authoring column: reader notes and standalone Markdown notes must not drift. */
-.reader-workspace-drawer .md-body, .reader-workspace-drawer .markdown-live-codemirror, .reader-workspace-drawer .markdown-reader-content {
+/* Limit prose, never its scrollport: a capped editor shell leaves the scrollbar inside a widened pane. */
+.reader-workspace-drawer .md-body,
+.reader-workspace-drawer .markdown-live-codemirror .cm-content {
   width: 100%; max-width: var(--authoring-content-max-width, 720px); margin-inline: auto;
+}
+.reader-workspace-drawer .markdown-live-codemirror { width: 100%; max-width: none; margin-inline: 0; }
+.reader-workspace-drawer :is(.markdown-preview, .markdown-reader-content) {
+  width: 100%; max-width: none; box-sizing: border-box;
+  padding-inline: max(12px, calc((100% - var(--authoring-content-max-width, 720px)) / 2));
 }
 @media (prefers-reduced-motion: reduce) {
   .reader-workspace-shell { --note-transition-duration: 0s; }
@@ -268,7 +274,8 @@
 .reader-workspace-drawer .note-save-state.saved { display: none; }
 .reader-workspace-drawer .note-meta-row { justify-content: flex-start; gap: 5px 8px; min-height: 24px; padding: 3px 0; }
 .reader-workspace-drawer .note-save-state { margin-left: auto; white-space: nowrap; }
-.reader-workspace-drawer .note-workspace { display: flex; flex-direction: column; }
+.reader-workspace-drawer .note-workspace { display: flex; flex-direction: column; background: var(--surface); color: var(--ink); }
+:root[data-theme="midnight"] .reader-workspace-drawer .note-workspace > .markdown-authoring-dock { background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--ink); }
 .reader-workspace-drawer .note-workspace > :is(.markdown-live-codemirror,.markdown-preview,.note-editor-loading) { flex: 1 1 0; min-height: 0; }
 .reader-workspace-drawer .note-workspace > :is(.note-document-header,.note-meta-row,.note-save-error,.markdown-authoring-dock) { flex-shrink: 0; }
 
@@ -276,12 +283,13 @@
 .reader-workspace-drawer .note-workspace,
 .markdown-document-pane .note-workspace { position: relative; }
 :root .note-workspace > .markdown-authoring-dock { max-width: calc(100% - 12px); }
-.note-workspace:has(> .markdown-authoring-dock) .cm-content { padding-bottom: 88px; }
-.note-workspace:has(> .markdown-authoring-dock) .markdown-preview { padding-bottom: 88px; }
+:root .note-workspace > .markdown-authoring-dock .markdown-authoring-actions { max-height: var(--note-dock-max-height); overflow-y: auto; }
+.note-workspace:has(> .markdown-authoring-dock) .cm-content { padding-bottom: var(--note-dock-inset, 88px); }
+.note-workspace:has(> .markdown-authoring-dock) .markdown-preview { padding-bottom: var(--note-dock-inset, 88px); }
 /* Inside the floating card the dock spans the card and wraps to its width, so it can never
    overflow the card edge and follows every drag-resize without script. */
 .reader-workspace-shell.note-mode-floating .note-workspace > .markdown-authoring-dock { left: 10px; right: 10px; bottom: 10px; width: auto; max-width: none; transform: none; }
-.reader-workspace-shell.note-mode-floating .note-workspace > .markdown-authoring-dock .markdown-authoring-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; width: 100%; box-sizing: border-box; overflow: visible; }
+.reader-workspace-shell.note-mode-floating .note-workspace > .markdown-authoring-dock .markdown-authoring-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; width: 100%; box-sizing: border-box; overflow: auto; }
 .note-citation-insert { max-width: 9.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 26px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
 .note-citation-insert:hover, .note-citation-insert:focus-visible { border-color: var(--accent-strong); color: var(--accent-strong); }
 .note-image-input { display: none; }

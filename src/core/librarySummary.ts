@@ -65,9 +65,8 @@ export function updateSummaryField(markdown: string, column: Pick<SummaryColumn,
   if (!checked.has(column.id)) throw new Error('字段位于未闭合的代码块中，请先在完整 Markdown 中修复。');
   return next;
 }
-export function summaryExcerpt(value: string, zoom: number): string {
-  const max = zoom <= 45 ? 80 : zoom <= 65 ? 160 : 500;
-  return value.replace(/!\[[^\]]*\]\([^)]*\)/g, '〔图片〕').replace(/\s+/g, ' ').slice(0, max);
+export function summaryExcerpt(value: string, _zoom?: number): string {
+  return value.replace(/!\[[^\]]*\]\([^)]*\)/g, '〔图片〕').replace(/\s+/g, ' ');
 }
 export function parseSummaryLayout(text: string): { columns: SummaryColumn[]; raw: Record<string, unknown> } {
   if (!text) return { columns: defaultSummaryColumns.map(c => ({ ...c })), raw: { version: 2 } };

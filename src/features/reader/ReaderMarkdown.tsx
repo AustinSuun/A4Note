@@ -1,3 +1,4 @@
+import { ConfirmActionButton } from '../../shared/ConfirmActionButton';
 import { paperNoteImageDocument } from '../../core/paperImageReference';
 import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
 import { useReaderNoteActive, useReaderNoteRequests, useReaderNoteLayoutActions, useReaderNoteCreateAction } from './ReaderNoteActivity';
@@ -339,9 +340,8 @@ export function MarkdownNotePanel({
         <span>{saveError || actionError}</span>
         <button type="button" onClick={() => void saveCurrent()}>重试保存</button>
         <button type="button" onClick={exportDraft}>导出草稿</button>
-        <button type="button" onClick={() => {
-          if (window.confirm('放弃未保存修改并回到上次保存的内容？建议先导出草稿。')) void session.discard().then(() => setActionError('')).catch((error) => setActionError(String(error)));
-        }}>放弃草稿</button>
+        <ConfirmActionButton key={`${paper.paperId}:${selectedNoteId}`} label="放弃草稿" prompt="放弃未保存修改并回到上次保存内容？建议先导出。"
+          onConfirm={async () => { await session.discard(); setActionError(''); }} onError={error => setActionError(String(error))} />
       </div>}
       {selectedNoteId && selectedNoteId === summaryNoteId && (!sourceMode || mode === 'read') ? <>
         {mode === 'edit' && <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertFormat} onImage={() => editorRef.current?.pickImages()} sourceMode={false} onToggleSource={() => setSourceMode(true)} />}

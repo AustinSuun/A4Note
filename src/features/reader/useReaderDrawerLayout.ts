@@ -26,6 +26,9 @@ export function useReaderDrawerLayout() {
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
     measure();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null; observer?.observe(element);
+    // A prior max-width can keep this node unchanged while its parent grows or moves.
+    // Observe the containing layout too, so sidebar collapse cannot freeze the old boundary.
+    if (element.parentElement) observer?.observe(element.parentElement);
     const zoomObserver = new MutationObserver(schedule); zoomObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
     window.addEventListener('resize', schedule);
     return () => { observer?.disconnect(); zoomObserver.disconnect(); if (frame) cancelAnimationFrame(frame); window.removeEventListener('resize', schedule); };

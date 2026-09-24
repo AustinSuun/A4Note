@@ -67,7 +67,7 @@ fn ensure(root: &Path, id: &str) -> Result<SummaryFile, String> {
     if !path.exists() {
         fs::create_dir_all(path.parent().ok_or("缺少总结目录")?).map_err(|e| e.to_string())?;
         // Explicit editing action only. A failed race re-reads, never overwrites the winner.
-        if let Err(error) = text_file_io::create_text(&path, "# 总结\n\n") { if !path.is_file() { return Err(error); } }
+        if let Err(error) = text_file_io::create_text(&path, "") { if !path.is_file() { return Err(error); } }
     }
     read(&path)
 }
@@ -153,9 +153,31 @@ mod tests {
         let f=Fixture::new(); let p=summary_path(&f.0,"p1").unwrap();
         assert!(!read(&p).unwrap().exists); assert!(!p.exists());
         let initial=ensure(&f.0,"p1").unwrap();
+        assert!(initial.content.is_empty());
         let text="\u{feff}---\r\nunknown: keep\r\n---\r\n# 总结\r\n😀 ![](summary-assets/a.png)\r\n";
         save(&f.0,"p1",text,&initial.content).unwrap(); assert_eq!(read(&p).unwrap().content,text);
         assert_eq!(ensure(&f.0,"p1").unwrap().content,text);
+    }
+    #[test] fn legacy_assignment_rejects_new_binding_and_broken_binding_without_touching_either_source() {
+        let f = Fixture::new();
+        let legacy = ensure(&f.0, "p1").unwrap();
+        save(&f.0, "p1", "free 测试1\r\n", &legacy.content).unwrap();
+        let note = {
+            let _lock = mutation().unwrap();
+            let mut c = Connection::open(f.0.join("aster.db")).unwrap();
+            let tx = c.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).unwrap();
+            let note = crate::library_summary_notes::insert_summary_note(&tx, "p1", "new designated content").unwrap();
+            tx.commit().unwrap();
+            note
+        };
+        let error = save(&f.0, "p1", "assigned candidate", "free 测试1\r\n").unwrap_err();
+        assert!(error.contains("旧MD编辑不会转写"));
+        assert_eq!(read(Path::new(&legacy.path)).unwrap().content, "free 测试1\r\n");
+        assert_eq!(crate::library_summary_notes::read_bound(&f.0, "p1").unwrap().unwrap().content, "new designated content");
+        let c = Connection::open(f.0.join("aster.db")).unwrap();
+        c.execute("UPDATE notes SET deleted_at=1 WHERE id=?1", [note.note_id.unwrap()]).unwrap();
+        assert!(save(&f.0, "p1", "assigned candidate", "free 测试1\r\n").is_err());
+        assert_eq!(read(Path::new(&legacy.path)).unwrap().content, "free 测试1\r\n");
     }
     #[test] fn summary_stale_and_deleted_writes_are_rejected() {
         let f=Fixture::new();let initial=ensure(&f.0,"p1").unwrap();

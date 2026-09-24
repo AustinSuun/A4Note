@@ -55,4 +55,13 @@ check('same paper but another note cannot accept proposal', () => {
   assert.throws(() => model.confirmedSummaryAssignment(plan, source, 'summary-note://paper-a/note-b'));
 });
 check('proposal requires explicit source identity', () => assert.throws(() => model.planSummaryAssignment(model.summaryDocument('文字'), { from: 0, to: 2, text: '文字' }, figure, { ...options, scope: '', createIfMissing: true })));
+for (const eol of ['\n', '\r\n']) {
+  const instruction = '此笔记的字段与论文总览同步。请保留 a4-summary 字段标记；可在字段外自由写作。';
+  const source = '# 总结笔记' + eol + eol + instruction + eol + '前置自由段落。' + eol + block('figure', '结构', '', eol) + '测试1' + eol;
+  const doc = model.summaryDocument(source), technical = doc.segments.find(s => s.kind === 'technical');
+  check('legacy instruction has lossless hidden interval ' + JSON.stringify(eol), () => { assert.ok(technical); assert.equal(doc.segments.map(s => source.slice(s.start, s.end)).join(''), source); assert.ok(!doc.segments.filter(s => s.kind !== 'technical').map(s => s.value).join('').includes(instruction)); });
+  check('technical preamble cannot be assigned as free text ' + JSON.stringify(eol), () => assert.throws(() => model.planSummaryAssignment(doc, { from: technical.start, to: technical.end, text: technical.value }, figure, options)));
+  check('editing adjacent prose preserves hidden raw bytes ' + JSON.stringify(eol), () => { const free = doc.segments.find(s => s.kind === 'free' && s.value.includes('前置自由')); const next = model.replaceSummaryFreeText(doc, source, free.key, free.value + '新增' + eol); assert.ok(next.includes(instruction + eol)); assert.equal(lib.summaryFields(next).get('figure').value, ''); });
+  check('instruction in fenced or changed user prose is not hidden ' + JSON.stringify(eol), () => { for (const text of ['# 总结笔记' + eol + eol + '```' + eol + instruction + eol + '```' + eol, '# 总结笔记' + eol + eol + instruction + ' 用户补充' + eol]) assert.ok(!model.summaryDocument(text + block('figure', '结构', '', eol)).segments.some(s => s.kind === 'technical')); });
+}
 console.log(JSON.stringify({ passed, failed: 0, scope: 'Pure lossless model and preview proposals; no actual saves or UI confirmation tested.' }));

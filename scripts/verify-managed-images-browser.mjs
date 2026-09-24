@@ -78,7 +78,27 @@ try {
  const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=20;c.height=12;return c.toDataURL('image/png').split(',')[1];});
  await chooser.setFiles({name:'selected.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});await page.waitForFunction(()=>window.text.includes('selected'));
  check('file selection uses managed references',await page.evaluate(()=>window.text.includes('summary-assets/')&&!window.text.includes('data:image')));
- check('no pageerror or console errors',errors.length===0);
+ // :only-child ignores adjacent text nodes: mixed paragraphs must keep line height.
+  for (const wrapper of ['img', 'button', 'figure']) {
+    const geometry = await page.evaluate(wrapper => {
+      const root = document.createElement('div'); root.className = 'md-body';
+      root.style.cssText = 'width:240px;font-size:18px;line-height:1.6';
+      const paragraph = document.createElement('p');
+      paragraph.append(document.createTextNode('Long mixed paragraph text must remain readable across wrapped lines. '.repeat(12)));
+      const image = document.createElement('img'); image.width=20; image.height=12;
+      const canvas=document.createElement('canvas');canvas.width=20;canvas.height=12;image.src=canvas.toDataURL();
+      if(wrapper==='img')paragraph.append(image);
+      else { const element=document.createElement(wrapper==='button'?'button':'span');element.className=wrapper==='button'?'markdown-image-zoom':'markdown-figure';element.append(image);paragraph.append(element); }
+      root.append(paragraph);document.body.append(root);
+      const range=document.createRange();range.selectNodeContents(paragraph.firstChild);
+      const lines=[...range.getClientRects()];
+      const result={lineHeight:parseFloat(getComputedStyle(paragraph).lineHeight),height:paragraph.clientHeight,lines:lines.length,step:lines.length>1?lines[1].top-lines[0].top:0};
+      root.remove();return result;
+    },wrapper);
+    check(wrapper+' mixed image paragraph retains nonzero text line height',geometry.lineHeight>=18&&geometry.step>=18);
+    check(wrapper+' mixed image paragraph wraps without overlapping lines',geometry.lines>3&&geometry.height>geometry.lines*18);
+  }
+  check('no pageerror or console errors',errors.length===0);
  fs.writeFileSync(path.join(dir,'result.json'),JSON.stringify({checks,errors,scope:'Real CodeMirror/ClipboardEvent/FileChooser; mocked IPC. Not native persistence or acceptance.'},null,2));
  console.log(JSON.stringify({passed:checks.length,errors,scope:'browser regression with mocked IPC'}));
 } catch(error) {fs.writeFileSync(path.join(dir,'failure.json'),JSON.stringify({error:String(error),stack:error.stack,checks,errors},null,2));if(page)await page.screenshot({path:path.join(dir,'failure.png')}).catch(()=>{});throw error;}

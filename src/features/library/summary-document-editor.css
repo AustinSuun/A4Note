@@ -17,4 +17,4 @@
 .summary-document-editor button:disabled { opacity: .5; cursor: default; }
 .summary-document-editor button:focus-visible, .summary-document-editor select:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
 .note-workspace > .summary-document-editor { min-height: 0; }
-.note-workspace:has(> .markdown-authoring-dock) > .summary-document-editor { padding-bottom: 96px; }
+.note-workspace:has(> .markdown-authoring-dock) > .summary-document-editor { padding-bottom: var(--note-dock-inset, 96px); }
