@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { SummaryDocumentEditor } from './SummaryDocumentEditor';
 import type { PaperDocument } from '../../core/types';
 import type { TextDocumentSession } from '../../core/textDocumentSession';
 import { summaryFields, updateSummaryField, type SummaryColumn } from '../../core/librarySummary';
@@ -6,6 +7,7 @@ import { reloadSummary, revealSummaryPath, uploadSummaryImage } from '../../plat
 export function SummaryEditor({ paper, column, session, onClose }: { paper: PaperDocument; column?: SummaryColumn; session: TextDocumentSession; onClose: () => void }) {
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [discard, setDiscard] = useState(false);
+  const [sourceMode, setSourceMode] = useState(false);
   let text = snapshot.content;
   try { if (column) text = summaryFields(snapshot.content).get(column.id)?.value ?? ''; } catch { /* full Markdown mode is always available in the parent */ }
   useEffect(() => () => { void session.flush().catch(() => {}); }, [session]);
@@ -22,14 +24,14 @@ export function SummaryEditor({ paper, column, session, onClose }: { paper: Pape
   const download = () => { const url = URL.createObjectURL(new Blob([session.getSnapshot().content], { type: 'text/markdown;charset=utf-8' })); const link = document.createElement('a'); link.href = url; link.download = '总结-草稿.md'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
   return <div className="summary-backdrop"><section className="summary-editor" role="dialog" aria-modal="true" aria-label="编辑总结" onKeyDown={event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); void save(); }
-    if (event.key === 'Escape') { event.stopPropagation(); if (busy) return; if (session.dirty()) setError('请保存后关闭，或明确放弃草稿。'); else onClose(); }
+    if (event.key === 'Escape') { event.stopPropagation(); if (busy) return; if (session.pending()) setError('请保存后关闭，或明确放弃草稿。'); else onClose(); }
   }}>
-    <header><strong>{column?.name ?? '完整 Markdown 总结'}</strong><span>{paper.title}</span><button type="button" disabled={busy} onClick={() => void save(true)}>保存并关闭</button></header>
-    <p className="summary-help">{snapshot.path.startsWith('summary-note://') ? '指定总结笔记 · 与阅读笔记正文共用保存' : '旧版独立总结 · 不覆盖阅读笔记'} · {snapshot.status === 'error' ? '保存失败 / 存在冲突' : session.dirty() ? '有未保存修改' : '已保存到 MD'}{column?.id === 'online' ? ' · 手填已确认的上线日期，未知留空，不使用出版年份推测。' : ''}</p>
-    {!column && <p className="summary-help">可自由编辑 Markdown；单元格由 a4-summary 注释标记关联。请保留字段标记，其他段落与未知元数据不会被表格覆盖。</p>}
-    <textarea autoFocus aria-label="总结内容" value={text} onChange={event => update(event.target.value)} spellCheck={false} />
+    <header><strong>{column?.name ?? '总结笔记'}</strong><span>{paper.title}</span>{!column && <button type="button" disabled={busy} aria-pressed={sourceMode} onClick={() => setSourceMode(value => !value)}>{sourceMode ? '返回分区编辑' : '高级源码'}</button>}<button type="button" disabled={busy} onClick={() => void save(true)}>保存并关闭</button></header>
+    <p className="summary-help">{snapshot.path.startsWith('summary-note://') ? '指定总结笔记 · 与阅读笔记正文共用保存' : '旧版独立总结 · 不覆盖阅读笔记'} · {snapshot.status === 'error' ? '保存失败 / 存在冲突' : session.dirty() ? '有未保存修改' : snapshot.status === 'saving' ? '正在保存…' : '已保存'}{column?.id === 'online' ? ' · 手填已确认的上线日期，未知留空，不使用出版年份推测。' : ''}</p>
+    {!column && sourceMode && <p className="summary-help">高级源码包含字段映射。请保留字段标记，其他段落与未知元数据不会被表格覆盖。</p>}
+    {column || sourceMode ? <textarea autoFocus aria-label="总结内容" value={text} onChange={event => update(event.target.value)} spellCheck={false} /> : <SummaryDocumentEditor key={snapshot.path} paper={paper} scope={snapshot.path} source={snapshot.content} getCurrent={() => session.getSnapshot().content} onChange={update} onBlur={() => {}} onSource={() => setSourceMode(true)} onAssign={async (plan, stillCurrent) => { await session.flush(); if (!stillCurrent() || session.getSnapshot().path !== plan.scope) throw new Error('笔记或预览已变化，请重新选择。'); await session.commitContent(plan.baseline, plan.next); }} />}
     <div className="summary-editor-tools">
-      {(!column || ['image','mixed'].includes(column.kind)) && <label className="summary-upload">添加图片<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={async event => {
+      {(sourceMode || (column && ['image','mixed'].includes(column.kind))) && <label className="summary-upload">添加图片<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={async event => {
         const file = event.target.files?.[0]; if (!file) return; setBusy(true);
         try { const relative = await uploadSummaryImage(paper.paperId, file); const current = column ? summaryFields(session.getSnapshot().content).get(column.id)?.value ?? '' : session.getSnapshot().content; update(current + `\n\n![结构图](${relative})\n`); }
         catch (e) { setError(String(e)); } finally { setBusy(false); }
@@ -40,6 +42,6 @@ export function SummaryEditor({ paper, column, session, onClose }: { paper: Pape
     </div>
     {discard && <div className="summary-warning">将放弃未保存内容并读取磁盘文件。建议先导出草稿。<button type="button" disabled={busy} onClick={async () => { setBusy(true); try { await reloadSummary(session, paper.paperId); setDiscard(false); setError(''); } catch (e) { setError(String(e)); } finally { setBusy(false); } }}>确认放弃并重新读取</button><button type="button" disabled={busy} onClick={async () => { await session.settle(); session.reload(session.getSnapshot().baseline); onClose(); }}>仅放弃草稿并关闭（不写盘）</button><button type="button" onClick={() => setDiscard(false)}>保留草稿</button></div>}
     {(error || snapshot.error) && <div role="alert" className="summary-warning">{error || snapshot.error}</div>}
-    <footer><span className="summary-help">{snapshot.path}</span><button type="button" disabled={busy} onClick={() => void save()}>保存 / 重试（Ctrl+S）</button></footer>
+    <footer><span className="summary-help">{sourceMode ? snapshot.path : snapshot.path.startsWith('summary-note://') ? '当前论文的总结笔记' : '旧版独立总结'}</span><button type="button" disabled={busy} onClick={() => void save()}>保存 / 重试（Ctrl+S）</button></footer>
   </section></div>;
 }

@@ -30,7 +30,9 @@ pub(crate) struct RevealPathRequest {
 pub fn get_aster_paths(app: AppHandle) -> Result<AsterPaths, String> {
     let _access = crate::library_access::operation()?;
     let root = app_data_root(&app)?;
-    let files_root = root.join("files").join("papers");
+    // The papers tree may live outside AsterData (storage.rs); this is the only
+    // path the desktop actions, diagnostics and the settings page hand out.
+    let files_root = crate::storage::papers_root(&root);
     let database = root.join("aster.db");
     fs::create_dir_all(&files_root).map_err(|error| error.to_string())?;
     Ok(AsterPaths {

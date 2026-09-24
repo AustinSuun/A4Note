@@ -708,8 +708,8 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
   box-shadow: 0 14px 34px rgba(25,38,30,.16);
 }
 .note-history-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 11px 12px 8px; border-bottom: 1px solid rgba(36,45,39,.07); }
-.note-history-heading strong { color: var(--ink); font-size: 13px; }
-.note-history-heading span { color: var(--muted); font-size: 10px; }
+.note-history-heading strong { color: var(--ink); font-size: var(--ui-control-font-size, 13px); }
+.note-history-heading span { color: var(--muted); font-size: var(--ui-caption-font-size, 11px); }
 .note-history-list { max-height: min(380px, 55vh); overflow: auto; padding: 4px; }
 .note-history-list > button {
   display: grid;
@@ -725,9 +725,11 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 }
 .note-history-list > button:hover { background: rgba(238,243,239,.62); }
 .note-history-list > button.active { background: rgba(220,235,226,.72); }
-.note-history-title { overflow: hidden; color: var(--ink); font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.note-history-excerpt { overflow: hidden; grid-column: 1 / -1; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.note-history-list time { color: #8a968e; font-size: 9px; }
+/* One type scale for the document picker: entry titles and the action row share the control
+   size, excerpts and timestamps the caption size, all following the UI zoom tokens. */
+.note-history-title { overflow: hidden; color: var(--ink); font-size: var(--ui-control-font-size, 13px); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.note-history-excerpt { overflow: hidden; grid-column: 1 / -1; color: var(--muted); font-size: calc(var(--ui-caption-font-size, 11px) + 1px); text-overflow: ellipsis; white-space: nowrap; }
+.note-history-list time { color: #8a968e; font-size: var(--ui-caption-font-size, 11px); }
 .note-history-empty { padding: 26px 12px; color: var(--muted); font-size: 12px; text-align: center; }
 .note-meta-row { display: flex; align-items: center; justify-content: space-between; min-height: 28px; padding: 4px 7px; color: #8b968f; font-size: 10px; }
 .note-save-state { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 10px; }
@@ -2501,7 +2503,7 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
 .note-document-trigger:focus-visible { outline:2px solid var(--accent-strong); outline-offset:1px; }
 .note-document-header > .note-history-shell .note-history-popover { left:0; right:auto; width:min(360px,calc(100vw - 36px)); max-width:max(280px,100%); background:var(--surface); border-color:var(--line); }
 .note-history-actions { display:grid; gap:2px; padding:5px; border-top:1px solid var(--line); }
-.note-history-actions button { display:flex; align-items:center; gap:8px; min-height:32px; padding:6px 8px; border:0; border-radius:5px; background:transparent; color:var(--ink); box-shadow:none; text-align:left; }
+.note-history-actions button { display:flex; align-items:center; gap:8px; min-height:32px; padding:6px 8px; border:0; border-radius:5px; background:transparent; color:var(--ink); box-shadow:none; text-align:left; font-size:var(--ui-control-font-size,13px); line-height:1.35; }
 .note-history-actions button:hover:not(:disabled) { background:var(--accent-soft); }
 .note-history-actions svg { width:15px; height:15px; color:var(--accent-strong); }
 .note-history-rename { display:grid; gap:7px; padding:10px; border-top:1px solid var(--line); }

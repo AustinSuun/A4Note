@@ -26,8 +26,10 @@ pub fn start_native(app:&AppHandle){
 }
 #[cfg(windows)]
 async fn initialize(app:AppHandle)->Result<(),String>{
-    let data=crate::app_paths::app_data_root(&app)?;let root=data.parent().ok_or("capture_data_parent")?.join("A4CaptureData");std::fs::create_dir_all(&root).map_err(|_|"capture_storage_create")?;
-    let store=store::Store::open(&root.join("capture.db"))?;
+    let data=crate::app_paths::app_data_root(&app)?;let store_dir=data.parent().ok_or("capture_data_parent")?.join("A4CaptureData");std::fs::create_dir_all(&store_dir).map_err(|_|"capture_storage_create")?;
+    // The download cache follows the configured files root (storage.rs); the small capture.db stays put.
+    let root=crate::storage::capture_cache_root(&data,store_dir.clone());std::fs::create_dir_all(&root).map_err(|_|"capture_storage_create")?;
+    let store=store::Store::open(&store_dir.join("capture.db"))?;
     let enabled=store.native_setting("authorized",false)?;let enrich=store.native_setting("enrich_metadata",true)?;
     let handle=app.clone();
     let service=Arc::new(Service{root,library_root:data,notify:Some(Arc::new(move|value|{let _=handle.emit("capture://library-changed",value);})),store,enrich_metadata:AtomicBool::new(enrich),terminating:AtomicBool::new(false),enabled:AtomicBool::new(enabled),generation:AtomicU64::new(0),

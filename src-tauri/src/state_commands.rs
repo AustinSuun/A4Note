@@ -72,6 +72,13 @@ pub(crate) fn workbench_database(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(database)
 }
 
+/// Asset writes may target only folders explicitly opened and persisted by the workbench.
+pub(crate) fn markdown_image_workspace_roots(database: &std::path::Path) -> Result<Vec<PathBuf>, String> {
+    let raw = folder_workbench_store::load(database)?.ok_or("尚无已保存的文件夹工作区，请先打开文件夹后重试。")?;
+    let snapshot: crate::workbench_store::WorkbenchSnapshot = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+    Ok(snapshot.projects.into_iter().filter(|p| p.kind == "folder").map(|p| PathBuf::from(p.root_path)).collect())
+}
+
 /// CLI-4: Agent conversation history. These live here rather than in
 /// `agent_bridge` on purpose — that module is the CLI's side of the wall and must
 /// never touch Aster's SQLite, so a CLI process can never reach the database.

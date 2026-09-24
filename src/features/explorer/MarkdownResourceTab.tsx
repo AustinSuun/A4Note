@@ -1,6 +1,7 @@
+import { uploadMarkdownImage } from '../../platform/projects';
 import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
 import { Bold, BookOpen, CalendarDays, Check, CheckSquare, ChevronDown, ChevronRight, Clipboard, ClipboardPaste, Code2, Eraser, ExternalLink, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Highlighter, ImagePlus, Italic, Link as LinkIcon, List, ListChecks, ListOrdered, ListTree, LoaderCircle, Minus, Pencil, Pilcrow, Plus, Quote, Scissors, Sigma, Strikethrough, Table2, Tag, Tags, Trash2, UserRound, X } from 'lucide-react';
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,6 +16,8 @@ import { MarkdownAuthoringDock } from './MarkdownAuthoringDock';
 import { loadNoteImage } from './noteImageLoader';
 import './markdown-mode-switch.css';
 import './markdown-toc-follow.css';
+import './markdown-toc-tree.css';
+import { useMarkdownTocCollapse } from './useMarkdownTocCollapse';
 import { headingAtLine, localScrollTop, tocScrollBehavior, useMarkdownTocFollow } from './useMarkdownTocFollow';
 import { markdownTemplates, type MarkdownTemplate } from './markdownTemplates';
 import { useDocumentToolbar, useDocumentToolbarActive } from '../../workbench/DocumentToolbar';
@@ -72,11 +75,12 @@ function offsetWithin(element: HTMLElement, ancestor: HTMLElement) {
   if (!ancestor.contains(element)) return null;
   const elementRect = element.getBoundingClientRect();
   const ancestorRect = ancestor.getBoundingClientRect();
+  const scale = ancestorRect.width / (ancestor.offsetWidth || ancestorRect.width || 1);
   return {
-    top: elementRect.top - ancestorRect.top + ancestor.scrollTop,
-    left: elementRect.left - ancestorRect.left + ancestor.scrollLeft,
-    width: elementRect.width,
-    height: elementRect.height,
+    top: (elementRect.top - ancestorRect.top) / scale + ancestor.scrollTop,
+    left: (elementRect.left - ancestorRect.left) / scale + ancestor.scrollLeft,
+    width: elementRect.width / scale,
+    height: elementRect.height / scale,
   };
 }
 
@@ -86,11 +90,12 @@ function offsetWithinLayer(element: HTMLElement, layer: HTMLElement, scrollAnces
   if (!scrollAncestor.contains(element)) return null;
   const elementRect = element.getBoundingClientRect();
   const layerRect = layer.getBoundingClientRect();
+  const scale = layerRect.width / (layer.offsetWidth || layerRect.width || 1);
   return {
-    top: elementRect.top - layerRect.top,
-    left: elementRect.left - layerRect.left,
-    width: elementRect.width,
-    height: elementRect.height,
+    top: (elementRect.top - layerRect.top) / scale,
+    left: (elementRect.left - layerRect.left) / scale,
+    width: elementRect.width / scale,
+    height: elementRect.height / scale,
   };
 }
 
@@ -295,11 +300,11 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
   const displayTitle = name.replace(/\.(?:md|markdown|mdx)$/i, '') || '\u672a\u547d\u540d\u6587\u6863';
   const { documentId, content, setContent, loading, error, saveState, saveError, save: saveImmediately, reload } = useTextDocument(path);
   const [operationError, setOperationError] = useState('');
-  const openWikiLink = (target: string) => {
+  const openWikiLink = useCallback((target: string) => {
     setOperationError('');
     if (!onOpenWikiLink) { setOperationError('当前入口未连接项目双链导航。'); return; }
     void Promise.resolve().then(() => onOpenWikiLink(target)).catch((error) => setOperationError(String(error)));
-  };
+  }, [onOpenWikiLink]);
   const [mode, setMode] = useState<'edit' | 'read'>('edit');
   const [editSurface, setEditSurface] = useState<'live' | 'source'>('live');
   const [tocOpen, setTocOpen] = useState(false);
@@ -328,7 +333,6 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
   const [newPropertyValue, setNewPropertyValue] = useState('');
   const [newPropertyType, setNewPropertyType] = useState<PropertyType>('text');
   const liveEditorRef = useRef<MarkdownLivePreviewEditorHandle | null>(null);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
   const contentScrollerRef = useRef<HTMLDivElement | null>(null);
   const endSpaceRef = useMarkdownEndSpace(contentScrollerRef);
@@ -380,6 +384,8 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
       };
     });
   }, [body, tocHeadings]);
+  const { visibleRows: visibleTocRows, visibleIds: visibleTocIds, collapsed: collapsedTocKeys, toggle: toggleTocHeading } = useMarkdownTocCollapse(documentId, tocHeadingMeta);
+  const visibleTocKey = visibleTocRows.map(row => row.id).join('|');
 
   useEffect(() => {
     setActiveHeadingId((current) => tocHeadings.some((heading) => heading.id === current) ? current : tocHeadings[0]?.id ?? null);
@@ -418,6 +424,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
     for (let index = 0; index < tocHeadings.length; index += 1) {
       const heading = tocHeadings[index];
       const meta = tocHeadingMeta[index];
+      if (!visibleTocIds.has(heading.id)) continue;
       // The heading list and its derived section metadata can be reconciled
       // on separate renders. Do not publish a partially measured layout while
       // that transient state is visible; the layout effect will retry after
@@ -492,7 +499,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
         top: railTop,
         height: Math.max(2, railEnd - railTop),
         startIndex: parent.index,
-        endIndex: lastDescendantIndex,
+        endIndex: lastDescendant.index,
       });
     }
     // Do not include the absolute guide layer or the scroll-past-end spacer:
@@ -500,7 +507,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
     const contentHeight = Math.max(list.clientHeight, rows.at(-1)?.bottom ?? 0);
     setTocGuideLayout({ contentHeight, rails });
     return true;
-  }, [tocHeadings, tocHeadingMeta]);
+  }, [tocHeadings, tocHeadingMeta, visibleTocKey]);
 
   useLayoutEffect(() => {
     if (!tocOpen) {
@@ -595,14 +602,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
     if (url) insertMarkdown('![', '](' + url + ')', '\u56fe\u7247\u8bf4\u660e');
   };
 
-  const insertImageFile = (file: File | undefined) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') insertMarkdown('![', '](' + reader.result + ')', file.name.replace(/\.[^.]+$/, ''));
-    };
-    reader.readAsDataURL(file);
-  };
+
 
   const openEditorContextMenu = (event: MouseEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -971,6 +971,12 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
   const activeTocIndex = useMemo(() => tocHeadings.findIndex((heading) => heading.id === activeHeadingId), [tocHeadings, activeHeadingId]);
   const hoveredTocIndex = useMemo(() => tocHeadings.findIndex((heading) => heading.id === hoveredHeadingId), [tocHeadings, hoveredHeadingId]);
 
+  // Outline follow updates this component's active heading on scroll. Reuse
+  // the rendered tree until the document or link handler changes; otherwise
+  // ReactMarkdown reparses the entire note at every heading boundary.
+  const readPreview = useMemo(() => mode === 'read' ? (
+    <article className="md-body markdown-resource-preview markdown-preview">{title && <h1 className="markdown-document-title" id={tocHeadings[0]?.id} data-markdown-heading-id={tocHeadings[0]?.id}>{title}</h1>}{Object.keys(properties).length > 0 && <div className="markdown-property-summary" aria-label="文档属性">{Object.entries(properties).map(([key, value]) => <span key={key} className="markdown-property-summary-item"><span className="markdown-property-summary-label">{propertyLabel(key)}</span><strong>{Array.isArray(value) ? value.join('、') || '未设置' : typeof value === 'boolean' ? (value ? '是' : '否') : value || '未设置'}</strong></span>)}</div>}<div className="markdown-content-start"><ReactMarkdown remarkPlugins={[remarkGfm, remarkMath, remarkAsterInline]} rehypePlugins={[rehypeKatex]} urlTransform={safeMarkdownUrl} components={{ section: ({ children, ...props }) => ('data-footnotes' in props ? <MarkdownFootnotesSection>{children}</MarkdownFootnotesSection> : <section {...props}>{children}</section>), a: ({ href, children, ...props }) => ('data-footnote-ref' in props ? <MarkdownFootnoteRef href={href} id={props.id}>{children}</MarkdownFootnoteRef> : 'data-footnote-backref' in props ? <MarkdownFootnoteBackref href={href}>{children}</MarkdownFootnoteBackref> : href?.startsWith(wikiLinkProtocol) ? <button type="button" className={onOpenWikiLink ? 'markdown-wiki-link' : 'markdown-wiki-link is-unresolved'} title={`笔记链接：${wikiLinkTarget(href)}`} onClick={() => openWikiLink(wikiLinkTarget(href))}>{children}</button> : href?.startsWith('a4note-highlight:') ? <mark className="markdown-inline-highlight">{children}</mark> : <a className="markdown-link" data-external={/^https?:/i.test(href ?? '') ? 'true' : undefined} href={href} target="_blank" rel="noreferrer" onClick={(event) => { if (!href) return; event.preventDefault(); void openExternalUrl(href).catch(() => window.open(href, '_blank', 'noopener,noreferrer')); }}>{children}</a>), blockquote: MarkdownCallout, pre: MarkdownCodeBlock, table: MarkdownTable, img: ({ src, alt, title }) => <MarkdownImage src={src} alt={alt} title={title} documentPath={path} />, h1: ({ node, ...props }) => <h1 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} />, h2: ({ node, ...props }) => <h2 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} />, h3: ({ node, ...props }) => <h3 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} />, h4: ({ node, ...props }) => <h4 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} />, h5: ({ node, ...props }) => <h5 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} />, h6: ({ node, ...props }) => <h6 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} /> }}>{normalizeEmbeddedMarkdown(bodyWithoutTitle)}</ReactMarkdown></div></article>
+  ) : null, [mode, title, properties, tocHeadings, bodyWithoutTitle, path, onOpenWikiLink, openWikiLink]);
   const viewControls = <>
         <div className="markdown-resource-mode-switch" data-mode={mode} role="group" aria-label="Markdown \u89c6\u56fe\u6a21\u5f0f">
           <button type="button" className={mode === 'edit' ? 'active' : ''} aria-pressed={mode === 'edit'} onClick={() => setMode('edit')} title="\u7f16\u8f91 Markdown" aria-label="\u7f16\u8f91 Markdown"><Pencil size={14} aria-hidden="true" /><span>{'\u7f16\u8f91'}</span></button>
@@ -987,7 +993,6 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
         {createPortal(viewControls, documentToolbar!.controlsHost!)}
         {createPortal(saveIndicator, documentToolbar!.saveHost!)}
       </> : <header className="markdown-resource-toolbar">{viewControls}{saveIndicator}</header>}
-        <input ref={imageInputRef} className="markdown-image-input" type="file" accept="image/*" onChange={(event) => { insertImageFile(event.target.files?.[0]); event.target.value = ''; }} />
       {(saveError || operationError) && <div className="file-tab-hint error" role="alert">
         <span>{saveError || operationError}</span>
         {saveError && <>
@@ -1000,7 +1005,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
           <button type="button" onClick={() => { if (window.confirm('重新加载会丢弃当前编辑草稿，请先导出需要保留的内容。继续？')) void reload(); }}>重新加载磁盘版本</button>
         </>}
       </div>}
-      {mode === 'edit' && !loading && !error && <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertMarkdown} onImage={() => imageInputRef.current?.click()} sourceMode={editSurface === 'source'} onToggleSource={() => setEditSurface((surface) => surface === 'live' ? 'source' : 'live')} />}
+      {mode === 'edit' && !loading && !error && <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertMarkdown} onImage={() => liveEditorRef.current?.pickImages()} sourceMode={editSurface === 'source'} onToggleSource={() => setEditSurface((surface) => surface === 'live' ? 'source' : 'live')} />}
       <div className={`markdown-resource-body mode-${mode}${tocOpen ? ' has-toc' : ''}`}>
         <div ref={endSpaceRef} className="markdown-resource-content">
         {loading && <p className="file-tab-hint">{'\u6b63\u5728\u52a0\u8f7d\u6587\u4ef6\u2026'}</p>}
@@ -1046,7 +1051,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
             </>}
           </aside>}
           <div className="markdown-editor-context-shell" onContextMenu={openEditorContextMenu}>
-            <MarkdownLivePreviewEditor key={editSurface} ref={liveEditorRef} documentPath={path} markdown={editSurface === 'live' ? bodyWithoutTitle : body} sourceMode={editSurface === 'source'} sessionId={editorSessionId} onChange={editSurface === 'live' ? updateEditorBody : updateSourceBody} onBlur={saveImmediately} onOpenWikiLink={openWikiLink} placeholder={'\u5f00\u59cb\u5199\u2026'} />
+            <MarkdownLivePreviewEditor key={editSurface} ref={liveEditorRef} documentPath={path} markdown={editSurface === 'live' ? bodyWithoutTitle : body} sourceMode={editSurface === 'source'} sessionId={editorSessionId} imageUpload={active ? file => uploadMarkdownImage(path, file) : undefined} onChange={editSurface === 'live' ? updateEditorBody : updateSourceBody} onBlur={saveImmediately} onOpenWikiLink={openWikiLink} placeholder={'\u5f00\u59cb\u5199\u2026'} />
             {editorContextMenu && createPortal(<div className={`markdown-editor-context-menu${editorContextMenu.submenuSide === 'left' ? ' submenu-left' : ''}${editorContextMenu.verticalSide === 'bottom' ? ' menu-bottom' : ''}`} style={{ left: editorContextMenu.x, top: editorContextMenu.y }} onClick={(event) => event.stopPropagation()} role="menu" aria-label="Markdown 编辑菜单">
               <button type="button" onClick={() => { closeEditorContextMenu(); setTemplateOpen(true); }}><Plus size={17} aria-hidden="true" /><span>全部样式模板（{markdownTemplates.length}）…</span></button>
               <button type="button" onClick={() => { insertLink(); closeEditorContextMenu(); }}><LinkIcon size={17} aria-hidden="true" /><span>新增链接</span></button>
@@ -1084,7 +1089,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
                 <button type="button" aria-haspopup="menu" aria-expanded={editorMenuSection === 'insert'} onFocus={() => setEditorMenuSection('insert')} onClick={() => setEditorMenuSection((section) => section === 'insert' ? null : 'insert')}><Plus size={17} aria-hidden="true" /><span>插入</span><ChevronRight size={16} aria-hidden="true" /></button>
                 {editorMenuSection === 'insert' && <div className="markdown-editor-submenu" role="menu" aria-label="插入">
                   <button type="button" onClick={() => { closeEditorContextMenu(); setTemplateOpen(true); }}><Plus size={17} aria-hidden="true" /><span>全部模板…</span></button>
-                  <button type="button" onClick={() => { imageInputRef.current?.click(); closeEditorContextMenu(); }}><ImagePlus size={17} aria-hidden="true" /><span>本地图片</span></button>
+                  <button type="button" onClick={() => { liveEditorRef.current?.pickImages(); closeEditorContextMenu(); }}><ImagePlus size={17} aria-hidden="true" /><span>本地图片</span></button>
                   <button type="button" onClick={() => { insertImageUrl(); closeEditorContextMenu(); }}><ImagePlus size={17} aria-hidden="true" /><span>图片地址</span></button>
                   <button type="button" onClick={() => { closeEditorContextMenu(); insertTemplate(markdownTemplates.find((item) => item.id === 'footnote')!); }}><span className="markdown-editor-menu-glyph">¹</span><span>脚注</span></button>
                   <button type="button" onClick={() => { closeEditorContextMenu(); insertTemplate(markdownTemplates.find((item) => item.id === 'table')!); }}><Table2 size={17} aria-hidden="true" /><span>表格</span></button>
@@ -1109,7 +1114,7 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
             </div>, document.body)}
           </div>
         </div>}
-         {!loading && !error && mode === 'read' && <article className="md-body markdown-resource-preview markdown-preview">{title && <h1 className="markdown-document-title" id={tocHeadings[0]?.id} data-markdown-heading-id={tocHeadings[0]?.id}>{title}</h1>}{Object.keys(properties).length > 0 && <div className="markdown-property-summary" aria-label="文档属性">{Object.entries(properties).map(([key, value]) => <span key={key} className="markdown-property-summary-item"><span className="markdown-property-summary-label">{propertyLabel(key)}</span><strong>{Array.isArray(value) ? value.join('、') || '未设置' : typeof value === 'boolean' ? (value ? '是' : '否') : value || '未设置'}</strong></span>)}</div>}<div className="markdown-content-start"><ReactMarkdown remarkPlugins={[remarkGfm, remarkMath, remarkAsterInline]} rehypePlugins={[rehypeKatex]} urlTransform={safeMarkdownUrl} components={{ section: ({ children, ...props }) => ('data-footnotes' in props ? <MarkdownFootnotesSection>{children}</MarkdownFootnotesSection> : <section {...props}>{children}</section>), a: ({ href, children, ...props }) => ('data-footnote-ref' in props ? <MarkdownFootnoteRef href={href} id={props.id}>{children}</MarkdownFootnoteRef> : 'data-footnote-backref' in props ? <MarkdownFootnoteBackref href={href}>{children}</MarkdownFootnoteBackref> : href?.startsWith(wikiLinkProtocol) ? <button type="button" className={onOpenWikiLink ? 'markdown-wiki-link' : 'markdown-wiki-link is-unresolved'} title={`笔记链接：${wikiLinkTarget(href)}`} onClick={() => openWikiLink(wikiLinkTarget(href))}>{children}</button> : href?.startsWith('a4note-highlight:') ? <mark className="markdown-inline-highlight">{children}</mark> : <a className="markdown-link" data-external={/^https?:/i.test(href ?? '') ? 'true' : undefined} href={href} target="_blank" rel="noreferrer" onClick={(event) => { if (!href) return; event.preventDefault(); void openExternalUrl(href).catch(() => window.open(href, '_blank', 'noopener,noreferrer')); }}>{children}</a>), blockquote: MarkdownCallout, pre: MarkdownCodeBlock, table: MarkdownTable, img: ({ src, alt, title }) => <MarkdownImage src={src} alt={alt} title={title} documentPath={path} />, h1: ({ node, ...props }) => <h1 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} />, h2: ({ node, ...props }) => <h2 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} />, h3: ({ node, ...props }) => <h3 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} />, h4: ({ node, ...props }) => <h4 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} />, h5: ({ node, ...props }) => <h5 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} />, h6: ({ node, ...props }) => <h6 {...props} id={headingIdForNode(node)} data-markdown-heading-id={headingIdForNode(node)} /> }}>{normalizeEmbeddedMarkdown(bodyWithoutTitle)}</ReactMarkdown></div></article>}
+         {!loading && !error && mode === 'read' && readPreview}
         </div>
         {tocOpen && <aside className="markdown-toc-panel" aria-label="文档目录">
           {tocHeadings.length > 0 ? <nav ref={tocListRef} className="markdown-toc-list" aria-label="文档标题列表">
@@ -1120,24 +1125,30 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
                 return <span key={rail.id} className={`markdown-toc-guide-rail${highlighted ? ' highlighted' : ''}`} data-guide-level={rail.level} style={{ left: rail.left, top: rail.top, height: rail.height }} />;
               })}
             </div>
-            {tocHeadingMeta.map((heading) => {
+            {visibleTocRows.map((heading) => {
               // The managed document title is the root of the outline. Keep
               // its disclosure affordance visible even when the section is
               // temporarily empty while the editor is being reconciled.
               const showCaret = heading.hasChildHeadings;
-              return <button
-              type="button"
-              key={heading.id}
+              return <div
+              key={heading.key}
               ref={(node) => { if (node) tocRowRefs.current.set(heading.id, node); else tocRowRefs.current.delete(heading.id); }}
               className={`markdown-toc-item level-${heading.level}${activeHeadingId === heading.id ? ' active' : ''}`}
-              onClick={() => navigateToHeading(heading)}
-              aria-current={activeHeadingId === heading.id ? 'location' : undefined}
+              style={{ '--toc-depth': heading.depth } as CSSProperties}
               onMouseEnter={() => setHoveredHeadingId(heading.id)}
               onMouseLeave={() => setHoveredHeadingId(null)}
               title={heading.text}
               data-toc-level={heading.level}
               data-toc-heading-id={heading.id}
-            >{showCaret ? <span className="markdown-toc-caret open" aria-hidden="true"><ChevronRight size={17} strokeWidth={2.35} /></span> : <span className="markdown-toc-caret-spacer" aria-hidden="true" />}<span className="markdown-toc-label">{heading.text}</span></button>;
+            >{showCaret ? <button type="button"
+                className={`markdown-toc-caret${collapsedTocKeys.has(heading.key) ? '' : ' open'}`}
+                aria-expanded={!collapsedTocKeys.has(heading.key)}
+                aria-label={`${collapsedTocKeys.has(heading.key) ? '展开' : '收起'} ${heading.text}`}
+                onClick={() => toggleTocHeading(heading.key)}><ChevronRight size={16} strokeWidth={1.8} aria-hidden="true" /></button>
+                : <span className="markdown-toc-caret-spacer" aria-hidden="true" />}
+                <button type="button" className="markdown-toc-label" title={heading.text}
+                  aria-current={activeHeadingId === heading.id ? 'location' : undefined}
+                  onClick={() => navigateToHeading(heading)}>{heading.text}</button></div>;
             })}
           </nav> : <p className="markdown-toc-empty">当前笔记还没有标题</p>}
         </aside>}

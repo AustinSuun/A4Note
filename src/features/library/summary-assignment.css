@@ -1,0 +1,4 @@
+.summary-assignment select, .note-workspace .summary-assignment select { display: block; box-sizing: border-box; width: 100%; height: auto; min-height: calc(1.4em + 18px); font: inherit; line-height: 1.4; margin-top: 6px; padding: 8px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 5px; }
+.summary-assignment pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24vh; overflow: auto; padding: 12px; border: 1px solid var(--line); border-radius: 6px; }
+.summary-assignment h3 { font-size: 14px; margin: 18px 0 8px; }
+.summary-assignment :is(select, pre):focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNoteDockBounds } from './useNoteDockBounds';
 import { markdownTemplates, type MarkdownTemplate } from './markdownTemplates';
 import './markdown-authoring.css';
 import './markdown-dock-layout.css';
@@ -14,6 +15,7 @@ type Props = {
 };
 export function MarkdownAuthoringDock({ open, onOpenChange, onInsert, onFormat, onImage, sourceMode, onToggleSource }: Props) {
   const root = useRef<HTMLDivElement>(null);
+  useNoteDockBounds(root);
   const trigger = useRef<HTMLButtonElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');

@@ -1,4 +1,4 @@
-.library-overview{display:flex;flex:1;min-height:0;flex-direction:column;position:relative;overflow:hidden}
+.library-overview{display:flex;flex:1;min-height:0;flex-direction:column;position:relative;overflow:hidden;background:var(--surface);color:var(--ink)}
 .summary-toolbar{display:flex;align-items:center;gap:8px;min-height:36px;padding:3px 8px;font-size:13px;border-bottom:1px solid var(--line,#e1e5ea)}
 .summary-toolbar button,.summary-columns button,.summary-editor button{font:inherit;border:1px solid var(--line,#dde2e7);border-radius:4px;padding:4px 8px;background:var(--surface,#fff);color:inherit;cursor:pointer}
 .summary-toolbar button:disabled,.summary-columns button:disabled,.summary-editor button:disabled{opacity:.5;cursor:default}

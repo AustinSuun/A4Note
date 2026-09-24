@@ -302,9 +302,12 @@ pub(crate) fn delete_paper_in_root(root: &Path, paper_id: &str) -> Result<(), St
         return Err("Document does not exist; cannot delete".to_string());
     }
     transaction.commit().map_err(|error| error.to_string())?;
-    let paper_dir = root.join("files").join("papers").join(paper_id);
-    if paper_dir.exists() {
-        fs::remove_dir_all(&paper_dir).map_err(|error| error.to_string())?;
+    // The folder may sit under the current or the default files root (storage.rs).
+    for papers in crate::storage::known_papers_roots(root) {
+        let paper_dir = papers.join(paper_id);
+        if paper_dir.exists() {
+            fs::remove_dir_all(&paper_dir).map_err(|error| error.to_string())?;
+        }
     }
     Ok(())
 }

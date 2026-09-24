@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BookOpen, FileText, Network, Folder, Pencil, Tags, Languages, Copy, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, FileText, Network, Folder, FolderOpen, Pencil, Tags, Languages, Copy, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { LibraryFolder, PaperDocument } from '../../core/types';
+import { pointPlacement, toCssPixels, viewportScale } from './portalPlacement';
 
 export type PaperMenuAnchor = { paperId: string; x: number; y: number; trigger: HTMLElement };
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
   onRelations: () => void;
   onEdit: () => void;
   onTags: () => void;
+  onRevealSourcePdf: () => void;
   onTranslation: () => void;
   onCopy: () => void;
   onDelete: () => void;
@@ -21,7 +23,7 @@ type Props = {
 };
 
 /** Body-level portal: neither the table scrollport nor scene overflow can clip this menu. */
-export function PaperContextMenu({ anchor, paper, folders, onClose, onRead, onDetails, onRelations, onEdit, onTags, onTranslation, onCopy, onDelete, onMove }: Props) {
+export function PaperContextMenu({ anchor, paper, folders, onClose, onRead, onDetails, onRelations, onEdit, onTags, onRevealSourcePdf, onTranslation, onCopy, onDelete, onMove }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const [folderMode, setFolderMode] = useState(false);
   const [position, setPosition] = useState({ left: 8, top: 8 });
@@ -36,12 +38,8 @@ export function PaperContextMenu({ anchor, paper, folders, onClose, onRead, onDe
     const menu = root.current;
     if (!menu) return;
     const place = () => {
-      const rect = menu.getBoundingClientRect();
-      const maxX = Math.max(8, window.innerWidth - rect.width - 8);
-      const maxY = Math.max(8, window.innerHeight - rect.height - 8);
-      const left = Math.max(8, Math.min(anchor.x, maxX));
-      const preferredY = anchor.y + rect.height + 8 > window.innerHeight ? anchor.y - rect.height : anchor.y;
-      const top = Math.max(8, Math.min(preferredY, maxY));
+      // Pointer coordinates and rects are viewport px; fixed offsets are zoomed CSS px.
+      const { left, top } = toCssPixels(pointPlacement(anchor, menu.getBoundingClientRect(), { width: window.innerWidth, height: window.innerHeight }), viewportScale(menu));
       setPosition((current) => current.left === left && current.top === top ? current : { left, top });
     };
     place();
@@ -102,7 +100,6 @@ export function PaperContextMenu({ anchor, paper, folders, onClose, onRead, onDe
         const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
         buttons[next]?.focus();
       }}>
-      <div className="library-context-title" title={paper.title}>{paper.title}</div>
       {folderMode ? <>
         <button type="button" role="menuitem" onClick={() => setFolderMode(false)}><ChevronLeft />返回论文操作</button>
         <div role="separator" className="library-context-separator" />
@@ -120,6 +117,7 @@ export function PaperContextMenu({ anchor, paper, folders, onClose, onRead, onDe
         <button type="button" role="menuitem" onClick={() => setFolderMode(true)}><Folder />设置文件类<ChevronRight className="library-context-chevron" /></button>
         <button type="button" role="menuitem" onClick={() => run(onEdit)}><Pencil />编辑论文信息</button>
         <button type="button" role="menuitem" onClick={() => run(onTags)}><Tags />编辑标签</button>
+        <button type="button" role="menuitem" onClick={() => run(onRevealSourcePdf)} disabled={!paper.sourcePdf}><FolderOpen />打开 PDF 所在文件夹</button>
         <button type="button" role="menuitem" onClick={() => run(onTranslation)}><Languages />导入译文 PDF</button>
         <button type="button" role="menuitem" onClick={() => run(onCopy)}><Copy />复制 BibTeX</button>
         <div role="separator" className="library-context-separator" />

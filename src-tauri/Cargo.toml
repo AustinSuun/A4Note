@@ -1,6 +1,6 @@
 [package]
 name = "a4note"
-version = "0.1.29"
+version = "0.1.32"
 description = "A4 Note knowledge workspace desktop app"
 authors = ["A4 Note"]
 edition = "2021"
@@ -33,3 +33,6 @@ lopdf = "0.34"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 
 base64 = "0.22"
+
+# Managed clipboard images: bounded decoding, raster formats only.
+image = { version = "0.25.8", default-features = false, features = ["png", "jpeg", "webp"] }

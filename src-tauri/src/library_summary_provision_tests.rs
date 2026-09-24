@@ -20,6 +20,24 @@ impl Drop for Fixture { fn drop(&mut self) { let _ = fs::remove_dir_all(&self.0)
 const TEMPLATE: &str = "# 总结筆记\n\n<!-- a4-summary:abstract -->\n## 主要功能\n\n<!-- /a4-summary:abstract -->\n";
 
 #[test]
+fn empty_on_demand_template_preserves_populated_absent_and_legacy_fields() {
+    let f = Fixture::new(); f.paper("a"); f.paper("b");
+    let empty = provision_in_root(&f.0, "", None).unwrap();
+    assert_eq!(empty.created.len(), 2);
+    assert!(empty.created.iter().all(|created| created.file.content.is_empty()));
+    f.paper("c");
+    let legacy = "# 旧笔记\r\n<!-- a4-summary:figure -->\r\n## 结构\r\n旧值\r\n<!-- /a4-summary:figure -->\r\n测试1\r\n![自由图](summary-assets/x.png)\r\n";
+    assert_eq!(provision_in_root(&f.0, legacy, None).unwrap().created.len(), 1);
+    let a = library_summary_notes::bound(&f.db(), "a").unwrap().unwrap();
+    f.db().execute("UPDATE notes SET content=?1 WHERE id=?2", params![TEMPLATE, a.note_id.as_ref().unwrap()]).unwrap();
+    let next = provision_in_root(&f.0, "new global catalog must not append fields", None).unwrap();
+    assert_eq!(next.preserved, 3); assert!(next.created.is_empty()); assert!(next.failures.is_empty());
+    assert_eq!(library_summary_notes::bound(&f.db(), "a").unwrap().unwrap().content, TEMPLATE);
+    assert_eq!(library_summary_notes::bound(&f.db(), "b").unwrap().unwrap().content, "");
+    assert_eq!(library_summary_notes::bound(&f.db(), "c").unwrap().unwrap().content, legacy);
+}
+
+#[test]
 fn creates_old_and_new_missing_notes_once_with_atomic_outbox() {
     let f = Fixture::new(); f.paper("old");
     let first = provision_in_root(&f.0, TEMPLATE, None).unwrap();

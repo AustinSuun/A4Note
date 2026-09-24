@@ -690,3 +690,94 @@ function parsePositionJson(raw: string): PositionJson {
 }
 
 export async function restartAfterLibraryRestore() { return invoke<void>('restart_after_library_restore'); }
+
+/* --- library file storage root (task 6557dc15) --------------------------- */
+
+export interface LibraryStorageInfo {
+  root: string;
+  filesRoot: string;
+  papersRoot: string;
+  defaultFilesRoot: string;
+  isCustom: boolean;
+  freeBytes: number | null;
+  totalBytes: number | null;
+  filesSizeBytes: number;
+  onSystemDrive: boolean | null;
+  recommendedRoot: string | null;
+  promptDismissed: boolean;
+  isolated: boolean;
+  migrationActive: boolean;
+  captureCacheRoot: string;
+}
+
+export interface LibraryStorageCandidate {
+  path: string;
+  onSystemDrive: boolean | null;
+  freeBytes: number | null;
+  totalBytes: number | null;
+}
+
+export interface LibraryStorageMigrationProgress {
+  phase: 'copying' | 'database' | 'cleanup' | 'done' | string;
+  copiedFiles: number;
+  totalFiles: number;
+  copiedBytes: number;
+  totalBytes: number;
+  current: string | null;
+}
+
+export interface LibraryStorageMigrationReport {
+  from: string;
+  to: string;
+  filesMoved: number;
+  bytesMoved: number;
+  databaseRowsUpdated: number;
+  warnings: string[];
+  filesRoot: string;
+  isCustom: boolean;
+}
+
+export const LIBRARY_STORAGE_MIGRATION_EVENT = 'library://storage-migration';
+
+export async function getLibraryStorage() {
+  return invoke<LibraryStorageInfo>('get_library_storage');
+}
+
+export async function validateLibraryFilesRoot(path: string) {
+  return invoke<LibraryStorageCandidate>('validate_library_files_root', { path });
+}
+
+/** `null` restores the default `<AsterData>/files`; `migrate` moves the existing tree first. */
+export async function setLibraryFilesRoot(path: string | null, migrate: boolean) {
+  return invoke<LibraryStorageMigrationReport>('set_library_files_root', { path, migrate });
+}
+
+export async function cancelLibraryFilesRootMigration() {
+  return invoke<void>('cancel_library_files_root_migration');
+}
+
+export async function dismissLibraryStoragePrompt() {
+  return invoke<void>('dismiss_library_storage_prompt');
+}
+
+export async function selectLibraryFilesRoot(defaultPath?: string) {
+  const selected = await open({
+    multiple: false,
+    directory: true,
+    defaultPath,
+    title: '选择 PDF 与译文文件的存储位置',
+  });
+  return typeof selected === 'string' ? selected : null;
+}
+
+export function formatByteSize(bytes: number | null | undefined) {
+  if (bytes === null || bytes === undefined || !Number.isFinite(bytes)) return '—';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${unit === 0 ? value : value.toFixed(value >= 100 ? 0 : 1)} ${units[unit]}`;
+}

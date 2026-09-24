@@ -1,3 +1,4 @@
+import { ConfirmActionButton } from '../../shared/ConfirmActionButton';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { summaryFields, updateSummaryField, type SummaryColumn } from '../../core/librarySummary';
 import type { TextDocumentSession } from '../../core/textDocumentSession';
@@ -101,6 +102,6 @@ export function SummaryEditableCell({ paperId, column, value, unavailable, onRep
         }} />
       <div className="summary-cell-edit-actions"><button type="button" disabled={busy} onClick={() => void commit()}>{busy ? '保存中…' : '保存'}</button><button type="button" disabled={busy} onClick={cancel}>取消</button></div>
     </> : unavailable ? <button type="button" className="summary-warning" onClick={onRepair}>{unavailable}</button> : <>{busy ? <span className="summary-muted">打开中…</span> : children}{recovery && <button type="button" className="summary-cell-draft" onClick={() => void begin()}>继续草稿</button>}</>}
-    {error && <div className="summary-cell-error" role="alert">{error}<button type="button" onClick={exportDraft}>导出草稿</button><button type="button" onClick={onRepair}>完整 MD</button><button type="button" disabled={busy} onClick={() => { if (window.confirm('放弃这份单元格草稿？建议先导出。不会修改已保存内容。')) cancel(); }}>放弃单元格草稿</button></div>}
+    {error && <div className="summary-cell-error" role="alert">{error}<button type="button" onClick={exportDraft}>导出草稿</button><button type="button" onClick={onRepair}>完整 MD</button><ConfirmActionButton label="放弃单元格草稿" prompt="建议先导出。确认后只放弃这份草稿，不修改已保存内容。" disabled={busy} onConfirm={cancel} onError={reason => setError(String(reason))} /></div>}
   </div>;
 }

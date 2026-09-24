@@ -1,5 +1,5 @@
 //! Legacy Markdown summaries, routed to the designated note only after explicit creation.
-use std::{fs, path::{Path, PathBuf}, io::Write};
+use std::{fs, path::{Path, PathBuf}};
 use rusqlite::{Connection, OptionalExtension};
 use serde::Serialize;
 use tauri::AppHandle;
@@ -7,7 +7,8 @@ use crate::{app_paths::app_data_root, workspace_fs::text_file_io};
 static SUMMARY_MUTATIONS: std::sync::Mutex<()> = std::sync::Mutex::new(());
 pub(crate) fn mutation() -> Result<std::sync::MutexGuard<'static, ()>, String> { SUMMARY_MUTATIONS.lock().map_err(|_| "总结文件操作锁不可用".into()) }
 const MAX_SUMMARY: u64 = 2 * 1024 * 1024;
-const MAX_IMAGE: usize = 3 * 1024 * 1024;
+#[cfg(test)]
+const MAX_IMAGE: usize = crate::managed_image_io::MAX_IMAGE;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SummaryFile { pub path: String, pub content: String, pub exists: bool, pub note_id: Option<String>, pub title: Option<String> }
@@ -31,7 +32,10 @@ fn safe_child(parent: &Path, name: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 fn managed_root(root: &Path) -> Result<PathBuf, String> {
-    let files = safe_child(root, "files")?;
+    // The files tree may be relocated (storage.rs); the reparse-point checks stay.
+    let files = crate::storage::files_root(root);
+    fs::create_dir_all(&files).map_err(|e| e.to_string())?;
+    crate::dev_environment::safe_path(&files).map_err(|_| "文件存储目录经过符号链接/联接点，拒绝读写总结".to_string())?;
     safe_child(&files, "papers")
 }
 fn paper_dir(root: &Path, id: &str) -> Result<PathBuf, String> {
@@ -66,7 +70,7 @@ fn ensure(root: &Path, id: &str) -> Result<SummaryFile, String> {
     if !path.exists() {
         fs::create_dir_all(path.parent().ok_or("缺少总结目录")?).map_err(|e| e.to_string())?;
         // Explicit editing action only. A failed race re-reads, never overwrites the winner.
-        if let Err(error) = text_file_io::create_text(&path, "# 总结\n\n") { if !path.is_file() { return Err(error); } }
+        if let Err(error) = text_file_io::create_text(&path, "") { if !path.is_file() { return Err(error); } }
     }
     read(&path)
 }
@@ -113,38 +117,25 @@ pub async fn save_summary_layout(app: AppHandle, content: String, expected_conte
         text_file_io::create_text(&path, &content)
     } else { text_file_io::atomic_write(&path, &content, Some(&expected_content)) }
 }
-fn image_extension(bytes: &[u8]) -> Result<&'static str, String> {
-    if bytes.len() > MAX_IMAGE { return Err("图片不得超过3MB".into()); }
-    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") { Ok("png") }
-    else if bytes.starts_with(&[0xff, 0xd8, 0xff]) { Ok("jpg") }
-    else if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" { Ok("webp") }
-    else { Err("仅支持PNG、JPEG、WebP图片".into()) }
-}
+#[cfg(test)]
+fn image_extension(bytes: &[u8]) -> Result<&'static str, String> { crate::managed_image_io::validate(bytes, None) }
 fn image_path(root: &Path, id: &str, name: &str) -> Result<PathBuf, String> {
     if name.is_empty() || name.len() > 80 || !name.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'.') || name.starts_with('.') { return Err("无效的图片引用".into()); }
     safe_child(&safe_child(&paper_dir(root, id)?, "summary-assets")?, name)
 }
 #[tauri::command]
-pub async fn import_summary_image(app: AppHandle, paper_id: String, bytes: Vec<u8>) -> Result<String, String> {
+pub async fn import_summary_image(app: AppHandle, paper_id: String, bytes: Vec<u8>, mime: Option<String>) -> Result<String, String> {
     let _access = crate::library_access::operation()?;
     let _mutation = mutation()?;
-    let ext = image_extension(&bytes)?;
-    let name = format!("{}.{}", uuid::Uuid::new_v4(), ext);
-    let path = image_path(&app_data_root(&app)?, &paper_id, &name)?;
-    fs::create_dir_all(path.parent().ok_or("缺少图片目录")?).map_err(|e| e.to_string())?;
-    let mut file = fs::OpenOptions::new().create_new(true).write(true).open(&path).map_err(|e| e.to_string())?;
-    let result = file.write_all(&bytes).and_then(|_| file.sync_all());
-    if let Err(e) = result { drop(file); let _ = fs::remove_file(&path); return Err(e.to_string()); }
+    let directory = safe_child(&paper_dir(&app_data_root(&app)?, &paper_id)?, "summary-assets")?;
+    let name = crate::managed_image_io::create(&directory, &bytes, mime.as_deref())?;
     Ok(format!("summary-assets/{name}"))
 }
 #[tauri::command]
 pub async fn read_summary_image(app: AppHandle, paper_id: String, name: String) -> Result<Vec<u8>, String> {
     let _access = crate::library_access::operation()?;
     let path = image_path(&app_data_root(&app)?, &paper_id, &name)?;
-    if fs::metadata(&path).map_err(|e| e.to_string())?.len() > MAX_IMAGE as u64 { return Err("图片过大".into()); }
-    let bytes = fs::read(path).map_err(|e| e.to_string())?;
-    image_extension(&bytes)?;
-    Ok(bytes)
+    crate::managed_image_io::read(path.parent().ok_or("缺少图片目录")?, &name)
 }
 #[cfg(test)]
 mod tests {
@@ -165,9 +156,31 @@ mod tests {
         let f=Fixture::new(); let p=summary_path(&f.0,"p1").unwrap();
         assert!(!read(&p).unwrap().exists); assert!(!p.exists());
         let initial=ensure(&f.0,"p1").unwrap();
+        assert!(initial.content.is_empty());
         let text="\u{feff}---\r\nunknown: keep\r\n---\r\n# 总结\r\n😀 ![](summary-assets/a.png)\r\n";
         save(&f.0,"p1",text,&initial.content).unwrap(); assert_eq!(read(&p).unwrap().content,text);
         assert_eq!(ensure(&f.0,"p1").unwrap().content,text);
+    }
+    #[test] fn legacy_assignment_rejects_new_binding_and_broken_binding_without_touching_either_source() {
+        let f = Fixture::new();
+        let legacy = ensure(&f.0, "p1").unwrap();
+        save(&f.0, "p1", "free 测试1\r\n", &legacy.content).unwrap();
+        let note = {
+            let _lock = mutation().unwrap();
+            let mut c = Connection::open(f.0.join("aster.db")).unwrap();
+            let tx = c.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).unwrap();
+            let note = crate::library_summary_notes::insert_summary_note(&tx, "p1", "new designated content").unwrap();
+            tx.commit().unwrap();
+            note
+        };
+        let error = save(&f.0, "p1", "assigned candidate", "free 测试1\r\n").unwrap_err();
+        assert!(error.contains("旧MD编辑不会转写"));
+        assert_eq!(read(Path::new(&legacy.path)).unwrap().content, "free 测试1\r\n");
+        assert_eq!(crate::library_summary_notes::read_bound(&f.0, "p1").unwrap().unwrap().content, "new designated content");
+        let c = Connection::open(f.0.join("aster.db")).unwrap();
+        c.execute("UPDATE notes SET deleted_at=1 WHERE id=?1", [note.note_id.unwrap()]).unwrap();
+        assert!(save(&f.0, "p1", "assigned candidate", "free 测试1\r\n").is_err());
+        assert_eq!(read(Path::new(&legacy.path)).unwrap().content, "free 测试1\r\n");
     }
     #[test] fn summary_stale_and_deleted_writes_are_rejected() {
         let f=Fixture::new();let initial=ensure(&f.0,"p1").unwrap();
@@ -185,7 +198,7 @@ mod tests {
     }
     #[test] fn summary_assets_are_bounded_and_scoped() {
         let f=Fixture::new();for n in ["../x.png","a/b.png","..",".hidden"] { assert!(image_path(&f.0,"p1",n).is_err()); }
-        assert!(image_extension(b"<svg><script/></svg>").is_err());assert!(image_extension(&vec![0;MAX_IMAGE+1]).is_err());assert_eq!(image_extension(b"\x89PNG\r\n\x1a\n").unwrap(),"png");
+        assert!(image_extension(b"<svg><script/></svg>").is_err());assert!(image_extension(&vec![0;MAX_IMAGE+1]).is_err());assert!(image_extension(b"\x89PNG\r\n\x1a\n").is_err());
     }
     #[test] fn summary_exclusive_create_never_clobbers_another_writer() {
         let f=Fixture::new();let a=ensure(&f.0,"p1").unwrap();assert!(text_file_io::create_text(Path::new(&a.path),"overwrite").is_err());assert_eq!(read(Path::new(&a.path)).unwrap().content,a.content);

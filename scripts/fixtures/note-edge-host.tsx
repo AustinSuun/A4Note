@@ -4,9 +4,11 @@ import '/src/ui/styles/tokens.css';
 import '/src/ui/styles/reader.css';
 import '/src/features/reader/reader-writing-layout.css';
 import { ReaderNoteWorkbenchMenu, ReaderNoteModeSwitch } from '/src/features/reader/ReaderNoteWorkbenchMenu';
+import { ReaderNoteFloatingControls } from '/src/features/reader/ReaderNoteFloatingControls';
 import { useReaderDrawerLayout } from '/src/features/reader/useReaderDrawerLayout';
 import { ReaderDrawerResizer } from '/src/features/reader/ReaderDrawerResizer';
 import { useNoteWorkbench } from '/src/features/reader/useNoteWorkbench';
+import { useNotePanelPresence } from '/src/features/reader/useNotePanelPresence';
 import { NOTE_WORKBENCH_COMMANDS, floatingCardBox, modeForNoteWorkbenchCommand, splitWidthPx } from '/src/features/reader/noteWorkbench';
 
 /* Host mirrors ReaderScene's workbench wiring (shell classes, drawer, retained note,
@@ -22,11 +24,14 @@ function Host() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const mode = workbench.mode;
   const drawerOpen = mode !== 'reading';
+  const notePresence = useNotePanelPresence(drawerOpen, mode);
+  const drawerPresented = drawerOpen || notePresence.phase !== 'hidden';
+  const presentationMode = drawerOpen ? mode : drawerPresented ? notePresence.mode : 'reading';
   const writingExpanded = mode === 'writing';
   const drawerWidth = splitWidthPx(containerWidth, workbench.prefs.splitRatio);
   const floatingRect = workbench.prefs.floating;
   const floatingBox = floatingCardBox(floatingRect, containerWidth, 620);
-  const floatingStyle = mode === 'floating' ? {
+  const floatingStyle = presentationMode === 'floating' && drawerPresented ? {
     '--floating-note-left': floatingRect.x * 100 + '%',
     '--floating-note-top': floatingRect.y * 100 + '%',
     '--floating-note-width': floatingRect.width * 100 + '%',
@@ -40,39 +45,14 @@ function Host() {
     if (command === NOTE_WORKBENCH_COMMANDS.toggle) workbench.setMode(mode === 'reading' ? workbench.prefs.wideMode : 'reading');
   };
 
-  const startFloatingDrag = (event) => {
-    const rect = containerRef.current.getBoundingClientRect();
-    const startX = event.clientX, startY = event.clientY, origin = { ...floatingRect }, element = event.currentTarget;
-    element.setPointerCapture(event.pointerId);
-    const move = (moveEvent) => workbench.setFloatingRect({
-      ...origin,
-      x: Math.min(1 - origin.width, Math.max(0, origin.x + (moveEvent.clientX - startX) / rect.width)),
-      y: Math.min(1 - origin.height, Math.max(0, origin.y + (moveEvent.clientY - startY) / rect.height)),
-    });
-    const stop = () => { element.removeEventListener('pointermove', move); element.removeEventListener('pointerup', stop); };
-    element.addEventListener('pointermove', move);
-    element.addEventListener('pointerup', stop);
-  };
-  const startFloatingResize = (event) => {
-    const rect = containerRef.current.getBoundingClientRect();
-    const startX = event.clientX, startY = event.clientY, origin = { ...floatingRect }, element = event.currentTarget;
-    element.setPointerCapture(event.pointerId);
-    const move = (moveEvent) => workbench.setFloatingRect({
-      ...origin,
-      width: Math.min(1 - origin.x, Math.max(0.24, origin.width + (moveEvent.clientX - startX) / rect.width)),
-      height: Math.min(1 - origin.y, Math.max(0.24, origin.height + (moveEvent.clientY - startY) / rect.height)),
-    });
-    const stop = () => { element.removeEventListener('pointermove', move); element.removeEventListener('pointerup', stop); };
-    element.addEventListener('pointermove', move);
-    element.addEventListener('pointerup', stop);
-  };
-
   useEffect(() => {
+    const presenceLog = window.__presenceLog || [];
+    if (presenceLog.at(-1) !== notePresence.phase) window.__presenceLog = [...presenceLog, notePresence.phase];
     window.__edgeTest = { setMode:workbench.setMode, setWidth:setContainerWidth, setFloating:workbench.setFloatingRect };
     window.__wbState = {
       paperId, containerWidth, mode, requested: workbench.requestedMode, temporary: workbench.temporary,
       drawerDiag: (() => { const el = document.querySelector('.reader-workspace-drawer'); if (!el) return null; const style = getComputedStyle(el); return { width: style.width, position: style.position, top: style.top, left: style.left, maxWidth: style.maxWidth }; })(),
-      prefs: workbench.prefs, drawerWidth, drawerOpen, floatingBox, activeNoteId,
+      prefs: workbench.prefs, drawerWidth, drawerOpen, drawerPresented, presence: notePresence.phase, floatingBox, activeNoteId,
       storage: Object.fromEntries(Object.keys(localStorage).sort().map(key => [key, localStorage.getItem(key)])),
     };
   });
@@ -89,8 +69,10 @@ function Host() {
       </div>
       <div
         ref={containerRef}
-        className={'reader-workspace-shell note-mode-' + mode + (drawerOpen ? ' workspace-open' : '') + (writingExpanded ? ' writing-expanded' : '')}
+        className={'reader-workspace-shell note-mode-' + presentationMode + (drawerPresented ? ' workspace-open' : '') + (writingExpanded ? ' writing-expanded' : '')}
         data-note-mode={mode}
+        data-note-motion-mode={presentationMode}
+        data-note-presence={notePresence.phase}
         data-note-requested-mode={workbench.requestedMode}
         data-note-temporary={workbench.temporary ? 'true' : 'false'}
         style={{ position: 'relative', width: containerWidth + 'px', height: '620px', '--reader-side-width': drawerWidth+'px', ...floatingStyle }}
@@ -103,14 +85,11 @@ function Host() {
         <div className="reader-main-workspace" inert={writingExpanded} aria-hidden={writingExpanded}>
           <div className="wb-harness-pdf pdf-document" style={{ width: mode==='split' ? containerWidth - drawerWidth - 12 : containerWidth, overflow:'auto' }}><div style={{height:1800,flex:'0 0 auto'}}>PDF scroll surface</div></div>
         </div>
-        {mode === 'floating' && (
-          <div className="reader-note-floating-controls">
-            <button type="button" className="reader-note-floating-drag" aria-label="拖动悬浮速记卡（方向键微调，Escape 回到分屏）" onPointerDown={startFloatingDrag}>拖动</button>
-            <button type="button" className="reader-note-floating-resize" aria-label="调整悬浮速记卡大小" onPointerDown={startFloatingResize} />
-          </div>
+        {presentationMode === 'floating' && drawerPresented && (
+          <ReaderNoteFloatingControls active={drawerOpen} rect={floatingRect} containerRef={containerRef} onRectChange={workbench.setFloatingRect} />
         )}
-        {drawerOpen && (
-          <aside className="reader-workspace-drawer" style={{ width: mode === 'split' ? drawerWidth + 'px' : undefined }} data-drawer-width={mode === 'split' ? drawerWidth : 'auto'}>
+        {drawerPresented && (
+          <aside className="reader-workspace-drawer notes-active" inert={!drawerOpen} aria-hidden={!drawerOpen} data-note-presence={notePresence.phase} style={{ width: presentationMode === 'split' ? drawerWidth + 'px' : undefined }} data-drawer-width={presentationMode === 'split' ? drawerWidth : 'auto'}>
         {mode === 'split' && drawerOpen && (
           <ReaderDrawerResizer width={drawerWidth} maximum={containerWidth - 332} onChange={(next) => workbench.setSplitRatio(next / containerWidth)} />
         )}

@@ -1,5 +1,6 @@
 import './library-typography.css';
 import { SummaryProvisionNotice } from './SummaryProvisionNotice';
+import { LibraryStorageNotice } from './LibraryStorageNotice';
 import { PaperSignals } from '../PaperSignals';
 import { LibraryNotesView } from './LibraryNotesView';
 import { LibraryViewSwitch } from './LibraryViewSwitch';
@@ -153,6 +154,7 @@ export function LibraryScene({
       <div className={`library-layout ${detailVisible ? 'detail-open' : ''}`.trim()}>
         <section className="library-main">
           <SummaryProvisionNotice />
+          <LibraryStorageNotice />
           <div className="library-commandbar">
             <LibraryViewSwitch view={view} onChange={setView} />
             <label className="library-search-field">
@@ -165,16 +167,6 @@ export function LibraryScene({
               )}
             </label>
             <span className="library-result-count">{visiblePapers.length} 条结果</span>
-            <button
-              type="button"
-              className={detailVisible ? 'library-icon-button active' : 'library-icon-button'}
-              onClick={() => onDetailOpenChange(!detailOpen)}
-              disabled={!selectedInView}
-              title={detailVisible ? zh.library.hideDetails : zh.library.details}
-              aria-label={detailVisible ? zh.library.hideDetails : zh.library.details}
-            >
-              <LibraryIcon name="details" />
-            </button>
             {view === 'list' && <ColumnSettings columns={[
               { id: 'title', label: '标题', visible: true, fixed: true },
               ...(Object.keys(libraryColumnLabels) as LibraryColumnId[]).map(id => ({ id, label: libraryColumnLabels[id], visible: visibleColumns[id] })),
@@ -296,6 +288,7 @@ export function LibraryScene({
         onClose={closePaperMenu}
         onRead={() => onOpenPaper(menuPaper.paperId)} onDetails={() => onDetailOpenChange(true)}
         onRelations={onOpenRelations} onEdit={onOpenMetadataEdit} onTags={onOpenTagsEdit}
+        onRevealSourcePdf={() => onRevealSourcePdf(menuPaper.paperId)}
         onTranslation={onOpenTranslationImport} onCopy={onCopyBibtex} onDelete={onDeletePaper}
         onMove={(folderId) => onMovePapersToFolder([menuPaper.paperId], folderId)} />}
     </section>

@@ -1443,22 +1443,32 @@ function AppContent() {
     setLibraryStatus,
   });
 
-  const revealSelectedPaperFile = async (kind: PaperFileKind) => {
-    if (!selectedPaper) return;
+  const revealPaperFileForPaper = async (paper: PaperDocument, kind: PaperFileKind) => {
     if (!isTauriRuntime()) {
       setLibraryStatus(zh.app.browserPreview);
       return;
     }
     try {
       await revealPaperFile({
-        paperId: selectedPaper.paperId,
+        paperId: paper.paperId,
         kind,
-        fileId: kind === 'translated' ? preferredTranslatedFileId(selectedPaper, readerTranslatedFileId) : selectedPaper.sourceFileId,
+        fileId: kind === 'translated' ? preferredTranslatedFileId(paper, readerTranslatedFileId) : paper.sourceFileId,
       });
     } catch (error) {
       console.error('Reveal paper file failed', error);
       setLibraryStatus(kind === 'translated' ? zh.library.revealTranslatedFailed : zh.library.revealSourceFailed);
     }
+  };
+
+  const revealSelectedPaperFile = async (kind: PaperFileKind) => {
+    if (!selectedPaper) return;
+    await revealPaperFileForPaper(selectedPaper, kind);
+  };
+
+  const revealContextPaperSourceFile = async (paperId: string) => {
+    const paper = aster.documents.get(paperId);
+    if (!paper) return;
+    await revealPaperFileForPaper(paper, 'source');
   };
 
   const openSelectedPaperFile = async (kind: PaperFileKind) => {
@@ -1490,7 +1500,9 @@ function AppContent() {
     commandPaletteOpen || importOpen || metadataEditOpen || tagsEditOpen || bulkTagsEditOpen || Boolean(confirmDialog) || Boolean(restoreRestartPath),
     {
       scenes: sceneCatalog.filter((scene) => visibleSceneIds.includes(scene.id) && (!scene.pluginId || aster.plugins.has(scene.pluginId))),
-      hasPaper: Boolean(selectedPaper), pdfMode: readerContentMode === 'pdf', focusedAnnotation: Boolean(readerFocusedAnnotationId),
+      hasPaper: Boolean(selectedPaper), pdfMode: readerContentMode === 'pdf',
+      hasSourcePdf: Boolean(selectedPaper?.sourcePdf), hasTranslatedPdf: Boolean(selectedPaper?.translatedPdfs.length),
+      focusedAnnotation: Boolean(readerFocusedAnnotationId),
       canUndo: annotationUndoStack.length > 0, canRedo: annotationRedoStack.length > 0,
       palette: openCommandPalette,
       openScene: (id) => { if (id === 'reader' && selectedPaper) openReaderForPaper(selectedPaper.paperId); else setScene(id); },
@@ -1500,6 +1512,7 @@ function AppContent() {
       deleteAnnotation: () => { if (readerFocusedAnnotationId) void deleteAnnotation(readerFocusedAnnotationId); },
       cancel: () => { if (!readerFocusedAnnotationId) return false; setReaderFocusedAnnotationId(null); return true; },
       selectTool: setActiveAnnotationTool,
+      selectReaderFileMode: setReaderFileMode,
       pdfZoom: (delta) => changeReaderZoom(clampNumber(Number((readerZoom + delta).toFixed(2)), .2, 5)),
       fitWidth: fitReaderToWidth,
       uiZoom: (delta) => setUiZoom((current) => delta === null ? 1 : clampNumber(Number((current + delta).toFixed(2)), .8, 1.4)),
@@ -2151,7 +2164,7 @@ function AppContent() {
       onOpenReader: () => selectedPaper && openReaderForPaper(selectedPaper.paperId),
       onOpenRelations: () => selectedPaper && openReaderRelationsForPaper(selectedPaper.paperId),
       onOpenTranslationImport: importTranslatedPdf,
-      onRevealSourcePdf: () => void revealSelectedPaperFile('source'),
+      onRevealSourcePdf: (paperId) => void revealContextPaperSourceFile(paperId),
       onRevealTranslatedPdf: () => void revealSelectedPaperFile('translated'),
       onOpenSourcePdfExternal: () => void openSelectedPaperFile('source'),
       onOpenTranslatedPdfExternal: () => void openSelectedPaperFile('translated'),

@@ -24,7 +24,7 @@ check(/addEventListener\('reader-find', show\)/.test(findBar), true, 'find bar s
 check(/requestAnimationFrame\(\(\) => \{ input\.current\?\.focus\(\)/.test(findBar), false, 'focus is committed by effect, not raced through requestAnimationFrame');
 let browser, server;
 try {
-  server = await createServer({ root, configFile: false, plugins: [react(), { name: 'find-harness', configureServer(s) { s.middlewares.use('/__find', async (_req, res) => { res.setHeader('Content-Type', 'text/html'); res.end(await s.transformIndexHtml('/__find', '<html><head><link rel="icon" href="data:,"><style>:root{--ink:#243b31;--surface:#fff;--muted:#64746c;--line:#bbc8bf;--accent:#48835d;--accent-strong:#2f6a45}body{margin:0;font:14px sans-serif}button{margin:3px}</style></head><body><div id="root"></div><script type="module" src="/scripts/fixtures/pdf-find-entry.tsx"></script></body></html>')); }); } }], server: { host: '127.0.0.1', port: 0 }, logLevel: 'error' });
+  server = await createServer({ root, cacheDir: path.join(root, '.tmp/pdf-find-entry-vite'), configFile: false, optimizeDeps: { entries: ['scripts/fixtures/pdf-find-entry.tsx'] }, plugins: [react(), { name: 'find-harness', configureServer(s) { s.middlewares.use('/__find', async (_req, res) => { res.setHeader('Content-Type', 'text/html'); res.end(await s.transformIndexHtml('/__find', '<html><head><link rel="icon" href="data:,"><style>:root{--ink:#243b31;--surface:#fff;--muted:#64746c;--line:#bbc8bf;--accent:#48835d;--accent-strong:#2f6a45}body{margin:0;font:14px sans-serif}button{margin:3px}</style></head><body><div id="root"></div><script type="module" src="/scripts/fixtures/pdf-find-entry.tsx"></script></body></html>')); }); } }], server: { host: '127.0.0.1', port: 0, watch: null }, logLevel: 'error' });
   await server.listen(); const port = server.httpServer.address().port;
   const exe = process.env.SHORTCUT_CHROME || ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);
   assert.ok(exe, 'Set SHORTCUT_CHROME to an installed browser executable');
@@ -74,7 +74,7 @@ try {
   check(await page.locator('.pdf-find-bar').count(), 0, 'non-PDF mode: nothing opens');
   await page.evaluate(() => window.__findTest.setPdfMode(true)); await page.waitForSelector('.pdf-reader-surface');
   // 7. Ctrl hint overlay: reader.search still appears, as a floating scene hint (no anchor).
-  await page.locator('#canvas').focus(); await page.keyboard.down('Control'); await page.waitForTimeout(250);
+  await page.locator('#canvas').focus(); await page.keyboard.down('Control'); await page.waitForTimeout(650);
   const hint = page.locator('[data-hint-id="reader.search"]');
   check(await hint.count(), 1, 'Ctrl overlay lists reader.search');
   check(await hint.getAttribute('data-hint-placement'), 'floating', 'reader.search hint floats (no button anchor)');

@@ -30,6 +30,7 @@ class SummaryNoteSession extends TextDocumentSession {
   override dirty() { return this.note.dirty(); }
   override pending() { return this.note.pending(); }
   override flush() { return this.note.flush(); }
+  override commitContent(expected: string, next: string) { return this.note.commitContent(expected, next); }
   override settle() { return this.note.settle(); }
   override reload(content: string) { this.note.reloadContent(content); }
   override fail(message: string) { this.note.fail(message); }
@@ -38,7 +39,7 @@ export function summaryNoteSession(paperId: string, file: SummaryFile): TextDocu
   if (!file.noteId) throw new Error('缺少总结笔记ID');
   const note = existingLibraryNoteSession(paperId, file.noteId) ?? acquireLibraryNoteSession(paperId, { id: file.noteId, title: file.title ?? '总结笔记', content: file.content }, async input => {
     const result = await invoke<{ id: string }>('upsert_note', { request: { paper_id: paperId, note_id: input.noteId, title: input.title, content: input.content, expected: input.expected } });
-    publishSummaryNote({ ...file, noteId: result.id, title: input.title, content: input.content }, paperId);
+    if (result.id === input.noteId) publishSummaryNote({ ...file, noteId: result.id, title: input.title, content: input.content }, paperId);
     return result.id;
   }, '总结笔记');
   let adapter = adapters.get(file.path);

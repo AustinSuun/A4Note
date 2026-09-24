@@ -12,12 +12,13 @@ export const defaultSummaryColumns: SummaryColumn[] = [
   { id: 'note', name: '关联笔记', kind: 'note', width: 220, hidden: true },
 ];
 export interface SummaryField { id: string; start: number; end: number; value: string }
+export interface SummaryFieldBlock extends SummaryField { blockStart: number; blockEnd: number }
 /** Parse only our explicit field nodes. All other Markdown/metadata stays byte-for-byte intact.
  * Fenced code is opaque; ambiguous/nested/duplicate nodes fail closed, never rewritten. */
-export function summaryFields(markdown: string): Map<string, SummaryField> {
-  const fields = new Map<string, SummaryField>();
+export function summaryFieldBlocks(markdown: string): Map<string, SummaryFieldBlock> {
+  const fields = new Map<string, SummaryFieldBlock>();
   let offset = 0, fence = '', fenceLength = 0;
-  let current: { id: string; start: number; heading: boolean } | undefined;
+  let current: { id: string; start: number; heading: boolean; blockStart: number } | undefined;
   for (const line of markdown.match(/[^\n]*\n|[^\n]+$/g) ?? []) {
     const plain = line.replace(/\r?\n$/, '');
     const code = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(plain);
@@ -29,14 +30,15 @@ export function summaryFields(markdown: string): Map<string, SummaryField> {
     }
     if (!fence) {
       const marker = /^<!-- (\/?)a4-summary:([a-z][a-z0-9_-]{0,63}) -->$/.exec(plain);
+      if (!marker && /^ {0,3}<!--\s*\/?a4-summary\b/.test(plain)) throw new Error('总结字段标记格式损坏，请在高级源码中修复；未修改正文。');
       if (marker) {
         const [, close, id] = marker;
         if (!close) {
           if (current || fields.has(id)) throw new Error('总结字段标记重复或嵌套，请在完整 Markdown 中修复后再编辑单元格。');
-          current = { id, start: offset + line.length, heading: true };
+          current = { id, start: offset + line.length, heading: true, blockStart: offset };
         } else {
           if (!current || current.id !== id) throw new Error('总结字段结束标记不匹配，请先修复 Markdown。');
-          fields.set(id, { id, start: current.start, end: offset, value: markdown.slice(current.start, offset).replace(/\r?\n$/, '') });
+          fields.set(id, { id, blockStart: current.blockStart, blockEnd: offset + line.length, start: current.start, end: offset, value: markdown.slice(current.start, offset).replace(/\r?\n$/, '') });
           current = undefined;
         }
       } else if (current?.heading) {
@@ -49,6 +51,9 @@ export function summaryFields(markdown: string): Map<string, SummaryField> {
   if (current) throw new Error('总结字段缺少结束标记，请先修复 Markdown。');
   return fields;
 }
+export function summaryFields(markdown: string): Map<string, SummaryField> {
+  return new Map([...summaryFieldBlocks(markdown)].map(([id, field]): [string, SummaryField] => [id, { id, start: field.start, end: field.end, value: field.value }]));
+}
 export function updateSummaryField(markdown: string, column: Pick<SummaryColumn, 'id' | 'name'>, value: string): string {
   if (!/^[a-z][a-z0-9_-]{0,63}$/.test(column.id)) throw new Error('字段标识无效');
   const fields = summaryFields(markdown), field = fields.get(column.id);
@@ -60,9 +65,8 @@ export function updateSummaryField(markdown: string, column: Pick<SummaryColumn,
   if (!checked.has(column.id)) throw new Error('字段位于未闭合的代码块中，请先在完整 Markdown 中修复。');
   return next;
 }
-export function summaryExcerpt(value: string, zoom: number): string {
-  const max = zoom <= 45 ? 80 : zoom <= 65 ? 160 : 500;
-  return value.replace(/!\[[^\]]*\]\([^)]*\)/g, '〔图片〕').replace(/\s+/g, ' ').slice(0, max);
+export function summaryExcerpt(value: string, _zoom?: number): string {
+  return value.replace(/!\[[^\]]*\]\([^)]*\)/g, '〔图片〕').replace(/\s+/g, ' ');
 }
 export function parseSummaryLayout(text: string): { columns: SummaryColumn[]; raw: Record<string, unknown> } {
   if (!text) return { columns: defaultSummaryColumns.map(c => ({ ...c })), raw: { version: 2 } };

@@ -116,7 +116,9 @@ export function ReaderNoteWorkbenchMenu({ mode, onToggle, onSelectMode, temporar
   return (
     <div className="reader-note-workbench-entry reader-note-edge-entry" ref={rootRef} data-note-mode={mode}
       data-note-temporary={temporary ? 'true' : 'false'} data-note-docked={docked ? 'true' : 'false'}
-      style={{ top: edgeTop, ...(mode === 'writing' || overlay ? { left: 0, right: 'auto' } : { right: docked ? Math.max(0, drawerWidth - (closed ? 16 : 13)) : 0 }) }}>
+      /* Docked: follow the note track variable so the bookmark rides the split line while
+         the column slides open or closed (ReaderScene animates --reader-side-width). */
+      style={{ top: edgeTop, ...(mode === 'writing' || overlay ? { left: 0, right: 'auto' } : { right: docked ? `max(0px, calc(var(--reader-side-width, ${drawerWidth}px) - ${closed ? 16 : 8}px))` : 0 }) }}>
       <button type="button" ref={buttonRef} className={`reader-note-workbench-button reader-note-edge-handle${closed ? '' : ' active'}`}
         {...shortcutProps(NOTE_WORKBENCH_COMMANDS.toggle, label)} title={label} aria-label={label}
         aria-pressed={!closed} aria-expanded={open} aria-haspopup="menu" aria-controls={open ? menuId : undefined}

@@ -127,7 +127,7 @@
 /* ---- images ---- */
 .md-body p:has(> img:only-child),
 .md-body p:has(> .markdown-image-zoom:only-child),
-.md-body p:has(> .markdown-figure:only-child) { margin: 0; line-height: 0; }
+.md-body p:has(> .markdown-figure:only-child) { margin: 0; line-height: inherit; }
 .md-body img { display: block; max-width: 100%; height: auto; margin: 0; border-radius: 6px; }
 .md-body .markdown-image-zoom {
   position: relative;

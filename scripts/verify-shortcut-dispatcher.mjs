@@ -3,13 +3,32 @@ import { shortcutTestRuntime } from './shortcut-test-runtime.mjs';
 let checks = 0;
 const eq = (actual, expected, message) => { assert.deepEqual(actual, expected, message); checks++; };
 const r = shortcutTestRuntime();
-const { win, doc, store, key, Element, advance } = r;
+const { win, doc, store, key, Element, advance, HINT_HOLD_DELAY_MS } = r;
 eq(key('z').events, ['undo'], 'executes once');
 eq(key('z').event.defaultPrevented, true, 'handled key consumed');
 eq(key('q').event.defaultPrevented, false, 'unmatched key not consumed');
 eq(key('z', undefined, { repeat: true }).events, [], 'undo does not repeat');
-eq(key('=', undefined, { repeat: true }).events, ['pdf-zoom'], 'PDF zoom can repeat');
-eq(key('=', undefined, { altKey: true }).events, ['ui-zoom'], 'UI zoom distinct');
+eq(key('=', undefined, { repeat: true }).events, [], 'legacy PDF keyboard zoom removed');
+eq(key('-', undefined, { repeat: true }).events, [], 'legacy PDF zoom-out removed');
+eq(key('=', undefined, { altKey: true }).events, [], 'legacy UI keyboard zoom removed');
+eq(key('0', undefined, { altKey: true }).events, [], 'legacy UI zoom reset removed');
+eq(key('F1').events, ['mode-source'], 'Ctrl+F1 switches to source view');
+eq(key('F2').events, ['mode-translated'], 'Ctrl+F2 switches to translated view');
+eq(key('F3').events, ['mode-parallel'], 'Ctrl+F3 switches to parallel view');
+eq(key('Enter').events, ['scene'], 'hiding a redundant reader hint does not disable its existing shortcut');
+r.options.hasTranslatedPdf = false;
+eq(key('F2').events, [], 'missing translation disables view switch');
+eq(key('F3').events, [], 'missing translation disables comparison');
+r.options.hasTranslatedPdf = true;
+store.save({ schemaVersion: 1, bindings: {
+  'reader.zoomIn': [{ type: 'keyboard', key: '=', ctrl: true }],
+  'global.zoomReset': [{ type: 'keyboard', key: '0', ctrl: true, alt: true }],
+} });
+eq(key('=').events, [], 'saved obsolete PDF zoom binding does not revive');
+eq(store.bindings('reader.zoomIn').length, 0, 'fixed gesture stays out of keyboard binding registry');
+eq(key('0', undefined, { altKey: true }).events, [], 'saved obsolete UI reset binding does not revive');
+eq(store.bindings('global.zoomReset').length, 0, 'removed zoom reset is not offered as an editable keyboard command');
+store.save({ schemaVersion: 1, bindings: {} });
 for (const kind of ['input','textarea','select','contenteditable','cm']) {
   eq(key('z', new Element(kind)).events, [], `${kind} native undo protected`);
   eq(key('h', new Element(kind)).event.defaultPrevented, false, `${kind} annotation tool not consumed`);
@@ -24,9 +43,10 @@ doc.visibilityState = 'hidden'; eq(key('z').events, [], 'hidden document'); doc.
 doc.modals = [new Element()]; eq(key('z').events, [], 'visible modal'); doc.modals = [];
 store.setContext('reader', true); eq(key('z').events, [], 'app modal state'); store.setContext('reader', false);
 store.setRecording(true); eq(key('z').events, [], 'recording suspends dispatch'); store.setRecording(false);
-key('Control'); advance(149); eq(store.hintVisible, false, 'hint delay below threshold'); advance(1); eq(store.hintVisible, true, 'hint at 150ms');
+key('Control'); advance(HINT_HOLD_DELAY_MS - 1); eq(store.hintVisible, false, 'hint delay below threshold'); advance(1); eq(store.hintVisible, true, 'hint shows once the hold delay elapses');
 win.emit('keyup', { key: 'Control' }); eq(store.hintVisible, false, 'Ctrl release clears');
-key('Control'); key('z'); advance(200); eq(store.hintVisible, false, 'chord suppresses hints');
+key('Control'); advance(300); win.emit('keyup', { key: 'Control' }); advance(400); eq(store.hintVisible, false, 'familiar quick phrases never flash hints');
+key('Control'); key('z'); advance(600); eq(store.hintVisible, false, 'chord suppresses hints');
 win.emit('keyup', { key: 'Control' }); key('Control'); advance(150); win.emit('blur'); eq(store.hintVisible, false, 'blur clears');
 key('Control'); advance(150); doc.emit('compositionstart'); eq(store.hintVisible, false, 'composition clears'); doc.emit('compositionend'); win.emit('keyup', { key: 'Control' });
 key('Control'); store.setContext('library', false); advance(200); eq(store.hintVisible, false, 'scene change clears pending hints'); win.emit('keyup', { key: 'Control' });

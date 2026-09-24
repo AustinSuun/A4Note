@@ -59,6 +59,7 @@ export function ReaderSidePanelContent({
         onSave={onNoteSave}
         onCreateNote={onCreateNote}
         onNavigateAnnotation={onNavigateAnnotation}
+        focusedAnnotationId={focusedAnnotationId}
       />
     );
   }

@@ -1,0 +1,11 @@
+.summary-compact-content { display: flex; align-items: flex-start; gap: 6px; min-width: 0; max-height: 100%; overflow: hidden; }
+.summary-compact-content > .summary-excerpt { flex: 1; min-width: 0; }
+.summary-compact-images { display: flex; flex: 0 1 auto; gap: 4px; max-width: 45%; max-height: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.summary-compact-images:empty { display: none; }
+.summary-compact-image-item { display: inline-flex; flex: 0 0 auto; max-width: 64px; }
+.summary-compact-images .markdown-image-zoom { position: relative; overflow: hidden; width: 64px; max-width: 100%; height: var(--summary-thumbnail-height, 24px); padding: 0; }
+.summary-compact-images .markdown-image-zoom img { display: block; width: 100%; height: 100%; max-height: var(--summary-thumbnail-height, 24px); object-fit: contain; }
+.summary-compact-images .markdown-figcaption { display: none; }
+.summary-managed-image { display: inline-block; max-width: 100%; }
+.summary-compact-images .markdown-image-zoom-hint { position: absolute; right: 2px; bottom: 2px; display: flex; pointer-events: none; opacity: 0; }
+.summary-compact-images .markdown-image-zoom:is(:hover, :focus-visible) .markdown-image-zoom-hint { opacity: 1; }

@@ -19,7 +19,7 @@ mod library_access;
 mod library_annotations;
 mod library_import;
 mod library_notes;
-mod library_summaries;
+mod library_summaries; mod managed_image_io; mod markdown_images; mod storage;
 mod library_summary_notes;
 mod library_summary_provision;
 mod library_papers;
@@ -59,7 +59,7 @@ pub fn run() {
             app_paths::initialize_library,
             diagnostics::get_app_diagnostics,
             capture::capture_control,
-            app_paths::reveal_aster_path,
+            app_paths::reveal_aster_path, storage::get_library_storage, storage::validate_library_files_root, storage::set_library_files_root, storage::cancel_library_files_root_migration, storage::dismiss_library_storage_prompt,
             project_commands::describe_project_folder,
             project_tasks::start_project_tasks, project_tasks::preflight_project_tasks, project_tasks::inspect_project_tasks, project_tasks::stop_project_tasks, project_tasks::set_project_tasks_exit_policy, project_tasks::resolve_app_exit,
             project_commands::list_directory_entries,
@@ -68,7 +68,7 @@ pub fn run() {
             project_commands::open_path_in_vscode,
             project_commands::open_external_url,
             project_commands::read_text_file_preview,
-            project_commands::read_text_file,
+            project_commands::read_text_file, markdown_images::import_markdown_image,
             project_commands::write_text_file,
             project_commands::rename_text_file,
             project_commands::move_path,

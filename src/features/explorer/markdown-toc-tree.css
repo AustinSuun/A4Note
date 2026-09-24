@@ -1,0 +1,60 @@
+/* Scope overrides to the directory. File trees and editor folding are unchanged.
+   Rails stay in layout pixels; zoom conversion lives in the measuring helpers. */
+.markdown-toc-panel .markdown-toc-list { --markdown-toc-depth-step: 16px; }
+.markdown-toc-panel .markdown-toc-item {
+  align-items: center;
+  gap: 2px;
+  min-height: 34px;
+  padding: 2px 6px 2px calc(4px + var(--toc-depth, 0) * var(--markdown-toc-depth-step));
+  overflow: hidden;
+  cursor: default;
+  font-weight: 400;
+}
+.markdown-toc-panel .markdown-toc-item.active { font-weight: 650; color: var(--accent-strong); }
+.markdown-toc-panel .markdown-toc-caret,
+.markdown-toc-panel .markdown-toc-caret-spacer {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 28px;
+  margin: 0;
+}
+.markdown-toc-panel button.markdown-toc-caret {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.markdown-toc-panel button.markdown-toc-caret:hover { background: var(--accent-soft); }
+.markdown-toc-panel .markdown-toc-label {
+  align-self: stretch;
+  display: block;
+  min-width: 0;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.markdown-toc-panel button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.markdown-toc-panel .markdown-toc-guide-rail {
+  width: 1px;
+  background: var(--line);
+  opacity: 1;
+  box-shadow: none;
+  will-change: auto;
+}
+.markdown-toc-panel .markdown-toc-guide-rail.highlighted {
+  width: 1px;
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+  opacity: 1;
+  box-shadow: none;
+}

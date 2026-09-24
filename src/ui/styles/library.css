@@ -1014,7 +1014,6 @@
   font-size: 12px;
 }
 .library-paper-context-menu > * { flex-shrink: 0; }
-.library-context-title { padding: 6px 9px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #7d8982; font-size: 11px; }
 .library-paper-context-menu button {
   display: flex; align-items: center; justify-content: flex-start; gap: 9px;
   min-height: 33px; padding: 6px 9px; border: 0; border-radius: 5px;

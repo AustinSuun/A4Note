@@ -1,16 +1,20 @@
+import { SummaryCompactImages, SummaryManagedImage } from './SummaryManagedImages';
 import { SummaryEditableCell } from './SummaryEditableCell';
 import { PaperSignals } from '../PaperSignals';
 import { SummaryRowResizer, type RowResizeActions } from './SummaryRowResizer';
 import { Pin } from 'lucide-react';
 import { ColumnSettings } from './ColumnSettings';
+import { SummaryFieldSettings } from './SummaryFieldSettings';
+import { saveSummaryFieldCatalog } from '../../platform/library/summaryFieldCatalog';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { remarkAsterInline } from '../../shared/markdown/remarkAsterInline';
 import type { PaperDocument } from '../../core/types';
 import type { TextDocumentSession } from '../../core/textDocumentSession';
-import { defaultSummaryColumns, summarySizing, fitSummaryWidths, type SummarySizing, summaryPaperMetadata, parseSummaryLayout, summaryExcerpt, summaryFields, summaryRowHeight, type SummaryColumn } from '../../core/librarySummary';
-import { editSummary, invalidateSummaryPreviews, loadSummary, onSummaryChange, openSummaryUrl, summaryImage, summaryLayoutSession, type SummaryFile } from '../../platform/library/summaries';
+import { defaultSummaryColumns, summarySizing, fitSummaryWidths, type SummarySizing, summaryPaperMetadata, parseSummaryLayout, summaryFields, summaryRowHeight, type SummaryColumn } from '../../core/librarySummary';
+import { SummaryExcerpt } from './SummaryExcerpt';
+import { editSummary, invalidateSummaryPreviews, loadSummary, onSummaryChange, openSummaryUrl, summaryLayoutSession, type SummaryFile } from '../../platform/library/summaries';
 import { SummaryEditor } from './SummaryEditor';
 import './summary.css';
 interface Props { papers: PaperDocument[]; selectedIds: string[]; selectedId?: string; onSelect(id: string): void; onSelection(ids: string[]): void; onOpen(id: string): void }
@@ -65,11 +69,21 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
     let stop: (() => void) | undefined;
     void summaryLayoutSession().then(session => {
       if (!mounted.current) return;
-      const state = parseSummaryLayout(session.getSnapshot().content); rawLayout.current = state.raw; layout.current = session; setColumns(state.columns); setSizing(summarySizing(state.raw));
-      const saved = state.raw.rowHeights;
-      if (saved && typeof saved === 'object' && !Array.isArray(saved)) setRowHeights(Object.fromEntries(Object.entries(saved).filter(([, value]) => typeof value === 'number' && Number.isFinite(value) && value >= 44 && value <= 2000)));
-      if (session.getSnapshot().error) setError(session.getSnapshot().error);
-      stop = session.subscribe(() => { if (session.getSnapshot().error) setError(session.getSnapshot().error); });
+      layout.current = session;
+      let lastContent: string | undefined;
+      const refreshLayout = () => {
+        try {
+          const snapshot = session.getSnapshot();
+          if (snapshot.content !== lastContent) {
+            const state = parseSummaryLayout(snapshot.content); rawLayout.current = state.raw; setColumns(state.columns); setSizing(summarySizing(state.raw));
+            const saved = state.raw.rowHeights;
+            setRowHeights(saved && typeof saved === 'object' && !Array.isArray(saved) ? Object.fromEntries(Object.entries(saved).filter(([, value]) => typeof value === 'number' && Number.isFinite(value) && value >= 44 && value <= 2000)) : {});
+            lastContent = snapshot.content;
+          }
+          setError(snapshot.error);
+        } catch (reason) { setError(String(reason)); }
+      };
+      refreshLayout(); stop = session.subscribe(refreshLayout);
     }).catch(e => { if (mounted.current) setError(`列设置加载失败：${String(e)}。默认列仅供显示，不覆盖原文件。`); });
     return () => { mounted.current = false; stop?.(); clearTimeout(saveTimer.current); cancelAnimationFrame(wheelFrame.current); cancelAnimationFrame(scrollFrame.current); cancelAnimationFrame(columnFrame.current); void layout.current?.flush().catch(() => {}); };
   }, []);
@@ -146,6 +160,14 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
       layout.current.update(text); rawLayout.current = JSON.parse(text); setColumns(next); setSizing(nextSizing); setRowHeights(nextRowHeights); setError(''); clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => { void layout.current?.flush().catch(e => { if (mounted.current) setError(String(e)); }); }, 500);
     } catch (e) { setError(String(e)); }
+  };
+  const saveCatalog = async (next: SummaryColumn[], baseline: SummaryColumn[]) => {
+    const session = layout.current;
+    if (!session) throw new Error('列设置尚未加载，未保存。');
+    try {
+      clearTimeout(saveTimer.current);
+      await saveSummaryFieldCatalog(session, next, baseline); setError('');
+    } catch (reason) { setError(String(reason)); throw reason; }
   };
   const commitWidths = (next: number[]) => {
     configure(columns.map(c => { const index = cols.findIndex(v => v.id === c.id); return index < 0 ? c : { ...c, width: next[index + 1] }; }), { mode: 'manual', titleWidth: next[0] });
@@ -238,7 +260,7 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
       <button type="button" disabled={!layout.current} className={sizing.mode === 'window' ? 'active' : ''} aria-pressed={sizing.mode === 'window'} title="随窗口宽度自动分配列宽；拖动列边界切换为固定宽度" onClick={() => { cancelResize(); configure(columns, { ...sizing, mode: 'window' }); }}>适应窗口</button>
       <div className="summary-zoom" title="Ctrl/⌘＋滚轮缩放；普通滚轮浏览">
         <button type="button" aria-label="缩小综览" onClick={() => changeZoom(nextZoom.current - 10)}>−</button><button type="button" onClick={() => changeZoom(100)}>{Math.round(zoom)}%</button><button type="button" aria-label="放大综览" onClick={() => changeZoom(nextZoom.current + 10)}>＋</button>
-      </div><ColumnSettings disabled={!layout.current} columns={[
+      </div><SummaryFieldSettings columns={columns} disabled={!layout.current} onSave={saveCatalog} /><ColumnSettings disabled={!layout.current} columns={[
         { id: '__title', label: '论文名称', visible: true, fixed: true },
         ...columns.map(column => ({ id: column.id, label: column.name, visible: !column.hidden })),
       ]} onChange={(id, visible) => configure(columns.map(column => column.id === id ? { ...column, hidden: !visible } : column))} />
@@ -309,22 +331,17 @@ const SummaryRow = memo(function SummaryRow({ paper, columns, zoom, top, height,
       const value = column.source === 'venue' ? paper.venue : parsed.fields.get(column.id)?.value ?? '';
       const noteId = /^\[[^\]]*\]\(a4note-note:([^\s)]+)\)$/.exec(value.trim())?.[1]; const note = noteId ? paper.notes.find(n => n.id === noteId) : undefined;
       const shown = note ? `${note.title}\n${note.content}` : value;
-      if (column.source) return <div key={column.id} className="summary-cell" title="来自论文信息，请在论文详情中编辑"><p className="summary-excerpt">{value || '—'}</p></div>;
+      if (column.source) return <div key={column.id} className="summary-cell" title="来自论文信息，请在论文详情中编辑">{zoom < 120 ? <SummaryExcerpt value={value || '—'} /> : <p className="summary-excerpt">{value || '—'}</p>}</div>;
       return <SummaryEditableCell key={column.id} paperId={paper.paperId} column={column} value={value}
         unavailable={error || parsed.error || (!file ? '正在读取总览 MD…' : undefined)} onRepair={() => onEdit()}>
-        {!value ? null : zoom < 120 ? <p className="summary-excerpt">{summaryExcerpt(shown, zoom)}</p> : <>{note && <small>↗ 引用已有笔记，不复制正文</small>}{noteId && !note ? <span className="summary-warning">引用的笔记不存在</span> : <SummaryRich paperId={paper.paperId} value={shown} />}</>}
+        {!value ? null : zoom < 120 ? <div className="summary-compact-content"><SummaryCompactImages paperId={paper.paperId} value={shown} /><SummaryExcerpt value={shown} /></div> : <>{note && <small>↗ 引用已有笔记，不复制正文</small>}{noteId && !note ? <span className="summary-warning">引用的笔记不存在</span> : <SummaryRich paperId={paper.paperId} value={shown} />}</>}
       </SummaryEditableCell>;
     })}
   </div>;
 });
 const SummaryRich = memo(function SummaryRich({ paperId, value }: { paperId: string; value: string }) {
   return <div className="summary-rich"><ReactMarkdown remarkPlugins={[remarkGfm, remarkAsterInline]} skipHtml components={{
-    img: ({ src, alt }) => typeof src === 'string' && /^summary-assets\/[a-zA-Z0-9-]+\.(png|jpg|webp)$/.test(src) ? <SummaryImage paperId={paperId} name={src.split('/')[1]} alt={alt ?? '结构图'} /> : <span className="summary-muted">〔非托管图片未加载〕</span>,
+    img: ({ src, alt, title }) => <SummaryManagedImage paperId={paperId} source={typeof src === 'string' ? src : undefined} alt={alt} title={title} />,
     a: ({ href, children }) => <a href={href && /^https?:\/\//i.test(href) ? href : undefined} onClick={event => { event.preventDefault(); if (href) void openSummaryUrl(href).catch(() => {}); }}>{children}</a>,
   }}>{value}</ReactMarkdown></div>;
 });
-function SummaryImage({ paperId, name, alt }: { paperId: string; name: string; alt: string }) {
-  const [url, setUrl] = useState(''), [failed, setFailed] = useState(false);
-  useEffect(() => { let active = true, objectUrl = ''; setUrl(''); setFailed(false); void summaryImage(paperId, name).then(blob => { if (active) { objectUrl = URL.createObjectURL(blob); setUrl(objectUrl); } }).catch(() => { if (active) setFailed(true); }); return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); }; }, [paperId, name]);
-  return url ? <img src={url} alt={alt} loading="lazy" decoding="async" /> : <span className="summary-muted">{failed ? '图片不可用' : '图片加载中…'}</span>;
-}

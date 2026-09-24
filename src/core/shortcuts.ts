@@ -23,6 +23,10 @@ export type MouseShortcutBinding = {
 
 export type ShortcutBinding = KeyboardShortcutBinding | MouseShortcutBinding;
 
+/** A fixed, non-recordable gesture owned by its surface (e.g. PDF Ctrl+wheel).
+ * It is display metadata, not a keyboard binding or an overrideable dispatcher action. */
+export type FixedShortcutGesture = { keys: string[]; compactKeys: string[]; description: string };
+
 export type ShortcutContext = {
   activeSceneId: string;
   editable: boolean;
@@ -38,12 +42,15 @@ export type ShortcutCommand = {
   group: string;
   scope: ShortcutScope;
   defaultBindings: ShortcutBinding[];
+  fixedGesture?: FixedShortcutGesture;
   allowInEditable?: boolean;
   anchorId?: string;
   allowRepeat?: boolean;
   inactiveSceneIds?: string[];
   execute?: () => boolean | void;
   isVisible?: (context: ShortcutContext) => boolean;
+  /** Hide a redundant Ctrl-overlay row without disabling the command itself. */
+  showInHints?: (context: ShortcutContext) => boolean;
   isEnabled?: (context: ShortcutContext) => boolean;
 };
 
@@ -175,6 +182,8 @@ export function serializeShortcutOverrides(overrides: ShortcutOverrides) {
 }
 
 export function bindingsForCommand(command: ShortcutCommand, overrides: ShortcutOverrides) {
+  // A saved binding from an older release must not revive the removed zoom keys.
+  if (command.fixedGesture) return [];
   const override = overrides.bindings[command.id];
   if (override === null) return [];
   return (override ?? command.defaultBindings).map(normalizeBinding);
