@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-27T05:24:09.391Z",
+  "updatedAt": "2026-09-27T07:53:32.687Z",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "Arena-Board",
     "branch": "release/0.1.33-arena",
     "scope": [
+      "reader-note-motion-xunchuan：bc5308c6 spec1分屏/悬窗退出中断反向连续性修复，原生before/after各21状态+错误0，73浏览器3轮全过；待本地main合入和任务review。",
       "巡川 / 更新弹窗ca2090dd：开发测试完成，待本地main合入并交用户review。",
       "巡川 / PDF 高亮8e746a3b：a1f202b已合入本地main、任务已submit至review，待用户验收归档。",
       "note-corner-xingxu：6c1fbe11 spec2开发完成。四角共用4px圆头SVG，仅2产品文件，26px/-4px及交互保持；85纯/117浏览器、原生before24/最终after165与43后图、错误为空。保留5597956并行MD删除弹窗组成ceab645，完整verify73（Rust238/0/5）和最终原生7指纹均通过，ceab已ff合本地main。动画只修采样，69及350ms对照通过；首轮中断/失败日志保留。最终报告与证据正在提交供用户验收，交付SHA以任务卡为准；未打包安装推送发布或自行归档。",
@@ -45,10 +46,12 @@
     "readerNotePanelXingxu": "done",
     "readerNoteCornerXingxu": "review",
     "markdownDeleteDialogXunchuan": "review",
-    "libraryStorageNoticeXunchuan": "review"
+    "libraryStorageNoticeXunchuan": "review",
+    "readerNoteMotionXunchuan": "in_progress"
   },
   "lastHandoff": {
     "completed": [
+      "reader-note-motion-xunchuan：改前分屏反向PDF下一帧跳414px/悬窗opacity骤降，修正后连续；隔离原生与73浏览器回归、关联测试/build均通过，待整合提交。",
       "巡川 / 更新弹窗ca2090dd：局部 UI 与模拟原生验证完成：长日志滚动条贴近边缘、无勾选直接点击但model.canInstall和原安全校验/备份安装流程不改；开发记录docs/mcp-update-dialog-xunchuan-2026-09-27.md。",
       "巡川 / PDF 高亮8e746a3b：同页同缩放的原生改前后对照、常规三行与真实大段距验证完成；仅高亮绘制几何调整，保持下划线及选择/持久化数据。详见docs/mcp-pdf-highlight-edge-xunchuan-2026-09-27.md",
       "巡川 / 6ee1e545-3d31-4682-8c45-a59499075f00 spec1 资料库文件位置提示：Windows路径改与正文一致的界面字体；推荐绿色主按钮及中性副按钮对齐设计变量/悬停/焦点/禁用态，存储文案与行为不变。隔离原生21项通过、0 pageerror/console、推荐迁移与默认保留正常；有效最小窗口宽980时的深浅主题和UI字号125%/150%截图替换了错误的超小视口截图，未声称测试内核缩放。完整verify退出0(Rust238/0/5)、browser31项、reader-page-control59项、build/诊断通过；测试临时权限已还原。详见docs/mcp-library-storage-notice-xunchuan-2026-09-27.md。",

@@ -15,7 +15,7 @@ export type NotePanelPresence = {
 const visualMode = (mode: NoteWorkbenchMode): NotePanelPresence['mode'] => mode === 'reading' ? 'split' : mode;
 
 /** Retains the last visible note layout long enough for a compositor-only exit.
- *  It also gives every mode change a fresh enter phase without unmounting the editor. */
+ *  It preserves the painted pose on mode changes and interrupted exits without remounting the editor. */
 export function useNotePanelPresence(visible: boolean, mode: NoteWorkbenchMode): NotePanelPresence {
   const generation = useRef(0);
   const [presence, setPresence] = useState<NotePanelPresence>(() => ({
@@ -33,9 +33,10 @@ export function useNotePanelPresence(visible: boolean, mode: NoteWorkbenchMode):
 
     if (visible) {
       const nextMode = visualMode(mode);
-      if (phaseRef.current === 'entered' || phaseRef.current === 'entering') {
-        /* Mode switch while the panel is on screen: useNoteLayoutFlip carries it between
-           the two layouts, so it stays 'entered' instead of fading out to re-enter. */
+      if (phaseRef.current === 'entered' || phaseRef.current === 'entering' || phaseRef.current === 'exiting') {
+        /* Keep the current painted pose when reversing an exit: entering has a zero-duration
+           start pose and would snap the PDF track back to 0 (or blink a floating card).
+           Switching modes while visible is carried by useNoteLayoutFlip as before. */
         setPresence(current => current.phase === 'entered' && current.mode === nextMode ? current : { phase: 'entered', mode: nextMode });
         return undefined;
       }

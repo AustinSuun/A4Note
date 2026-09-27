@@ -234,6 +234,24 @@ try {
   const closed = await snapshot();
   check(closed.presence === 'hidden' && closed.drawer === null, '退场结束后卸载抽屉（presence=hidden）', closed);
 
+  /* Reopen during the exit itself, not after a CDP screenshot/timer delay. A zero-duration
+     "entering" pose would snap the track to zero and make the PDF jump for one frame. */
+  await ev(`document.querySelector('.motion-open[data-mode="split"]').click()`);
+  await settle();
+  await wait("document.querySelector('.reader-workspace-shell')?.dataset.notePresence==='entered'", 100, 25);
+  const longDraft = '未保存的长笔记段落\n'.repeat(80);
+  await ev("(()=>{const n=document.querySelector('.reader-workspace-drawer textarea');window.__retainedNoteEditor=n;Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(n,('未保存的长笔记段落'+String.fromCharCode(10)).repeat(80));n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.pdf-document').scrollTop=420;return true})()");
+  const splitReverse = await ev(`(async()=>{const shell=document.querySelector('.reader-workspace-shell');const main=shell.querySelector(':scope > .reader-main-workspace');const sample=()=>({phase:shell.dataset.notePresence,width:+main.getBoundingClientRect().width.toFixed(2)});document.querySelector('.motion-close').click();for(let i=0;i<2;i++)await new Promise(r=>requestAnimationFrame(r));const before=sample();document.querySelector('.motion-open[data-mode="split"]').click();await Promise.resolve();await Promise.resolve();const immediate=sample();await new Promise(r=>requestAnimationFrame(r));return {before,immediate,next:sample()}})()`);
+  check(splitReverse.before.phase === 'exiting' && splitReverse.immediate.phase === 'entered'
+    && near(splitReverse.immediate.width, splitReverse.before.width, 3)
+    && splitReverse.next.width <= splitReverse.before.width + 3,
+    '中途反向：PDF 宽度连续、无 0 轨道瞬跳', splitReverse);
+  await settle();
+  const retained = await ev("({draft:document.querySelector('.reader-workspace-drawer textarea')?.value,pdfScroll:document.querySelector('.pdf-document')?.scrollTop,sameEditor:window.__retainedNoteEditor===document.querySelector('.reader-workspace-drawer textarea')})");
+  check(retained.draft === longDraft && retained.pdfScroll === 420 && retained.sameEditor, '长笔记草稿与 PDF 滚动位置在反向过渡后保持', { length: retained.draft?.length, expected: longDraft.length, pdfScroll: retained.pdfScroll, sameEditor: retained.sameEditor });
+  await ev(`document.querySelector('.motion-close').click()`);
+  await settle();
+
   /* 4. floating entrance: a scale/opacity pop out of the boundary bookmark (right edge, mid height) */
   await ev('document.querySelector(".motion-float[data-side=\\"right\\"]").click()');
   await pause(50);
@@ -257,6 +275,17 @@ try {
   /* offset box includes the card's 1px border on each side; floatingCardBox is the CSS box */
   check(near(floatSettled.drawer.left, floatState.floatingBox.left) && near(floatSettled.drawer.top, floatState.floatingBox.top) && near(floatSettled.drawer.width, floatState.floatingBox.width, 2.5) && near(floatSettled.drawer.height, floatState.floatingBox.height, 2.5), '浮卡最终几何 = floatingCardBox 计算值（位置/尺寸不受动效影响）', { settled: floatSettled.drawer, expected: floatState.floatingBox });
   await shot('03-floating-settled');
+
+  /* A floating exit also reverses from the current opacity/scale, without restarting
+     from the fully transparent bookmark pose. */
+  await ev("(()=>{const n=document.querySelector('.reader-workspace-drawer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(n,'');n.dispatchEvent(new Event('input',{bubbles:true}));return true})()");
+  const floatingReverse = await ev(`(async()=>{const shell=document.querySelector('.reader-workspace-shell');const d=shell.querySelector(':scope > .reader-workspace-drawer');const sample=()=>({phase:shell.dataset.notePresence,opacity:+getComputedStyle(d).opacity});document.querySelector('.motion-close').click();for(let i=0;i<2;i++)await new Promise(r=>requestAnimationFrame(r));const before=sample();document.querySelector('.motion-open[data-mode="floating"]').click();await Promise.resolve();await Promise.resolve();const immediate=sample();await new Promise(r=>requestAnimationFrame(r));return {before,immediate,next:sample()}})()`);
+  check(floatingReverse.before.phase === 'exiting' && floatingReverse.before.opacity > 0.05 && floatingReverse.before.opacity < 1
+    && floatingReverse.immediate.phase === 'entered' && floatingReverse.next.opacity >= floatingReverse.before.opacity - 0.05,
+    '悬窗中途反向：从当前透明度恢复，无闪烁', floatingReverse);
+  await settle();
+
+  check(await ev("document.querySelector('.reader-workspace-drawer textarea')?.value") === '', '空笔记在悬窗反向过渡后保持');
 
   /* 4b. floating card chrome: slim drag lane, no save badge, no left resizer, dock inside the card */
   const cardChrome = await ev(`(()=>{const card=document.querySelector('.reader-workspace-drawer');const h=card.querySelector('.note-document-header');const drag=document.querySelector('.reader-note-floating-drag');const corners=[...document.querySelectorAll('.reader-note-floating-corner')];const dock=card.querySelector('.markdown-authoring-dock');const actions=dock.querySelector('.markdown-authoring-actions');const r=x=>x.getBoundingClientRect();const c=r(card);const shell=h.querySelector('.note-history-shell');const a=h.querySelector('.note-document-actions');return {headerPaddingTop:getComputedStyle(h).paddingTop,dragTop:r(drag).top-c.top,dragHeight:r(drag).height,save:getComputedStyle(card.querySelector('.note-save-state')).display,resizer:!!card.querySelector('.reader-drawer-resize-handle'),oldResize:!!document.querySelector('.reader-note-floating-resize'),corners:corners.map(x=>({corner:x.dataset.corner,left:r(x).left-c.left,top:r(x).top-c.top,right:c.right-r(x).right,bottom:c.bottom-r(x).bottom,cursor:getComputedStyle(x).cursor,size:r(x).width})),dock:{left:r(dock).left-c.left,right:c.right-r(dock).right,bottom:c.bottom-r(dock).bottom,width:r(dock).width,height:r(dock).height,display:getComputedStyle(actions).display,wrap:getComputedStyle(actions).flexWrap,card:c.width},header:{trigger:r(h.querySelector('.note-document-trigger')).width,width:r(h).width,shellLeft:r(shell).left-c.left,actionsRight:c.right-r(a).right}}})()`);
