@@ -40,3 +40,20 @@
 .summary-document-editor .summary-warning { margin: 10px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--ui-body-small-font-size, 12px); }
 .note-workspace > .summary-document-editor { min-height: 0; }
 .note-workspace:has(> .markdown-authoring-dock) > .summary-document-editor { padding-bottom: var(--note-dock-inset, 96px); }
+/* Field kind tag: a quiet label instead of the old "总览字段 ·" prefix; the name carries the weight. */
+.summary-document-kind { display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: 4px; background: color-mix(in srgb, var(--accent-strong) 10%, transparent); color: var(--accent-strong); font-size: var(--ui-caption-font-size, 11px); font-weight: 600; line-height: 16px; vertical-align: 1px; letter-spacing: .02em; }
+/* Global sort handle: visible but quiet; only it starts a reorder. */
+.summary-document-section.sortable { position: relative; }
+.summary-document-section.sortable > header { padding-left: 18px; }
+.summary-document-editor .summary-document-handle { position: absolute; left: 4px; top: 8px; width: 16px; min-height: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: grab; touch-action: none; user-select: none; }
+.summary-document-editor .summary-document-handle svg { fill: currentColor; }
+.summary-document-editor .summary-document-handle:hover:not(:disabled) { color: var(--text); background: color-mix(in srgb, var(--accent-strong) 12%, transparent); border-color: transparent; }
+.summary-document-editor .summary-document-handle:focus-visible { color: var(--accent-strong); outline: 2px solid var(--accent-strong); outline-offset: 1px; }
+.summary-document-editor.sorting, .summary-document-editor.sorting * { cursor: grabbing !important; user-select: none !important; }
+.summary-document-editor.sorting .summary-document-preview { pointer-events: none; }
+.summary-document-section.lifted { opacity: .55; border-style: dashed; border-color: color-mix(in srgb, var(--accent-strong) 55%, var(--line)); }
+.summary-document-section.drop-before::before, .summary-document-section.drop-after::after { content: ''; position: absolute; left: 6px; right: 6px; height: 3px; border-radius: 2px; background: var(--accent-strong); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-strong) 25%, transparent); pointer-events: none; }
+.summary-document-section.drop-before::before { top: -7px; }
+.summary-document-section.drop-after::after { bottom: -7px; }
+.summary-document-notice { min-height: 0; margin: 6px 0 0; color: var(--muted); font-size: var(--ui-body-small-font-size, 12px); line-height: 1.4; }
+.summary-document-notice:empty { display: none; }
