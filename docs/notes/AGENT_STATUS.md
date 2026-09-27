@@ -1,4 +1,5 @@
 ﻿# A4 Note Agent 状态
+- note-corner-xingxu：6c1fbe11 spec2四角圆头已实现（仅2产品文件，26px/-4px/4px及交互不变）。工作台85、浏览器117、原生before24/after165均通过；动画采样竞态仅修测试，69与350ms对照通过。MCP断线首轮full于31步中断且保留；重跑73步骤在5bd3d86+本卡补丁通过（Rust238/0/5），源指纹不变。main并行5597956 MD删除弹窗已出现，正在保留整合后再验最终组合；尚未合main/submit，不打包安装推送。 更新：2026-09-27T10:22:12+08:00
 - Arena-Board / 用户再次授权打包推送发布：0.1.33以干净main152cc16（含bc998c9笔记面板159项原生/109项浏览器等验证交付）为产品基线，保留远程main与0.1.32完整发布记录；新版本纳入上版冻结后完成的模式记忆、边距/滚动条/圆弧/入口提示。标准签名构建与配对扩展、版本/哈希/密码学验签、受保护PR必需Verify和公开附件回读均为发布门槛。上一文档CI的动画等待问题已有bc998同源完成条件修复；额外将看板测试CDP响应超时12s统一到30s应对冷启动解析，未改产品/断言。保留0.1.32及全部已发布tag，不安装、不访问正式资料、不绕过保护；当前尚未声称0.1.33发布成功。
 - note-panel-xingxu：23671e62 spec7开发完成，实现bc998c9已普通ff合入本地main，待用户检查。三态模式记忆/按论文隔离、padding0/滚动壳全宽正文720、4px圆弧与dock、24×72入口及hover/focus短长按提示、深浅主题齐备。纯83/浏览器109，动效最终69×2（默认/模拟宿主reduce），Chrome启动IO42及文库13/21/22/31通过。e441+本卡补丁完整verify73通过（Rust238/0/5）；之后保留bfd的测试/状态增量，产品源码不变，不冒称又跑完整73。原生159/errors[]/HTTP[]、14源码指纹、5before+22after与目视检查通过。失败日志及冷启动一次404保留，未过滤错误/宣称404根因已修。交付commit以任务delivery/manifest为准；本任务未打包安装推送发布或自验收归档。 更新：2026-09-24T03:25:50.391Z
 - Arena-Board / 用户授权的0.1.32已正式发布：https://github.com/AustinSuun/A4Note/releases/tag/v0.1.32 。冻结源码bfd88ad，PR17正常合并远程main5f4586f；必需Verify成功(run35991355432)，未绕过分支保护。标准Windows+扩展打包433528ms退出0，987跟踪文件字节一致、PE0.1.32、安装包/EXE哈希及Ed25519/BLAKE2b与可信注释验签通过；5个线上附件独立公网完整回读并与本地逐项哈希一致。0.1.31及未发布候选均原样归档；build-info保留实际sourceDirty=true换行观测。首轮CI动效脚本继承宿主reduce，已明确正常no-preference并保留reduce断言，两环境69/69，重建匹配提交后发布。无安装/正式资料访问。发布包含总览与快捷键延迟；冻结后合入的bc998c9笔记面板优化不在此包，不能冒称发布。记录见docs/mcp-release-0132-arena-2026-09-24.md；这次发布后文档不改变不可变tag与包。
@@ -96,7 +97,7 @@ annotation-popover-swatch-chengchuan：澄川完成 23528921 标注工具弹窗�
 
 > 机器可读状态见 [`plans/PROJECT_STATUS.json`](../../plans/PROJECT_STATUS.json)。每个 Agent 开始、完成或阻塞任务时更新本文件和 JSON。
 
-更新时间：2026-09-24T03:25:50.391Z
+更新时间：2026-09-27T10:22:12+08:00
 
 - MCP 重连接准备（arena-one，无任务卡）：新隧道 `shuncode-bridge` 0.7.4 / 15 工具连通，实测并修正同会话并发必须使用唯一 JSON-RPC id（否则 -32009/409）、run_command 为原生 Bash PTY 需 here-doc 避免引号挂起、Node 不认 `/tmp` 需 `cygpath -w`。只读核对 AGENTS/开发手册/双状态/git 与任务服务：main `e74b5bd` 工作树仅 `?? .worktrees/`、`?? docs/screenshots/`；任务服务 4319 可用，50 卡（39 archived / 7 queued / 3 in_progress / 1 review）。未 claim 任何卡、未接管他人 in_progress 工作、未改生产源码、未 build/verify/打包/安装/发布、未重启 4319、未写真实资料库。详见 docs/mcp-reconnect-readiness-arena-2026-09-21.md。
 

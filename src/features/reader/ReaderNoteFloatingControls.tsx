@@ -71,7 +71,11 @@ export function ReaderNoteFloatingControls({ active, rect, containerRef, onRectC
       {FLOATING_CORNERS.map(corner => (
         <button key={corner} type="button" className="reader-note-floating-corner" data-corner={corner}
           aria-label={`从${CORNER_LABELS[corner]}调整悬浮速记卡大小（方向键微调）`}
-          onPointerDown={startResize(corner)} onKeyDown={nudgeCorner(corner)} />
+          onPointerDown={startResize(corner)} onKeyDown={nudgeCorner(corner)}>
+          <svg className="reader-note-floating-corner-arc" viewBox="0 0 26 26" aria-hidden="true" focusable="false" fill="none">
+            <path d="M 24 2 H 14 A 12 12 0 0 0 2 14 V 24" stroke="currentColor" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       ))}
     </div>
   );

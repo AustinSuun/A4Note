@@ -106,7 +106,12 @@ const SNAPSHOT = `const shell=document.querySelector('.reader-workspace-shell');
 const firstFrame = selector => ev(`(async()=>{${PICK}const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('missing '+${JSON.stringify(selector)});window.__presenceLog=[];e.click();await Promise.resolve();await Promise.resolve();${SNAPSHOT}})()`);
 const snapshot = () => ev(`(()=>{${PICK}${SNAPSHOT}})()`);
 /* Polls frame by frame until the enter transition is running, then reports it. */
-const transitionStart = () => ev(`(async()=>{${PICK}const shell=document.querySelector('.reader-workspace-shell');for(let i=0;i<40;i++){await new Promise(r=>requestAnimationFrame(r));const anims=document.getAnimations().filter(a=>a.transitionProperty&&a.effect&&a.effect.target&&a.effect.target.closest('.reader-workspace-shell'));if(anims.length&&shell.dataset.notePresence==='entered'){const d=shell.querySelector(':scope > .reader-workspace-drawer');const c=shell.querySelector(':scope > .reader-note-floating-controls');return {frames:i,presence:shell.dataset.notePresence,animations:anims.map(a=>({property:a.transitionProperty,target:a.effect.target.className.split(' ')[0],duration:a.effect.getTiming().duration,easing:a.effect.getTiming().easing,playState:a.playState})),drawer:pick(d),controls:pick(c)}}}return {frames:40,presence:shell.dataset.notePresence,animations:[],drawer:null,controls:null}})()`);
+const TRANSITION_READ = `(async()=>{${PICK}const shell=document.querySelector('.reader-workspace-shell');for(let i=0;i<40;i++){await new Promise(r=>requestAnimationFrame(r));const anims=document.getAnimations().filter(a=>a.transitionProperty&&a.effect&&a.effect.target&&a.effect.target.closest('.reader-workspace-shell'));if(anims.length&&shell.dataset.notePresence==='entered'){const d=shell.querySelector(':scope > .reader-workspace-drawer');const c=shell.querySelector(':scope > .reader-note-floating-controls');return {frames:i,presence:shell.dataset.notePresence,animations:anims.map(a=>({property:a.transitionProperty,target:a.effect.target.className.split(' ')[0],duration:a.effect.getTiming().duration,easing:a.effect.getTiming().easing,playState:a.playState})),drawer:pick(d),controls:pick(c)}}}return {frames:40,presence:shell.dataset.notePresence,animations:[],drawer:null,controls:null}})()`;
+const transitionStart = () => ev(TRANSITION_READ);
+/* Capture the FLIP pose and its short transition in one renderer evaluation. Returning
+   to Node for trackOf() before arming the observer could miss the whole 220ms interval
+   on a busy Windows host. Keep every geometry/property/duration assertion unchanged. */
+const firstFrameAndTransition = selector => ev(`(async()=>{${PICK}const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('missing '+${JSON.stringify(selector)});window.__presenceLog=[];e.click();await Promise.resolve();await Promise.resolve();const first=(()=>{${SNAPSHOT}})();const transition=await ${TRANSITION_READ};return {first,transition}})()`);
 const freezeAt = ms => ev(`(async()=>{for(let i=0;i<40;i++){const anims=document.getAnimations().filter(a=>a.transitionProperty&&a.effect&&a.effect.target&&a.effect.target.closest('.reader-workspace-shell'));if(anims.length){for(const a of anims){a.pause();a.currentTime=${ms};}const d=document.querySelector('.reader-workspace-shell > .reader-workspace-drawer');const s=getComputedStyle(d);return {paused:anims.length,opacity:s.opacity,transform:s.transform}}await new Promise(r=>requestAnimationFrame(r));}return null})()`);
 const thaw = () => ev('(()=>{for(const a of document.getAnimations())a.play();return true})()');
 const stableAfterFrames = () => ev(`(async()=>{const d=document.querySelector('.reader-workspace-shell > .reader-workspace-drawer');const box=()=>[d.offsetLeft,d.offsetTop,d.offsetWidth,d.offsetHeight].join(',');const a=box();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));return {stable:a===box(),box:a,running:document.getAnimations().filter(x=>x.transitionProperty).length}})()`);
@@ -308,14 +313,15 @@ try {
   const flipObserver = `window.__flipSeen=false;new MutationObserver(()=>{if(document.querySelector('.reader-workspace-shell').dataset.noteFlip==='true')window.__flipSeen=true}).observe(document.querySelector('.reader-workspace-shell'),{attributes:true,attributeFilter:['data-note-flip']});`;
   await ev(flipObserver);
   const cardBeforeSplit = await boxOf('.reader-workspace-drawer');
-  const toSplit = await firstFrame('.reader-note-mode-switch [aria-label="边读边记"]');
-  const toSplitTrack = await trackOf();
+  const observedSplit = await firstFrameAndTransition('.reader-note-mode-switch [aria-label="边读边记"]');
+  const toSplit = observedSplit.first;
+  const toSplitTrack = toSplit.track;
   check(toSplit.presence === 'entered' && toSplit.motionMode === 'split' && toSplit.drawer.opacity === '1', '浮卡 → 分屏：presence 保持 entered（不淡出重进）', toSplit);
   check(/matrix\(/.test(toSplit.drawer.transform) && toSplit.drawer.transform !== 'matrix(1, 0, 0, 1, 0, 0)' && toSplit.drawer.origin === '0px 0px' && toSplit.running.length === 0, '浮卡 → 分屏：首帧以 FLIP 变换停留在旧位置（无过渡，origin 0 0）', toSplit.drawer);
   const flipMatrix = numbers(toSplit.drawer.transform);
   check(near(flipMatrix[0], cardBeforeSplit.width / toSplit.drawer.width, 0.02) && near(toSplit.drawer.vleft, cardBeforeSplit.left, 2) && near(toSplit.drawer.vtop, cardBeforeSplit.top, 2), '浮卡 → 分屏：FLIP 变换正好覆盖旧卡片盒（变换后的包围盒 = 旧卡片位置，统一缩放）', { matrix: flipMatrix, from: cardBeforeSplit, to: toSplit.drawer });
   check(toSplitTrack.track > 300, '浮卡 → 分屏：网格轨道立即为目标宽度（由 FLIP 而非轨道承担过渡）', toSplitTrack);
-  const flipRun = await transitionStart();
+  const flipRun = observedSplit.transition;
   check(flipRun.animations.length >= 1 && flipRun.animations.every(a => a.property === 'transform' && a.duration === 220), '浮卡 → 分屏：下一帧仅 transform 过渡到新位置', flipRun.animations);
   await settle();
   check((await log()).every(entry => !entry.startsWith('entering')) && await ev('window.__flipSeen'), '浮卡 → 分屏：无 entering 重放，FLIP 标记出现', await log());

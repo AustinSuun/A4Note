@@ -132,6 +132,8 @@ ok(scene.includes('exitNoteMode()'), '专注写作可经 Escape 返回进入前�
 const floatingControls = fs.readFileSync('src/features/reader/ReaderNoteFloatingControls.tsx', 'utf8');
 ok(scene.includes('useNotePanelPresence') && scene.includes('ReaderNoteFloatingControls') && floatingControls.includes('reader-note-floating-grip'), 'Reader 使用保留式动效并渲染无文字 Pill 拖动横条');
 ok(floatingControls.includes('data-corner={corner}') && floatingControls.includes('resizeFloatingRect') && !scene.includes('reader-note-floating-resize'), '悬浮卡四角弧形缩放柄取代右下角按钮（3932f561）');
+ok(floatingControls.includes('viewBox="0 0 26 26"') && floatingControls.includes('strokeWidth={4}') && floatingControls.includes('strokeLinecap="round"') && floatingControls.includes('M 24 2 H 14 A 12 12 0 0 0 2 14 V 24'), '四角共用26px/4px圆头SVG弧：端点退2px以保持原有外轮廓（6c1fbe11）');
+ok(floatingControls.includes('aria-hidden="true" focusable="false"') && css.includes('.reader-note-floating-corner-arc') && !css.includes('.reader-note-floating-corner::before') && css.includes('pointer-events: none; transform-origin: center;'), '圆弧仅为装饰、不截获输入，不再依赖透明边框斜切（6c1fbe11）');
 ok(scene.includes('useNoteLayoutFlip') && scene.includes("'--reader-side-target'") && css.includes('transition: grid-template-columns'), '侧栏经网格轨道连续滑开/收回，模式切换走 FLIP（3932f561）');
 const readerCss = fs.readFileSync('src/ui/styles/reader.css', 'utf8');
 ok(/\.note-history-title \{[^}]*font-size: var\(--ui-control-font-size/.test(readerCss) && /\.note-history-actions button \{[^}]*font-size:var\(--ui-control-font-size/.test(readerCss) && /\.note-history-excerpt \{[^}]*--ui-caption-font-size/.test(readerCss), '文档下拉：条目标题与操作按钮同为控件字号、摘要为说明字号（3932f561）');
