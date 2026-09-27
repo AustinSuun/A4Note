@@ -3,6 +3,31 @@ use super::*;
 use serde_json::json;
 use std::fs;
 #[test]
+#[ignore = "explicit iMF public-network diagnostic; isolated temporary library only"]
+fn capture_live_imf_pdf_to_library() {
+    let root=std::env::temp_dir().join(format!("a4-imf-capture-{}",Uuid::new_v4()));
+    fs::create_dir_all(&root).unwrap();
+    struct Cleanup(std::path::PathBuf);
+    impl Drop for Cleanup { fn drop(&mut self) { let _=fs::remove_dir_all(&self.0); } }
+    let _cleanup=Cleanup(root.clone());
+    let mut envelope=model::fixture();
+    envelope["sourceUrl"]=json!("https://arxiv.org/abs/2512.02012");
+    envelope["metadata"]["title"]=json!("Improved Mean Flows: On the Challenges of Fastforward Generative Models");
+    envelope["metadata"]["identifiers"]=json!({"arxiv":"2512.02012"});
+    envelope["artifacts"]=json!([{"id":"main","role":"fulltext","url":"https://arxiv.org/pdf/2512.02012","state":"discovered"}]);
+    let id=envelope["captureId"].as_str().unwrap();
+    let started=std::time::Instant::now();
+    let (state,result)=download::process(&root,id,&envelope,||false);
+    println!("iMF native download: elapsed_ms={} state={state} result={result}",started.elapsed().as_millis());
+    assert_eq!(state,"complete","iMF native public download did not succeed");
+    let files=ingest::browser_files(&root,&envelope,&result).unwrap();
+    let imported=ingest::ingest(&root.join("library"),&envelope,&files,None).unwrap();
+    assert_eq!(imported["hasSourcePdf"],true);
+    let repeated=ingest::ingest(&root.join("library"),&envelope,&files,None).unwrap();
+    assert_eq!(imported["paperId"],repeated["paperId"]);
+    println!("iMF PDF structurally verified, imported and deduplicated in disposable library; not OpenReview or reader UI evidence");
+}
+#[test]
 #[ignore = "downloads a public arXiv PDF; explicit network acceptance only"]
 fn capture_live_public_pdf_to_library(){
     let root=std::env::temp_dir().join(format!("a4-live-capture-{}",Uuid::new_v4()));fs::create_dir_all(&root).unwrap();

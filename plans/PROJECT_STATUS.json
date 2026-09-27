@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-27T22:03:51+08:00",
+  "updatedAt": "2026-09-27T22:44:06+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "review",
@@ -22,6 +22,7 @@
     ]
   },
   "tracks": {
+    "openreviewImfQiuxu": {"status":"blocked","owner":"Arena-秋序","summary":"021ac264：真实iMF arXiv解析正确，原生完整18082601字节/PDF校验/隔离导入与去重通过；curl超时不是原生故障。Rust27/0/5及显式live1通过。缺同篇OpenReview失败URL与实际错误/版本；仅诊断测试和报告，分支fix/openreview-imf-qiuxu未合main、不submit、无正式库或可视阅读证据。"},
     "queueFollowupQiuxu": {"status":"blocked","owner":"Arena-秋序","summary":"三项已预检释放但未完成：021ac264公开样例仍challenge/403非PDF，等待实际失败链接/错误与合法验证条件；4093839c待Phase0/首版/同资源删除冲突设计确认；07abf228待9ddfe985同SummaryDocumentEditor等组件串行交接。7e18与8cc9已review；3eab由巡川进行中，不接管。"},
     "communityResearchQiuxu": {"status":"review","owner":"Arena-秋序","summary":"8cc9b2c8仅研究：登录矩阵、双轨/来源/分享/风险/成本/分期/验证方案完成，等待用户选择，不开发或部署。报告docs/mcp-community-identity-research-qiuxu-2026-09-27.md。"},
     "shortcutCycleQiuxu": {"status":"review","owner":"Arena-秋序","summary":"7e18e7d8：500ms不变；原生31/31、组件16/16、dispatcher95、浏览器491、PDF搜索35及build/architecture/agent-status通过；实现e94c3e6，整合556c4c7已ff合main，submit review rev14，9份附件；不改并行提示样式。"},
