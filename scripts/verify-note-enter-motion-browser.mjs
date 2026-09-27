@@ -137,8 +137,17 @@ try {
     '--headless=new', '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check',
     '--disable-extensions', '--disable-background-networking', '--disable-component-update', '--user-data-dir=' + profile, '--window-size=1568,760', 'about:blank',
   ], { stdio: 'ignore' });
-  for (let index = 0; index < 150 && !fs.existsSync(path.join(profile, 'DevToolsActivePort')); index += 1) await pause(100);
-  const port = Number(fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+  // Windows can create DevToolsActivePort before releasing its write lock.
+  // Existence alone is not readiness: retry transient EBUSY/ENOENT, not other errors.
+  let port = 0;
+  for (let index = 0; index < 150 && !port; index += 1) {
+    try { port = Number(fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]); }
+    catch (error) {
+      if (error.code !== 'EBUSY' && error.code !== 'ENOENT') throw error;
+    }
+    if (!port) await pause(100);
+  }
+  if (!Number.isInteger(port) || port < 1) throw Error('Chrome did not publish a readable DevToolsActivePort');
   const tabs = await (await fetch('http://127.0.0.1:' + port + '/json/list')).json();
   const target = tabs.find(tab => tab.type === 'page');
   ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -279,7 +288,7 @@ try {
   /* A floating exit also reverses from the current opacity/scale, without restarting
      from the fully transparent bookmark pose. */
   await ev("(()=>{const n=document.querySelector('.reader-workspace-drawer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(n,'');n.dispatchEvent(new Event('input',{bubbles:true}));return true})()");
-  const floatingReverse = await ev(`(async()=>{const shell=document.querySelector('.reader-workspace-shell');const d=shell.querySelector(':scope > .reader-workspace-drawer');const sample=()=>({phase:shell.dataset.notePresence,opacity:+getComputedStyle(d).opacity});document.querySelector('.motion-close').click();for(let i=0;i<2;i++)await new Promise(r=>requestAnimationFrame(r));const before=sample();document.querySelector('.motion-open[data-mode="floating"]').click();await Promise.resolve();await Promise.resolve();const immediate=sample();await new Promise(r=>requestAnimationFrame(r));return {before,immediate,next:sample()}})()`);
+  const floatingReverse = await ev(`(async()=>{const shell=document.querySelector('.reader-workspace-shell');const d=shell.querySelector(':scope > .reader-workspace-drawer');const sample=()=>({phase:shell.dataset.notePresence,opacity:+getComputedStyle(d).opacity});document.querySelector('.motion-close').click();for(let i=0;i<2;i++)await new Promise(r=>requestAnimationFrame(r));const fading=document.getAnimations().find(a=>a.transitionProperty==='opacity'&&a.effect?.target===d);if(fading){fading.pause();fading.currentTime=80}const before=sample();document.querySelector('.motion-open[data-mode="floating"]').click();await Promise.resolve();await Promise.resolve();const immediate=sample();await new Promise(r=>requestAnimationFrame(r));return {before,immediate,next:sample()}})()`);
   check(floatingReverse.before.phase === 'exiting' && floatingReverse.before.opacity > 0.05 && floatingReverse.before.opacity < 1
     && floatingReverse.immediate.phase === 'entered' && floatingReverse.next.opacity >= floatingReverse.before.opacity - 0.05,
     '悬窗中途反向：从当前透明度恢复，无闪烁', floatingReverse);

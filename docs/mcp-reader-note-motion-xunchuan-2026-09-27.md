@@ -14,5 +14,6 @@
 - 既有 69 项动效浏览器回归加分屏/浮卡中断反向、80 行未保存草稿与编辑器 DOM 保留、PDF 滚动 420、空笔记，共 73/73；最终版本连续三次通过。其他已覆盖：分屏拖宽、悬窗四角拖/键盘缩放、形态切换 FLIP、窄窗回退、reduced-motion；真实隔离原生另留 980 窄窗与 UI zoom 125% 截图。
 - `test:note-workbench` 85/85、`test:note-workbench-browser` 117/117、`test:reader-note-sidebar` 16/16、`test:reader-note-sidebar-browser` passed、`test:reader` passed、`npm run build`（TS + Vite）通过；`git diff --check` 通过。构建有既有的大 chunk 和动态导入提示，非本轮错误。提交前复跑 `test:agent-status` 与整合检查。
 - WebView2 记录的退出启动首个 requestAnimationFrame 等待在改前约 122–123 ms、改后约 170 ms；其后样本约 3–17 ms。该首帧耗时含原生 PDF/React 工作与采样调度，不可由此声称所有帧均 60fps、亦不能声称解决了该旧有首帧开销；本次仅证明中断反向不再额外瞬跳或闪烁。若用户继续感到首帧卡顿，应单列性能剖析，不在拖拽/顶栏任务中混改。
+- 首次在 main 整合复跑曾命中 Chrome Windows 创建 DevToolsActivePort 后尚未解除写锁的 `EBUSY`；浏览器启动等待现同时检查文件可读取（仅 EBUSY/ENOENT 短重试，不吞其他错误），随后重跑。
 - 曾有一次浏览器脚本用 5 个 requestAnimationFrame 等待中途退场，繁忙窗口等待超过 220 ms，实际已进入 `hidden` 而误报失败；缩至两个帧并明确等待打开完成后，最终连续三次 73/73。原日志保留，不把初次失败隐去。
 - 未操作正式库、安装、打包、推送或发布；本报告是开发者验证，不是用户验收。任务需合入干净本地 main 后 submit review，由用户决定是否归档。
