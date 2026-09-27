@@ -12,8 +12,8 @@
 ## 验证范围与限制
 
 - 既有 69 项动效浏览器回归加分屏/浮卡中断反向、80 行未保存草稿与编辑器 DOM 保留、PDF 滚动 420、空笔记，共 73/73；最终版本连续三次通过。其他已覆盖：分屏拖宽、悬窗四角拖/键盘缩放、形态切换 FLIP、窄窗回退、reduced-motion；真实隔离原生另留 980 窄窗与 UI zoom 125% 截图。
-- `test:note-workbench` 85/85、`test:note-workbench-browser` 117/117、`test:reader-note-sidebar` 16/16、`test:reader-note-sidebar-browser` passed、`test:reader` passed、`npm run build`（TS + Vite）通过；`git diff --check` 通过。构建有既有的大 chunk 和动态导入提示，非本轮错误。提交前复跑 `test:agent-status` 与整合检查。
+- `test:note-workbench` 85/85、`test:note-workbench-browser` 117/117、`test:reader-note-sidebar` 16/16、`test:reader-note-sidebar-browser` passed、`test:reader` passed、`npm run build`（TS + Vite）通过；`git diff --check` 通过。构建有既有的大 chunk 和动态导入提示，非本轮错误。合入主线后 `test:agent-status`、架构检查与 build 均复跑通过。
 - WebView2 记录的退出启动首个 requestAnimationFrame 等待在改前约 122–123 ms、改后约 170 ms；其后样本约 3–17 ms。该首帧耗时含原生 PDF/React 工作与采样调度，不可由此声称所有帧均 60fps、亦不能声称解决了该旧有首帧开销；本次仅证明中断反向不再额外瞬跳或闪烁。若用户继续感到首帧卡顿，应单列性能剖析，不在拖拽/顶栏任务中混改。
 - 首次在 main 整合复跑曾命中 Chrome Windows 创建 DevToolsActivePort 后尚未解除写锁的 `EBUSY`；浏览器启动等待现同时检查文件可读取（仅 EBUSY/ENOENT 短重试，不吞其他错误），随后重跑。
 - 浏览器脚本原以 5 帧、随后 2 帧的墙钟时间等待退出；在负载高的 main 整合复跑中，原有的 10 帧收起检查及新增反向检查都曾超过 220 ms 卸载计时，已经进入 `hidden` 而误报失败。现对真实 CSSTransition 在同一渲染器任务内暂停并定点采样 0–200 ms，再于 80 ms 的已绘制中间姿态反向，保留实际 DOM/React 事件与完整功能断言；原失败日志保留。修订后在分支与合入主线连续复跑，结果以最终日志为准。
-- 未操作正式库、安装、打包、推送或发布；本报告是开发者验证，不是用户验收。任务需合入干净本地 main 后 submit review，由用户决定是否归档。
+- 未操作正式库、安装、打包、推送或发布；本报告是开发者验证，不是用户验收。已合入干净本地 main `26e9421` 并 submit review revision 16，由用户决定是否归档；完整 verify 未运行。
