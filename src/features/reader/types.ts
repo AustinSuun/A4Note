@@ -55,6 +55,8 @@ export type ReaderSceneProps = {
   sidePanels: ReaderSidePanelDefinition[];
   /** Panel renderers contributed by reader.core and resolved by the host. */
   panelViews?: WorkbenchPanelViewContribution[];
+  /** Only supplied for a live library-origin PDF reader tab. */
+  onReturnToLibrary?: () => void;
   onLayoutChange: (layout: ReaderLayout) => void;
   onContentModeChange: (mode: ReaderContentMode) => void;
   onFileModeChange: (mode: ReaderFileMode) => void;

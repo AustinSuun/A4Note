@@ -41,6 +41,7 @@ export function ReaderScene({
   aiThreadContexts,
   sidePanels,
   panelViews = [],
+  onReturnToLibrary,
   onLayoutChange,
   onContentModeChange,
   onFileModeChange,
@@ -277,6 +278,7 @@ export function ReaderScene({
         <ReaderToolbar
               paper={paper}
               contentMode={contentMode}
+              onReturnToLibrary={onReturnToLibrary}
               fileMode={fileMode}
               currentTranslatedFileId={currentTranslatedFileId}
               parallelSyncLocked={parallelSyncLocked}

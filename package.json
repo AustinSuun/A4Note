@@ -26,6 +26,7 @@
     "test:pdfjs": "node scripts/verify-pdfjs.mjs",
     "test:reader-page-control": "node --experimental-strip-types scripts/verify-reader-page-control.mjs && node scripts/verify-reader-page-control-browser.mjs",
     "test:reader": "node scripts/verify-reader-rendering.mjs",
+    "test:reader-library-return-native": "node scripts/verify-reader-library-return-native.mjs",
     "test:reader-helpers": "node --experimental-strip-types scripts/verify-reader-helpers.mjs",
     "test:reader-popover-layout": "node scripts/verify-reader-popover-layout-browser.mjs",
     "test:pdf-rotated-text": "node --experimental-strip-types scripts/verify-pdf-rotated-text-layer.mjs",

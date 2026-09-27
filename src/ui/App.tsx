@@ -504,6 +504,15 @@ function AppContent() {
   }, [activeScene, sceneDefinitions.map((scene) => `${scene.id}:${scene.sidebarMode ?? 'scene'}`).join('|')]);
   const [uiZoom, setUiZoom] = useState(persistedUiState.uiZoom);
   const [selectedPaperId, setSelectedPaperId] = useState(persistedUiState.selectedPaperId || initialDocuments[0]?.paperId || '');
+  // Library selection can be followed by open in the same event (overview title).
+  // A ref observes that newest selection before React batches its state update.
+  const librarySelectionRef = useRef({ paperId: selectedPaperId, version: 0 });
+  const selectLibraryPaper = (paperId: string) => {
+    librarySelectionRef.current = { paperId, version: librarySelectionRef.current.version + 1 };
+    setSelectedPaperId(paperId);
+  };
+  // Ephemeral per-reader-tab origin. The library tab itself owns its view/columns/scroll; never snapshot it.
+  const [libraryReturnOrigins, setLibraryReturnOrigins] = useState<Record<string, { workspaceId: string; tabId: string; selectedPaperId: string; selectionVersion: number }>>({});
   const [recentPaperIds, setRecentPaperIds] = useState<string[]>(persistedUiState.recentPaperIds);
   const [readerLayout, setReaderLayout] = useState<ReaderLayout>(persistedUiState.readerLayout || settings.defaultReaderLayout);
   const [readerContentMode, setReaderContentMode] = useState<ReaderContentMode>('pdf');
@@ -1114,6 +1123,10 @@ function AppContent() {
     const isReaderDocumentTab = tab.kind === 'tool' && Boolean(paperIdFromReaderTabKey(tab.key));
     const sceneId = isResourceWorkspaceTabKind(tab.kind) || isReaderDocumentTab ? sceneForWorkspaceTab(tab) : null;
     workbenchStore.closeTab(tabId);
+    if (isReaderDocumentTab) {
+      const paperId = paperIdFromReaderTabKey(tab.key);
+      if (paperId) setLibraryReturnOrigins(current => { const next = { ...current }; delete next[paperId]; return next; });
+    }
     if (!wasActive || !sceneId) return;
     const updatedWorkspace = workbenchStore.getState().workspaces.find((candidate) => candidate.id === workspace.id);
     const canonicalTab = updatedWorkspace?.tabs.find((candidate) => candidate.kind === 'tool' && candidate.key === toolTabKey(sceneId));
@@ -1378,7 +1391,14 @@ function AppContent() {
     setReaderTranslatedFileId((current) => preferredTranslatedFileId(paper, current));
   };
 
-  const openReaderForPaper = (paperId: string) => {
+  const openReaderForPaper = (paperId: string, libraryOrigin?: { workspaceId: string; tabId: string; selectedPaperId: string; selectionVersion: number }) => {
+    // An opening from any other scene supersedes the previous origin for this paper.
+    setLibraryReturnOrigins(current => {
+      const next = { ...current };
+      if (libraryOrigin) next[paperId] = libraryOrigin;
+      else delete next[paperId];
+      return next;
+    });
     focusReaderPaper(paperId);
     setSettingsOpen(false);
     setSidebarWorkspaceOpen(true);
@@ -1400,6 +1420,30 @@ function AppContent() {
       state: { paperId },
     });
     ensureContextualSidebar('reader', workspaceId);
+  };
+
+  const openReaderFromLibrary = (paperId: string) => {
+    const origin = activeScene === 'library' && activeWorkspaceRecord && activeTab && sceneForWorkspaceTab(activeTab) === 'library'
+      ? { workspaceId: activeWorkspaceRecord.id, tabId: activeTab.id, selectedPaperId: librarySelectionRef.current.paperId || selectedPaperId, selectionVersion: librarySelectionRef.current.version }
+      : undefined;
+    openReaderForPaper(paperId, origin);
+  };
+
+  const returnToLibrary = (paperId: string) => {
+    const origin = libraryReturnOrigins[paperId];
+    // Do not re-create a closed library tab or overwrite state changed since opening the reader.
+    const tab = workbenchStore.getState().workspaces.find(workspace => workspace.id === origin?.workspaceId)
+      ?.tabs.find(candidate => candidate.id === origin?.tabId && sceneForWorkspaceTab(candidate) === 'library');
+    if (!origin || !tab) return;
+    // A later library selection wins even when reopening the reader tab temporarily refocused its paper.
+    if (librarySelectionRef.current.version !== origin.selectionVersion) {
+      const latest = librarySelectionRef.current.paperId;
+      if (latest && aster.documents.get(latest)) setSelectedPaperId(latest);
+    } else if (selectedPaperId === paperId && origin.selectedPaperId && aster.documents.get(origin.selectedPaperId)) {
+      setSelectedPaperId(origin.selectedPaperId);
+    }
+    setScene('library', origin.workspaceId);
+    workbenchStore.setActiveTab(origin.tabId);
   };
 
   const openReaderPanel = (paperId: string, tab: ReaderSidePanelTab) => {
@@ -1901,6 +1945,12 @@ function AppContent() {
       paper={withVisibleLayers(paper)}
       layout={readerLayout}
       contentMode={readerContentMode}
+      onReturnToLibrary={activeScene === 'reader' && activeTab?.key === readerPaperTabKey(paper.paperId)
+         && (() => {
+           const origin = libraryReturnOrigins[paper.paperId];
+           return origin && workbenchStore.getState().workspaces.find(workspace => workspace.id === origin.workspaceId)
+             ?.tabs.some(tab => tab.id === origin.tabId && sceneForWorkspaceTab(tab) === 'library');
+         })() ? () => returnToLibrary(paper.paperId) : undefined}
       fileMode={readerFileMode}
       translatedFileId={readerTranslatedFileId}
       activeParallelFileKind={readerActiveFileKind}
@@ -2141,7 +2191,7 @@ function AppContent() {
       searchInputRef: librarySearchRef,
       sidePanels: librarySidePanelDefinitions,
       onQueryChange: setQuery,
-      onSelectPaper: setSelectedPaperId,
+      onSelectPaper: selectLibraryPaper,
       onBulkSelectionChange: setBulkSelectedPaperIds,
       onMovePapersToFolder: async (paperIds, folderId) => {
         if (!paperIds.length) return;
@@ -2159,13 +2209,13 @@ function AppContent() {
           setLibraryStatus(error instanceof Error ? error.message : String(error));
         }
       },
-      onOpenPaper: openReaderForPaper,
+      onOpenPaper: openReaderFromLibrary,
       onSelectTag: setActiveTag,
       onSelectFolder: selectLibraryFolder,
       onSortChange: setLibrarySort,
       onDetailOpenChange: setLibraryDetailOpen,
       onOpenImport: openImportDialog,
-      onOpenReader: () => selectedPaper && openReaderForPaper(selectedPaper.paperId),
+      onOpenReader: () => selectedPaper && openReaderFromLibrary(selectedPaper.paperId),
       onOpenRelations: () => selectedPaper && openReaderRelationsForPaper(selectedPaper.paperId),
       onOpenTranslationImport: importTranslatedPdf,
       onRevealSourcePdf: (paperId) => void revealContextPaperSourceFile(paperId),
@@ -2189,7 +2239,7 @@ function AppContent() {
       activeTag,
       tags,
       selectedPaperId,
-      onOpenPaper: openReaderForPaper,
+      onOpenPaper: openReaderFromLibrary,
       onMovePapersToFolder: async (paperIds, folderId) => {
         if (!paperIds.length) return;
         try {
@@ -2205,7 +2255,7 @@ function AppContent() {
       },
       onSelectFolder: selectLibraryFolder,
       onSelectTag: setActiveTag,
-      onSelectPaper: setSelectedPaperId,
+      onSelectPaper: selectLibraryPaper,
       onCreateFolder: async (name, parentId) => {
         try {
           if (!isTauriRuntime()) {

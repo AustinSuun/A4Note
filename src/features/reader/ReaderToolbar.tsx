@@ -24,6 +24,7 @@ const SHAPE_STROKE_MAX = 8;
 export function ReaderToolbar({
   paper,
   contentMode,
+  onReturnToLibrary,
   fileMode,
   currentTranslatedFileId,
   parallelSyncLocked,
@@ -52,6 +53,7 @@ export function ReaderToolbar({
 }: {
   paper: PaperDocument;
   contentMode: ReaderContentMode;
+  onReturnToLibrary?: () => void;
   fileMode: ReaderFileMode;
   currentTranslatedFileId: string;
   parallelSyncLocked: boolean;
@@ -148,7 +150,7 @@ export function ReaderToolbar({
 
   return (
     <>
-    <ReaderToolbarPortal compactLabel={`${fileMode === 'parallel' ? zh.reader.parallelPdf : fileMode === 'translated' ? zh.reader.translatedPdf : zh.reader.sourcePdf} · ${Math.round(zoom * 100)}%`}>
+    <ReaderToolbarPortal onReturnToLibrary={contentMode === 'pdf' ? onReturnToLibrary : undefined} compactLabel={`${fileMode === 'parallel' ? zh.reader.parallelPdf : fileMode === 'translated' ? zh.reader.translatedPdf : zh.reader.sourcePdf} · ${Math.round(zoom * 100)}%`}>
     <header
       className="reader-toolbar"
       data-reader-layer="toolbar"
@@ -223,6 +225,9 @@ export function ReaderToolbar({
         </div>
       </div>
 
+      {contentMode === 'pdf' && onReturnToLibrary && <div className="reader-toolbar-center">
+        <button type="button" className="reader-return-library" aria-label="返回文献库" title="返回文献库" onClick={onReturnToLibrary}>文献库</button>
+      </div>}
       <div className="reader-toolbar-end">
         {contentMode === 'pdf' && <div className="reader-toolbar-group reader-toolbar-nav">
           <div className="zoom-controls" aria-label="Zoom controls">
