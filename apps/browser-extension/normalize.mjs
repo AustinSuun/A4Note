@@ -77,6 +77,15 @@ export function normalizePage(page, captureId, capturedAt) {
       if (e.field === 'dates.published') e.field = 'dates.submitted';
     }
   }
+  // The page's own PDF control outranks metadata: OpenReview, for example, publishes a
+  // same-site proxy URL in citation_pdf_url even when the file is hosted by the publisher.
+  const explicitPdfs=[];
+  for (const link of (page.links || []).slice(0, 2000)) {
+    if (!link.primaryPdf) continue;
+    const url=httpUrl(link.href, sourceUrl);
+    if (!url || url===sourceUrl || explicitPdfs.some(x=>x.url===url)) continue;
+    explicitPdfs.push({url,label:String(link.label||link.title||'').trim().slice(0,120)});
+  }
   const artifacts = [];
   const seen = new Set();
   function add(url, role, label, method) {
@@ -88,7 +97,12 @@ export function normalizePage(page, captureId, capturedAt) {
     evidence.push({ field: `artifacts.${id}.url`, value: safe, source: sourceUrl, method, capturedAt });
   }
   for (const value of structuredPdfs) add(value,'fulltext','结构化正文 PDF','jsonld');
-  for (const value of values(['citation_pdf_url'])) add(value, 'fulltext', '正文 PDF', 'citation_pdf_url');
+  const metaPdfs=values(['citation_pdf_url']).map(value=>httpUrl(value, sourceUrl)).filter(Boolean);
+  // Only one unambiguous page control may override metadata; never guess among several.
+  if (metaPdfs.length && explicitPdfs.length===1 && !metaPdfs.includes(explicitPdfs[0].url)) {
+    add(explicitPdfs[0].url,'fulltext',explicitPdfs[0].label||'正文 PDF','primary_pdf_link');
+    warnings.push('页面 PDF 元数据与页面下载链接不一致，已采用页面下载链接；请核对来源站点');
+  } else for (const value of metaPdfs) add(value, 'fulltext', '正文 PDF', 'citation_pdf_url');
   if (arxiv) add(`https://arxiv.org/pdf/${arxiv}`, 'fulltext', 'arXiv PDF', 'arxiv_url');
   if (/\.pdf$/i.test(source.pathname)) add(sourceUrl, 'fulltext', '当前 PDF', 'url');
   const genericPdfs=[];

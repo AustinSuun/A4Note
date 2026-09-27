@@ -8,7 +8,8 @@ export function collectPage() {
   const links = [...document.querySelectorAll('a[href],link[href]')].slice(0, limit).map(el => ({
     href: el.href, label: (el.textContent || '').trim().slice(0, 300),
     type: el.getAttribute('type') || '', rel: el.getAttribute('rel') || '',
-    primaryPdf: el.matches('a[data-track-action="download pdf"],a[data-test="pdf-link"],a.article-pdfLink,a.pdf-download,a[aria-label="Download PDF"]'),
+    primaryPdf: el.matches('a[data-track-action="download pdf"],a[data-test="pdf-link"],a.article-pdfLink,a.pdf-download,a[aria-label="Download PDF"],a[title="Download PDF"]'),
+    title: (el.getAttribute('title') || '').slice(0, 300),
     supplementary: Boolean(el.closest('#supplementary-material,.supplementary-material,.supplemental-material,[data-section="supplementary-material"]')),
   }));
   const jsonLd=[];let jsonBytes=0;
