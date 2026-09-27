@@ -295,6 +295,11 @@
 .reader-workspace-drawer .note-document-header { min-height: 32px; padding: 0 0 3px; }
 /* Reserve only the slim drag lane above the header so the grip never masks the controls. */
 .reader-workspace-shell.note-mode-floating > .reader-workspace-drawer .note-document-header { padding-top: 14px; }
+/* Topbar zones: picker left, layout-mode group centered, content-state actions right. */
+.reader-workspace-drawer .note-document-header { display: grid; grid-template-columns: minmax(24px, 1fr) auto minmax(0, 1fr); column-gap: 4px; align-items: center; }
+.reader-workspace-drawer .note-document-header > .note-history-shell { justify-self: start; }
+.reader-workspace-drawer .note-layout-center { justify-self: center; display: flex; min-width: 0; }
+.reader-workspace-drawer .note-document-actions { justify-self: end; margin-left: 0; }
 /* Header row: the document picker hugs the left, layout/mode controls hug the right. */
 .reader-workspace-drawer .note-document-header > .note-history-shell { flex: 0 1 auto; min-width: 0; max-width: calc(100% - 96px); }
 .reader-workspace-drawer .note-document-trigger { width: auto; max-width: 100%; }
@@ -326,7 +331,7 @@
 .note-image-input { display: none; }
 
 /* Leave a real strip beside the card: the handle and all card controls remain hit-testable. */
-.reader-workspace-shell.note-mode-floating { --note-card-safe-height: min(var(--floating-note-height, 62%), 100%); --note-card-safe-top: max(0px, min(var(--floating-note-top, 14%), calc(100% - max(200px, var(--note-card-safe-height))))); --note-card-safe-width: min(var(--floating-note-width, 42%), calc(100% - 32px)); --note-card-safe-left: max(0px, min(var(--floating-note-left, 50%), calc(100% - max(240px, var(--note-card-safe-width)) - 32px))); }
+.reader-workspace-shell.note-mode-floating { --note-card-safe-height: min(var(--floating-note-height-live, var(--floating-note-height, 62%)), 100%); --note-card-safe-top: max(0px, min(var(--floating-note-top-live, var(--floating-note-top, 14%)), calc(100% - max(200px, var(--note-card-safe-height))))); --note-card-safe-width: min(var(--floating-note-width-live, var(--floating-note-width, 42%)), calc(100% - 32px)); --note-card-safe-left: max(0px, min(var(--floating-note-left-live, var(--floating-note-left, 50%)), calc(100% - max(240px, var(--note-card-safe-width)) - 32px))); }
 .reader-workspace-shell.note-mode-floating > .reader-workspace-drawer { left: var(--note-card-safe-left); top: var(--note-card-safe-top); height: var(--note-card-safe-height); width: var(--note-card-safe-width) !important; max-width: calc(100% - 32px); min-width: min(240px, calc(100% - 32px)); }
 .reader-workspace-shell.note-mode-floating > .reader-note-floating-controls { left: var(--note-card-safe-left); top: var(--note-card-safe-top); width: var(--note-card-safe-width); height: var(--note-card-safe-height); }
 .reader-workspace-shell[data-note-presence="exiting"] > .reader-note-floating-controls { pointer-events: none; }
