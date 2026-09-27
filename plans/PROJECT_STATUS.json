@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-27T20:39:44+08:00",
+  "updatedAt": "2026-09-27T21:53:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "review",
@@ -21,6 +21,7 @@
     ]
   },
   "tracks": {
+    "shortcutCycleQiuxu": {"status":"review","owner":"Arena-秋序","summary":"7e18e7d8：fix/shortcut-cycle-qiuxu，500ms不变；原生31/31、组件16/16、dispatcher95、浏览器491、PDF搜索35及build/architecture/agent-status通过；待合main与提交，实际SHA见任务delivery，不改并行提示样式。"},
     "whiteboardPhase0ArenaBoard": "review",
     "markdownTocArenaBoard": "review",
     "eraserAlignmentXingxu": "in_progress",

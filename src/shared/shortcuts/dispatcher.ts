@@ -51,6 +51,15 @@ export function attachShortcutDispatcher(store: ShortcutStore, win: Window = win
       event.preventDefault(); return true;
     } catch (error) { store.error = `快捷键执行失败：${String(error)}`; store.emit(); return false; }
   };
+  // Observe hint suppression before child editors consume a chord. Commands stay
+  // on the bubbling listener below, so editor/browser ownership is unchanged.
+  const observeChord = (event: KeyboardEvent) => {
+    if (!event.ctrlKey) return;
+    if (event.key !== 'Control' || event.altKey || event.shiftKey || event.metaKey) {
+      if (event.key === 'Control') controlDown = true;
+      usedChord = true; clear();
+    }
+  };
   const keydown = (event: KeyboardEvent) => {
     if (doc.visibilityState === 'hidden' || !doc.hasFocus()) { reset(); return; }
     if (!event.ctrlKey && event.key !== 'Control') { clear(); controlDown = false; usedChord = false; }
@@ -69,7 +78,7 @@ export function attachShortcutDispatcher(store: ShortcutStore, win: Window = win
     if (event.defaultPrevented) return;
     execute(resolveKeyboardCommand(store.commands(), store.overrides, ctx, event), event);
   };
-  const keyup = (event: KeyboardEvent) => { if (event.key === 'Control' || !event.ctrlKey) { controlDown = false; usedChord = false; clear(); } };
+  const keyup = (event: KeyboardEvent) => { if (!event.ctrlKey) { controlDown = false; usedChord = false; clear(); } };
   const mousedown = (event: MouseEvent) => {
     clear();
     consumedButtons.delete(event.button);
@@ -84,12 +93,14 @@ export function attachShortcutDispatcher(store: ShortcutStore, win: Window = win
   const compositionstart = () => { composing = true; clear(); };
   const compositionend = () => { composing = false; };
   const onFocus = () => { if (modalIsOpen(doc)) clear(); };
-  win.addEventListener('keydown', keydown); win.addEventListener('keyup', keyup);
+  win.addEventListener('keydown', observeChord, true);
+  win.addEventListener('keydown', keydown); win.addEventListener('keyup', keyup, true);
   win.addEventListener('mousedown', mousedown); win.addEventListener('mouseup', mouseup); win.addEventListener('auxclick', auxclick);
   win.addEventListener('blur', reset); doc.addEventListener('visibilitychange', reset);
   doc.addEventListener('compositionstart', compositionstart); doc.addEventListener('compositionend', compositionend); doc.addEventListener('focusin', onFocus);
   return () => {
-    unsubscribe(); reset(); win.removeEventListener('keydown', keydown); win.removeEventListener('keyup', keyup);
+    unsubscribe(); reset(); win.removeEventListener('keydown', observeChord, true);
+    win.removeEventListener('keydown', keydown); win.removeEventListener('keyup', keyup, true);
     win.removeEventListener('mousedown', mousedown); win.removeEventListener('mouseup', mouseup); win.removeEventListener('auxclick', auxclick);
     win.removeEventListener('blur', reset); doc.removeEventListener('visibilitychange', reset);
     doc.removeEventListener('compositionstart', compositionstart); doc.removeEventListener('compositionend', compositionend); doc.removeEventListener('focusin', onFocus);
