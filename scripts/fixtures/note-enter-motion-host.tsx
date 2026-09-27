@@ -106,8 +106,8 @@ function Host() {
                   <div className="note-history-shell">
                     <button type="button" className="note-document-trigger" aria-haspopup="listbox"><span>阅读笔记 2</span><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" /></svg></button>
                   </div>
+                  <div className="note-layout-center"><ReaderNoteModeSwitch mode={mode} onSelectMode={workbench.setMode} /></div>
                   <div className="note-document-actions">
-                    <ReaderNoteModeSwitch mode={mode} onSelectMode={workbench.setMode} />
                     <span className="note-save-state saved"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" strokeWidth="2" /></svg>已保存</span>
                     <div className="note-view-switch"><button type="button" className="active" aria-label="实时编辑">✎</button><button type="button" aria-label="阅读">▤</button></div>
                   </div>

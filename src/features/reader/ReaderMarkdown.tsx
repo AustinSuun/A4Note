@@ -320,8 +320,8 @@ export function MarkdownNotePanel({
             </div>}
           </div>}
         </div>
+        <div className="note-layout-center">{noteLayoutActions}</div>
         <div className="note-document-actions">
-          {noteLayoutActions}
           <span className={`note-save-state ${saveState}`} title={noteSaveStateText(saveState)}>
             {saveState === 'saving' ? <LoaderCircle className="spin" aria-hidden="true" /> : saveState === 'saved' ? <Check aria-hidden="true" /> : null}
             {noteSaveStateText(saveState)}

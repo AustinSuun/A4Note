@@ -4,6 +4,14 @@ import type { FloatingCardRect } from './noteWorkbench';
 
 const CORNER_LABELS: Record<FloatingCorner, string> = { nw: '左上角', ne: '右上角', sw: '左下角', se: '右下角' };
 const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+const LIVE_RECT_VARS = ['--floating-note-left-live', '--floating-note-top-live', '--floating-note-width-live', '--floating-note-height-live'] as const;
+const writeLiveRect = (element: HTMLElement, rect: FloatingCardRect) => {
+  element.style.setProperty('--floating-note-left-live', `${rect.x * 100}%`);
+  element.style.setProperty('--floating-note-top-live', `${rect.y * 100}%`);
+  element.style.setProperty('--floating-note-width-live', `${rect.width * 100}%`);
+  element.style.setProperty('--floating-note-height-live', `${rect.height * 100}%`);
+};
+const clearLiveRect = (element: HTMLElement) => { for (const name of LIVE_RECT_VARS) element.style.removeProperty(name); };
 
 /** Drag lane plus four corner grips for the floating 速记卡. Pointer moves are pointer-captured
  *  on the pressed control and expressed as workspace ratios, so the geometry stays valid across
@@ -25,15 +33,26 @@ export function ReaderNoteFloatingControls({ active, rect, containerRef, onRectC
     const element = event.currentTarget;
     element.setPointerCapture(event.pointerId);
     element.dataset.active = 'true';
+    /* Live geometry: write -live CSS vars straight to the shell so card and controls
+       follow the pointer without React renders; the rect commits once on release. */
+    let pending: FloatingCardRect | null = null;
+    let frame = 0;
     const move = (moveEvent: PointerEvent) => {
-      onRectChange(apply((moveEvent.clientX - startX) / Math.max(1, box.width), (moveEvent.clientY - startY) / Math.max(1, box.height)));
+      pending = apply((moveEvent.clientX - startX) / Math.max(1, box.width), (moveEvent.clientY - startY) / Math.max(1, box.height));
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; if (pending) writeLiveRect(container, pending); });
     };
     const stop = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+      const final = pending;
+      pending = null;
+      clearLiveRect(container);
       delete element.dataset.active;
       if (element.hasPointerCapture(event.pointerId)) element.releasePointerCapture(event.pointerId);
       element.removeEventListener('pointermove', move);
       element.removeEventListener('pointerup', stop);
       element.removeEventListener('pointercancel', stop);
+      if (final) onRectChange(final);
     };
     element.addEventListener('pointermove', move);
     element.addEventListener('pointerup', stop);

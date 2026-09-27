@@ -100,7 +100,7 @@ function Host() {
               </div>
             </header>
             <div className="reader-retained-note">
-              <div className="note-workspace"><div className="note-document-actions"><button aria-label="笔记历史" onClick={() => setHistoryOpen(true)}>历史</button></div>
+              <div className="note-workspace"><div className="note-layout-center"></div><div className="note-document-actions"><button aria-label="笔记历史" onClick={() => setHistoryOpen(true)}>历史</button></div>
                 <textarea className="md-body markdown-live-codemirror" data-note-editor="1" value={draft} onChange={(event) => setDraft(event.target.value)} />
                 <div className="note-meta-row"><button type="button" className="wb-harness-note" onClick={() => workbench.setActiveNote((NOTES[paperId] || [])[0] || null)}>选择笔记</button></div>
               </div>
