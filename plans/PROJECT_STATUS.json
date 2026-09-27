@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-27T02:46:56Z",
+  "updatedAt": "2026-09-27T02:50:54.444Z",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
@@ -42,10 +42,12 @@
     "windowsPackageXingxu0131": "done",
     "readerNotePanelXingxu": "done",
     "readerNoteCornerXingxu": "review",
-    "markdownDeleteDialogXunchuan": "review"
+    "markdownDeleteDialogXunchuan": "review",
+    "libraryStorageNoticeXunchuan": "review"
   },
   "lastHandoff": {
     "completed": [
+      "巡川 / 6ee1e545-3d31-4682-8c45-a59499075f00 spec1 资料库文件位置提示：Windows路径改与正文一致的界面字体；推荐绿色主按钮及中性副按钮对齐设计变量/悬停/焦点/禁用态，存储文案与行为不变。隔离原生21项通过、0 pageerror/console、推荐迁移与默认保留正常；有效最小窗口宽980时的深浅主题和UI字号125%/150%截图替换了错误的超小视口截图，未声称测试内核缩放。完整verify退出0(Rust238/0/5)、browser31项、reader-page-control59项、build/诊断通过；测试临时权限已还原。详见docs/mcp-library-storage-notice-xunchuan-2026-09-27.md。",
       "note-corner-xingxu：6c1fbe11 spec2开发完成。四角共用4px圆头SVG，仅2产品文件，26px/-4px及交互保持；85纯/117浏览器、原生before24/最终after165与43后图、错误为空。保留5597956并行MD删除弹窗组成ceab645，完整verify73（Rust238/0/5）和最终原生7指纹均通过，ceab已ff合本地main。动画只修采样，69及350ms对照通过；首轮中断/失败日志保留。最终报告与证据正在提交供用户验收，交付SHA以任务卡为准；未打包安装推送发布或自行归档。",
       "巡川 / 69f54936-47f8-4d03-8d30-8d75cc4cc80c spec2 MD文件删除弹窗：只显示取消/删除，删除失败保持弹窗并展示实际错误；5张隔离dev:live前后/边界/错误截图已上传，pageerror0、故意ENOENT时预期console.error1；22项原生交互回归、PowerShell完整verify(含Rust238/0/5)、build/architecture/ui-state/agent-status/dev-live/诊断通过；未改删除策略或正式库，未打包安装推送发布。详见docs/mcp-md-delete-dialog-xunchuan-2026-09-27.md。",
       "note-panel-xingxu：23671e62 spec7开发完成，实现bc998c9已普通ff合入本地main，待用户检查。三态模式记忆/按论文隔离、padding0/滚动壳全宽正文720、4px圆弧与dock、24×72入口及hover/focus短长按提示、深浅主题齐备。纯83/浏览器109，动效最终69×2（默认/模拟宿主reduce），Chrome启动IO42及文库13/21/22/31通过。e441+本卡补丁完整verify73通过（Rust238/0/5）；之后保留bfd的测试/状态增量，产品源码不变，不冒称又跑完整73。原生159/errors[]/HTTP[]、14源码指纹、5before+22after与目视检查通过。失败日志及冷启动一次404保留，未过滤错误/宣称404根因已修。交付commit以任务delivery/manifest为准；本任务未打包安装推送发布或自验收归档。",
@@ -385,6 +387,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
+      "巡川 6ee1e545-3d31-4682-8c45-a59499075f00：原生dev:live 21项/0错误，UI字号125%/150%及100%、资料库存储browser31/31、reader-page-control59/59、build、PowerShell完整verify退出0(Rust238/0/5)、诊断0。",
       "巡川 69f54936-47f8-4d03-8d30-8d75cc4cc80c：原生dev:live 22项全部通过、5张真实截图；pageerror0、正常操作console0、故意ENOENT预期console1；npm run build/test:architecture/test:ui-state/test:agent-status/test:dev-live与PowerShell npm run verify(238 Rust通过/0失败/5忽略)退出0、诊断0。",
       "星序笔记面板：PowerShell完整73/e441通过，Rust238/0/5；bfd仅测试/状态增量无产品差异，默认和模拟宿主reduce各69/69，状态/diff门禁通过；原生159/errors[]/HTTP[]、14源码指纹及27前后截图。源码bc998c9已在main；最终交付绑定见任务卡。",
       "听澜 ce00：shortcut core52/dispatcher63/layout36/settings22、shortcuts-browser491、pdf-find-entry35、test:architecture、tsc -b 0、npm run build、diagnostics0；整合 9edc5d2 后重放同组全过；dev:live tinglan 实拍 300ms 隐藏 / 900ms 显示 / 松开隐藏，pageerror/console 0。",
@@ -788,6 +791,7 @@
       "capture-readable-pdf-arena：定向Rust ingest_tests 8/8，独立工作树npm run verify退出0（Rust 220通过/5忽略），git diff --check通过。"
     ],
     "next": [
+      "巡川 6ee1e545-3d31-4682-8c45-a59499075f00：本地main合入后submit，等待用户独立验收；之前2张低于应用最小宽度980的图片用新图替代，不用旧图验收；继续其它queued，不推送发布。",
       "星序：完成6c1圆头与相关回归/原生证据/本地main交付后，刷新队列继续下一未占用任务；研究卡仅研究，等待验收/外部授权如实标记。",
       "巡川 69f54936-47f8-4d03-8d30-8d75cc4cc80c：本地main整合后submit待用户验收；不得自行归档。其余queued任务按优先级继续领取；不打包安装推送发布。",
       "星序23671：提交与验收状态以任务卡delivery为准；交付证据门禁后提交review，等待用户检查，不自行归档。",
@@ -877,6 +881,6 @@
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。",
       "capture-readable-pdf-arena：未在用户真实资料库或已安装桌面端验收；仅新采集PDF生效，旧哈希名仍保留。"
     ],
-    "updatedAt": "2026-09-27T10:22:12+08:00"
+    "updatedAt": "2026-09-27T02:50:54.444Z"
   }
 }
