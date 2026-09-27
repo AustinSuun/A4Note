@@ -1,5 +1,6 @@
 import type { PositionJson } from '../../../core/types';
 import { annotationSegments, highlightPositionStyle } from './pdfAnnotationHelpers';
+import { numberValue } from './pdfGeometry';
 
 export const HIGHLIGHT_APPEARANCE_KEY = 'aster.reader.highlightAppearance.v1';
 /** Opacity (percent) of the single highlight paint layer. 22 left the presets nearly
@@ -43,10 +44,42 @@ export function compositedHighlightColor(fill: string, background: string, opaci
   return `#${mixed.map((value) => Math.round(Math.min(1, Math.max(0, value)) * 255).toString(16).padStart(2, '0')).join('')}`;
 }
 export function highlightRects(position: PositionJson) {
-  return annotationSegments(position).flatMap(segment => {
+  // Keep persisted selection runs (and the transparent hit targets) untouched. Only the SVG
+  // paint trims the ascender edge; a standalone run keeps its original descender/bottom edge.
+  const runs = annotationSegments(position).flatMap(segment => {
     if (!segment || typeof segment !== 'object') return [];
     const style = highlightPositionStyle(segment);
     const rect = { x: parseFloat(style.left), y: parseFloat(style.top), width: parseFloat(style.width), height: parseFloat(style.height) };
-    return Object.values(rect).every(Number.isFinite) && rect.width > 0 && rect.height > 0 ? [rect] : [];
+    return Object.values(rect).every(Number.isFinite) && rect.width > 0 && rect.height > 0
+      ? [{ rect, glyphHeight: Math.max(numberValue(segment.height, 5), 0.2), orientation: segment.orientation ?? 0 }] : [];
+  });
+  return runs.map((run) => {
+    const { rect, glyphHeight, orientation } = run;
+    // The 90/180/270-degree glyph axes are not the screen's upper edge; preserve their
+    // existing orientation-aware descender placement instead of trimming the wrong side.
+    if (orientation !== 0) return rect;
+    const topTrim = glyphHeight * 0.1;
+    const painted = { ...rect, y: rect.y + topTrim, height: rect.height - topTrim };
+    const next = runs.filter(candidate => {
+      if (candidate === run || candidate.orientation !== 0) return false;
+      const size = Math.min(glyphHeight, candidate.glyphHeight);
+      const heightRatio = size / Math.max(glyphHeight, candidate.glyphHeight);
+      const verticalStep = candidate.rect.y - rect.y;
+      const centerDistance = Math.abs((rect.x + rect.width / 2) - (candidate.rect.x + candidate.rect.width / 2));
+      const sameTextFlow = centerDistance <= Math.min(33, Math.max(rect.width, candidate.rect.width) * 1.1);
+      return heightRatio >= 0.65 && verticalStep >= size * 0.7 && verticalStep <= Math.max(glyphHeight, candidate.glyphHeight) * 1.5
+        && sameTextFlow; // disjoint narrow PDF columns must never be stitched together
+    }).sort((a, b) => a.rect.y - b.rect.y)[0];
+    if (next) {
+      const nextTop = next.rect.y + next.glyphHeight * 0.1;
+      const gap = nextTop - (painted.y + painted.height);
+      const size = Math.min(glyphHeight, next.glyphHeight);
+      // Only the small, normal interline gap may be filled. Do not bridge paragraphs,
+      // unusual leading, superscripts or text in another column; never broaden the x range.
+      if (gap > 0 && gap <= size * 0.24) {
+        painted.height = nextTop + size * 0.045 - painted.y;
+      }
+    }
+    return painted;
   });
 }
