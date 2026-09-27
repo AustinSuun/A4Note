@@ -64,6 +64,7 @@ const steps = [
   ['npm', ['run', 'test:reader-note-sidebar']],
   ['npm', ['run', 'test:reader-note-sidebar-browser']],
   ['npm', ['run', 'test:note-enter-motion-browser']],
+  ['npm', ['run', 'test:note-default-edit-browser']],
   ['npm', ['run', 'test:library-storage-browser']],
   ['npm', ['run', 'test:library-context-menu-browser']],
   ['npm', ['run', 'test:library-sidebar-browser']],

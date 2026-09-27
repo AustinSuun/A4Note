@@ -17,11 +17,35 @@ const MODE_LABELS: Record<NoteWorkbenchMode, string> = {
 const MODE_HINTS: Record<NoteWorkbenchMode, string> = {
   reading: '收起笔记，PDF 占满内容区',
   split: 'PDF 与笔记并排，可拖动调整宽度',
-  floating: '可拖动、可调整大小的速记卡',
-  writing: '笔记占满内容区，随时返回论文',
+  floating: '叠在 PDF 上，可拖动、可缩放的速记卡',
+  writing: '以笔记为主，占满内容区，随时返回论文',
 };
 const MODE_ORDER: NoteWorkbenchMode[] = ['split', 'floating', 'writing', 'reading'];
 const MODE_ICONS = { split: Layers, floating: ScanEye, writing: Feather, reading: BookOpenText } as const;
+/* Schematic wireframes: each diagram shows the layout shape — what fills the
+   content area and what floats over the PDF — so the four presentation forms
+   stay distinguishable at a glance. They are deliberately independent from the
+   edit/read content switch, which lives in the note header instead. */
+function ModeDiagram({ mode }: { mode: NoteWorkbenchMode }) {
+  return (
+    <svg className="reader-note-workbench-item-diagram" viewBox="0 0 30 20" width="30" height="20" aria-hidden="true" focusable="false">
+      <rect x="1" y="1" width="28" height="18" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.55" />
+      {mode === 'split' && <>
+        <path d="M4 5h10M4 8h10M4 11h7M4 14h9" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
+        <rect x="17.5" y="3.5" width="9" height="13" rx="1.5" fill="currentColor" stroke="none" opacity="0.8" />
+      </>}
+      {mode === 'floating' && <>
+        <path d="M4 5h7M4 8h7M4 11h7M4 14h6" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
+        <rect x="13" y="6" width="13" height="10" rx="2" fill="currentColor" stroke="none" opacity="0.8" />
+      </>}
+      {mode === 'writing' && <>
+        <rect x="4" y="3.5" width="22" height="13" rx="1.5" fill="currentColor" stroke="none" opacity="0.8" />
+        <path d="M7 7h16M7 10h16M7 13h10" stroke="var(--surface)" strokeWidth="1.2" />
+      </>}
+      {mode === 'reading' && <path d="M5 5h20M5 8h20M5 11h20M5 14h13" stroke="currentColor" strokeWidth="1.2" opacity="0.6" />}
+    </svg>
+  );
+}
 /* Keyboard hints mirror the shared registry defaults so the menu, the button and the
    resolver never disagree about a binding. */
 const MODE_COMMAND: Record<NoteWorkbenchMode, NoteWorkbenchCommand> = {
@@ -160,7 +184,6 @@ export function ReaderNoteWorkbenchMenu({ mode, onToggle, onSelectMode, temporar
           }}
         >
           {MODE_ORDER.map((candidate, index) => {
-            const Icon = MODE_ICONS[candidate];
             return (
               <button
                 key={candidate}
@@ -173,7 +196,7 @@ export function ReaderNoteWorkbenchMenu({ mode, onToggle, onSelectMode, temporar
                 {...shortcutProps(MODE_COMMAND[candidate], MODE_HINTS[candidate])}
                 onClick={() => select(candidate)}
               >
-                <Icon size={14} aria-hidden="true" />
+                <ModeDiagram mode={candidate} />
                 <span className="reader-note-workbench-item-label">{MODE_LABELS[candidate]}{candidate === mode && <Check size={12} aria-hidden="true" style={{ marginLeft: 6, verticalAlign: 'middle' }} />}</span>
                 <kbd className="reader-note-workbench-item-key">{shortcuts.bindings(MODE_COMMAND[candidate]).map(formatBinding).join(' / ')}</kbd>
                 <span className="reader-note-workbench-item-hint">{MODE_HINTS[candidate]}</span>
@@ -195,7 +218,7 @@ export const NOTE_WORKBENCH_MENU_COMMANDS = NOTE_WORKBENCH_COMMANDS;
 export function ReaderNoteModeSwitch({ mode, onSelectMode }: { mode: NoteWorkbenchMode; onSelectMode: (mode: NoteWorkbenchMode) => void }) {
   return <div className="reader-note-mode-switch" role="group" aria-label="笔记布局">
     {(['split', 'floating', 'writing'] as const).map(value => { const Icon = MODE_ICONS[value];
-      return <button key={value} type="button" aria-label={MODE_LABELS[value]} title={MODE_LABELS[value]} aria-pressed={mode === value}
+      return <button key={value} type="button" aria-label={MODE_LABELS[value]} title={`${MODE_LABELS[value]}：${MODE_HINTS[value]}`} aria-pressed={mode === value}
         onClick={() => onSelectMode(value)}><Icon size={14} aria-hidden="true" /></button>;
     })}
   </div>;

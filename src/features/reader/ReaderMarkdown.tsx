@@ -3,6 +3,7 @@ import { paperNoteImageDocument } from '../../core/paperImageReference';
 import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
 import { useReaderNoteActive, useReaderNoteRequests, useReaderNoteLayoutActions, useReaderNoteCreateAction } from './ReaderNoteActivity';
 import { preferredNoteIdFor, rememberPreferredNoteId } from './noteWorkbench';
+import { useNoteContentMode } from './noteContentMode';
 import { OverviewNoteBadge } from './OverviewNoteBadge';
 import { createSummaryNote, editSummary, loadSummary, uploadSummaryImage } from '../../platform/library/summaries';
 import { acquireLibraryNoteSession, existingLibraryNoteSession } from '../../platform/library/noteDocuments';
@@ -81,7 +82,7 @@ export function MarkdownNotePanel({
     return (preferred && existingLibraryNoteSession(paper.paperId, preferred.id)) || acquireLibraryNoteSession(paper.paperId, preferred, onSave, zh.reader.noteDefaultTitle);
   });
   const { noteId: selectedNoteId, title, content, status: saveState, error: saveError } = useSyncExternalStore(session.subscribe, session.getSnapshot);
-  const [mode, setMode] = useState<'edit' | 'read'>('edit');
+  const [mode, setMode] = useNoteContentMode(surfaceActive);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
