@@ -59,6 +59,9 @@ if (values.plan) {
     const probeUrl = '/@fs/' + plan.probePath.replaceAll('\\', '/');
     server = await createServer({
       root,
+      // node_modules may be a shared junction. Optimizer artifacts belong to
+      // this dev identity, never another worktree or browser regression server.
+      cacheDir: plan.viteCacheDir,
       // vite.config.ts is bypassed on purpose: this server hands the launcher identity to the
       // product's environment strip (src/platform/devEnvironmentStrip.ts) so the page can detect
       // a mismatched backend; plain `npm run dev` keeps the generic 'preview' instance.

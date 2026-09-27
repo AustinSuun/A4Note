@@ -1,5 +1,4 @@
-import { useShortcutProps, useShortcuts } from '../shared/shortcuts';
-import { formatBinding } from '../core/shortcuts';
+import { useShortcutProps } from '../shared/shortcuts';
 import { Check, FolderPlus, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AgentSession, Project, Workspace } from '../core/workspace';
@@ -100,7 +99,6 @@ export function ProjectSidebar({
   sidebarWorkspaceOpen = false,
 }: ProjectSidebarProps) {
   const shortcutProps = useShortcutProps();
-  const shortcutStore = useShortcuts();
   const [collapsedProjectIds, setCollapsedProjectIds] = useState<string[]>([]);
   const [renamingWorkspaceId, setRenamingWorkspaceId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
@@ -369,7 +367,6 @@ export function ProjectSidebar({
         <button type="button" className="workbench-tool" {...shortcutProps('global.palette', labels.commandPalette)} onClick={onOpenCommandPalette}>
           <span className="workbench-tool-icon" aria-hidden="true">{commandIcon}</span>
           <span className="workbench-tool-label">{labels.commandPalette}</span>
-          <kbd>{shortcutStore.bindings('global.palette').map(formatBinding).join(' / ')}</kbd>
         </button>
         <button type="button" className={settingsActive ? 'workbench-tool active' : 'workbench-tool'} onClick={onOpenSettings}>
           <span className="workbench-tool-icon" aria-hidden="true">{settingsIcon}</span>

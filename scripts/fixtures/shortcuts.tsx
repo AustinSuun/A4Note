@@ -6,6 +6,8 @@ import { useAppShortcuts } from '../../src/ui/shortcuts/useAppShortcuts';
 import { ReaderNoteWorkbenchMenu } from '../../src/features/reader/ReaderNoteWorkbenchMenu';
 import { useReaderWritingShortcuts } from '../../src/features/reader/useReaderWritingShortcuts';
 import { useRef } from 'react';
+import { ProjectSidebar } from '../../src/workbench/ProjectSidebar';
+import { zh } from '../../src/ui/zh';
 const events: string[] = [];
 const hit = (s: string) => () => { events.push(s); };
 function Harness() {
@@ -22,6 +24,23 @@ function Harness() {
   useReaderWritingShortcuts(root, c=>events.push(c));
   const props = useShortcutProps();
   (window as any).__shortcutsTest = { store, events, setScene, setModal, setHasTranslation, fileMode };
+  // A separate route exercises the real sidebar without changing the dense
+  // reader layout fixture. These are inert view-model records, not live data.
+  if (new URLSearchParams(location.search).has('sidebar')) return <ProjectSidebar
+    labels={zh.workbench}
+    projects={[{ id: 'sidebar-project', name: 'Sidebar fixture', rootPath: 'D:/isolated-fixture', kind: 'folder', createdAt: '2026-09-27', updatedAt: '2026-09-27' }]}
+    workspaces={[{ id: 'sidebar-workspace', projectId: 'sidebar-project', name: 'Fixture workspace', layout: { fileTreeVisible: true, rightDrawerVisible: false }, tabs: [], createdAt: '2026-09-27', updatedAt: '2026-09-27' }]}
+    sessions={[{ id: 'sidebar-session', projectId: 'sidebar-project', workspaceId: 'sidebar-workspace', providerId: 'local', permissionMode: 'default', status: 'idle', workingDirectory: 'D:/isolated-fixture', createdAt: '2026-09-27', updatedAt: '2026-09-27' }]}
+    activeProjectId="sidebar-project" activeWorkspaceId="sidebar-workspace"
+    scenes={[]} selectedSceneIds={[]} activeSceneId={scene} activeOpenItemId={null} openItems={[]}
+    commandIcon={<span aria-hidden="true">⌘</span>} settingsIcon={<span aria-hidden="true">⚙</span>}
+    onOpenScene={setScene} onToggleScene={hit('toggle-scene')} onSelectAllScenes={hit('all-scenes')}
+    onSelectOpenItem={hit('open-item')} onCloseOpenItem={hit('close-item')}
+    onAddProject={hit('add-project')} onActivateWorkspace={hit('activate-workspace')}
+    onCreateWorkspace={hit('create-workspace')} onRenameWorkspace={hit('rename-workspace')}
+    onRemoveProject={hit('remove-project')} onRemoveWorkspace={hit('remove-workspace')}
+    onOpenCommandPalette={hit('palette')} onOpenSettings={hit('settings')}
+  />;
   return <main style={{padding:20, maxWidth:850}}>
     <h1>Shortcut component regression harness</h1>
     <nav><button {...props('scene.library','Library')} onClick={()=>setScene('library')}>Library</button><button {...props('scene.reader','Reader')} onClick={()=>setScene('reader')}>Reader</button><button onClick={()=>setModal(!modal)}>Modal</button></nav>

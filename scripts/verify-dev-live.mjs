@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { liveDevPlan, liveTauriConfig } from './dev-live-config.mjs';
 
 const first = liveDevPlan('/work/aster');
@@ -11,6 +13,10 @@ assert.notEqual(first.identifier, other.identifier);
 assert.notEqual(first.identifier, second.identifier);
 assert.notEqual(first.profileDir, second.profileDir);
 assert.notEqual(first.cargoTargetDir, second.cargoTargetDir);
+assert.notEqual(first.viteCacheDir, other.viteCacheDir);
+assert.notEqual(first.viteCacheDir, second.viteCacheDir);
+assert.equal(first.viteCacheDir, path.join(first.stateDir, 'vite-cache'));
+assert.match(fs.readFileSync(new URL('./dev-live.mjs', import.meta.url), 'utf8'), /cacheDir:\s*plan\.viteCacheDir/, 'launcher must not fall back to a shared node_modules/.vite cache');
 assert.equal(first.url, 'http://127.0.0.1:1421');
 for (const instance of ['../prod', '', 'x/y', 'x y', 'A', 'x'.repeat(25)]) assert.throws(() => liveDevPlan('/work/aster', { instance }));
 for (const port of [0, 1023, 65536, 3.14, NaN]) assert.throws(() => liveDevPlan('/work/aster', { port }));

@@ -82,9 +82,16 @@ try {
   check(await page.locator('[data-hint-id="reader.zoomIn"] .shortcut-hint-keys').textContent(),'滚轮↑','reader zoom hint shows fixed Ctrl+wheel gesture');
   check(await page.locator('[data-hint-id="reader.file.parallel"] .shortcut-hint-keys').textContent(),'F3','file mode hint appears beside control');
   check((await page.locator('[data-shortcut-id="reader.zoomIn"]').getAttribute('title')).includes('Ctrl+鼠标滚轮向上'),true,'zoom tooltip matches wheel gesture');
-  const backdrop=await page.locator('[data-hint-id="reader.undo"]').evaluate(n=>{const s=getComputedStyle(n,'::before');return {content:s.content,background:s.backgroundColor,blur:s.backdropFilter};});
-  check(backdrop.content!=='none'&&backdrop.background!=='rgba(0, 0, 0, 0)'&&backdrop.blur.includes('blur('),true,'floating action hints have translucent frosted backing');
-  check(await page.locator('[data-hint-id="reader.undo"] kbd').first().evaluate(n=>getComputedStyle(n).backdropFilter.includes('blur(')),true,'keycaps also shield document text');
+  const flatSurface=await page.locator('[data-hint-id="reader.undo"]').evaluate(n=>{
+    const surface=getComputedStyle(n,'::before'),key=getComputedStyle(n.querySelector('kbd'));
+    const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');
+    const alpha=color=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return ctx.getImageData(0,0,1,1).data[3];};
+    return {content:surface.content,alpha:alpha(surface.backgroundColor),shadow:surface.boxShadow,blur:surface.backdropFilter,radius:surface.borderRadius,keyAlpha:alpha(key.backgroundColor),keyShadow:key.boxShadow,keyBlur:key.backdropFilter,labelShadow:getComputedStyle(n.querySelector('.shortcut-hint-label')).textShadow};
+  });
+  check(flatSurface.content!=='none'&&flatSurface.alpha===255,true,'floating rows keep an opaque PDF contrast shield');
+  check([flatSurface.shadow,flatSurface.blur,flatSurface.radius],['none','none','4px'],'floating rows are flat and restrained, not shadowed glass cards');
+  check([flatSurface.keyAlpha,flatSurface.keyShadow,flatSurface.keyBlur],[255,'none','none'],'keycaps share the flat opaque treatment');
+  check(flatSurface.labelShadow,'none','opaque row text needs no glowing text halo');
   await page.screenshot({path:path.join(evidence,'01-reader-hints.png')});
   const initialSize=await page.locator('[data-hint-id="reader.tool.highlight"] kbd').evaluate(n=>({font:parseFloat(getComputedStyle(n).fontSize),height:n.getBoundingClientRect().height}));
   fs.writeFileSync(path.join(evidence,'initial-size.json'),JSON.stringify(initialSize));
@@ -227,7 +234,7 @@ try {
   await page.locator('#hint-obstacle').evaluate(n=>n.remove());await page.waitForTimeout(180);
   }
   await page.keyboard.up('Control');await page.waitForTimeout(180);
-  // A disabled row must mute its ink, not its entire glass card. Fading the
+  // A disabled row must mute its ink, not its entire flat surface. Fading the
   // parent makes the PDF text show through the action label again.
   await page.setViewportSize({width:1280,height:900});
   await page.evaluate(()=>{window.__disabledProbe=window.__shortcutsTest.store.register('disabled-probe',[{
@@ -239,11 +246,34 @@ try {
   const disabledGlass=await page.locator('[data-hint-id="reader.disabledProbe"]').evaluate(n=>({
     opacity:getComputedStyle(n).opacity,visible:getComputedStyle(n).visibility,
     background:getComputedStyle(n,'::before').backgroundColor,blur:getComputedStyle(n,'::before').backdropFilter,
+    enabledBackground:getComputedStyle(document.querySelector('[data-hint-id="reader.undo"]'),'::before').backgroundColor,
   }));
-  check(disabledGlass.opacity,'1','disabled floating row does not fade its glass card');
+  check(disabledGlass.opacity,'1','disabled floating row does not fade its contrast shield');
   check(disabledGlass.visible,'visible','disabled floating action remains visible');
-  check(/0\.97/.test(disabledGlass.background)&&disabledGlass.blur.includes('blur(12px)'),true,'disabled floating row shields underlying PDF text');
+  check(disabledGlass.background===disabledGlass.enabledBackground&&disabledGlass.blur==='none',true,'disabled rows retain the same opaque flat contrast shield');
   await page.keyboard.up('Control');await page.evaluate(()=>window.__disabledProbe());
+  // Real sidebar component: only the permanent key label is removed. The
+  // existing buttons, unrelated count badge, accessible bindings and dispatch
+  // must survive both defaults and a persisted user override.
+  await page.goto(`http://127.0.0.1:${port}/__shortcuts?sidebar`);
+  await page.waitForFunction(()=>window.__shortcutsTest?.store.commands().length>20);
+  const palette=page.locator('.workbench-sidebar-footer [data-shortcut-id="global.palette"]');
+  check(await palette.locator('kbd').count(),0,'sidebar removes permanent palette key label from DOM');
+  check(await palette.locator('.workbench-tool-label').innerText(),'命令面板','palette visible button label remains alongside its decorative icon');
+  check(await page.getByRole('button',{name:'命令面板',exact:true}).count(),1,'palette retains its accessible name');
+  check(await palette.getAttribute('aria-keyshortcuts'),'Control+K Control+Shift+P','palette keeps both default accessible shortcuts');
+  check((await palette.getAttribute('title')).includes('Ctrl+K')&&(await palette.getAttribute('title')).includes('Ctrl+Shift+P'),true,'palette title still exposes both shortcuts');
+  check(await page.locator('.workbench-sidebar-footer .workbench-tool-icon').count(),2,'palette and settings icons remain');
+  check(await page.locator('.workbench-workspace-meta').innerText(),'1 个会话','unrelated workspace count badge remains');
+  await palette.click();check(await events(),['palette'],'palette click still dispatches');
+  await page.getByRole('button',{name:'设置',exact:true}).click();check(await events(),['settings'],'settings click still dispatches');
+  for(const combo of ['Control+k','Control+Shift+p']){await palette.focus();await page.keyboard.press(combo);check(await events(),['palette'],combo+' still opens palette');}
+  await palette.focus();await page.keyboard.press('Enter');check(await events(),['palette'],'palette remains keyboard clickable');
+  await page.evaluate(()=>{const key='a4note.shortcuts.v1',value=JSON.parse(localStorage.getItem(key)||'{"schemaVersion":1,"bindings":{}}');value.bindings['global.palette']=[{type:'keyboard',key:'F8',ctrl:true,alt:true}];localStorage.setItem(key,JSON.stringify(value));});
+  await page.reload();await page.waitForFunction(()=>document.querySelector('[data-shortcut-id="global.palette"]')?.getAttribute('aria-keyshortcuts')==='Control+Alt+F8');
+  check(await palette.locator('kbd').count(),0,'custom binding does not reintroduce permanent key label');
+  check(/Ctrl\+Alt\+F8/i.test(await palette.getAttribute('title')),true,'custom binding remains discoverable in tooltip (existing function-key case is preserved)');
+  await palette.focus();await page.keyboard.press('Control+Alt+F8');check(await events(),['palette'],'persisted custom palette shortcut dispatches');
   check(errors,[],'no browser console/page errors');
 } finally {
   fs.writeFileSync(path.join(evidence,'result.json'),JSON.stringify({checks,errors,kind:'real-browser-component-harness-not-native-desktop'},null,2));
