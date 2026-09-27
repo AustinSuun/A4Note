@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-27T21:53:00+08:00",
+  "updatedAt": "2026-09-27T22:00:34+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "review",
@@ -22,7 +22,8 @@
     ]
   },
   "tracks": {
-    "shortcutCycleQiuxu": {"status":"review","owner":"Arena-秋序","summary":"7e18e7d8：fix/shortcut-cycle-qiuxu，500ms不变；原生31/31、组件16/16、dispatcher95、浏览器491、PDF搜索35及build/architecture/agent-status通过；待合main与提交，实际SHA见任务delivery，不改并行提示样式。"},
+    "communityResearchQiuxu": {"status":"review","owner":"Arena-秋序","summary":"8cc9b2c8仅研究：登录矩阵、双轨/来源/分享/风险/成本/分期/验证方案完成，等待用户选择，不开发或部署。报告docs/mcp-community-identity-research-qiuxu-2026-09-27.md。"},
+    "shortcutCycleQiuxu": {"status":"review","owner":"Arena-秋序","summary":"7e18e7d8：500ms不变；原生31/31、组件16/16、dispatcher95、浏览器491、PDF搜索35及build/architecture/agent-status通过；实现e94c3e6，整合556c4c7已ff合main，submit review rev14，9份附件；不改并行提示样式。"},
     "whiteboardPhase0ArenaBoard": "review",
     "markdownTocArenaBoard": "review",
     "eraserAlignmentXingxu": "in_progress",
