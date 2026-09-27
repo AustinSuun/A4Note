@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-27T08:15:37.498Z",
+  "updatedAt": "2026-09-27T20:39:44+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
-    "status": "in_progress",
-    "owner": "Arena-Board",
-    "branch": "release/0.1.33-arena",
+    "status": "review",
+    "owner": "Arena (arena)",
+    "branch": "fix/reader-note-default-edit-xunchuan（4aaabd4 已 ff 合入 main）",
     "scope": [
+      "- 巡川 / 456497d8：阅读器侧栏与悬浮笔记每次打开/重开默认实时编辑，手动切阅读仅当次打开有效、重开恢复默认；可写即编辑且默认打开不建空笔记不写盘；布局菜单三形态改为线框图示+名称+快捷键+说明，与编辑/阅读内容态严格区分，紧凑switch aria-label恒为形态名保住动效回归。隔离dev:live原生before/after各4 checks/0 errors（before复现重开保留阅读缺陷、after重开为实时编辑器），合成浏览器16/16含浅深主题/窄窗/缩放菜单截图，动效回归73/73，architecture/agent-status/build通过，pageerror/console 0；新增浏览器+原生回归脚本并纳入verify-all。4aaabd4已ff合入本地main。任务submit review待用户验收；未打包安装推送发布。 更新：2026-09-27T20:39:44+08:00",
       "reader-note-motion-xunchuan：bc5308c6 spec1 本地main 26e9421合入并submit review rev16，原生before/after各21状态错误0，浏览器73/73合入后正常两次及模拟宿主reduce一次；待用户验收。",
       "巡川 / 更新弹窗ca2090dd：开发测试完成，待本地main合入并交用户review。",
       "巡川 / PDF 高亮8e746a3b：a1f202b已合入本地main、任务已submit至review，待用户验收归档。",
