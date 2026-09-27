@@ -1,20 +1,42 @@
-.summary-document-editor { flex: 1 1 0; min-height: 180px; overflow: auto; padding: 8px; overscroll-behavior: contain; }
-.summary-document-hint { color: var(--muted); font-size: 13px; line-height: 1.6; }
-.summary-document-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 0; }
-.summary-document-add label { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.summary-document-add select { max-width: 100%; background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 5px; border-radius: 4px; }
-.summary-document-section { margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 6px; }
-.summary-document-section.free { border-style: dashed; }
-.summary-document-section > header { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-.summary-document-section > header strong { flex: 1; overflow-wrap: anywhere; }
-.summary-document-preview { min-height: 28px; overflow-wrap: anywhere; }
-.summary-document-preview img { max-width: 100%; max-height: 400px; object-fit: contain; }
-.summary-document-editor .markdown-live-codemirror { height: auto; min-height: 130px; max-width: none; overflow: visible; }
-.summary-document-editor .markdown-live-codemirror .cm-editor { height: auto !important; min-height: 130px; }
-.summary-document-editor .markdown-live-codemirror .cm-scroller { overflow: visible; }
-.summary-document-editor .markdown-live-codemirror .cm-content { min-height: 130px; padding-bottom: 28px; }
-.summary-document-editor button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+/* Summary note surface: shares the app control/caption type scale instead of the 18px root size. */
+.summary-document-editor { flex: 1 1 0; min-height: 180px; overflow: auto; padding: 8px 10px 12px; overscroll-behavior: contain; font-size: var(--ui-control-font-size, 13px); line-height: 1.5; --document-font-size: 14px; }
+.summary-document-hint { margin: 6px 0 0; color: var(--muted); font-size: var(--ui-body-small-font-size, 12px); line-height: 1.55; }
+.summary-document-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.summary-document-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 6px 0 10px; border-bottom: 1px solid var(--line); }
+.summary-document-add-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.summary-document-add-label { color: var(--muted); font-size: var(--ui-caption-font-size, 11px); font-weight: 600; letter-spacing: .02em; }
+.summary-document-add-pick { display: flex; align-items: center; min-width: 0; }
+.summary-document-add .summary-document-hint { flex: 1 0 100%; margin: 0; }
+.summary-document-editor select { box-sizing: border-box; min-width: 12em; max-width: 100%; height: 28px; padding: 0 6px; font: inherit; font-size: var(--ui-control-font-size, 13px); line-height: 1.3; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 5px; text-overflow: ellipsis; }
+.summary-document-editor button { box-sizing: border-box; min-height: 28px; padding: 3px 10px; font: inherit; font-size: var(--ui-control-font-size, 13px); line-height: 1.3; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
+.summary-document-editor button:hover:not(:disabled) { border-color: color-mix(in srgb, var(--accent-strong) 45%, var(--line)); }
 .summary-document-editor button:disabled { opacity: .5; cursor: default; }
-.summary-document-editor button:focus-visible, .summary-document-editor select:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+.summary-document-editor button:focus-visible, .summary-document-editor select:focus-visible, .summary-document-preview.editable:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+.summary-document-section { margin: 10px 0 0; padding: 8px 12px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); transition: border-color .12s ease, box-shadow .12s ease; }
+.summary-document-section.free { border-style: dashed; }
+.summary-document-section.editing { border-style: solid; border-color: color-mix(in srgb, var(--accent-strong) 55%, var(--line)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-strong) 14%, transparent); }
+.summary-document-section > header { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 24px; margin-bottom: 4px; }
+.summary-document-section > header strong { flex: 1 1 8em; min-width: 0; overflow-wrap: anywhere; font-size: var(--ui-control-font-size, 13px); font-weight: 620; line-height: 1.4; color: var(--ink); }
+.summary-document-status { color: var(--accent-strong); font-size: var(--ui-caption-font-size, 11px); font-weight: 600; }
+.summary-document-section-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
+.summary-document-section-tools button { min-height: 24px; padding: 1px 8px; font-size: var(--ui-body-small-font-size, 12px); }
+.summary-document-section-tools small { color: var(--muted); font-size: var(--ui-caption-font-size, 11px); }
+.summary-document-preview { position: relative; min-height: 24px; padding: 2px 0; overflow-wrap: anywhere; border-radius: 4px; font-size: var(--document-font-size); line-height: 1.6; }
+.summary-document-preview.editable { cursor: text; }
+.summary-document-preview.editable:hover { background: color-mix(in srgb, var(--accent-strong) 6%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-strong) 6%, transparent); }
+.summary-document-preview > :first-child { margin-top: 0; }
+.summary-document-preview > :last-child { margin-bottom: 0; }
+/* Headings inside a field or free region are section content, not page titles. */
+.summary-document-editor .summary-document-preview h1 { margin: 0 0 6px; font-size: calc(var(--document-font-size) * 1.25); font-weight: 700; line-height: 1.3; text-align: left; }
+.summary-document-editor .summary-document-preview h2 { margin: 8px 0 4px; font-size: calc(var(--document-font-size) * 1.15); font-weight: 680; line-height: 1.3; }
+.summary-document-editor .summary-document-preview :is(h3, h4, h5, h6) { margin: 6px 0 4px; font-size: calc(var(--document-font-size) * 1.05); line-height: 1.35; }
+.summary-document-editor .summary-document-preview p { margin: 0 0 var(--md-paragraph-gap, 8px); }
+.summary-document-preview img { max-width: 100%; max-height: 400px; object-fit: contain; }
+.summary-document-empty { margin: 0; color: var(--muted); font-size: var(--ui-body-small-font-size, 12px); font-style: normal; }
+.summary-document-editor .markdown-live-codemirror { height: auto; min-height: 96px; max-width: none; overflow: visible; font-size: var(--document-font-size); }
+.summary-document-editor .markdown-live-codemirror .cm-editor { height: auto !important; min-height: 96px; }
+.summary-document-editor .markdown-live-codemirror .cm-scroller { overflow: visible; }
+.summary-document-editor .markdown-live-codemirror .cm-content { min-height: 96px; padding-bottom: 20px; }
+.summary-document-editor .summary-warning { margin: 10px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--ui-body-small-font-size, 12px); }
 .note-workspace > .summary-document-editor { min-height: 0; }
 .note-workspace:has(> .markdown-authoring-dock) > .summary-document-editor { padding-bottom: var(--note-dock-inset, 96px); }
