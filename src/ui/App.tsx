@@ -146,6 +146,7 @@ type ConfirmDialogState = {
   title: string;
   message: string;
   detail?: string;
+  variant?: 'markdown-file-delete';
   confirmLabel: string;
   danger?: boolean;
   onConfirm: () => void | Promise<void>;
@@ -2002,6 +2003,8 @@ function AppContent() {
       setMarkdownTreeRevision((current) => current + 1);
     } catch (error) {
       setLibraryStatus(error instanceof Error ? error.message : String(error));
+      // A failed file deletion must not be reported as a successful confirmation.
+      if (!entry.is_directory) throw error;
     }
   };
 
@@ -2009,7 +2012,8 @@ function AppContent() {
     setConfirmDialog({
       title: zh.workbench.fileDelete,
       message: `确定删除“${entry.name}”吗？`,
-      detail: entry.is_directory ? '只允许删除空文件夹；非空目录将拒绝删除，不会删除其中的笔记。' : '文件内容将从磁盘移除。',
+      detail: entry.is_directory ? '只允许删除空文件夹；非空目录将拒绝删除，不会删除其中的笔记。' : undefined,
+      variant: entry.is_directory ? undefined : 'markdown-file-delete',
       confirmLabel: zh.workbench.fileDelete,
       danger: true,
       onConfirm: () => executeDeleteMarkdownFile(entry),
@@ -3153,6 +3157,22 @@ function commonTags(papers: PaperDocument[]) {
 function ConfirmDialog({ dialog, onClose }: { dialog: ConfirmDialogState; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const isMarkdownFileDelete = dialog.variant === 'markdown-file-delete';
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!isMarkdownFileDelete) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || busy) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onEscape, true);
+    return () => window.removeEventListener('keydown', onEscape, true);
+  }, [isMarkdownFileDelete, busy, onClose]);
+  useEffect(() => {
+    if (isMarkdownFileDelete && error && !busy) cancelRef.current?.focus();
+  }, [isMarkdownFileDelete, error, busy]);
   const confirm = async () => {
     if (busy) return;
     setError('');
@@ -3162,27 +3182,33 @@ function ConfirmDialog({ dialog, onClose }: { dialog: ConfirmDialogState; onClos
       onClose();
     } catch (error) {
       console.error('Confirmation action failed', error);
-      setError(zh.app.actionFailed);
+      setError(isMarkdownFileDelete ? (error instanceof Error ? error.message : String(error)) : zh.app.actionFailed);
     } finally {
       setBusy(false);
     }
   };
   return (
-    <div className="modal-backdrop">
-      <section className="import-dialog edit-dialog confirm-dialog">
+    <div className={isMarkdownFileDelete ? 'modal-backdrop modal-backdrop--markdown-delete' : 'modal-backdrop'}>
+      <section
+        className={`import-dialog edit-dialog confirm-dialog${isMarkdownFileDelete ? ' confirm-dialog--markdown-delete' : ''}`}
+        role={isMarkdownFileDelete ? 'alertdialog' : undefined}
+        aria-modal={isMarkdownFileDelete ? true : undefined}
+        aria-labelledby={isMarkdownFileDelete ? 'markdown-delete-title' : undefined}
+        aria-describedby={isMarkdownFileDelete ? 'markdown-delete-message' : undefined}
+      >
         <header>
           <div>
-            <h2>{dialog.title}</h2>
-            <p className="scene-description">{dialog.message}</p>
+            <h2 id={isMarkdownFileDelete ? 'markdown-delete-title' : undefined}>{dialog.title}</h2>
+            <p id={isMarkdownFileDelete ? 'markdown-delete-message' : undefined} className="scene-description">{dialog.message}</p>
             {dialog.detail && <code className="confirm-detail">{dialog.detail}</code>}
           </div>
-          <button type="button" className="rounded-button subtle-button" onClick={onClose} disabled={busy}>
+          {!isMarkdownFileDelete && <button type="button" className="rounded-button subtle-button" onClick={onClose} disabled={busy}>
             {zh.editDialog.close}
-          </button>
+          </button>}
         </header>
         {error && <div className="confirm-error">{error}</div>}
         <footer>
-          <button type="button" className="rounded-button subtle-button" onClick={onClose} disabled={busy}>
+          <button ref={cancelRef} type="button" className="rounded-button subtle-button" onClick={onClose} disabled={busy} autoFocus={isMarkdownFileDelete}>
             {zh.editDialog.cancel}
           </button>
           <button type="button" className={dialog.danger ? 'primary rounded-button danger-confirm' : 'primary rounded-button'} onClick={() => void confirm()} disabled={busy}>

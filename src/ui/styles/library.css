@@ -184,6 +184,30 @@
 .confirm-error { margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: #fff0ef; color: #8f4137; font-size: 13px; line-height: 1.45; }
 .confirm-dialog .danger-confirm { background: #9a473d; color: white; }
 .confirm-dialog .danger-confirm:hover:not(:disabled) { background: #84362f; }
+.modal-backdrop--markdown-delete { grid-template-columns: minmax(0, 1fr); padding: 16px; box-sizing: border-box; }
+.confirm-dialog--markdown-delete {
+  width: min(420px, 100%);
+  min-width: 0;
+  justify-self: center;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 20px 22px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.confirm-dialog--markdown-delete header > div { min-width: 0; width: 100%; }
+.confirm-dialog--markdown-delete h2 { margin: 0; font-size: 17px; line-height: 1.35; }
+.confirm-dialog--markdown-delete .scene-description {
+  margin: 9px 0 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.confirm-dialog--markdown-delete footer { justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.confirm-dialog--markdown-delete footer .subtle-button { background: var(--surface-soft) !important; }
+.confirm-dialog--markdown-delete .confirm-error { overflow-wrap: anywhere; }
+:root[data-theme="midnight"] .confirm-dialog--markdown-delete .confirm-error { background: #513533; color: #f6d6d1; }
 .import-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 11px; }
 .import-step { padding: 8px 9px; border-radius: 9px; background: rgba(238,243,239,.72); color: var(--muted); font-size: 12px; text-align: center; }
 .import-step.active, .import-step.done { background: var(--accent-soft); color: var(--accent-strong); font-weight: 700; }

@@ -537,7 +537,9 @@ assert.match(persistedUiStateHookSource, /return isReaderPanelTab\(value\);/);
 assert.doesNotMatch(appSource, /window\.confirm\(zh\.library\.confirmDelete/);
 assert.doesNotMatch(appSource, /window\.confirm\(zh\.library\.confirmBulkDelete/);
 assert.doesNotMatch(appSource, /window\.confirm/);
-assert.match(appSource, /setError\(zh\.app\.actionFailed\)/);
+// Markdown file deletion preserves native failure details; other confirmations retain the generic fallback.
+assert.match(appSource, /setError\(isMarkdownFileDelete \? \(error instanceof Error \? error\.message : String\(error\)\) : zh\.app\.actionFailed\)/);
+assert.match(appSource, /if \(!entry\.is_directory\) throw error;/);
 assert.match(appSource, /setLibraryStatus\(zh\.settings\.restoreFailed\)/);
 assert.match(appSource, /className="confirm-error"/);
 assert.match(appSource, /className="confirm-detail"/);
