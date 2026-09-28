@@ -300,3 +300,38 @@ test('outcome mapping: the runner only ever receives oauth-pinned task requests'
     assert.equal(request.cwd, cwd);
   }
 });
+
+import {
+  DOC2X_CLI_PACKAGE,
+  DOC2X_MIN_NODE_MAJOR,
+  DOC2X_NODE_DOWNLOAD_URL,
+  DOC2X_NPM_MIRROR_URL,
+  describeDoc2xMissingCli,
+  normalizeDoc2xRegistry,
+} from '../src/platform/doc2x/doc2xCli.ts';
+
+test('registry normalisation only accepts plain https mirrors', () => {
+  assert.deepEqual(normalizeDoc2xRegistry(''), { registry: null, error: null });
+  assert.deepEqual(normalizeDoc2xRegistry(undefined), { registry: null, error: null });
+  assert.deepEqual(normalizeDoc2xRegistry('   '), { registry: null, error: null });
+  assert.deepEqual(normalizeDoc2xRegistry(DOC2X_NPM_MIRROR_URL), {
+    registry: DOC2X_NPM_MIRROR_URL,
+    error: null,
+  });
+  const http = normalizeDoc2xRegistry('http://registry.example.com');
+  assert.equal(http.registry, null);
+  assert.match(http.error, /https/);
+  const spaced = normalizeDoc2xRegistry('https://mirror.example.com/a b');
+  assert.equal(spaced.registry, null);
+});
+
+test('missing CLI guidance explains Node first, then the install path', () => {
+  const noNode = describeDoc2xMissingCli(null);
+  assert.match(noNode, /Node\.js/);
+  assert.match(noNode, new RegExp(DOC2X_NODE_DOWNLOAD_URL.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')));
+  const oldNode = describeDoc2xMissingCli(DOC2X_MIN_NODE_MAJOR - 1);
+  assert.match(oldNode, /版本过低/);
+  const ready = describeDoc2xMissingCli(DOC2X_MIN_NODE_MAJOR);
+  assert.match(ready, /安装 Doc2X CLI/);
+  assert.ok(ready.includes(DOC2X_CLI_PACKAGE));
+});

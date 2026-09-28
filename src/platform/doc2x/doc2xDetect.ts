@@ -9,6 +9,8 @@ import { invoke } from '@tauri-apps/api/core';
 import {
   DOC2X_COMMAND,
   DOC2X_MIN_NODE_MAJOR,
+  describeDoc2xMissingCli,
+  parseNodeMajor,
   parseDoc2xVersion,
   type Doc2xCliStatus,
   type Doc2xCommandResult,
@@ -19,7 +21,20 @@ import {
  * executable is missing, so a missing CLI stays an explainable state rather
  * than an unhandled error.
  */
+/** `node --version` decides whether the one-click install can run at all. */
+async function detectNodeMajor(cwd: string): Promise<number | null> {
+  try {
+    const result = await invoke<Doc2xCommandResult>('run_project_command', {
+      request: { cwd, command: 'node', args: ['--version'] },
+    });
+    return result.status === 0 ? parseNodeMajor(result.stdout) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function detectDoc2xCli(cwd = '.'): Promise<Doc2xCliStatus> {
+  const nodeMajor = await detectNodeMajor(cwd);
   try {
     const result = await invoke<Doc2xCommandResult>('run_project_command', {
       request: { cwd, command: DOC2X_COMMAND, args: ['--version'] },
@@ -28,16 +43,22 @@ export async function detectDoc2xCli(cwd = '.'): Promise<Doc2xCliStatus> {
       return {
         available: false,
         version: '',
-        nodeMajor: null,
-        message: `未检测到 doc2x 命令，请先安装 @noedgeai-org/doc2x-cli（需要 Node.js ${DOC2X_MIN_NODE_MAJOR} 及以上）`,
+        nodeMajor,
+        message: describeDoc2xMissingCli(nodeMajor),
       };
     }
-    return { available: true, version: parseDoc2xVersion(result.stdout), nodeMajor: null, message: '' };
+    const tooOld = nodeMajor !== null && nodeMajor < DOC2X_MIN_NODE_MAJOR;
+    return {
+      available: true,
+      version: parseDoc2xVersion(result.stdout),
+      nodeMajor,
+      message: tooOld ? describeDoc2xMissingCli(nodeMajor) : '',
+    };
   } catch (error) {
     return {
       available: false,
       version: '',
-      nodeMajor: null,
+      nodeMajor,
       message: `无法运行 doc2x 命令：${error instanceof Error ? error.message : String(error)}`,
     };
   }

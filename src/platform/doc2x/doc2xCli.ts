@@ -465,3 +465,37 @@ export function parseNodeMajor(versionOutput: string): number | null {
   const match = /v?(\d+)\./.exec(versionOutput.trim());
   return match ? Number(match[1]) : null;
 }
+
+/** npm package that ships the `doc2x` executable. */
+export const DOC2X_CLI_PACKAGE = '@noedgeai-org/doc2x-cli';
+export const DOC2X_NODE_DOWNLOAD_URL = 'https://nodejs.org/';
+export const DOC2X_NPM_MIRROR_URL = 'https://registry.npmmirror.com/';
+
+export interface Doc2xRegistryResolution {
+  registry: string | null;
+  error: string | null;
+}
+
+/**
+ * A mirror is user supplied, so only a plain https URL is accepted:
+ * anything else breaks the spawn or redirects the install elsewhere.
+ */
+export function normalizeDoc2xRegistry(input: string | undefined): Doc2xRegistryResolution {
+  const trimmed = (input ?? '').trim();
+  if (!trimmed) return { registry: null, error: null };
+  if (!/^https:\/\/\S+$/.test(trimmed)) {
+    return { registry: null, error: '镜像地址必须以 https:// 开头，且不能包含空格。' };
+  }
+  return { registry: trimmed, error: null };
+}
+
+/** What to tell the user when `doc2x --version` did not run. */
+export function describeDoc2xMissingCli(nodeMajor: number | null): string {
+  if (nodeMajor === null) {
+    return `未检测到 Node.js：Doc2X CLI 需要 Node.js ${DOC2X_MIN_NODE_MAJOR} 及以上，请先安装（${DOC2X_NODE_DOWNLOAD_URL}），再点「安装 Doc2X CLI」。`;
+  }
+  if (nodeMajor < DOC2X_MIN_NODE_MAJOR) {
+    return `Node.js 版本过低（当前 v${nodeMajor}）：Doc2X CLI 需要 Node.js ${DOC2X_MIN_NODE_MAJOR} 及以上，请升级后重试。`;
+  }
+  return `未检测到 doc2x 命令：点「安装 Doc2X CLI」由本机安装（npm i -g ${DOC2X_CLI_PACKAGE}），或自行在终端执行该命令。`;
+}

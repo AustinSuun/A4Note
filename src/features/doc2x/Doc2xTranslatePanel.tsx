@@ -9,12 +9,17 @@ import {
   buildDoc2xLogoutRequest,
   buildDoc2xTranslateRequest,
   parseDoc2xJsonPayload,
+  DOC2X_MIN_NODE_MAJOR,
+  DOC2X_NODE_DOWNLOAD_URL,
+  DOC2X_NPM_MIRROR_URL,
+  normalizeDoc2xRegistry,
   type Doc2xCliStatus,
 } from '../../platform/doc2x/doc2xCli.ts';
 import {
   detectDoc2xCli,
   listenDoc2xLoginEvents,
   runDoc2xCommand,
+  startDoc2xInstall,
   startDoc2xLogin,
 } from '../../platform/doc2x/index.ts';
 import {
@@ -73,6 +78,11 @@ export function Doc2xTranslatePanel({
   const [message, setMessage] = useState('');
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const filesRoot = useRef('');
+  const installJobId = useRef<string | null>(null);
+  const [installing, setInstalling] = useState(false);
+  const [confirmInstall, setConfirmInstall] = useState(false);
+  const [useMirror, setUseMirror] = useState(false);
+  const [mirrorError, setMirrorError] = useState("");
   const resolution = useMemo(() => readDoc2xTranslateSettings(settingValues), [settingValues]);
 
   const append = useCallback((line: string) => {
@@ -118,6 +128,14 @@ const refreshAccount = useCallback(async () => {
     let alive = true;
     void listenDoc2xLoginEvents({
       onEvent: (event) => append(`[${event.stream}] ${event.line}`),
+      onExit: (exit) => {
+        append(`[exit] status=${exit.status ?? "killed"} timedOut=${exit.timedOut}`);
+        if (exit.jobId === installJobId.current) {
+          installJobId.current = null;
+          setInstalling(false);
+          void refreshCli();
+        }
+      },
     }).then((dispose) => {
       if (!alive) {
         dispose();
@@ -129,7 +147,7 @@ const refreshAccount = useCallback(async () => {
       alive = false;
       unlisten?.();
     };
-  }, [append]);
+  }, [append, refreshCli]);
 
 const login = useCallback(async () => {
   setLoginBusy(true);
@@ -161,6 +179,26 @@ const logout = useCallback(async () => {
   setAccount(summary);
   return summary;
 }, [ensureRoot]);
+
+  /** Node decides whether the one-click install can run at all. */
+  const nodeReady = cli ? cli.nodeMajor !== null && cli.nodeMajor >= DOC2X_MIN_NODE_MAJOR : false;
+
+  const installCli = useCallback(async () => {
+    const root = await ensureRoot();
+    const { registry, error } = normalizeDoc2xRegistry(useMirror ? DOC2X_NPM_MIRROR_URL : undefined);
+    setMirrorError(error ?? '');
+    if (error) return;
+    setInstalling(true);
+    setConfirmInstall(false);
+    try {
+      const jobId = await startDoc2xInstall({ cwd: root || '.', registry: registry ?? undefined });
+      installJobId.current = jobId;
+      append(`已开始安装 Doc2X CLI（任务 ${jobId}），全局安装可能需要几分钟。`);
+    } catch (error) {
+      setInstalling(false);
+      setMessage(`安装启动失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }, [append, ensureRoot, useMirror]);
 
   const runOne = useCallback(
     async (target: PaperDocument): Promise<string> => {
@@ -284,6 +322,54 @@ const logout = useCallback(async () => {
           安装：<code>npm i -g @noedgeai-org/doc2x-cli</code>（需要 Node.js 22 及以上），然后用
           <code> doc2x login</code> 登录你自己的账号。软件不会代你安装或代你登录。
         </p>
+      ) : null}
+
+      {cli && !cli.available ? (
+        <div className="doc2x-panel__install">
+          <p className="doc2x-panel__hint">{cli.message}</p>
+          {!nodeReady ? (
+            <p className="doc2x-panel__hint">
+              Node.js 下载：<code>{DOC2X_NODE_DOWNLOAD_URL}</code>
+            </p>
+          ) : null}
+          <label className="doc2x-panel__mirror">
+            <input
+              type="checkbox"
+              checked={useMirror}
+              onChange={(event) => setUseMirror(event.target.checked)}
+              disabled={installing}
+            />
+            使用国内 npm 镜像安装（registry.npmmirror.com）
+          </label>
+          {mirrorError ? <p className="doc2x-panel__error">{mirrorError}</p> : null}
+          {confirmInstall ? (
+            <div className="doc2x-panel__row">
+              <span>
+                将在本机执行 <code>npm i -g @noedgeai-org/doc2x-cli</code>
+                （全局安装，需要几分钟）。确认安装？
+              </span>
+              <button type="button" onClick={() => void installCli()} disabled={installing}>
+                确认安装
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmInstall(false)}
+                disabled={installing}
+              >
+                取消
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmInstall(true)}
+              disabled={installing || !nodeReady}
+              title={nodeReady ? '' : '需要先安装 Node.js 22 或更高版本'}
+            >
+              {installing ? '安装中…' : '安装 Doc2X CLI'}
+            </button>
+          )}
+        </div>
       ) : null}
 
       <div className="doc2x-panel__row">

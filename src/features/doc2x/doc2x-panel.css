@@ -111,3 +111,19 @@
   word-break: break-all;
 }
 
+
+
+.doc2x-panel__install {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px dashed var(--border, #d0d7de);
+  border-radius: 6px;
+}
+
+.doc2x-panel__mirror {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

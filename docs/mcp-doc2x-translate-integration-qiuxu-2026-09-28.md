@@ -210,3 +210,22 @@ PDF，没有切换上下排布、反转顺序或仅译文的开关。
   npm run test:architecture and git diff --check pass.
 - still open: real account end to end, reader visual check,
   full npm run verify and the frontend production build.
+
+## 9. one-click CLI install (step 4, landed)
+
+- the Doc2X CLI is an npm package, so the app can install it for the user,
+  but only after an explicit confirmation click; nothing installs silently.
+- panel flow: detect CLI (and Node) -> show guidance -> [install Doc2X CLI]
+  -> confirm (shows the exact npm command) -> streamed progress -> re-detect.
+- optional domestic mirror checkbox (registry.npmmirror.com); the mirror is
+  validated as a plain https URL before it reaches the process.
+- Rust: doc2x_cli::install_doc2x_cli runs `node <npm-cli.js> install -g
+  @noedgeai-org/doc2x-cli` because Windows cannot spawn npm.cmd through
+  CreateProcess; the shared spawn_streamed helper feeds doc2x://event, so
+  the install logs exactly like a login.
+- when Node.js is missing or older than 22 the install button stays disabled
+  and the panel points at https://nodejs.org/ instead of failing halfway.
+- tests: cargo doc2x_cli:: 9 passed (install command shape, mirror pinning,
+  registry validation); node test:doc2x-cli 28 passed (registry
+  normalisation, missing-CLI guidance). tsc -b, test:architecture and
+  git diff --check pass.

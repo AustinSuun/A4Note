@@ -69,3 +69,17 @@ export async function listenDoc2xLoginEvents(handlers: Doc2xLoginHandlers): Prom
 }
 
 export { runDoc2xTask, type Doc2xRunOutcome, type Doc2xRunner } from './doc2xOutcome.ts';
+
+export interface Doc2xInstallRequest {
+  cwd: string;
+  /** Optional npm mirror for networks where the default registry is slow. */
+  registry?: string;
+}
+
+/**
+ * Installs the CLI the user explicitly asked for. It streams on the same
+ * `doc2x://event` channel as login, so the panel logs it identically.
+ */
+export async function startDoc2xInstall(request: Doc2xInstallRequest): Promise<string> {
+  return invoke<string>('install_doc2x_cli', { request });
+}
