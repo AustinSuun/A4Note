@@ -859,11 +859,13 @@ export function createAsterCore(documents: PaperDocument[], scenes: SceneContrib
   for (const definition of builtinSceneDefinitions) {
     registerPlugin(definition.create(sceneMetadata.get(definition.id)));
     registeredBuiltinPluginIds.add(definition.pluginId);
+  }
   // Doc2X owns no scene: it contributes settings, a translation provider
   // entry and a library workbench panel, and can be disabled as a whole.
+  // Registered exactly once, outside the scene loop: registering it per scene
+  // threw `Plugin already registered: doc2x.core` and left the app blank.
   registerPlugin(createDoc2xPlugin());
   registeredBuiltinPluginIds.add(DOC2X_PLUGIN_ID);
-  }
   // Any non-first-party scene passed by an embedding host is still normalized
   // into a builtin wrapper, while known scene/plugin ids above stay singletons.
   for (const scene of scenes) {
