@@ -2,6 +2,7 @@ export { CommandPalette, type CommandPaletteItem } from './CommandPalette';
 export { WorkspacePanelHost, type WorkspacePanelDefinition } from './WorkspacePanelHost';
 export { WorkbenchShell, type WorkbenchShellProps } from './WorkbenchShell';
 export { WORKBENCH_SIDEBAR_MAX_WIDTH, WORKBENCH_SIDEBAR_MIN_WIDTH } from './WorkbenchShell';
+export { WORKBENCH_SIDEBAR_NARROW_MAX_WIDTH, WORKBENCH_SIDEBAR_NARROW_QUERY, resolveSidebarPresentation, type SidebarMode, type SidebarPresentation, type SidebarVisibilityState } from './sidebarVisibility';
 export { ProjectSidebar, type ProjectSidebarProps, type SidebarSceneItem, type SidebarOpenItem } from './ProjectSidebar';
 export { WorkbenchTopBar, type TopBarProviderOption, type WorkbenchTopBarProps } from './WorkbenchTopBar';
 export { WindowTitleBar, type WindowTitleBarProps } from './WindowTitleBar';

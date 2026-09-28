@@ -1,6 +1,8 @@
-import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { WindowTitleBar } from './WindowTitleBar';
 import { viewportDeltaToLayout } from '../shared/ui/viewportToLayout';
+import { dismissSidebarOverlay, resolveSidebarPresentation, revealSidebar, toggleSidebarVisibility, type SidebarVisibilityState } from './sidebarVisibility';
+import { useNarrowViewport } from './useNarrowViewport';
 
 /** Minimum width needed to keep the sidebar controls and scene picker usable. */
 export const WORKBENCH_SIDEBAR_MIN_WIDTH = 300;
@@ -15,7 +17,12 @@ export interface WorkbenchShellProps {
   /** Rendered over the tab host: settings and other full-surface panels. */
   overlay?: ReactNode;
   dialogs?: ReactNode;
+  /**
+   * Persisted user preference only. Whether the sidebar is actually on screen
+   * also depends on the viewport; see `sidebarVisibility.ts`.
+   */
   sidebarCollapsed?: boolean;
+  /** Flips the persisted preference. Not called for the narrow-viewport overlay. */
   onToggleSidebar?: () => void;
   leadingAction?: ReactNode;
   brandAccessory?: ReactNode;
@@ -34,6 +41,38 @@ export function WorkbenchShell({ sidebar, topBar, explorer, content, overlay, di
   const resizeWidthRef = useRef(sidebarWidth);
   const frameRef = useRef<HTMLDivElement>(null);
   const resizerRef = useRef<HTMLDivElement>(null);
+  const narrow = useNarrowViewport();
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const visibilityState: SidebarVisibilityState = { userCollapsed: sidebarCollapsed, narrow, overlayOpen: narrow && overlayOpen };
+  const presentation = resolveSidebarPresentation(visibilityState);
+
+  // Crossing the breakpoint drops a transient overlay; the persisted choice stays.
+  useEffect(() => {
+    setOverlayOpen(false);
+  }, [narrow]);
+
+  const commitVisibility = (next: SidebarVisibilityState) => {
+    if (next.userCollapsed !== sidebarCollapsed) onToggleSidebar?.();
+    setOverlayOpen(next.overlayOpen);
+  };
+  const focusSidebarToggle = () => {
+    frameRef.current?.querySelector<HTMLButtonElement>('.window-titlebar-sidebar-toggle')?.focus();
+  };
+  const closeOverlay = () => commitVisibility(dismissSidebarOverlay(visibilityState));
+
+  useEffect(() => {
+    if (presentation.mode !== 'overlay') return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      const target = event.target as HTMLElement | null;
+      // Esc inside an editor/rename field belongs to that field.
+      if (target?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
+      setOverlayOpen(false);
+      focusSidebarToggle();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [presentation.mode]);
 
   const getSidebarWidthFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
     const samples = event.nativeEvent.getCoalescedEvents?.() ?? [];
@@ -79,10 +118,26 @@ export function WorkbenchShell({ sidebar, topBar, explorer, content, overlay, di
 
   return (
     <div ref={frameRef} className="app-window" style={shellStyle}>
-      <WindowTitleBar sidebarCollapsed={sidebarCollapsed} onToggleSidebar={onToggleSidebar ?? (() => undefined)} topBar={topBar} leadingAction={leadingAction} brandAccessory={brandAccessory} />
-      <div className={explorer ? 'workbench-shell with-explorer' : 'workbench-shell'} data-sidebar-collapsed={sidebarCollapsed || undefined}>
+      <WindowTitleBar
+        sidebarCollapsed={!presentation.visible}
+        sidebarMode={presentation.mode}
+        sidebarNarrow={presentation.narrow}
+        onToggleSidebar={() => commitVisibility(toggleSidebarVisibility(visibilityState))}
+        onRevealSidebar={() => commitVisibility(revealSidebar(visibilityState))}
+        topBar={topBar}
+        leadingAction={leadingAction}
+        brandAccessory={brandAccessory}
+      />
+      <div
+        className={explorer ? 'workbench-shell with-explorer' : 'workbench-shell'}
+        data-sidebar-collapsed={presentation.mode === 'hidden' || undefined}
+        data-sidebar-mode={presentation.mode}
+      >
         {sidebar}
-        {!sidebarCollapsed && (
+        {presentation.mode === 'overlay' && (
+          <div className="workbench-sidebar-scrim" aria-hidden="true" onClick={closeOverlay} />
+        )}
+        {presentation.mode === 'docked' && (
           <div
             ref={resizerRef}
             className={resizingSidebar ? 'workbench-sidebar-resizer active' : 'workbench-sidebar-resizer'}

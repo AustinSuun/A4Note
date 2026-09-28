@@ -42,6 +42,8 @@
     "test:pdf-text-annotation": "node --experimental-strip-types scripts/verify-pdf-text-annotation.mjs",
     "test:ai-toolbar": "node scripts/verify-ai-toolbar.mjs",
     "test:ui-state": "node scripts/verify-ui-state.mjs",
+    "test:sidebar-visibility": "node --experimental-strip-types scripts/verify-sidebar-visibility.mjs",
+    "test:sidebar-visibility-browser": "node scripts/verify-sidebar-visibility-browser.mjs",
     "test:note-workbench": "node scripts/verify-note-workbench.mjs",
     "test:reader-note-sidebar": "node scripts/verify-reader-note-sidebar.mjs",
     "test:reader-note-sidebar-browser": "node scripts/verify-reader-note-sidebar-browser.mjs",

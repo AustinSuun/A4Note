@@ -15,6 +15,9 @@
 .window-titlebar-leading-action-button { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; min-height: 30px; padding: 0 8px 0 5px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: var(--ui-control-font-size); font-weight: 620; line-height: 1; white-space: nowrap; cursor: pointer; }
 .window-titlebar-leading-action-button:hover, .window-titlebar-leading-action-button:focus-visible { background: var(--surface-soft); color: var(--accent-strong); outline: none; }
 .window-titlebar-leading-action-button svg { flex: 0 0 auto; }
+/* Sidebar off screen: back-to-scenes stays reachable as an icon beside the toggle. */
+.window-titlebar-leading-action.compact .window-titlebar-leading-action-button { width: 30px; min-width: 30px; padding: 0; justify-content: center; }
+.window-titlebar-leading-action.compact .window-titlebar-leading-action-button span { display: none; }
 .window-titlebar-name-accent { color: var(--accent-strong); font-size: var(--ui-titlebar-accent-size); font-weight: 820; letter-spacing: .03em; }
 .window-titlebar-name-note { color: var(--muted); font-size: var(--ui-font-size); font-weight: 620; }
 .window-titlebar-projectbar { display: flex; flex: 1 1 0; align-self: stretch; min-width: 0; overflow: hidden; }
@@ -49,6 +52,28 @@
   opacity: 0;
   transform: translateX(-18px);
   pointer-events: none;
+}
+/* Narrow viewport drawer (sidebarVisibility.ts, mode "overlay"). The grid keeps
+   its zero-width first track; the sidebar floats above the content instead. */
+.workbench-shell[data-sidebar-mode="overlay"] { position: relative; grid-template-columns: 0 minmax(0, 1fr); }
+.workbench-shell[data-sidebar-mode="overlay"] > .workbench-main { grid-column: 2; grid-row: 1; }
+.workbench-shell[data-sidebar-mode="overlay"] > .workbench-sidebar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  width: min(var(--sidebar-width, 300px), calc(100% - 64px));
+  min-width: 0;
+  box-shadow: 0 18px 44px rgba(22, 36, 29, .18), 0 2px 8px rgba(22, 36, 29, .08);
+  animation: workbench-sidebar-overlay-in .2s cubic-bezier(.2,.8,.2,1);
+}
+.workbench-sidebar-scrim { position: absolute; inset: 0; z-index: 39; background: rgba(18, 28, 23, .14); animation: workbench-sidebar-scrim-in .18s ease; }
+@keyframes workbench-sidebar-overlay-in { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes workbench-sidebar-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .workbench-shell[data-sidebar-mode="overlay"] > .workbench-sidebar,
+  .workbench-sidebar-scrim { animation: none; }
 }
 .workbench-sidebar-resizer { position: absolute; top: 0; bottom: 0; left: calc(var(--sidebar-width, 300px) - 3px); z-index: 8; width: 6px; cursor: ew-resize; touch-action: none; user-select: none; will-change: transform; }
 .workbench-sidebar-resizer::after { position: absolute; top: 0; bottom: 0; left: 2px; width: 1px; background: transparent; content: ''; transition: background-color .12s ease; }
@@ -2268,12 +2293,12 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
   .workbench-topbar-actions > .workbench-action { display: none; }
 }
 
-@media (max-width: 1040px) {
-  .workbench-shell { grid-template-columns: 0 minmax(0, 1fr); }
-  .workbench-sidebar { visibility: hidden; pointer-events: none; }
-  .workbench-sidebar-resizer { display: none; }
-  .window-titlebar-leading { flex-basis: auto; min-width: 0; padding-left: 9px; padding-right: 8px; border-right: 0; }
-}
+/* Narrow viewports (WORKBENCH_SIDEBAR_NARROW_QUERY in src/workbench/sidebarVisibility.ts).
+   React owns sidebar visibility there: the shell renders data-sidebar-mode
+   "hidden" or "overlay" and the title bar gets .sidebar-narrow. Do not add a
+   media query that hides .workbench-sidebar by itself — it would split the
+   state again (task 6f9e0947; guarded by scripts/verify-sidebar-visibility.mjs). */
+.window-titlebar.sidebar-narrow:not(.sidebar-collapsed) .window-titlebar-leading { flex-basis: auto; min-width: 0; padding-left: 9px; padding-right: 8px; border-right: 0; }
 
 /* Shared native-directory/category draft, with readable actions on narrow trees. */
 .file-tree-tree .library-folder-draft-row { padding-left: 8px; background: var(--accent-soft); color: var(--accent-strong); }

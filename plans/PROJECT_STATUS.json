@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-28T00:00:00Z",
+  "updatedAt": "2026-09-28T22:45:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "Arena-秋序 (arena-worker d5193e61)",
     "branch": "feat/doc2x-translate-qiuxu（worktree .worktrees/doc2x-translate-qiuxu，基线 b008046）",
     "scope": [
+      "sidebar-narrow-sync-arena-b：6f9e0947 窄窗口侧栏与标题栏/返回场景同步已完成并合入本地 main（arena-b）；doc2x.core 重复注册导致的启动空白已由 main 3866352 修复。",
       "doc2x-translate-qiuxu：用户要求把 Doc2X 翻译接入文献库，已发布并领取任务 c889e6ad（rev2 进行中）。核对 @noedgeai-org/doc2x-cli 0.2.0 能力（Node≥22；OAuth+PKCE 本机回环登录，令牌由 CLI 自存；translate/parse/batch/account/records/usage/models；退出码 0-6；PDF≤300MB、图片≤3MB、并发固定 1），结论“可集成、成本中等”；官网独有的保留排版 Word/MathType/Typst/Excel 导出与图片翻译编辑无 CLI 参数，界面须标注暂不支持。新增 src/platform/doc2x/{doc2xCli.ts,doc2xDetect.ts,index.ts}：请求拼装、输入与设置校验、退出码中文映射、回执解析，统一 --auth-mode oauth 强制使用用户本机登录账号；新增 scripts/verify-doc2x-cli.mjs 与 npm run test:doc2x-cli，9/9 通过，npx tsc -b 退出 0；测试捕获并修正布尔标志未写入参数、--ignore-translate-types 多值只传第一项两处问题。未完成：异步 Rust 执行与流式命令、登录/设置/一键翻译 UI、译文入库、真实账号端到端（无可用账号，不得代登录）。详见 docs/mcp-doc2x-translate-integration-qiuxu-2026-09-28.md。更新：2026-09-28T12:45:00+08:00",
       "- 巡川 / f241fd40：悬浮笔记顶栏三形态按钮改为居中独立组，右侧仅留编辑/阅读等内容操作，标题左贴；拖动/四角缩放改命令式live CSS变量路径（rAF节流、松手一次提交），消除每move的React重渲染，帧间隔不劣于改前且无longtask。隔离dev:live原生before/after：centerOffset 164→0、12/12断言、980窄窗/125-220%缩放/midnight不重叠、四角缩放与拖动后位置保持正常，pageerror/console 0；合成回归motion73/73、workbench117/117、default-edit16/16，architecture/agent-status/build通过。82b2bb6已ff合入本地main。任务submit review待用户验收；未打包安装推送发布。 更新：2026-09-27T21:52:21+08:00",
       "- 巡川 / 456497d8：阅读器侧栏与悬浮笔记每次打开/重开默认实时编辑，手动切阅读仅当次打开有效、重开恢复默认；可写即编辑且默认打开不建空笔记不写盘；布局菜单三形态改为线框图示+名称+快捷键+说明，与编辑/阅读内容态严格区分，紧凑switch aria-label恒为形态名保住动效回归。隔离dev:live原生before/after各4 checks/0 errors（before复现重开保留阅读缺陷、after重开为实时编辑器），合成浏览器16/16含浅深主题/窄窗/缩放菜单截图，动效回归73/73，architecture/agent-status/build通过，pageerror/console 0；新增浏览器+原生回归脚本并纳入verify-all。4aaabd4已ff合入本地main。任务submit review待用户验收；未打包安装推送发布。 更新：2026-09-27T20:39:44+08:00",
@@ -56,10 +57,12 @@
     "markdownDeleteDialogXunchuan": "review",
     "libraryStorageNoticeXunchuan": "review",
     "readerNoteMotionXunchuan": "review",
-    "shortcutLightXingxu": "review"
+    "shortcutLightXingxu": "review",
+    "sidebarNarrowSyncArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "6f9e0947：删除 ≤1040px 隐藏 .workbench-sidebar 的媒体查询，改由 sidebarVisibility 纯状态机统一决定 docked/overlay/hidden；标题栏按实际可见性显示，窄窗口用浮层抽屉，不改持久化偏好，侧栏隐藏时标题栏显示紧凑「返回场景」。实机验证时定位到 doc2x.core 重复注册导致的启动空白，main 已由 3866352 修复。", "doc": "docs/mcp-sidebar-narrow-sync-arena-b-2026-09-28.md"}
   },
   "lastHandoff": {
     "completed": [
+      "sidebar-narrow-sync-arena-b / 6f9e0947：窄窗口侧栏状态同步（状态机 + 浮层抽屉 + 标题栏紧凑「返回场景」），新增单元测试 8 项与浏览器测试 39 项；另定位 doc2x.core 重复注册导致的启动空白（main 3866352 已修复）。",
       "doc2x-translate-qiuxu：Doc2X 翻译集成第二步。新增 src-tauri/src/doc2x_cli.rs 异步执行层（run_doc2x_command 带超时与 timedOut 回报、start_doc2x_login/cancel_doc2x_job 流式事件、OnceLock 进程登记、--auth-mode 白名单）与 src/platform/doc2x 的 outcome 映射；lib.rs 保持 <160 行。",
       "doc2x-translate-qiuxu：Doc2X 翻译集成第一步落地。核对 CLI 能力并给出可行性结论（可集成、成本中等）；新增 src/platform/doc2x 适配层与 9 项 mock CLI 测试（9/9）、npx tsc -b 通过；设计文档 docs/mcp-doc2x-translate-integration-qiuxu-2026-09-28.md。",
       "reader-note-motion-xunchuan：代码26e9421已合入本地main并submit用户review rev16；12份隔离原生证据和73项浏览器回归，错误0，首帧性能限制详见交付报告。",
@@ -411,6 +414,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
+      "6f9e0947：test:sidebar-visibility 8/8，test:sidebar-visibility-browser 39/39（旧代码 7/39）；build、architecture、core 通过；rebase 到 main a7d2023 后 PowerShell npm run verify 81 步中 80 步通过，唯一失败 test:ui-state:383 是 main 已有问题；dev:live 隔离实机 文献库/白板/阅读器 × 100/118/125% 与宽/窄/边界检查通过，修复后 console/pageerror 为 0（.tmp/shots/6f9e0947-devlive）。",
       "npm run test:doc2x-cli → 15 pass / 0 fail；cargo test --manifest-path src-tauri/Cargo.toml --lib doc2x_cli:: → 6 passed / 0 failed；npx tsc -b → 退出 0；npm run test:architecture → 通过；git diff --check 干净。",
       "node --experimental-strip-types --test scripts/verify-doc2x-cli.mjs → 9 pass / 0 fail；npx tsc -b → 退出 0。",
       "巡川 / 更新弹窗ca2090dd：原生before/after和窄窗口、短日志/未就绪/安装中/失败截图DEV条齐全，pageerror/console0；模拟签名/保存/备份失败阻断安装，相关设置/扩展/架构及build通过。",
@@ -825,6 +829,7 @@
       "capture-readable-pdf-arena：定向Rust ingest_tests 8/8，独立工作树npm run verify退出0（Rust 220通过/5忽略），git diff --check通过。"
     ],
     "next": [
+      "6f9e0947 待用户验收窄窗口侧栏；test:ui-state:383 是 main 已有失败，需要另开任务处理；doc2x 重复注册已由 3866352 修复，test:core 恢复通过。",
       "登录与账号/额度状态 UI（doc2x login 流式事件 + account status）→ 设置 UI（翻译模式/语言/模型/术语表/字体策略/convert-trans/上下文增强/忽略类型/输出）→ 文献库一键翻译入口与译文入库（同一篇文献、不重复条目）→ 批量串行队列 → 真实账号端到端（需用户提供已登录且有订阅的账号）。",
       "新增异步 Rust 命令（run_doc2x_command / start_doc2x_login，带超时与取消）→ 登录与账号状态 UI → 设置 UI → 文献库一键翻译入口与译文入库 → 批量串行队列 → 真实账号 E2E（需用户提供已登录且有订阅的账号）。",
       "巡川 / 更新弹窗ca2090dd：仅暂存当前任务文件、合入干净的本地main，上传本次开发者证据并按最新revision submit；review由用户验收归档。",
@@ -890,6 +895,7 @@
       "capture-readable-pdf-arena：如需真实浏览器采集时看到新文件名，须另行构建并安装包含该源码的桌面版本；只重载插件不能使已安装桌面行为改变。旧PDF不自动迁移。"
     ],
     "risks": [
+      "6f9e0947：宽窗口主动收起侧栏时，标题栏也会显示紧凑「返回场景」图标（有意统一）；窄窗口断点仍是 1040 CSS px，125% 显示缩放下约 1300 物理像素以下的窗口都会用浮层。",
       "无可用 Doc2X 账号，暂不能做真实端到端，不得代登录或自行注册；run_doc2x_command 的 15 分钟超时是本地猜测值，Doc2X 未公布任务时长上限；CLI 升级可能增删参数（可选值已集中为常量表）；批量受服务端并发 1 限制只能串行；安装引导不得由软件静默执行 npm i -g。",
       "无可用 Doc2X 账号，暂不能做真实端到端，不得代登录或自行注册；CLI 升级可能增删参数（可选值已集中为常量表）；批量受服务端并发 1 限制只能串行；安装引导不得由软件静默执行 npm i -g。",
       "听澜 ce00 仅调整提示显示时机，dispatch/execute 未改；与并行交付无文件交叠，整合后已重放验证。",
@@ -922,6 +928,6 @@
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。",
       "capture-readable-pdf-arena：未在用户真实资料库或已安装桌面端验收；仅新采集PDF生效，旧哈希名仍保留。"
     ],
-    "updatedAt": "2026-09-28T15:40:00+08:00"
+    "updatedAt": "2026-09-28T22:45:00+08:00"
   }
 }

@@ -62,6 +62,8 @@ const steps = [
   ['npm', ['run', 'test:pdf-text-annotation']],
   ['npm', ['run', 'test:ai-toolbar']],
   ['npm', ['run', 'test:ui-state']],
+  ['npm', ['run', 'test:sidebar-visibility']],
+  ['npm', ['run', 'test:sidebar-visibility-browser']],
   ['npm', ['run', 'test:note-workbench']],
   ['npm', ['run', 'test:reader-note-sidebar']],
   ['npm', ['run', 'test:reader-note-sidebar-browser']],

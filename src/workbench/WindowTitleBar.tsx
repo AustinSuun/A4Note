@@ -3,10 +3,17 @@ import { Copy, Minus, PanelLeftClose, PanelLeftOpen, Square, X } from 'lucide-re
 import { invoke } from '@tauri-apps/api/core';
 import { isTauriRuntime } from '../platform/nativeApi';
 import { bindWindowTitlebarGestures } from './windowTitlebarGestures';
+import { sidebarToggleLabel, type SidebarMode } from './sidebarVisibility';
 
 export interface WindowTitleBarProps {
+  /** True when the sidebar is not on screen (user-collapsed or auto-hidden). */
   sidebarCollapsed: boolean;
+  /** Derived presentation from `sidebarVisibility.ts`; defaults follow `sidebarCollapsed`. */
+  sidebarMode?: SidebarMode;
+  sidebarNarrow?: boolean;
   onToggleSidebar: () => void;
+  /** Shows the sidebar (overlay on narrow viewports) without toggling it off. */
+  onRevealSidebar?: () => void;
   topBar: ReactNode;
   /** Optional scene-owned action shown beside the A4 Note brand. */
   leadingAction?: ReactNode;
@@ -17,7 +24,7 @@ export interface WindowTitleBarProps {
 type WindowCommand = 'minimize' | 'toggle_maximize' | 'close' | 'start_dragging';
 
 /** Frameless-window controls backed by native commands, not webview permissions. */
-export function WindowTitleBar({ sidebarCollapsed, onToggleSidebar, topBar, leadingAction, brandAccessory }: WindowTitleBarProps) {
+export function WindowTitleBar({ sidebarCollapsed, sidebarMode, sidebarNarrow = false, onToggleSidebar, onRevealSidebar, topBar, leadingAction, brandAccessory }: WindowTitleBarProps) {
   const [maximized, setMaximized] = useState(false);
   const titlebarRef = useRef<HTMLElement>(null);
 
@@ -37,33 +44,46 @@ export function WindowTitleBar({ sidebarCollapsed, onToggleSidebar, topBar, lead
     return bindWindowTitlebarGestures(titlebar, command => { void runWindowCommand(command); });
   }, [runWindowCommand]);
 
-  const stopWindowDrag = (event: MouseEvent<HTMLButtonElement>) => {
+  const stopWindowDrag = (event: MouseEvent<HTMLElement>) => {
     event.stopPropagation();
   };
 
+  const mode = sidebarMode ?? (sidebarCollapsed ? 'hidden' : 'docked');
+  const toggleLabel = sidebarToggleLabel(!sidebarCollapsed);
+  const titlebarClassName = ['window-titlebar', sidebarCollapsed && 'sidebar-collapsed', sidebarNarrow && 'sidebar-narrow', mode === 'overlay' && 'sidebar-overlay']
+    .filter(Boolean).join(' ');
+
   return (
     <header
-      className={sidebarCollapsed ? 'window-titlebar sidebar-collapsed' : 'window-titlebar'}
+      className={titlebarClassName}
+      data-sidebar-mode={mode}
       ref={titlebarRef}
     >
       <div className="window-titlebar-leading">
         <button
           type="button"
           className="window-titlebar-sidebar-toggle"
-          aria-label={sidebarCollapsed ? '\u5c55\u5f00\u4fa7\u680f' : '\u6536\u8d77\u4fa7\u680f'}
-          title={sidebarCollapsed ? '\u5c55\u5f00\u4fa7\u680f' : '\u6536\u8d77\u4fa7\u680f'}
+          aria-label={toggleLabel}
+          aria-expanded={!sidebarCollapsed}
+          title={toggleLabel}
           onMouseDown={stopWindowDrag}
           onClick={onToggleSidebar}
         >
           {sidebarCollapsed ? <PanelLeftOpen size={18} strokeWidth={1.8} /> : <PanelLeftClose size={18} strokeWidth={1.8} />}
         </button>
+        {leadingAction && sidebarCollapsed && (
+          // The sidebar is off screen, so its back-to-scenes action would act on
+          // something invisible. Keep it reachable as an icon beside the toggle
+          // and reveal the sidebar (overlay on narrow viewports) after it runs.
+          <div className="window-titlebar-leading-action compact" onMouseDown={stopWindowDrag} onClick={() => onRevealSidebar?.()}>{leadingAction}</div>
+        )}
         <span className="window-titlebar-name" aria-label="A4 Note">
           <span className="window-titlebar-name-accent">A4</span>
           <span className="window-titlebar-name-note">Note</span>
         </span>
         {brandAccessory}
         <div className="window-titlebar-drag-zone left" aria-hidden="true" />
-        {!sidebarCollapsed && leadingAction && <div className="window-titlebar-leading-action">{leadingAction}</div>}
+        {leadingAction && !sidebarCollapsed && <div className="window-titlebar-leading-action">{leadingAction}</div>}
       </div>
       <div className="window-titlebar-projectbar">{topBar}</div>
       <div className="window-titlebar-drag-zone right" aria-hidden="true" />
