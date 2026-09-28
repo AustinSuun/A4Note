@@ -22,7 +22,8 @@
   - 状态 `{ userCollapsed, narrow, overlayOpen }` → `mode: 'docked' | 'overlay' | 'hidden'`，外加 `visible`
   - 宽窗口：切换 = 改用户偏好（与原行为一致，持久化）
   - 窄窗口：切换 = 打开/关闭**浮层抽屉**，**不改**持久化偏好；窗口变回宽时浮层自动关闭，恢复用户原来的停靠/收起状态
-- 新增 `src/workbench/useNarrowViewport.ts`：`matchMedia('(max-width: 1040px)')`，常量 `NARROW_MAX_WIDTH = 1040`（与原 CSS 断点一致）
+- 新增 `src/workbench/useNarrowViewport.ts`：订阅 `matchMedia(WORKBENCH_SIDEBAR_NARROW_QUERY)`
+- **断点常量共享方式**：唯一来源是 `sidebarVisibility.ts` 导出的 `WORKBENCH_SIDEBAR_NARROW_MAX_WIDTH = 1040` 和由它拼出的 `WORKBENCH_SIDEBAR_NARROW_QUERY = (max-width: 1040px)`。样式表里**不再有** 1040 的媒体查询，抽屉/隐藏样式只根据 `.workbench-shell[data-sidebar-mode=overlay|hidden]` 生效，CSS 和 JS 不可能再各算各的；单元测试会断言查询字符串由常量生成，并且样式表不再用媒体查询单独隐藏侧栏。1180px 档（侧栏最小宽度）保持原样。
 - `WorkbenchShell.tsx`：按 mode 渲染停靠侧栏 / 浮层抽屉 + 遮罩；Esc 或点遮罩关闭并把焦点还给标题栏按钮；根节点写 `data-sidebar-mode` 便于测试与样式
 - `WindowTitleBar.tsx`：按钮文案、图标、`aria-expanded` 一律跟随**实际可见性**；侧栏不可见时，标题栏在切换按钮后显示紧凑的「返回场景」图标按钮（带 aria-label / title）
 - `workbench.css`：删掉隐藏侧栏的媒体查询，新增抽屉与遮罩样式（不改 tokens.css）
@@ -67,12 +68,27 @@
 | 阅读器（内置指南 PDF）125% | 1386 / 952 | 同上全套通过（`reader125-1…4`、`reader125-restored-1-wide`） |
 | 断点边界 | 1023 / 1060 | 1023 → hidden + 紧凑返回场景；1060 → docked（`edge-1023css`、`edge-1060css`）。1023 ≈ 1207 物理 px @118% |
 
-说明：本应用没有界面缩放设置，Tauri 默认也关闭了 WebView 缩放快捷键；118%/125% 这两档用根元素 `zoom` 模拟做补充检查（截图右侧溢出是这种模拟本身造成的，不代表布局问题），真正决定断点的 Windows 125% 显示缩放已由 DPR=1.25 的实机窗口覆盖。白板所用的笔记库是临时夹具 `.tmp/arena-b/notes-6f9e`（经 workbench store 打开，未弹原生对话框）。
+说明：应用的界面缩放就是 `App.tsx` 里设置的 `document.documentElement.style.zoom = uiZoom%`，所以实机用同样的方式设成 118%/125%，和设置里调缩放是同一机制（快照右侧被裁，是 CDP 截图在根 zoom 下的取景问题）。Chromium 的根 zoom 不改变 `innerWidth`，也不改变媒体查询结果；真正让 1207 物理像素宽的窗口落到断点以下的是 Windows 125% 显示缩放（本机 DPR=1.25，1207/1.25≈966 CSS px）。白板所用的笔记库是临时夹具 `.tmp/arena-b/notes-6f9e`（经 workbench store 打开，未弹原生对话框）。
 
-Console / pageerror：`cdp-monitor` 持续记录到 `.tmp/arena-b/console-errors.jsonl`。
+### 改前（同一实例，同一隔离库）
+
+做法：在正在运行的 arena-b 实例里，临时从改前的 main `a7d2023` 检出 `WindowTitleBar.tsx`、`WorkbenchShell.tsx`、`workbench.css`、`index.ts` 四个前端文件，Vite 热更新后整页刷新（确认 `.workbench-shell` 上没有 `data-sidebar-mode`），拍完再 `git checkout HEAD --` 恢复（恢复后确认 `data-sidebar-mode` 回来、worktree 与 HEAD 一致）。这个问题只涉及前端，Rust 部分完全相同，所以不必为改前单独重新编译一份原生程序。
+
+| 场景 / 缩放 | 窄窗口（952–986 CSS px） | 点第 1 次 | 点第 2 次 |
+|---|---|---|---|
+| 白板 118% | 「收起侧栏」+ 收起图标，侧栏不可见，返回场景仍占位（`before-board118-2-narrow`） | 变为「展开侧栏」，侧栏仍不可见，返回场景消失，偏好被写成 true（`before-board118-3-after-click1`） | 回到「收起侧栏」，仍不可见（`before-board118-4-after-click2`） |
+| 文献库 100% | 同上（`before-lib-2-narrow`） | 同上（`before-lib-3-after-click1`） | 同上 |
+| 阅读器 125% | 同上（`before-reader125-2-narrow`） | 同上（`before-reader125-3-after-click1`） | 同上 |
+
+改前三个场景都没有 `aria-expanded`。宽窗口（1386）下改前、改后都正常，本任务只影响窄窗口。
+
+### Console / pageerror
+
+`cdp-monitor` 持续记录到 `.tmp/arena-b/console-errors.jsonl`。
 - 14:04:16 `pageerror: Plugin already registered: doc2x.core` —— main 自带的启动阻塞（第 5 节），修复前应用空白
 - 14:07:12 `console.error: Failed to initialize native library database is locked` —— 修复后，Vite HMR 整页刷新与手动 reload 同时发生，两次加载争抢初始化导致，仅出现这一次
 - 标记 `after-fix run start` 之后的全部场景操作（约 14:08–14:15），以及标记 `clean reload` 后的一次干净整页刷新：**0 条错误**（`final-after-clean-reload`）
+- 第二段监控 `.tmp/arena-b/console-errors-2.jsonl`（15:22 起，rebase 后的代码）：改前取证、恢复、刷新以及最终宽窗口检查全程 **0 条错误**
 
 ## 5. 发现并修复的 main 阻塞：doc2x.core 重复注册
 
