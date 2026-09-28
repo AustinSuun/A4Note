@@ -114,6 +114,8 @@ export interface Doc2xCommandResult {
   status: number;
   stdout: string;
   stderr: string;
+  /** True when the Rust side killed the run at its timeout. */
+  timedOut?: boolean;
 }
 
 export interface Doc2xFileDescriptor {

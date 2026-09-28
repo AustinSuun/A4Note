@@ -6,7 +6,7 @@
 //! commands remain on the database side in `state_commands` (CLI-4).
 mod agent_bridge;
 pub mod agent_cli;
-mod agent_history; mod annotation_layers;
+mod agent_history; mod annotation_layers; mod doc2x_cli;
 mod app_paths;
 mod backup;
 mod capture;
@@ -79,7 +79,7 @@ pub fn run() {
             project_commands::delete_text_file,
             project_commands::read_file_bytes,
             project_commands::detect_agent_cli,
-            project_commands::run_project_command,
+            project_commands::run_project_command, doc2x_cli::run_doc2x_command, doc2x_cli::start_doc2x_login, doc2x_cli::cancel_doc2x_job,
             plugin_sandbox::capabilities,
             plugin_sandbox::run,
             agent_bridge::start_agent_session,

@@ -45,5 +45,20 @@ export {
   type Doc2xTargetLanguage,
   type Doc2xTranslateSettings,
   type Doc2xTranslateType,
-} from './doc2xCli';
-export { detectDoc2xCli } from './doc2xDetect';
+} from './doc2xCli.ts';
+export { detectDoc2xCli } from './doc2xDetect.ts';
+export {
+  DOC2X_EVENT,
+  cancelDoc2xJob,
+  invokeDoc2xRunner,
+  listenDoc2xLoginEvents,
+  runDoc2xCommand,
+  runDoc2xTask,
+  startDoc2xLogin,
+  type Doc2xJobEvent,
+  type Doc2xJobExit,
+  type Doc2xJobStream,
+  type Doc2xLoginHandlers,
+  type Doc2xRunner,
+  type Doc2xRunOutcome,
+} from './doc2xRunner.ts';

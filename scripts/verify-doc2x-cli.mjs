@@ -8,6 +8,7 @@
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { runDoc2xTask } from '../src/platform/doc2x/doc2xOutcome.ts';
 import {
   buildDoc2xAccountStatusRequest,
   buildDoc2xLoginRequest,
@@ -227,4 +228,75 @@ test('fake CLI run: success produces a receipt, failure never does', async () =>
   const failure = describeDoc2xFailure(deniedResult.status);
   assert.equal(failure.kind, 'auth');
   assert.equal(parseDoc2xReceiptText(deniedResult.stdout), null);
+});
+
+test('outcome mapping: a successful run keeps its receipt', async () => {
+  const outcome = await runDoc2xTask(
+    buildDoc2xTranslateRequest(file, defaultDoc2xTranslateSettings, run, cwd),
+    async () => ({ status: 0, stdout: '{"translateId":"ot_1","outputFiles":["a.pdf"]}', stderr: '' }),
+  );
+  assert.equal(outcome.kind, 'success');
+  assert.equal(outcome.receipt.translateId, 'ot_1');
+  assert.deepEqual(outcome.receipt.outputFiles, ['a.pdf']);
+});
+
+test('outcome mapping: a non-zero exit never reports success', async () => {
+  for (const status of [1, 2, 3, 4, 5, 6, 9]) {
+    const outcome = await runDoc2xTask(buildDoc2xAccountStatusRequest(cwd), async () => ({
+      status,
+      stdout: '',
+      stderr: 'boom',
+    }));
+    assert.equal(outcome.kind, 'failed');
+    assert.equal(outcome.failure.kind, describeDoc2xFailure(status).kind);
+    assert.ok(outcome.failure.message.length > 0);
+  }
+});
+
+test('outcome mapping: a timeout is reported as a timeout, not a failure', async () => {
+  const outcome = await runDoc2xTask(buildDoc2xAccountStatusRequest(cwd), async () => ({
+    status: -1,
+    stdout: '',
+    stderr: '',
+    timedOut: true,
+  }));
+  assert.equal(outcome.kind, 'timeout');
+});
+
+test('outcome mapping: a spawn failure surfaces the runner message', async () => {
+  const outcome = await runDoc2xTask(buildDoc2xAccountStatusRequest(cwd), async () => {
+    throw new Error('无法启动 doc2x 命令：program not found');
+  });
+  assert.equal(outcome.kind, 'error');
+  assert.match(outcome.message, /无法启动 doc2x 命令/);
+});
+
+test('outcome mapping: success without JSON keeps the receipt null', async () => {
+  const outcome = await runDoc2xTask(buildDoc2xAccountStatusRequest(cwd), async () => ({
+    status: 0,
+    stdout: 'Signed in as user@example.com',
+    stderr: '',
+  }));
+  assert.equal(outcome.kind, 'success');
+  assert.equal(outcome.receipt, null);
+});
+
+test('outcome mapping: the runner only ever receives oauth-pinned task requests', async () => {
+  const seen = [];
+  const runner = async (request) => {
+    seen.push(request);
+    return { status: 0, stdout: '{}', stderr: '' };
+  };
+  await runDoc2xTask(buildDoc2xTranslateRequest(file, defaultDoc2xTranslateSettings, run, cwd), runner);
+  await runDoc2xTask(
+    buildDoc2xParseRequest(file, { exportFormat: 'md', out: run.out, receiptPath: run.receiptPath }, cwd),
+    runner,
+  );
+  assert.equal(seen.length, 2);
+  for (const request of seen) {
+    assert.equal(request.command, 'doc2x');
+    assert.equal(request.args.includes('--auth-mode'), true);
+    assert.equal(request.args[request.args.indexOf('--auth-mode') + 1], 'oauth');
+    assert.equal(request.cwd, cwd);
+  }
 });

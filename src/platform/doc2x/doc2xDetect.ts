@@ -12,7 +12,7 @@ import {
   parseDoc2xVersion,
   type Doc2xCliStatus,
   type Doc2xCommandResult,
-} from './doc2xCli';
+} from './doc2xCli.ts';
 
 /**
  * `run_project_command` reports a non-zero status instead of throwing when the

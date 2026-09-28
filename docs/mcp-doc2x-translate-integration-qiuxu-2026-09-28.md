@@ -1,6 +1,6 @@
 # Doc2X 翻译集成：可行性结论与适配层落地（qiuxu，2026-09-28）
 
-任务：`c889e6ad-fdb9-415c-89ca-383e61197203`（rev2 进行中）
+任务：`c889e6ad-fdb9-415c-89ca-383e61197203`（rev3 进行中）
 分支：`feat/doc2x-translate-qiuxu`（worktree `.worktrees/doc2x-translate-qiuxu`，基线 `b008046`）
 
 ## 1. 结论
@@ -12,7 +12,7 @@
 - 登录走 OAuth 2.0 + PKCE，回调发生在本机随机 127.0.0.1 端口；令牌由 CLI 自存于
   `%APPDATA%/doc2x/cli-oauth-tokens.json`。**我们的软件不读取、不复制、不上传该文件**，
   只调用 `doc2x login/logout/account status`，因此不会碰到用户凭据。
-- 主要成本在：长任务与登录需要新的异步 Rust 命令（现有命令是同步阻塞且无超时）、
+- 主要成本在：长任务与登录需要异步执行层（现有 `run_project_command` 同步且无超时）、
   译文要作为文献衍生文件登记回同一篇文献、设置 UI 需要按 CLI 实际参数逐一适配。
 
 ## 2. 能力核对（来源：NoEdgeAI/doc2x-cli-skills，2026-09-28 复读）
@@ -37,12 +37,22 @@ PDF，没有切换上下排布、反转顺序或仅译文的开关。
 
 ### 3.1 模块落点（遵守依赖方向 `ui -> workbench/features -> platform/core`）
 
-- `src/platform/doc2x/`（本次已建）：纯适配层，负责参数拼装、输入/设置校验、退出码映射、回执解析。
-  不 import Tauri（`doc2xDetect.ts` 单独承担探测绑定），因此可在 Node 测试里直接跑。
-- `src/platform/doc2x/doc2xRunner.ts`（下一步）：Tauri 绑定层，负责任务执行、进度事件、取消。
-- `src-tauri/src/doc2x_cli.rs`（下一步）：异步命令 `run_doc2x_command` / `start_doc2x_login`，
-  带超时与取消；不复用同步的 `run_project_command`（它无超时，长任务会卡住 UI）。
-- `src/features/library/`：一键翻译入口（文献右键菜单/详情面板按钮）、译文进度与失败提示、
+- `src/platform/doc2x/doc2xCli.ts`（已建）：纯适配层。请求拼装、输入/设置校验、退出码映射、
+  回执解析。不 import Tauri，可在 Node 测试里直接跑。
+- `src/platform/doc2x/doc2xOutcome.ts`（已建）：`runDoc2xTask(request, runner)` 把一次 CLI 运行映射为
+  `success / failed / timeout / error`，runner 可注入，同样不 import Tauri。
+- `src/platform/doc2x/doc2xDetect.ts`（已建）：基于现有 `run_project_command` 的 CLI 可用性/版本探测。
+- `src/platform/doc2x/doc2xRunner.ts`（已建）：Tauri 绑定（`run_doc2x_command`、`start_doc2x_login`、
+  `cancel_doc2x_job`、`doc2x://event` 监听）。
+- `src-tauri/src/doc2x_cli.rs`（已建）：异步执行层。
+  - `run_doc2x_command`：`#[tauri::command(async)]`，超时上限 15 分钟（可配，封顶 60 分钟），
+    超时即 kill 并回报 `timedOut`，绝不把超时算成功；stdout/stderr 只保留尾部 8192 字符。
+  - `start_doc2x_login` / `cancel_doc2x_job`：登录是"等用户在浏览器完成回调"的长过程，
+    子进程 stdout/stderr 逐行经 `doc2x://event` 推送，退出时再推 `Doc2xJobExit`；
+    进程登记用 `OnceLock<Mutex<HashMap<String, Child>>>`（不用 Tauri state），
+    这样 `lib.rs` 只需在现有行上追加模块名与三个命令路径。
+  - 参数校验：拒绝含换行的参数、空参数；`--auth-mode` 只允许 `oauth`，挡掉"静默改用桌面端账号"。
+- `src/features/library/`（下一步）：一键翻译入口（文献右键菜单/详情面板按钮）、译文进度与失败提示、
   设置面板（放在 library 场景贡献的 settings 中）。
 - `src/core/`：只放纯类型与设置默认值，不 import React/Tauri。
 
@@ -63,34 +73,41 @@ PDF，没有切换上下排布、反转顺序或仅译文的开关。
 
 ## 4. 本次已落地内容
 
-新增文件：
+新增/修改文件：
 
-- `src/platform/doc2x/doc2xCli.ts`：纯适配层。含 `buildDoc2xTranslateRequest`、`buildDoc2xParseRequest`、
-  `buildDoc2xLoginRequest`/`LogoutRequest`、`buildDoc2xAccountStatusRequest`、`buildDoc2xModelsListRequest`、
-  `buildDoc2xRecordsListRequest`、`buildDoc2xUsageRequest`、`validateDoc2xInput`、
-  `validateDoc2xTranslateSettings`、`describeDoc2xFailure`、`parseDoc2xJsonPayload`、
-  `parseDoc2xReceipt(Text)`、`parseDoc2xVersion`、`parseNodeMajor`。
-- `src/platform/doc2x/doc2xDetect.ts`：基于现有 `run_project_command` 的 CLI 可用性/版本探测。
-- `src/platform/doc2x/index.ts`：稳定出口。
-- `scripts/verify-doc2x-cli.mjs` + `package.json` 脚本 `test:doc2x-cli`：用假 CLI 跑通
-  参数拼装、跨字段校验、输入上限、退出码映射、回执解析、"失败不产生回执"。
+- `src/platform/doc2x/doc2xCli.ts`：`buildDoc2xTranslateRequest`、`buildDoc2xParseRequest`、
+  `buildDoc2xLoginRequest`/`LogoutRequest`、`buildDoc2xAccountStatusRequest`、
+  `buildDoc2xModelsListRequest`、`buildDoc2xRecordsListRequest`、`buildDoc2xUsageRequest`、
+  `validateDoc2xInput`、`validateDoc2xTranslateSettings`、`describeDoc2xFailure`、
+  `parseDoc2xJsonPayload`、`parseDoc2xReceipt(Text)`、`parseDoc2xVersion`、`parseNodeMajor`。
+- `src/platform/doc2x/doc2xOutcome.ts`、`doc2xRunner.ts`、`doc2xDetect.ts`、`index.ts`。
+- `src-tauri/src/doc2x_cli.rs` + `src-tauri/src/lib.rs`（模块与三个命令挂在现有行上，
+  文件仍满足"lib.rs < 160 行"的架构约束）。
+- `scripts/verify-doc2x-cli.mjs` + `package.json` 脚本 `test:doc2x-cli`。
 
 验证结果（worktree 内）：
 
-- `node --experimental-strip-types --test scripts/verify-doc2x-cli.mjs` → **9 pass / 0 fail**
-- `npx tsc -b` → 退出 0
+- `npm run test:doc2x-cli` → **15 pass / 0 fail**（mock CLI + 假 runner）
+- `cargo test --manifest-path src-tauri/Cargo.toml --lib doc2x_cli::` → **6 passed / 0 failed**
+- `npx tsc -b` → 退出 0；`npm run test:architecture` → 通过；`git diff --check` 干净
 
-修复过程中实测发现并已修正的实现问题：布尔标志（`--json`、`--no-browser`、`--contextual-translation`）
-最初没有真正写入参数数组；`--ignore-translate-types` 多值只传入第一个。两者都由上述测试捕获。
+过程中实测发现并已修正的问题：
+
+1. 布尔标志（`--json`、`--no-browser`、`--contextual-translation`）最初没有真正写入参数数组；
+2. `--ignore-translate-types` 多值只传入第一个；
+3. `State<'_, Doc2xJobs>` 不能移入 `'static` 线程（E0521）→ 改为 `OnceLock` 进程登记表；
+4. `lib.rs` 超过 160 行会触发架构边界检查 → 模块与命令改为挂在现有行上。
 
 ## 5. 未完成与风险
 
-- 未做：异步 Rust 执行/流式命令、登录流程 UI、设置 UI、一键翻译入口与译文入库、批量串行队列、
+- 未做：登录流程 UI、设置 UI、一键翻译入口与译文入库、批量串行队列、
   真实账号端到端（用户未提供已登录且有订阅的账号，不得自行注册或代登录）。
 - 远端能力风险：模型清单、术语表 ID、订阅门槛由 Doc2X 侧决定，CLI 升级可能增删参数；
   适配层把可选值集中成常量表，变更时只改一处。
 - 批量翻译受服务端并发 1 限制，多篇文献只能串行，UI 必须显示队列位置与整体进度。
 - 安装引导不得由软件静默执行 `npm i -g`（涉及系统改动），只做检测与指引。
+- `run_doc2x_command` 的超时上限是本地猜测值（15 分钟）：Doc2X 未公布任务时长上限，
+  超长任务可能被误杀；后续可按 `records`/`usage` 的真实耗时调整。
 
 ## 6. 安全与隐私边界
 
@@ -104,10 +121,10 @@ PDF，没有切换上下排布、反转顺序或仅译文的开关。
 | 验收项 | 状态 |
 | --- | --- |
 | 1 可行性说明 | ✅ 本文件 |
-| 2 账号登录/状态/退出 | ⬜ 待实现（Rust 异步登录 + UI） |
+| 2 账号登录/状态/退出 | ⬜ Rust 异步登录命令已就绪；UI 待实现 |
 | 3 一键翻译与译文入库 | ⬜ 待实现 |
-| 4 设置 UI | ⬜ 待实现（参数映射已由适配层固定） |
-| 5 失败与重试映射 | ✅ 退出码映射已实现并测试；UI 呈现待实现 |
-| 6 回归与测试 | ✅ 适配层 9 项测试 + `tsc -b`；既有流程未改动 |
+| 4 设置 UI | ⬜ 待实现（参数映射已由适配层固定并测试） |
+| 5 失败与重试映射 | ✅ 退出码映射 + 超时/失败/启动错误均已实现并测试；UI 呈现待实现 |
+| 6 回归与测试 | ✅ 适配层 15 项前端测试 + 6 项 Rust 测试、`tsc -b`、架构边界通过；既有流程未改动 |
 | 7 证据与交付 | ⬜ 进行中（真实账号 E2E 受限于无可用账号） |
-| 8 安全与隐私 | ✅ 设计上不接触凭据；实现待保持 |
+| 8 安全与隐私 | ✅ 设计上不接触凭据（含 `--auth-mode` 白名单）；实现待保持 |

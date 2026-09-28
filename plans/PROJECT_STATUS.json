@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-28T12:45:00+08:00",
+  "updatedAt": "2026-09-28T13:35:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
@@ -60,6 +60,7 @@
   },
   "lastHandoff": {
     "completed": [
+      "doc2x-translate-qiuxu：Doc2X 翻译集成第二步。新增 src-tauri/src/doc2x_cli.rs 异步执行层（run_doc2x_command 带超时与 timedOut 回报、start_doc2x_login/cancel_doc2x_job 流式事件、OnceLock 进程登记、--auth-mode 白名单）与 src/platform/doc2x 的 outcome 映射；lib.rs 保持 <160 行。",
       "doc2x-translate-qiuxu：Doc2X 翻译集成第一步落地。核对 CLI 能力并给出可行性结论（可集成、成本中等）；新增 src/platform/doc2x 适配层与 9 项 mock CLI 测试（9/9）、npx tsc -b 通过；设计文档 docs/mcp-doc2x-translate-integration-qiuxu-2026-09-28.md。",
       "reader-note-motion-xunchuan：代码26e9421已合入本地main并submit用户review rev16；12份隔离原生证据和73项浏览器回归，错误0，首帧性能限制详见交付报告。",
       "巡川 / 更新弹窗ca2090dd：局部 UI 与模拟原生验证完成：长日志滚动条贴近边缘、无勾选直接点击但model.canInstall和原安全校验/备份安装流程不改；开发记录docs/mcp-update-dialog-xunchuan-2026-09-27.md。",
@@ -409,6 +410,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
+      "npm run test:doc2x-cli → 15 pass / 0 fail；cargo test --manifest-path src-tauri/Cargo.toml --lib doc2x_cli:: → 6 passed / 0 failed；npx tsc -b → 退出 0；npm run test:architecture → 通过；git diff --check 干净。",
       "node --experimental-strip-types --test scripts/verify-doc2x-cli.mjs → 9 pass / 0 fail；npx tsc -b → 退出 0。",
       "巡川 / 更新弹窗ca2090dd：原生before/after和窄窗口、短日志/未就绪/安装中/失败截图DEV条齐全，pageerror/console0；模拟签名/保存/备份失败阻断安装，相关设置/扩展/架构及build通过。",
       "巡川 / PDF 高亮8e746a3b：隔离原生19项、pageerror/console error均为0；几何28、预览38、旋转151、文字层55、浏览器113项及build通过；截图留有DEV身份条。",
@@ -821,6 +823,7 @@
       "capture-readable-pdf-arena：定向Rust ingest_tests 8/8，独立工作树npm run verify退出0（Rust 220通过/5忽略），git diff --check通过。"
     ],
     "next": [
+      "登录与账号/额度状态 UI（doc2x login 流式事件 + account status）→ 设置 UI（翻译模式/语言/模型/术语表/字体策略/convert-trans/上下文增强/忽略类型/输出）→ 文献库一键翻译入口与译文入库（同一篇文献、不重复条目）→ 批量串行队列 → 真实账号端到端（需用户提供已登录且有订阅的账号）。",
       "新增异步 Rust 命令（run_doc2x_command / start_doc2x_login，带超时与取消）→ 登录与账号状态 UI → 设置 UI → 文献库一键翻译入口与译文入库 → 批量串行队列 → 真实账号 E2E（需用户提供已登录且有订阅的账号）。",
       "巡川 / 更新弹窗ca2090dd：仅暂存当前任务文件、合入干净的本地main，上传本次开发者证据并按最新revision submit；review由用户验收归档。",
       "巡川 / PDF 高亮8e746a3b：任务已submit至review，须由用户验收归档；不重复提交。",
@@ -885,6 +888,7 @@
       "capture-readable-pdf-arena：如需真实浏览器采集时看到新文件名，须另行构建并安装包含该源码的桌面版本；只重载插件不能使已安装桌面行为改变。旧PDF不自动迁移。"
     ],
     "risks": [
+      "无可用 Doc2X 账号，暂不能做真实端到端，不得代登录或自行注册；run_doc2x_command 的 15 分钟超时是本地猜测值，Doc2X 未公布任务时长上限；CLI 升级可能增删参数（可选值已集中为常量表）；批量受服务端并发 1 限制只能串行；安装引导不得由软件静默执行 npm i -g。",
       "无可用 Doc2X 账号，暂不能做真实端到端，不得代登录或自行注册；CLI 升级可能增删参数（可选值已集中为常量表）；批量受服务端并发 1 限制只能串行；安装引导不得由软件静默执行 npm i -g。",
       "听澜 ce00 仅调整提示显示时机，dispatch/execute 未改；与并行交付无文件交叠，整合后已重放验证。",
       "当前7603仍是开发者验证，不能自验收；全局主题不在此卡范围，只修复本卡总览/阅读笔记背景。隔离夹具不是正式资料库，当前整合版本未打包或发布。",
@@ -916,6 +920,6 @@
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。",
       "capture-readable-pdf-arena：未在用户真实资料库或已安装桌面端验收；仅新采集PDF生效，旧哈希名仍保留。"
     ],
-    "updatedAt": "2026-09-28T12:45:00+08:00"
+    "updatedAt": "2026-09-28T13:35:00+08:00"
   }
 }
