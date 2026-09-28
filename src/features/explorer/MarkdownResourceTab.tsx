@@ -24,6 +24,7 @@ import { useDocumentToolbar, useDocumentToolbarActive } from '../../workbench/Do
 import { useTextDocument } from './useTextDocument';
 import { splitFrontmatter, titleFromBody, stripDocumentTitle, replaceMarkdownBody, replaceMarkdownLiveBody, updateMarkdownProperties, type DocumentProperties } from '../../core/markdownDocument';
 import { MarkdownPropertiesPanel, MarkdownPropertySummary } from './MarkdownPropertiesPanel';
+import { layoutViewportSize, readRootZoom, viewportPointToLayout } from '../../shared/ui/viewportToLayout';
 
 export interface MarkdownResourceTabProps {
   path: string;
@@ -440,17 +441,22 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
     event.preventDefault();
     setEditorMenuSection(null);
     setEditorHasSelection(liveEditorRef.current?.hasSelection() ?? false);
-    const submenuSide = window.innerWidth - event.clientX >= 520 ? 'right' : 'left';
-    const verticalSide = window.innerHeight - event.clientY >= 470 ? 'top' : 'bottom';
+    // Fixed popovers live in layout px under the root zoom, so the pointer and the
+    // window size are converted first (see src/shared/ui/viewportToLayout.ts).
+    const zoom = readRootZoom();
+    const pointer = viewportPointToLayout(event, zoom);
+    const viewport = layoutViewportSize(zoom);
+    const submenuSide = viewport.width - pointer.x >= 520 ? 'right' : 'left';
+    const verticalSide = viewport.height - pointer.y >= 470 ? 'top' : 'bottom';
     const menuWidth = 260;
     const submenuWidth = 224;
     const edge = 8;
     const maxX = submenuSide === 'right'
-      ? window.innerWidth - menuWidth - submenuWidth - edge * 2
-      : window.innerWidth - menuWidth - edge;
+      ? viewport.width - menuWidth - submenuWidth - edge * 2
+      : viewport.width - menuWidth - edge;
     setEditorContextMenu({
-      x: Math.max(edge, Math.min(event.clientX, maxX)),
-      y: Math.max(edge, Math.min(event.clientY, window.innerHeight - edge)),
+      x: Math.max(edge, Math.min(pointer.x, maxX)),
+      y: Math.max(edge, Math.min(pointer.y, viewport.height - edge)),
       submenuSide,
       verticalSide,
     });

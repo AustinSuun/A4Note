@@ -7,6 +7,8 @@ import { listDirectoryEntries, type DirectoryEntry } from '../../platform/projec
 import { FolderDraftRow, TreeGuides } from '../../shared/tree';
 import { toggleTreeExpansion } from '../../core/treeExpansion';
 import { zh } from '../../ui/zh';
+import { usePointerAnchoredPosition } from '../../shared/ui/usePointerAnchoredPosition';
+import type { PopoverPlacementOptions, ViewportPointLike } from '../../shared/ui/viewportToLayout';
 
 interface DirectoryNode {
   loading: boolean;
@@ -35,14 +37,14 @@ export interface FileTreePanelProps {
 
 interface FileTreeContextMenuState {
   entry: DirectoryEntry;
-  x: number;
-  y: number;
+  /** Pointer position in viewport px; converted to layout px by `usePointerAnchoredPosition`. */
+  anchor: ViewportPointLike;
 }
 
-interface FileTreeDragPreviewPosition {
-  left: number;
-  top: number;
-}
+/** Menu top-left sits on the pointer; flips left/up when it would leave the viewport. */
+const CONTEXT_MENU_PLACEMENT: PopoverPlacementOptions = { margin: 8, flip: true };
+/** Drag ghost trails the pointer by 14px and only clamps (never flips) so it stays predictable while moving. */
+const DRAG_PREVIEW_PLACEMENT: PopoverPlacementOptions = { margin: 8, offset: { x: 14, y: 14 }, flip: false };
 
 const FILE_TREE_DRAG_THRESHOLDS = {
   mouse: 6,
@@ -125,15 +127,6 @@ function dragThresholdFor(pointerType: string) {
   return FILE_TREE_DRAG_THRESHOLDS.mouse;
 }
 
-function computeDragPreviewPosition(clientX: number, clientY: number): FileTreeDragPreviewPosition {
-  const maxLeft = Math.max(8, window.innerWidth - 248);
-  const maxTop = Math.max(8, window.innerHeight - 54);
-  return {
-    left: Math.max(8, Math.min(clientX + 14, maxLeft)),
-    top: Math.max(8, Math.min(clientY + 14, maxTop)),
-  };
-}
-
 /** Lazy folder tree: each directory is read only when it is first expanded. */
 export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile, onRevealFile, onCreateFile, onCreateBoard, onCreateFolder, onMoveEntry, activePath }: FileTreePanelProps) {
   const [nodes, setNodes] = useState<Record<string, DirectoryNode>>({});
@@ -152,7 +145,7 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
   const composing = useRef(false);
   const [renamePending, setRenamePending] = useState(false);
   const [draggingEntry, setDraggingEntry] = useState<DirectoryEntry | null>(null);
-  const [dragPreviewPosition, setDragPreviewPosition] = useState<FileTreeDragPreviewPosition | null>(null);
+  const [dragPreviewAnchor, setDragPreviewAnchor] = useState<ViewportPointLike | null>(null);
   const [dropTargetPath, setDropTargetPath] = useState<string | null>(null);
   const renameSubmittingRef = useRef(false);
   const rowRefs = useRef(new Map<string, HTMLElement>());
@@ -161,6 +154,12 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
   const treeContentRef = useRef<HTMLDivElement | null>(null);
   const treeRowsRef = useRef<HTMLDivElement | null>(null);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
+  const contextMenuPlacement = usePointerAnchoredPosition(contextMenu?.anchor ?? null, CONTEXT_MENU_PLACEMENT);
+  const dragPreviewPlacement = usePointerAnchoredPosition(dragPreviewAnchor, DRAG_PREVIEW_PLACEMENT);
+  const attachContextMenu = useCallback((node: HTMLDivElement | null) => {
+    contextMenuRef.current = node;
+    contextMenuPlacement.ref(node);
+  }, [contextMenuPlacement.ref]);
   const dragEntryRef = useRef<DirectoryEntry | null>(null);
   const pointerDragRef = useRef<{ entry: DirectoryEntry; pointerId: number; pointerType: string; startX: number; startY: number; dragging: boolean } | null>(null);
   const draggedRef = useRef(false);
@@ -198,7 +197,7 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
     setRenameDraft('');
     setRenamePending(false);
     setDraggingEntry(null);
-    setDragPreviewPosition(null);
+    setDragPreviewAnchor(null);
     setDropTargetPath(null);
     dragEntryRef.current = null;
     pointerDragRef.current = null;
@@ -345,13 +344,9 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
     if ((!entry.is_directory && !isMarkdownFile(entry)) || folderDraft || renamingEntry) return;
     event.preventDefault();
     event.stopPropagation();
-    const menuWidth = 220;
-    const menuHeight = entry.is_directory ? 225 : 150;
-    setContextMenu({
-      entry,
-      x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
-      y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8)),
-    });
+    // Viewport coordinates only; the layout-space `left/top` (root zoom aware) and the
+    // clamp against the measured menu size happen in `usePointerAnchoredPosition`.
+    setContextMenu({ entry, anchor: { clientX: event.clientX, clientY: event.clientY } });
   };
 
   const invokeContextAction = (action: (entry: DirectoryEntry) => Promise<void> | void) => {
@@ -412,7 +407,7 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
 
   const clearDragState = () => {
     setDraggingEntry(null);
-    setDragPreviewPosition(null);
+    setDragPreviewAnchor(null);
     setDropTargetPath(null);
     dragEntryRef.current = null;
   };
@@ -455,7 +450,7 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
         setDraggingEntry(pointerDrag.entry);
       }
       event.preventDefault();
-      setDragPreviewPosition(computeDragPreviewPosition(event.clientX, event.clientY));
+      setDragPreviewAnchor({ clientX: event.clientX, clientY: event.clientY });
       const target = entryAtPoint(event.clientX, event.clientY);
       setDropTargetPath(target && canDropInto(target) ? target.path : null);
     };
@@ -656,7 +651,7 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
         </div>
       </div>
       {contextMenu && createPortal(
-        <div ref={contextMenuRef} className="file-tree-context-menu" style={{ left: contextMenu.x, top: contextMenu.y }} role="menu" aria-label={`${contextMenu.entry.name} 文件操作`} onClick={(event) => event.stopPropagation()}>
+        <div ref={attachContextMenu} className="file-tree-context-menu" style={contextMenuPlacement.style} data-flipped-x={contextMenuPlacement.placement?.flippedX ? "true" : undefined} data-flipped-y={contextMenuPlacement.placement?.flippedY ? "true" : undefined} role="menu" aria-label={`${contextMenu.entry.name} 文件操作`} onClick={(event) => event.stopPropagation()}>
           {contextMenu.entry.is_directory && <><button type="button" role="menuitem" disabled={!onCreateFolder} onClick={() => createFolderIn(contextMenu.entry.path)}><FolderPlus size={15} aria-hidden="true" /><span>新建子文件夹</span></button><button type="button" role="menuitem" disabled={!onCreateFile} onClick={() => { createFileIn(contextMenu.entry.path); setContextMenu(null); }}><FilePlus size={15} aria-hidden="true" /><span>新建笔记</span></button><button type="button" role="menuitem" disabled={!onCreateBoard} onClick={() => { createBoardIn(contextMenu.entry.path); setContextMenu(null); }}><LayoutDashboard size={15} aria-hidden="true" /><span>新建白板</span></button></>}
           <button type="button" role="menuitem" disabled={!onRenameFile || normalizePath(contextMenu.entry.path) === normalizePath(rootPath)} onClick={renameFromContextMenu}><Pencil size={15} aria-hidden="true" /><span>{zh.workbench.fileRename}</span></button>
           <button type="button" role="menuitem" disabled={!onRevealFile} onClick={() => onRevealFile && invokeContextAction(onRevealFile)}><FolderOpen size={15} aria-hidden="true" /><span>{zh.workbench.fileOpenLocation}</span></button>
@@ -665,8 +660,8 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
         </div>,
         document.body,
       )}
-      {draggingEntry && dragPreviewPosition && createPortal(
-        <div className="file-tree-drag-preview" style={{ left: dragPreviewPosition.left, top: dragPreviewPosition.top }} aria-hidden="true">
+      {draggingEntry && dragPreviewAnchor && createPortal(
+        <div ref={dragPreviewPlacement.ref} className="file-tree-drag-preview" style={dragPreviewPlacement.style} aria-hidden="true">
           <span className="file-tree-drag-preview-icon">{draggingEntry.is_directory ? <FolderOpen size={16} aria-hidden="true" /> : <FileText size={16} aria-hidden="true" />}</span>
           <span className="file-tree-drag-preview-name">{draggingEntry.name}</span>
           <span className="file-tree-drag-preview-status">拖到文件夹</span>

@@ -65,6 +65,9 @@ const { FileTreePanel } = load('src/features/explorer/FileTreePanel.tsx', {
   '../../core/treeExpansion': { toggleTreeExpansion: () => [] },
   '../../ui/zh': { zh: { workbench: new Proxy({}, { get: (_target, key) => key }) } },
   './fileTreeDisplayName': helper,
+  // Task ae61143f: popover placement is a shared hook; the render contract here only needs its shape.
+  '../../shared/ui/usePointerAnchoredPosition': { usePointerAnchoredPosition: () => ({ ref: () => undefined, style: { left: 0, top: 0 }, placement: null, size: null }) },
+  '../../shared/ui/viewportToLayout': {},
 }, { window: { innerWidth: 1000, innerHeight: 800 }, document: { body: {} }, console });
 const find = (node, test) => {
   if (!node) return undefined;

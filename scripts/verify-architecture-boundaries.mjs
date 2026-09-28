@@ -82,6 +82,8 @@ const requiredFiles = [
   'src/shared/ui/index.ts',
   'src/shared/ui/Button.tsx',
   'src/shared/ui/Panel.tsx',
+  'src/shared/ui/viewportToLayout.ts',
+  'src/shared/ui/usePointerAnchoredPosition.ts',
   'src/shared/hooks/index.ts',
   'src/shared/hooks/usePersistedUiState.ts',
   'src/shared/utils/index.ts',
@@ -467,7 +469,14 @@ assert.match(fileTreePanelSource, /const FILE_TREE_DRAG_THRESHOLDS = \{[\s\S]*mo
 assert.match(fileTreePanelSource, /function dragThresholdFor\(pointerType: string\)/);
 assert.match(fileTreePanelSource, /className="file-tree-drag-preview"/);
 assert.match(fileTreePanelSource, /document\.addEventListener\('visibilitychange', cancelActiveDrag\)/);
-assert.match(fileTreePanelSource, /const clearDragState = \(\) => \{[\s\S]*setDragPreviewPosition\(null\);/);
+assert.match(fileTreePanelSource, /const clearDragState = \(\) => \{[\s\S]*setDragPreviewAnchor\(null\);/);
+// Task ae61143f: fixed popovers position through the shared root-zoom helpers, never raw clientX/Y or window.inner*.
+assert.match(fileTreePanelSource, /usePointerAnchoredPosition\(contextMenu\?\.anchor \?\? null, CONTEXT_MENU_PLACEMENT\)/);
+assert.match(fileTreePanelSource, /usePointerAnchoredPosition\(dragPreviewAnchor, DRAG_PREVIEW_PLACEMENT\)/);
+assert.doesNotMatch(fileTreePanelSource, /window\.inner(Width|Height)/);
+assert.match(await readFile('src/features/explorer/MarkdownResourceTab.tsx', 'utf8'), /viewportPointToLayout\(event, zoom\)/);
+assert.match(await readFile('src/features/board/BoardEditor.tsx', 'utf8'), /pointerToElementLayout\(event, svgRef\.current\)/);
+assert.match(await readFile('src/workbench/WorkbenchShell.tsx', 'utf8'), /viewportDeltaToLayout\(latestEvent\.clientX - resizeStartRef\.current\.x, 0\)/);
 assert.doesNotMatch(fileTreePanelSource, /onDragStart|onDragEnd|onDragOver|onDragLeave|onDrop|draggable=/);
 assert.doesNotMatch(workbenchStylesSource, /file-tree-row\[draggable="true"\]/);
 assert.match(workbenchStylesSource, /\.file-tree-row \{[\s\S]*cursor: default;[\s\S]*user-select: none;[\s\S]*touch-action: none;[\s\S]*\}/);

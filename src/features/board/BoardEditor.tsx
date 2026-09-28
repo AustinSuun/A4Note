@@ -10,6 +10,7 @@ import {
   type BoardArrowElement, type BoardDocument, type BoardElement, type BoardHistory, type BoardInkElement, type BoardPoint, type BoardRect, type BoardViewport,
 } from '../../core/board';
 import './board.css';
+import { pointerToElementLayout } from '../../shared/ui/viewportToLayout';
 
 export type BoardTool = 'select' | 'hand' | 'text' | 'note' | 'rect' | 'ellipse' | 'arrow' | 'pen' | 'eraser';
 
@@ -174,10 +175,9 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
     setContent(serializeBoardDocument(withElements(current, result.elements)));
   }, [setContent, announce]);
 
-  const screenPoint = (event: { clientX: number; clientY: number }): BoardPoint => {
-    const rect = svgRef.current?.getBoundingClientRect();
-    return { x: event.clientX - (rect?.left ?? 0), y: event.clientY - (rect?.top ?? 0) };
-  };
+  // Screen space = the SVG's own layout px (its viewBox is sized from clientWidth/Height). The pointer
+  // arrives in viewport px, so the root zoom must be divided out or every stroke lands up-left of the cursor.
+  const screenPoint = (event: { clientX: number; clientY: number }): BoardPoint => pointerToElementLayout(event, svgRef.current);
   const worldPoint = (event: { clientX: number; clientY: number }) => screenToWorld(viewportRef.current, screenPoint(event));
   const slop = () => 6 / viewportRef.current.zoom;
 
@@ -446,8 +446,7 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
       event.preventDefault();
       const current = viewportRef.current;
       if (event.ctrlKey || event.metaKey) {
-        const rect = node.getBoundingClientRect();
-        setViewport(zoomViewport(current, current.zoom * Math.exp(-event.deltaY * 0.0018), { x: event.clientX - rect.left, y: event.clientY - rect.top }));
+        setViewport(zoomViewport(current, current.zoom * Math.exp(-event.deltaY * 0.0018), pointerToElementLayout(event, node)));
       } else if (event.shiftKey && !event.deltaX) {
         setViewport({ ...current, x: current.x - event.deltaY });
       } else {

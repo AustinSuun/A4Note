@@ -82,6 +82,8 @@ const steps = [
   ['npm', ['run', 'test:library-export']],
   ['npm', ['run', 'test:library-behavior']],
   ['npm', ['run', 'test:tree-guides-browser']],
+  ['npm', ['run', 'test:viewport-to-layout']],
+  ['npm', ['run', 'test:popover-zoom-browser']],
   ['node', ['scripts/verify-markdown-toc-follow.mjs']],
   ['node', ['scripts/verify-markdown-toc-collapse-browser.mjs']],
   ['npm', ['run', 'test:library-summary']],

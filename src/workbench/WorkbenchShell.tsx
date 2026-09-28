@@ -1,5 +1,6 @@
 import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { WindowTitleBar } from './WindowTitleBar';
+import { viewportDeltaToLayout } from '../shared/ui/viewportToLayout';
 
 /** Minimum width needed to keep the sidebar controls and scene picker usable. */
 export const WORKBENCH_SIDEBAR_MIN_WIDTH = 300;
@@ -37,7 +38,10 @@ export function WorkbenchShell({ sidebar, topBar, explorer, content, overlay, di
   const getSidebarWidthFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
     const samples = event.nativeEvent.getCoalescedEvents?.() ?? [];
     const latestEvent = samples[samples.length - 1] ?? event.nativeEvent;
-    return Math.max(WORKBENCH_SIDEBAR_MIN_WIDTH, Math.min(WORKBENCH_SIDEBAR_MAX_WIDTH, resizeStartRef.current.width + latestEvent.clientX - resizeStartRef.current.x));
+    // `sidebarWidth` is a layout px value while `clientX` moves in viewport px; under the root zoom the
+    // pointer delta has to be scaled back or the sidebar edge outruns the cursor.
+    const delta = viewportDeltaToLayout(latestEvent.clientX - resizeStartRef.current.x, 0).x;
+    return Math.max(WORKBENCH_SIDEBAR_MIN_WIDTH, Math.min(WORKBENCH_SIDEBAR_MAX_WIDTH, resizeStartRef.current.width + delta));
   };
 
   const updateSidebarWidthFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {

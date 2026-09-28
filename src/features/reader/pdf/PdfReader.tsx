@@ -34,6 +34,7 @@ import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
 import { SELECTION_PREVIEW_COLOR } from './pdfHighlightAppearance';
 import { boundingBox, clipRangeToNode, dominantTextOrientation, mergeRectsIntoLineSegments, quoteFromTextItemSelections, textItemSelectionsFromRange, textRunExtentMeasurer, textSelectionFromDrag, textSelectionPageElements, textSelectionRectsFromLayer, withSegmentOrientation } from './pdfSelection';
+import { pointerToElementLayout } from '../../../shared/ui/viewportToLayout';
 import type {
   AnnotationMarkModel,
   AnnotationResize,
@@ -1108,8 +1109,7 @@ export default function PdfReader({
       page: pageNumber,
       x: point.x,
       y: point.y,
-      leftPx: event.clientX - rect.left,
-      topPx: event.clientY - rect.top,
+      ...pointerToCommentOffset(event, pdfCoordinateLayer(event.currentTarget)),
       text: '',
       fontSize: 13,
       bold: false,
@@ -1139,7 +1139,6 @@ export default function PdfReader({
       return;
     }
     const layer = event.currentTarget.closest<HTMLElement>('.pdf-render-layer');
-    const rect = layer?.getBoundingClientRect();
     setFocusedAnnotationId(annotation.id);
     onFocusAnnotation?.(annotation.id);
     setCommentPopover({
@@ -1148,8 +1147,7 @@ export default function PdfReader({
       page: annotation.page,
       x: numberValue(annotation.positionJson.x, 0),
       y: numberValue(annotation.positionJson.y, 0),
-      leftPx: rect ? event.clientX - rect.left : 0,
-      topPx: rect ? event.clientY - rect.top : 0,
+      ...pointerToCommentOffset(event, layer),
       text: annotation.comment || annotation.quote || '',
       fontSize: numberValue(annotation.positionJson.fontSize, 13),
       bold: Boolean(annotation.positionJson.bold),
@@ -1484,8 +1482,8 @@ export default function PdfReader({
           {annotationsEnabled && selectionPopup.visible && (
             <SelectionPopup
               visible={selectionPopup.visible}
-              x={selectionPopup.x - (containerRef.current?.getBoundingClientRect().left ?? 0) + (containerRef.current?.scrollLeft ?? 0)}
-              y={selectionPopup.y - (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.scrollTop ?? 0)}
+              x={pointerToElementLayout({ clientX: selectionPopup.x, clientY: selectionPopup.y }, containerRef.current).x + (containerRef.current?.scrollLeft ?? 0)}
+              y={pointerToElementLayout({ clientX: selectionPopup.x, clientY: selectionPopup.y }, containerRef.current).y + (containerRef.current?.scrollTop ?? 0)}
               onHighlight={() => {
                 if (selectionPopup.pageElement) void finishTextSelection(selectionPopup.pageNumber, selectionPopup.pageElement, 'highlight');
                 setSelectionPopup((s) => ({ ...s, visible: false }));
@@ -1500,6 +1498,13 @@ export default function PdfReader({
       </div>
     </div>
   );
+}
+
+/** Popover offset inside a page layer: viewport pointer → layer layout px (root zoom aware). */
+function pointerToCommentOffset(point: { clientX: number; clientY: number }, layer: Element | null | undefined) {
+  if (!layer) return { leftPx: 0, topPx: 0 };
+  const local = pointerToElementLayout(point, layer);
+  return { leftPx: local.x, topPx: local.y };
 }
 
 function measuredPercentBox(target: HTMLElement, layer: HTMLElement) {

@@ -18,6 +18,7 @@ import { SummaryExcerpt } from './SummaryExcerpt';
 import { editSummary, invalidateSummaryPreviews, loadSummary, onSummaryChange, openSummaryUrl, summaryLayoutSession, type SummaryFile } from '../../platform/library/summaries';
 import { SummaryEditor } from './SummaryEditor';
 import './summary.css';
+import { pointerToElementLayout, viewportDeltaToLayout } from '../../shared/ui/viewportToLayout';
 interface Props { papers: PaperDocument[]; selectedIds: string[]; selectedId?: string; onSelect(id: string): void; onSelection(ids: string[]): void; onOpen(id: string): void }
 export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onSelection, onOpen }: Props) {
   const [titlePinned, setTitlePinned] = useState(() => {
@@ -97,8 +98,8 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
   }, []);
   const captureZoomPoint = useCallback((clientY?: number) => {
     const node = root.current; if (!node) return;
-    const rect = node.getBoundingClientRect();
-    const y = Math.max(0, Math.min(node.clientHeight, clientY === undefined ? node.clientHeight / 2 : clientY - rect.top));
+    // `clientHeight` is layout px; the viewport pointer is converted with the root zoom before clamping.
+    const y = Math.max(0, Math.min(node.clientHeight, clientY === undefined ? node.clientHeight / 2 : pointerToElementLayout({ clientX: 0, clientY }, node).y));
     // The title is frozen at the left edge. A cursor/center X anchor would
     // introduce horizontal scrolling even from scrollLeft=0 on zoom-in, hiding
     // the adjacent column under that title. Preserve the logical scroll start:
@@ -206,7 +207,7 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
       event.currentTarget.setPointerCapture(event.pointerId);
     }}
     onPointerMove={event => { const state = drag.current; if (!state || state.pointer !== event.pointerId) return;
-      const next = [...state.initial]; next[state.index] = Math.max(state.index === 0 ? 180 : 80, Math.min(800, Math.round(state.initial[state.index] + (event.clientX - state.x) / scaleRef.current)));
+      const next = [...state.initial]; next[state.index] = Math.max(state.index === 0 ? 180 : 80, Math.min(800, Math.round(state.initial[state.index] + viewportDeltaToLayout(event.clientX - state.x, 0).x / scaleRef.current)));
       state.current = next;
       if (!columnFrame.current) columnFrame.current = requestAnimationFrame(() => { columnFrame.current = 0; if (drag.current) setResizeWidths(drag.current.current); });
     }}
