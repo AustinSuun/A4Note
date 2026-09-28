@@ -17,6 +17,8 @@ import type { MarkdownLiveEditorHandle } from './MarkdownLiveEditor';
 import { MarkdownAuthoringDock } from '../explorer/MarkdownAuthoringDock';
 import type { MarkdownTemplate } from '../explorer/markdownTemplates';
 import type { NoteDraftPatch, NoteSaveInput } from './types';
+import { boardDisplayName } from '../../core/board';
+import { ReaderBoardSection, ReaderBoardSurface, boardFileName, preferredReaderBoard, rememberReaderBoard } from './ReaderBoardEntry';
 
 const claimedNoteRequests = new WeakSet<NoteDraftPatch>();
 const SummaryDocumentEditor = lazy(() => import('../library/SummaryDocumentEditor').then(module => ({ default: module.SummaryDocumentEditor })));
@@ -92,6 +94,10 @@ export function MarkdownNotePanel({
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [sourceMode, setSourceMode] = useState(false);
+  // A board linked to this paper can be shown in place of the note. The path is
+  // the same file the notes scene opens; only the per-paper preference is local.
+  const [boardPath, setBoardPath] = useState<string | null>(() => preferredReaderBoard(paper.paperId));
+  useEffect(() => { setBoardPath(preferredReaderBoard(paper.paperId)); }, [paper.paperId]);
   const editorRef = useRef<MarkdownLiveEditorHandle | null>(null);
   const pendingCitation = useRef('');
   const historyRef = useRef<HTMLDivElement | null>(null);
@@ -153,6 +159,11 @@ export function MarkdownNotePanel({
     setHistoryOpen(false);
     setRenameOpen(false);
     if (restoreFocus) requestAnimationFrame(() => historyTriggerRef.current?.focus());
+  };
+  const selectBoard = (path: string | null) => {
+    rememberReaderBoard(paper.paperId, path);
+    setBoardPath(path);
+    if (path) closeHistory();
   };
   const selectNote = async (note: Note, edit = false) => {
     if (switchingRef.current) return;
@@ -281,8 +292,8 @@ export function MarkdownNotePanel({
         <div className="note-history-shell" ref={historyRef}>
           <button ref={historyTriggerRef} type="button" className={historyOpen ? 'note-document-trigger active' : 'note-document-trigger'}
             onClick={() => historyOpen ? closeHistory() : openHistory()}
-            aria-label={`切换论文文档，当前：${title || zh.reader.noteDefaultTitle}`} aria-haspopup="listbox" aria-expanded={historyOpen}>
-            <span>{title || zh.reader.noteDefaultTitle}</span><ChevronDown aria-hidden="true" />
+            aria-label={`切换论文文档，当前：${boardPath ? `白板 ${boardDisplayName(boardFileName(boardPath))}` : (title || zh.reader.noteDefaultTitle)}`} aria-haspopup="listbox" aria-expanded={historyOpen}>
+            {boardPath && <span className="note-board-badge">白板</span>}<span>{boardPath ? boardDisplayName(boardFileName(boardPath)) : (title || zh.reader.noteDefaultTitle)}</span><ChevronDown aria-hidden="true" />
           </button>
           {historyOpen && <div className="note-history-popover" onKeyDown={(event) => {
             if (event.nativeEvent.isComposing || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
@@ -299,7 +310,7 @@ export function MarkdownNotePanel({
               {paper.notes.length ? paper.notes.map((note, index) => (
                 <button key={note.id} ref={element => { historyOptionRefs.current[index] = element; }} type="button" role="option"
                   aria-selected={note.id === selectedNoteId} className={note.id === selectedNoteId ? 'active' : ''}
-                  onClick={() => void selectNote(note)} disabled={creating}>
+                  onClick={() => { if (boardPath) selectBoard(null); void selectNote(note); }} disabled={creating}>
                   <span className="note-history-title note-history-title-with-badge">
                     {note.id === summaryNoteId && <OverviewNoteBadge />}
                     <span className="note-history-title-text">{note.title || zh.reader.noteDefaultTitle}</span>
@@ -309,6 +320,7 @@ export function MarkdownNotePanel({
                 </button>
               )) : <div className="note-history-empty">当前论文还没有文档</div>}
             </div>
+            <ReaderBoardSection paper={paper} open={historyOpen} activePath={boardPath} onSelect={selectBoard} disabled={creating} />
             {renameOpen ? <form className="note-history-rename" onSubmit={(event) => { event.preventDefault(); void renameCurrent(); }}>
               <label htmlFor="reader-note-rename">重命名当前文档</label>
               <input id="reader-note-rename" value={renameValue} onChange={event => setRenameValue(event.target.value)} autoFocus disabled={creating} />
@@ -327,14 +339,14 @@ export function MarkdownNotePanel({
             {noteSaveStateText(saveState)}
           </span>
           {focusedAnnotation && <button type="button" className="note-citation-insert" onClick={insertFocusedCitation} title={"插入引用：" + focusedCitationLabel} aria-label={"插入引用 " + focusedCitationLabel}>{focusedCitationLabel}</button>}
-          <div className="note-view-switch" role="group" aria-label={zh.reader.noteReadingMode}>
+          {!boardPath && <div className="note-view-switch" role="group" aria-label={zh.reader.noteReadingMode}>
             <button type="button" className={mode === 'edit' ? 'active' : ''} onClick={() => setMode('edit')} title={zh.reader.noteEditingMode} aria-label={zh.reader.noteEditingMode}>
               <Pencil aria-hidden="true" />
             </button>
             <button type="button" className={mode === 'read' ? 'active' : ''} onClick={() => setMode('read')} title={zh.reader.noteReadingMode} aria-label={zh.reader.noteReadingMode}>
               <BookOpen aria-hidden="true" />
             </button>
-          </div>
+          </div>}
         </div>
       </header>
       {(saveError || actionError) && <div className="note-save-error" role="alert">
@@ -344,7 +356,9 @@ export function MarkdownNotePanel({
         <ConfirmActionButton key={`${paper.paperId}:${selectedNoteId}`} label="放弃草稿" prompt="放弃未保存修改并回到上次保存内容？建议先导出。"
           onConfirm={async () => { await session.discard(); setActionError(''); }} onError={error => setActionError(String(error))} />
       </div>}
-      {selectedNoteId && selectedNoteId === summaryNoteId && (!sourceMode || mode === 'read') ? <>
+      {boardPath ? (
+        <ReaderBoardSurface key={boardPath} paper={paper} path={boardPath} onBack={() => selectBoard(null)} />
+      ) : selectedNoteId && selectedNoteId === summaryNoteId && (!sourceMode || mode === 'read') ? <>
         {mode === 'edit' && <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertFormat} onImage={() => editorRef.current?.pickImages()} sourceMode={false} onToggleSource={() => setSourceMode(true)} />}
         <Suspense fallback={<div className="note-editor-loading"><LoaderCircle className="spin" aria-hidden="true" /></div>}>
           <SummaryDocumentEditor key={`${paper.paperId}:${selectedNoteId}`} ref={editorRef} paper={paper} scope={`${paper.paperId}:${selectedNoteId}`} source={content} getCurrent={() => session.getSnapshot().content} onChange={updateContent} onBlur={() => void saveCurrent()} onSource={() => { setMode('edit'); setSourceMode(true); }} readOnly={mode !== 'edit'} surfaceActive={surfaceActive} onNavigateAnnotation={onNavigateAnnotation} onAssign={async (plan, stillCurrent) => { await session.flush(); if (!stillCurrent() || session.getSnapshot().paperId !== paper.paperId || session.getSnapshot().noteId !== selectedNoteId) throw new Error('笔记或预览已变化，请重新选择。'); await session.commitContent(plan.baseline, plan.next); }} />

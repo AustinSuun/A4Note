@@ -2,6 +2,8 @@ export interface WikiEntry { path: string; name: string; is_directory: boolean; 
 export interface WikiListing { entries: WikiEntry[]; truncated: boolean; }
 export type WikiDirectoryReader = (path: string) => Promise<WikiListing>;
 const markdownExtension = /\.(?:md|markdown|mdx)$/i;
+/** Boards resolve only when the link spells out the extension, so `[[name]]` keeps meaning a note. */
+const boardExtension = /\.a4board$/i;
 function normalized(path: string) {
   const slashed = path.replace(/\\/g, '/').replace(/\/+$/, '');
   return /^[a-z]:/i.test(slashed) || slashed.startsWith('//') ? slashed.toLowerCase() : slashed;
@@ -18,6 +20,7 @@ function joined(base: string, target: string) {
 }
 function within(root: string, path: string) { const base = normalized(root); const file = normalized(path); return file === base || file.startsWith(base + '/'); }
 function isMarkdown(entry: WikiEntry) { return !entry.is_directory && markdownExtension.test(entry.name); }
+function isBoard(entry: WikiEntry) { return !entry.is_directory && boardExtension.test(entry.name); }
 
 /** Resolve without creating files or silently choosing among same-name notes. */
 export async function resolveWikiLink(root: string, from: string, rawTarget: string, list: WikiDirectoryReader): Promise<WikiEntry> {
@@ -52,7 +55,10 @@ export async function resolveWikiLink(root: string, from: string, rawTarget: str
       throw error;
     }
     const fileName = candidate.slice(candidate.lastIndexOf('/') + 1);
-    const matches = listing.entries.filter((entry) => isMarkdown(entry) && (markdownExtension.test(fileName)
+    const boardTarget = boardExtension.test(fileName);
+    const matches = listing.entries.filter((entry) => boardTarget
+      ? isBoard(entry) && (caseFold ? entry.name.toLowerCase() === fileName.toLowerCase() : entry.name === fileName)
+      : isMarkdown(entry) && (markdownExtension.test(fileName)
       ? (caseFold ? entry.name.toLowerCase() === fileName.toLowerCase() : entry.name === fileName)
       : stem(entry.name) === stem(fileName)));
     const match = choose(matches);

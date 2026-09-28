@@ -265,6 +265,7 @@ export function createBuiltinSceneUiContributions(runtime: BuiltinSceneUiRuntime
     // the same trusted PDF adapter, but ownership remains with library.core.
     createReaderResourceViewContribution({ ...runtime.readerResource, openerId: 'library.pdf', pluginId: 'library.core' }),
     markdown.resource,
+    markdown.board,
   ];
 
   return {

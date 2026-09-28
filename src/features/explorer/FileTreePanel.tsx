@@ -1,6 +1,6 @@
 import { fileTreePresentation } from './fileTreeDisplayName';
 import './file-tree-types.css';
-import { ArrowDownAZ, ArrowDownZA, ChevronsDownUp, ChevronsUpDown, ChevronRight, FilePlus, FileText, FolderOpen, FolderPlus, LocateFixed, Pencil, Trash2 } from 'lucide-react';
+import { ArrowDownAZ, ArrowDownZA, ChevronsDownUp, ChevronsUpDown, ChevronRight, FilePlus, FileText, FolderOpen, FolderPlus, LayoutDashboard, LocateFixed, Pencil, Trash2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { listDirectoryEntries, type DirectoryEntry } from '../../platform/projects';
@@ -26,6 +26,8 @@ export interface FileTreePanelProps {
   onRenameFile?: (entry: DirectoryEntry, newStem: string) => Promise<void> | void;
   onRevealFile?: (entry: DirectoryEntry) => Promise<void> | void;
   onCreateFile?: (directoryPath: string) => Promise<void> | void;
+  /** Creates a board (`*.a4board`) in the directory; boards are a separate file category from notes. */
+  onCreateBoard?: (directoryPath: string) => Promise<void> | void;
   onCreateFolder?: (directoryPath: string, name: string) => Promise<void> | void;
   onMoveEntry?: (entry: DirectoryEntry, destinationDirectory: string) => Promise<void> | void;
   activePath?: string;
@@ -133,7 +135,7 @@ function computeDragPreviewPosition(clientX: number, clientY: number): FileTreeD
 }
 
 /** Lazy folder tree: each directory is read only when it is first expanded. */
-export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile, onRevealFile, onCreateFile, onCreateFolder, onMoveEntry, activePath }: FileTreePanelProps) {
+export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile, onRevealFile, onCreateFile, onCreateBoard, onCreateFolder, onMoveEntry, activePath }: FileTreePanelProps) {
   const [nodes, setNodes] = useState<Record<string, DirectoryNode>>({});
   const [expandedPaths, setExpandedPaths] = useState<string[]>([]);
   const [sortMode, setSortMode] = useState<FileTreeSortMode>('name-asc');
@@ -250,6 +252,11 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
   const createFileIn = (directoryPath: string) => {
     if (!onCreateFile || folderDraft || renamingEntry) return;
     void Promise.resolve(onCreateFile(directoryPath)).then(() => void loadDirectory(directoryPath));
+  };
+
+  const createBoardIn = (directoryPath: string) => {
+    if (!onCreateBoard || folderDraft || renamingEntry) return;
+    void Promise.resolve(onCreateBoard(directoryPath)).then(() => void loadDirectory(directoryPath));
   };
 
   const createFolderIn = (directoryPath: string) => {
@@ -627,6 +634,7 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
     <aside className="file-tree-panel" aria-label={zh.workbench.fileTree}>
       <header className="file-tree-toolbar" role="toolbar" aria-label="文件树操作">
         {canCreate && <button type="button" className="workbench-icon-button" title="新建笔记" aria-label="新建笔记" onClick={() => createFileIn(rootPath)}><FilePlus size={17} aria-hidden="true" /></button>}
+        {onCreateBoard && <button type="button" className="workbench-icon-button" title="新建白板" aria-label="新建白板" onClick={() => createBoardIn(rootPath)}><LayoutDashboard size={17} aria-hidden="true" /></button>}
         {canCreateFolder && <button type="button" className="workbench-icon-button" title="新建文件夹" aria-label="新建文件夹" disabled={folderDraft?.saving || renamePending} onClick={() => createFolderIn(rootPath)}><FolderPlus size={17} aria-hidden="true" /></button>}
         <div ref={sortMenuRef} className="file-tree-sort-wrap">
           <button type="button" className={'workbench-icon-button' + (sortOpen ? ' active' : '')} title={`排序：${activeSortLabel}`} aria-label={`排序：${activeSortLabel}`} aria-haspopup="menu" aria-expanded={sortOpen} onClick={() => setSortOpen((open) => !open)}>
@@ -649,7 +657,7 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
       </div>
       {contextMenu && createPortal(
         <div ref={contextMenuRef} className="file-tree-context-menu" style={{ left: contextMenu.x, top: contextMenu.y }} role="menu" aria-label={`${contextMenu.entry.name} 文件操作`} onClick={(event) => event.stopPropagation()}>
-          {contextMenu.entry.is_directory && <><button type="button" role="menuitem" disabled={!onCreateFolder} onClick={() => createFolderIn(contextMenu.entry.path)}><FolderPlus size={15} aria-hidden="true" /><span>新建子文件夹</span></button><button type="button" role="menuitem" disabled={!onCreateFile} onClick={() => { createFileIn(contextMenu.entry.path); setContextMenu(null); }}><FilePlus size={15} aria-hidden="true" /><span>新建笔记</span></button></>}
+          {contextMenu.entry.is_directory && <><button type="button" role="menuitem" disabled={!onCreateFolder} onClick={() => createFolderIn(contextMenu.entry.path)}><FolderPlus size={15} aria-hidden="true" /><span>新建子文件夹</span></button><button type="button" role="menuitem" disabled={!onCreateFile} onClick={() => { createFileIn(contextMenu.entry.path); setContextMenu(null); }}><FilePlus size={15} aria-hidden="true" /><span>新建笔记</span></button><button type="button" role="menuitem" disabled={!onCreateBoard} onClick={() => { createBoardIn(contextMenu.entry.path); setContextMenu(null); }}><LayoutDashboard size={15} aria-hidden="true" /><span>新建白板</span></button></>}
           <button type="button" role="menuitem" disabled={!onRenameFile || normalizePath(contextMenu.entry.path) === normalizePath(rootPath)} onClick={renameFromContextMenu}><Pencil size={15} aria-hidden="true" /><span>{zh.workbench.fileRename}</span></button>
           <button type="button" role="menuitem" disabled={!onRevealFile} onClick={() => onRevealFile && invokeContextAction(onRevealFile)}><FolderOpen size={15} aria-hidden="true" /><span>{zh.workbench.fileOpenLocation}</span></button>
           <div className="file-tree-context-divider" role="separator" />

@@ -27,6 +27,17 @@ export function createMarkdownPlugin(scene: SceneContribution = defaultMarkdownS
       tabKind: 'markdown',
       priority: 100,
       open: ({ uri, title }) => ({ kind: 'markdown', title: title ?? 'Markdown', state: { uri } }),
+    }, {
+      // Boards are a separate file category inside the notes workspace. The
+      // extension is the identity; the same file is what the reader links to.
+      id: 'markdown.board',
+      kind: 'board',
+      title: '打开白板',
+      sceneId: 'markdown',
+      tabKind: 'file',
+      priority: 110,
+      extensions: ['a4board'],
+      open: ({ uri, title }) => ({ kind: 'file', title: title ?? '白板', state: { uri } }),
     }],
   });
   return {

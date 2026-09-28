@@ -16,6 +16,7 @@ import { createAsterCore } from '../core/asterCore';
 import { AgentSessionPanel, useAgentProviders } from '../features/agents';
 import { useChatThreads, type AiReasoningLevel, type AiRunMode, type AiToolProviderId } from '../features/ai';
 import { DiffResourceTab, FileTab, FileTreePanel, TerminalResourceTab } from '../features/explorer';
+import { createBoardFile, setBoardWorkspaceRoot } from '../features/board';
 import { ImportDialog, TagInput, useImportFlow, usePaperState, type LibrarySortDirection, type LibrarySortKey } from '../features/library';
 import {
   createBuiltinSceneUiContributions,
@@ -1037,6 +1038,8 @@ function AppContent() {
   };
 
   const folderProjectPath = activeProject && activeProject.kind === 'folder' ? activeProject.rootPath : null;
+  // The reader's note switcher lists boards from the notes workspace; it has no project prop of its own.
+  useEffect(() => { setBoardWorkspaceRoot(folderProjectPath); }, [folderProjectPath]);
 
   /** First run seeds the built-in library project so a workspace always exists. */
   useEffect(() => {
@@ -2032,6 +2035,16 @@ function AppContent() {
     }
   };
 
+  const createMarkdownBoardIn = async (directoryPath: string) => {
+    try {
+      const created = await createBoardFile(directoryPath);
+      openFileTab(created.path, created.name);
+      setMarkdownTreeRevision((current) => current + 1);
+    } catch (error) {
+      setLibraryStatus(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const createMarkdownFolderIn = async (directoryPath: string, name: string) => {
     await createDirectory(directoryPath, name);
   };
@@ -2123,7 +2136,7 @@ function AppContent() {
 
   const activeMarkdownPath = activeTab
     && (activeTab.kind === 'markdown' || activeTab.kind === 'file')
-    && /\.(?:md|markdown|mdx)$/i.test(tabStateString(activeTab, 'path'))
+    && /\.(?:md|markdown|mdx|a4board)$/i.test(tabStateString(activeTab, 'path'))
     ? tabStateString(activeTab, 'path')
     : undefined;
 
@@ -2137,6 +2150,7 @@ function AppContent() {
       onRevealFile={(entry) => void revealMarkdownFile(entry)}
       onMoveEntry={moveMarkdownEntry}
       onCreateFile={createMarkdownNoteIn}
+      onCreateBoard={createMarkdownBoardIn}
       onCreateFolder={createMarkdownFolderIn}
       activePath={activeMarkdownPath}
     />

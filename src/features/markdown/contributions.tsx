@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { ResourceViewContribution, SceneSidebarViewContribution, SceneViewContribution } from '../../workbench';
 import { resolveProjectWikiLink, type RenamedTextFile } from '../../platform/projects';
 import { MarkdownResourceTab } from '../explorer/MarkdownResourceTab';
+import { BoardResourceTab } from '../board/BoardResourceTab';
 import { MarkdownWorkspaceScene, type MarkdownWorkspaceSceneProps } from './MarkdownWorkspaceScene';
 
 export type MarkdownSceneContributionProps = {
@@ -18,6 +19,7 @@ export function createMarkdownSceneContributions(props: MarkdownSceneContributio
   view: SceneViewContribution;
   sidebar: SceneSidebarViewContribution;
   resource: ResourceViewContribution;
+  board: ResourceViewContribution;
 } {
   return {
     view: {
@@ -47,6 +49,17 @@ export function createMarkdownSceneContributions(props: MarkdownSceneContributio
             const file = await resolveProjectWikiLink(props.view.rootPath, from, target);
             props.resource.onOpenFile(file.path, file.name);
           }}
+        />
+      ),
+    },
+    board: {
+      id: 'markdown.board.view',
+      openerId: 'markdown.board',
+      pluginId: 'markdown.core',
+      render: ({ tab }) => (
+        <BoardResourceTab
+          path={typeof tab.state.path === 'string' ? tab.state.path : typeof tab.state.uri === 'string' ? tab.state.uri : ''}
+          name={typeof tab.state.name === 'string' ? tab.state.name : tab.title}
         />
       ),
     },

@@ -1,5 +1,5 @@
 type EntryLabel = { name: string; is_directory: boolean };
-export type FileTreeTypeTone = 'pdf' | 'image' | 'document' | 'data' | 'media' | 'archive' | 'code' | 'other';
+export type FileTreeTypeTone = 'pdf' | 'image' | 'document' | 'data' | 'media' | 'archive' | 'code' | 'board' | 'other';
 export interface FileTreePresentation {
   name: string;
   badge: { label: string; extension: string; tone: FileTreeTypeTone } | null;
@@ -25,6 +25,7 @@ export function fileTreePresentation(entry: EntryLabel): FileTreePresentation {
   const kind = extension.toLowerCase();
   const name = entry.name.slice(0, match.index);
   if (kind === 'md') return { name, badge: null };
+  if (kind === 'a4board') return { name, badge: { label: '白板', extension, tone: 'board' } };
   const backup = /^backup(?:[-_]|$)/i.test(extension);
   return { name, badge: { label: backup ? 'BACKUP' : extension.toUpperCase(), extension, tone: Object.hasOwn(types, kind) ? types[kind] : 'other' } };
 }

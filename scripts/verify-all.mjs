@@ -39,6 +39,7 @@ const steps = [
   ...(isWindows ? [['npm', ['run', 'test:capture-native-process']]] : []),
   ['npm', ['run', 'test:sync']],
   ['npm', ['run', 'test:workspace']],
+  ['npm', ['run', 'test:board']],
   ['node', ['scripts/verify-folder-config-v2.mjs']],
   ['npm', ['run', 'test:resources']],
   ['npm', ['run', 'test:resource-openers']],
@@ -70,6 +71,7 @@ const steps = [
   ['npm', ['run', 'test:library-context-menu-browser']],
   ['npm', ['run', 'test:library-sidebar-browser']],
   ['npm', ['run', 'test:library-column-settings-browser']],
+  ['npm', ['run', 'test:board-browser']],
   ['npm', ['run', 'test:settings-ui']],
   ['node', ['scripts/verify-brand-update.mjs']],
 

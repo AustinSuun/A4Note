@@ -81,7 +81,10 @@
     "test:library-sidebar-browser": "node scripts/verify-library-sidebar-browser.mjs",
     "test:library-column-settings-browser": "node scripts/verify-library-column-settings-browser.mjs",
     "test:tree-guides-browser": "node scripts/verify-tree-guides-browser.mjs",
-    "test:markdown-scroll-browser": "node scripts/verify-markdown-scroll-browser.mjs"
+    "test:markdown-scroll-browser": "node scripts/verify-markdown-scroll-browser.mjs",
+    "test:board": "node scripts/verify-board-model.mjs",
+    "test:board-browser": "node scripts/verify-board-browser.mjs",
+    "test:board-native": "node scripts/verify-board-native.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",
