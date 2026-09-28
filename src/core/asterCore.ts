@@ -24,6 +24,7 @@ import { createTaskBoardPlugin } from './taskBoardPlugin';
 import { builtinScenePluginId, createBuiltinScenePlugin } from './builtinScenePlugins';
 import { createOverviewPlugin } from './overviewPlugin';
 import { createReaderPlugin } from './readerPlugin';
+import { createDoc2xPlugin, DOC2X_PLUGIN_ID } from './doc2xPlugin';
 import { createAiPlugin } from './aiPlugin';
 import { defaultPluginSecurityPolicy, pluginTrust, type PluginSecurityPolicy } from './pluginSecurity';
 import { createDeclarativePlugin, parseDeclarativePluginPayload, parseDeclarativePluginPayloadText, type DeclarativePluginPayload } from './declarativePlugin';
@@ -511,7 +512,7 @@ export function createAsterCore(documents: PaperDocument[], scenes: SceneContrib
   const plugins = new Map<string, RegisteredPlugin>();
   const pluginDefinitions = new Map<string, AsterPlugin>();
   // Reserved first-party ids cannot be replaced by an imported package.
-  const builtinPluginIds = new Set(['overview.core', 'library.core', 'reader.core', 'ai.core', 'markdown.core']);
+  const builtinPluginIds = new Set(['overview.core', 'library.core', 'reader.core', 'ai.core', 'markdown.core', 'doc2x.core']);
   const resourceOpenerRegistry = new Map<string, ResourceOpenerContribution>();
   const verifiedPluginIds = new Set<string>();
   const runtimeSecurityPolicy: PluginSecurityPolicy = { ...securityPolicy, verifiedPluginIds };
@@ -858,6 +859,10 @@ export function createAsterCore(documents: PaperDocument[], scenes: SceneContrib
   for (const definition of builtinSceneDefinitions) {
     registerPlugin(definition.create(sceneMetadata.get(definition.id)));
     registeredBuiltinPluginIds.add(definition.pluginId);
+  // Doc2X owns no scene: it contributes settings, a translation provider
+  // entry and a library workbench panel, and can be disabled as a whole.
+  registerPlugin(createDoc2xPlugin());
+  registeredBuiltinPluginIds.add(DOC2X_PLUGIN_ID);
   }
   // Any non-first-party scene passed by an embedding host is still normalized
   // into a builtin wrapper, while known scene/plugin ids above stay singletons.

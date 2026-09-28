@@ -88,7 +88,7 @@
 "test:reader-note-properties": "node --experimental-strip-types scripts/verify-reader-note-properties.mjs",
 "test:reader-note-properties-browser": "node scripts/verify-reader-note-properties-browser.mjs",
 "test:reader-note-properties-native": "node scripts/verify-reader-note-properties-native.mjs",
-"test:doc2x-cli": "node --experimental-strip-types --test scripts/verify-doc2x-cli.mjs"
+    "test:doc2x-cli": "node --experimental-strip-types --test scripts/verify-doc2x-cli.mjs scripts/verify-doc2x-plugin.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",

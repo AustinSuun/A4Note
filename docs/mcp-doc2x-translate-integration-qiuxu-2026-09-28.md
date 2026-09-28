@@ -128,3 +128,85 @@ PDF，没有切换上下排布、反转顺序或仅译文的开关。
 | 6 回归与测试 | ✅ 适配层 15 项前端测试 + 6 项 Rust 测试、`tsc -b`、架构边界通过；既有流程未改动 |
 | 7 证据与交付 | ⬜ 进行中（真实账号 E2E 受限于无可用账号） |
 | 8 安全与隐私 | ✅ 设计上不接触凭据（含 `--auth-mode` 白名单）；实现待保持 |
+
+## 8. 内置插件 `doc2x.core`（第 3 步，已落地）
+
+- 形态：执行层随主仓发布（`src/platform/doc2x` + `src-tauri/src/doc2x_cli.rs`），
+  UI/设置/命令/面板做成内置插件贡献，可整体停用；第三方可安装插件路线因
+  `declarative-v1` 只有 heading/paragraph/text/list/link 视图块（无按钮/输入/进度）而否决。
+- `src/core/doc2xPlugin.ts`：注册 10 项设置贡献（与 CLI 参数一一对应）、翻译源
+  `doc2x`、library 场景工作台面板 `plugin:doc2x.core.panel`、4 条命令
+  （`doc2x.account.login|logout|status`、`doc2x.paper.translate`）；
+  命令实现由 UI 层通过 `setDoc2xCommandHandlers` 注入，core 不导入 platform。
+- `src/core/asterCore.ts`：内置插件表后注册 `createDoc2xPlugin()`，
+  `builtinPluginIds` 保留集加入 `doc2x.core`，外部包无法占用该 id。
+- `src/features/doc2x/`：`doc2xSettings.ts`（设置值 → CLI 参数映射与校验）、
+  `Doc2xTranslatePanel.tsx`（CLI 检测、登录/退出、额度订阅查询、当前文献与批量选中文献
+  串行翻译、CLI 输出日志）、`doc2x-panel.css`。
+- `src/ui/sceneAdapters.tsx` 与 `src/ui/App.tsx`：面板视图候选按 `plugin:doc2x.core.panel`
+  匹配，插件停用即不渲染；设置浮层自动汇总插件设置贡献，无需改 UI。
+- 译文入库：`<files_root>/translations/<paperId>/<runId>/`，每次运行独立目录（不覆盖旧译文），
+  成功后经 `importTranslatedPdfToLibrary` 绑定回同一文献，不新建条目，原 PDF/标注/笔记不变。
+- 测试：`scripts/verify-doc2x-plugin.mjs`（11 例，mock 插件上下文 + 设置映射），
+  由 `npm run test:doc2x-cli` 一并执行（合计 26 例全过）；`npx tsc -b`、
+  `npm run test:architecture`、`git diff --check` 均通过。
+- 未完成：真实账号端到端（需用户提供已登录且有额度的账号）、阅读器可视复核、
+  完整 `npm run verify` 与前端生产 build。
+
+## 8. builtin plugin doc2x.core (step 3, landed)
+
+- shape: execution layer ships with the main bundle
+  (src/platform/doc2x + src-tauri/src/doc2x_cli.rs);
+  settings, provider entry, panel and commands are plugin contributions,
+  so the whole surface can be disabled at once.
+- src/core/doc2xPlugin.ts: 10 setting contributions mapped 1:1 to CLI flags,
+  translation source doc2x, library panel plugin:doc2x.core.panel,
+  commands doc2x.account.login|logout|status and doc2x.paper.translate.
+  Command bodies are injected by the UI layer via setDoc2xCommandHandlers,
+  so core never imports src/platform.
+- src/core/asterCore.ts: registers createDoc2xPlugin() after the builtin
+  scene loop and reserves doc2x.core in builtinPluginIds.
+- src/features/doc2x: doc2xSettings.ts (setting values to CLI arguments),
+  Doc2xTranslatePanel.tsx (CLI detect, login/logout, quota query,
+  current paper and bulk selection serial translation, CLI log),
+  doc2x-panel.css.
+- src/ui/sceneAdapters.tsx and src/ui/App.tsx bind the panel view to
+  plugin:doc2x.core.panel; the settings overlay picks up plugin settings
+  without any UI change.
+- outputs land in <files_root>/translations/<paperId>/<runId>/ and are bound
+  back to the same paper via importTranslatedPdfToLibrary; no new entry,
+  source PDF, annotations and notes untouched.
+- tests: scripts/verify-doc2x-plugin.mjs (11 cases) runs with
+  npm run test:doc2x-cli (26 cases total, all pass); npx tsc -b,
+  npm run test:architecture and git diff --check pass.
+- still open: real account end to end, reader visual check,
+  full npm run verify and the frontend production build.
+
+## 8. builtin plugin doc2x.core (step 3, landed)
+
+- shape: the execution layer ships with the main bundle
+  (src/platform/doc2x + src-tauri/src/doc2x_cli.rs) while settings,
+  provider entry, panel and commands are plugin contributions,
+  so the whole surface can be disabled at once.
+- src/core/doc2xPlugin.ts: 10 setting contributions mapped 1:1 to CLI
+  flags, translation source doc2x, library panel
+  plugin:doc2x.core.panel, commands doc2x.account.login|logout|status
+  and doc2x.paper.translate. Command bodies are injected by the UI layer
+  through setDoc2xCommandHandlers, so core never imports src/platform.
+- src/core/asterCore.ts: registers createDoc2xPlugin() after the builtin
+  scene loop and reserves doc2x.core inside builtinPluginIds.
+- src/features/doc2x: doc2xSettings.ts (setting values to CLI arguments),
+  Doc2xTranslatePanel.tsx (CLI detect, login/logout, quota query,
+  current paper and bulk selection serial translation, CLI log),
+  doc2x-panel.css.
+- src/ui/sceneAdapters.tsx and src/ui/App.tsx bind the panel view to
+  plugin:doc2x.core.panel; the settings overlay picks up plugin settings
+  without any UI change.
+- outputs land in <files_root>/translations/<paperId>/<runId>/ and are
+  bound back to the same paper through importTranslatedPdfToLibrary;
+  no new library entry, source PDF, annotations and notes untouched.
+- tests: scripts/verify-doc2x-plugin.mjs (11 cases) runs together with
+  npm run test:doc2x-cli (26 cases, all pass); npx tsc -b,
+  npm run test:architecture and git diff --check pass.
+- still open: real account end to end, reader visual check,
+  full npm run verify and the frontend production build.

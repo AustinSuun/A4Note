@@ -3,6 +3,8 @@ import { resolveResourceViewContributions, type ResourceViewContribution, type S
 import type { DeclarativeViewRenderer, PluginViewBlock, SceneSidebarRegistration, SceneViewRegistration } from '../core/types';
 import type { PaperDocument, ReaderSidePanelTab, WorkbenchPanelContribution } from '../core/types';
 import { selectPluginLifecycleFallbacks } from '../core/pluginBindings';
+import { DOC2X_PANEL_ID } from '../core/doc2xPlugin';
+import { Doc2xTranslatePanel } from '../features/doc2x';
 import {
   createAiSceneContributions,
   type AiSceneContributionProps,
@@ -52,6 +54,13 @@ export interface BuiltinSceneUiRuntime {
   };
   readerPanel: Omit<ReaderSidePanelContentProps, 'tab' | 'paper'> & {
     onOpen: (tab: ReaderSidePanelTab) => void;
+  };
+  /** Live Doc2X panel inputs; the panel only renders while doc2x.core is active. */
+  doc2x: {
+    paper: PaperDocument | null;
+    papers: PaperDocument[];
+    bulkSelectedPaperIds: string[];
+    settingValues: Record<string, unknown>;
   };
   readerResource?: Parameters<typeof createReaderResourceViewContribution>[0];
 }
@@ -253,6 +262,15 @@ export function createBuiltinSceneUiContributions(runtime: BuiltinSceneUiRuntime
       pluginId: libraryPanel.source.startsWith('plugin:') ? libraryPanel.source.slice('plugin:'.length) : 'library.core',
       render: ({ selectedPaper }) => selectedPaper ? <LibraryDetailPanel {...runtime.libraryPanel} paper={selectedPaper} /> : null,
       open: () => runtime.libraryPanel.onOpen(),
+    });
+  }
+  const doc2xPanel = runtime.panels.find((panel) => panel.id === DOC2X_PANEL_ID);
+  if (doc2xPanel) {
+    panelViews.push({
+      id: doc2xPanel.id,
+      sceneId: doc2xPanel.sceneId,
+      pluginId: 'doc2x.core',
+      render: () => <Doc2xTranslatePanel {...runtime.doc2x} />,
     });
   }
   const readerPanelViews = createReaderPanelViewContributions(runtime.readerPanel);

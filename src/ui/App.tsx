@@ -252,6 +252,7 @@ function createLiveBuiltinSceneUiRuntimeProxy(
     'libraryPanel',
     'readerPanel',
     'readerResource',
+    'doc2x',
   ];
   for (const key of objectKeys) {
     Object.defineProperty(proxy, key, {
@@ -2245,6 +2246,12 @@ function AppContent() {
       onCopyCsv: () => void copyLibraryExport('csv'),
       onCopyBibtex: () => void copySelectedBibtex(),
       onCopyBulkBibtex: () => void copyBulkBibtex(),
+    },
+    doc2x: {
+      paper: selectedPaper,
+      papers: filteredPapers,
+      bulkSelectedPaperIds,
+      settingValues: pluginSettingValues,
     },
     librarySidebar: {
       papers: documents,
