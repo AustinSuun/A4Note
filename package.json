@@ -84,7 +84,10 @@
     "test:markdown-scroll-browser": "node scripts/verify-markdown-scroll-browser.mjs",
     "test:board": "node scripts/verify-board-model.mjs",
     "test:board-browser": "node scripts/verify-board-browser.mjs",
-    "test:board-native": "node scripts/verify-board-native.mjs"
+    "test:board-native": "node scripts/verify-board-native.mjs",
+    "test:reader-note-properties": "node --experimental-strip-types scripts/verify-reader-note-properties.mjs",
+    "test:reader-note-properties-browser": "node scripts/verify-reader-note-properties-browser.mjs",
+    "test:reader-note-properties-native": "node scripts/verify-reader-note-properties-native.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",

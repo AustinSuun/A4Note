@@ -1,0 +1,42 @@
+{
+  "label": "before",
+  "instance": "arena-two-board",
+  "steps": [
+    {
+      "step": "plain note",
+      "created": true,
+      "title": "阅读笔记 3"
+    },
+    {
+      "step": "note baseline (db)",
+      "hasNote": true,
+      "noteId": "note-82f4d0da-4e45-4a8a-8ab1-038d9cc88fae",
+      "startsWithYaml": false,
+      "length": 38
+    },
+    {
+      "step": "note sidebar initial",
+      "present": true,
+      "panel": false,
+      "folded": null,
+      "count": null,
+      "rows": [],
+      "editorHasYaml": false,
+      "editorText": "# 阅读笔记 3原生正文 legacy bodysecond line",
+      "saveState": "已保存",
+      "title": "阅读笔记 3",
+      "rect": {
+        "x": 1112.800048828125,
+        "y": 62,
+        "w": 459.20001220703125,
+        "h": 788
+      }
+    },
+    {
+      "step": "viewing writes nothing",
+      "unchanged": true
+    }
+  ],
+  "errors": [],
+  "problem": null
+}

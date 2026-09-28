@@ -1,0 +1,29 @@
+/* Reader note "笔记属性" (task 3eabf1ac): the Markdown tab's panel, fitted to
+   the note column. The panel sits between the header/dock and the editor as a
+   direct child of .note-workspace so the drawer's flex rules for the editor
+   keep applying; it scrolls on its own once it is tall, except while one of
+   its popovers (type menu / picker) is open, which must escape the box. */
+/* The document pane still lays the note out as a 3-row grid; with the panel
+   present it switches to the same column flex the drawer already uses so the
+   editor keeps the remaining height whether or not the error banner shows. */
+.note-workspace:has(> .note-properties) { display: flex; flex-direction: column; }
+.note-workspace:has(> .note-properties) > :is(.markdown-live-codemirror, .note-preview-only, .note-editor-loading) { flex: 1 1 0; min-height: 0; }
+.note-workspace:has(> .note-properties) > :is(.note-document-header, .note-save-error) { flex-shrink: 0; }
+.note-workspace > .note-properties { flex: 0 0 auto; min-height: 0; max-height: min(42vh, 360px); overflow: auto; margin: 4px 0 2px; padding: 0 6px; box-sizing: border-box; }
+.note-workspace > .note-properties.is-collapsed { flex-shrink: 0; overflow: visible; margin-bottom: 0; }
+.note-workspace > .note-properties.is-popover-open { max-height: none; overflow: visible; }
+.note-workspace > .note-properties .markdown-properties-heading { align-items: center; padding: 0 2px 0 0; margin-bottom: 6px; }
+/* The Markdown tab hangs the fold chevron in its left margin; the note column has no margin, so it sits inline before the label. */
+.note-workspace > .note-properties .markdown-properties-heading > button { position: static; order: -1; flex: 0 0 auto; margin-right: 2px; transform: none; opacity: 1; }
+.note-workspace > .note-properties .markdown-properties-heading > div { flex: 1 1 auto; min-width: 0; }
+.note-workspace > .note-properties .markdown-properties-heading strong { display: inline-flex; align-items: center; }
+.note-workspace > .note-properties .markdown-property-row { grid-template-columns: 26px minmax(64px, 118px) minmax(0, 1fr); }
+.note-workspace > .note-properties .markdown-property-choice-list,
+.note-workspace > .note-properties .markdown-property-suggestions { width: min(360px, calc(100% - 16px)); max-height: min(390px, 50vh); overflow: auto; }
+.note-workspace > .note-properties .markdown-property-suggest-toggle { margin-top: 4px; }
+.note-workspace > .note-properties .markdown-property-chip { max-width: 100%; height: auto; min-height: 28px; padding-top: 3px; padding-bottom: 3px; border-radius: 8px; line-height: 1.35; overflow-wrap: anywhere; }
+.note-workspace > .note-properties .markdown-property-row input[type="text"], .note-workspace > .note-properties .markdown-property-row input[type="number"] { min-width: 0; max-width: 100%; }
+.note-properties-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: var(--surface-soft); color: var(--muted); font-size: var(--ui-caption-font-size, 11px); font-weight: 600; line-height: 1; }
+.note-preview-only > .markdown-property-summary { margin: 0 0 14px; }
+.markdown-reader-content > .markdown-property-summary { margin: 0 0 14px; }
+.reader-workspace-shell.note-mode-floating .note-workspace > .note-properties { max-height: min(36vh, 300px); }

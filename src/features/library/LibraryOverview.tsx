@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { remarkAsterInline } from '../../shared/markdown/remarkAsterInline';
 import type { PaperDocument } from '../../core/types';
+import { splitFrontmatter } from '../../core/markdownDocument';
 import type { TextDocumentSession } from '../../core/textDocumentSession';
 import { defaultSummaryColumns, summarySizing, fitSummaryWidths, type SummarySizing, summaryPaperMetadata, parseSummaryLayout, summaryFields, summaryRowHeight, type SummaryColumn } from '../../core/librarySummary';
 import { SummaryExcerpt } from './SummaryExcerpt';
@@ -344,7 +345,7 @@ const SummaryRow = memo(function SummaryRow({ paper, columns, zoom, top, height,
     {columns.map(column => {
       const value = column.source === 'venue' ? paper.venue : parsed.fields.get(column.id)?.value ?? '';
       const noteId = /^\[[^\]]*\]\(a4note-note:([^\s)]+)\)$/.exec(value.trim())?.[1]; const note = noteId ? paper.notes.find(n => n.id === noteId) : undefined;
-      const shown = note ? `${note.title}\n${note.content}` : value;
+      const shown = note ? `${note.title}\n${splitFrontmatter(note.content).body}` : value;
       if (column.source) return <div key={column.id} className="summary-cell" title="来自论文信息，请在论文详情中编辑">{zoom < 120 ? <SummaryExcerpt value={value || '—'} /> : <p className="summary-excerpt">{value || '—'}</p>}</div>;
       return <SummaryEditableCell key={column.id} paperId={paper.paperId} column={column} value={value}
         unavailable={error || parsed.error || (!file ? '正在读取总览 MD…' : undefined)} onRepair={() => onEdit()}>

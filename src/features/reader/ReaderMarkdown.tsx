@@ -7,7 +7,7 @@ import { useNoteContentMode } from './noteContentMode';
 import { OverviewNoteBadge } from './OverviewNoteBadge';
 import { createSummaryNote, editSummary, loadSummary, uploadSummaryImage } from '../../platform/library/summaries';
 import { acquireLibraryNoteSession, existingLibraryNoteSession } from '../../platform/library/noteDocuments';
-import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { BookOpen, Check, ChevronDown, LoaderCircle, Pencil, Plus } from 'lucide-react';
 import type { Note, PaperDocument } from '../../core/types';
 import { zh } from '../../ui/zh';
@@ -18,6 +18,10 @@ import { MarkdownAuthoringDock } from '../explorer/MarkdownAuthoringDock';
 import type { MarkdownTemplate } from '../explorer/markdownTemplates';
 import type { NoteDraftPatch, NoteSaveInput } from './types';
 import { boardDisplayName } from '../../core/board';
+import { replaceMarkdownBody, splitFrontmatter, updateMarkdownProperties, withoutEmptyFrontmatter, type DocumentProperties } from '../../core/markdownDocument';
+import { MarkdownPropertiesPanel, MarkdownPropertySummary } from '../explorer/MarkdownPropertiesPanel';
+import { notePropertiesFold, rememberNotePropertiesFold } from './noteProperties';
+import './reader-note-properties.css';
 import { ReaderBoardSection, ReaderBoardSurface, boardFileName, preferredReaderBoard, rememberReaderBoard } from './ReaderBoardEntry';
 
 const claimedNoteRequests = new WeakSet<NoteDraftPatch>();
@@ -32,13 +36,16 @@ const MarkdownReadContent = lazy(() =>
 
 export function MarkdownReadView({ paper, onNavigateAnnotation }: { paper: PaperDocument; onNavigateAnnotation: (annotationId: string) => void }) {
   const content = paper.notes[0]?.content ?? '';
+  // Properties live in the note's own frontmatter; the read view renders them
+  // as chips and never shows the raw YAML block as body text.
+  const split = useMemo(() => splitFrontmatter(content), [content]);
   const endSpaceRef = useMarkdownEndSpace<HTMLDivElement>();
   return (
     <div className="markdown-reader">
       <div className="markdown-reader-header">
         <div className="panel-title">{zh.reader.noteTitle}</div>
       </div>
-      <div ref={endSpaceRef} className="md-body markdown-reader-content">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</div>
+      <div ref={endSpaceRef} className="md-body markdown-reader-content"><MarkdownPropertySummary properties={split.properties} ariaLabel="笔记属性" />{renderMarkdownWithAnnotationRefs(split.body, paper, onNavigateAnnotation)}</div>
     </div>
   );
 }
@@ -84,6 +91,17 @@ export function MarkdownNotePanel({
     return (preferred && existingLibraryNoteSession(paper.paperId, preferred.id)) || acquireLibraryNoteSession(paper.paperId, preferred, onSave, zh.reader.noteDefaultTitle);
   });
   const { noteId: selectedNoteId, title, content, status: saveState, error: saveError } = useSyncExternalStore(session.subscribe, session.getSnapshot);
+  // One note, one string: properties are the frontmatter of the same
+  // `content` the session already saves, so sidebar / floating / writing
+  // surfaces (and a restart) all read the identical data. Splitting is
+  // derived state; merely viewing never serialises anything.
+  const split = useMemo(() => splitFrontmatter(content), [content]);
+  const noteBody = split.body;
+  const noteProperties = split.properties;
+  const propertyCount = Object.keys(noteProperties).length;
+  const [propertiesVisible, setPropertiesVisible] = useState(() => notePropertiesFold(paper.paperId, selectedNoteId, propertyCount > 0));
+  useEffect(() => { setPropertiesVisible(notePropertiesFold(paper.paperId, selectedNoteId, Object.keys(splitFrontmatter(session.getSnapshot().content).properties).length > 0)); }, [paper.paperId, selectedNoteId, session]);
+  const togglePropertiesVisible = (next: boolean) => { setPropertiesVisible(next); rememberNotePropertiesFold(paper.paperId, selectedNoteId, next); };
   const [mode, setMode] = useNoteContentMode(surfaceActive);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -220,6 +238,20 @@ export function MarkdownNotePanel({
   };
   const updateTitle = (next: string) => session.update(next, session.getSnapshot().content);
   const updateContent = (next: string) => session.update(session.getSnapshot().title, next);
+  // Live edits touch only the body; an existing frontmatter prefix is kept
+  // byte-for-byte (legacy notes without one stay without one).
+  const updateBody = (nextBody: string) => { const snapshot = session.getSnapshot(); session.update(snapshot.title, replaceMarkdownBody(snapshot.content, nextBody)); };
+  const updateProperties = (next: DocumentProperties) => {
+    const snapshot = session.getSnapshot();
+    try {
+      // Removing the last property restores the legacy shape instead of
+      // leaving an empty `---` block behind.
+      const updated = withoutEmptyFrontmatter(updateMarkdownProperties(snapshot.content, next));
+      session.update(snapshot.title, updated);
+      setActionError('');
+    } catch (error) { setActionError(String(error)); }
+  };
+  const propertiesEditable = !boardPath && selectedNoteId !== summaryNoteId;
   const focusedAnnotation = paper.annotations.find(item => item.id === focusedAnnotationId) ?? null;
   const focusedCitationLabel = focusedAnnotation
     ? annotationCitationLabel(annotationLabelText(focusedAnnotation.type), zh.reader.annotationPage(focusedAnnotation.page))
@@ -366,19 +398,20 @@ export function MarkdownNotePanel({
       </> : mode === 'edit' ? (
         <>
           <MarkdownAuthoringDock open={templateOpen} onOpenChange={setTemplateOpen} onInsert={insertTemplate} onFormat={insertFormat} onImage={() => editorRef.current?.pickImages()} sourceMode={sourceMode} onToggleSource={() => setSourceMode(current => !current)} />
+        {propertiesEditable && <MarkdownPropertiesPanel key={`${paper.paperId}:${selectedNoteId}`} className="note-properties" properties={noteProperties} onChange={updateProperties} visible={propertiesVisible} onVisibleChange={togglePropertiesVisible} subtitle="与 Markdown 笔记相同的属性，保存在这篇笔记里" headingExtra={<span className="note-properties-count" aria-label={`${propertyCount} 个属性`}>{propertyCount}</span>} />}
         <Suspense fallback={<div className="note-editor-loading"><LoaderCircle className="spin" aria-hidden="true" /></div>}>
-          <MarkdownLiveEditor documentPath={paperNoteImageDocument(paper.paperId, selectedNoteId ?? 'unsaved')} imageUpload={surfaceActive ? file => uploadSummaryImage(paper.paperId, file) : undefined} key={`${paper.paperId}:${selectedNoteId}`} ref={editorRef} markdown={content} sourceMode={sourceMode} onChange={updateContent} onBlur={() => void saveCurrent()} placeholder={zh.reader.notePlaceholder} />
+          <MarkdownLiveEditor documentPath={paperNoteImageDocument(paper.paperId, selectedNoteId ?? 'unsaved')} imageUpload={surfaceActive ? file => uploadSummaryImage(paper.paperId, file) : undefined} key={`${paper.paperId}:${selectedNoteId}`} ref={editorRef} markdown={noteBody} sourceMode={sourceMode} onChange={updateBody} onBlur={() => void saveCurrent()} placeholder={zh.reader.notePlaceholder} />
         </Suspense>
         </>
       ) : (
-        <article ref={endSpaceRef} className="md-body markdown-preview note-preview-only">{renderMarkdownWithAnnotationRefs(content, paper, onNavigateAnnotation)}</article>
+        <article ref={endSpaceRef} className="md-body markdown-preview note-preview-only">{propertiesEditable && <MarkdownPropertySummary properties={noteProperties} ariaLabel="笔记属性" />}{renderMarkdownWithAnnotationRefs(propertiesEditable ? noteBody : content, paper, onNavigateAnnotation)}</article>
       )}
     </div>
   );
 }
 
 function noteExcerpt(content: string) {
-  return content
+  return splitFrontmatter(content).body
     .replace(/@annotation\([^)]+\)/g, '标注引用')
     .replace(/[#>*_`\-[\]]/g, ' ')
     .replace(/\s+/g, ' ')

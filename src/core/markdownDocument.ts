@@ -74,6 +74,15 @@ export function updateMarkdownProperties(markdown: string, next: DocumentPropert
   return `${parts.bom}${parts.delimiter}${eol}${yaml}${parts.delimiter}${eol}${parts.body}`;
 }
 
+/** Drop a frontmatter block that carries no mapping any more (`---\n{}\n---`), so a
+ * note whose last property was removed returns to its legacy shape byte-for-byte. */
+export function withoutEmptyFrontmatter(markdown: string) {
+  const parts = envelope(markdown);
+  if (parts.yaml === null) return markdown;
+  const yaml = parts.yaml.replace(/\r?\n/g, '\n').trim();
+  return yaml === '' || yaml === '{}' ? parts.bom + parts.body : markdown;
+}
+
 function managedTitle(body: string) {
   return /^(?:[ \t]*\r?\n)*[ \t]{0,3}#[ \t]*(?!#)([^\r\n]*)(?:\r?\n|$)(?:[ \t]*\r?\n)*/.exec(body);
 }

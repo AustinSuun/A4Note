@@ -1,0 +1,186 @@
+{
+  "label": "after",
+  "instance": "arena-two-props",
+  "steps": [
+    {
+      "step": "plain note",
+      "created": true,
+      "previous": "阅读笔记 4",
+      "title": "阅读笔记 5"
+    },
+    {
+      "step": "note baseline (db)",
+      "hasNote": true,
+      "noteId": "note-51d83cb7-06e3-4065-8dd7-739d6d42ac3a",
+      "startsWithYaml": false,
+      "length": 39
+    },
+    {
+      "step": "note sidebar initial",
+      "present": true,
+      "panel": true,
+      "folded": true,
+      "count": "0",
+      "rows": [],
+      "editorHasYaml": false,
+      "editorText": "# 阅读笔记 5原生正文 legacy bodysecond line",
+      "saveState": "已保存",
+      "title": "阅读笔记 5",
+      "rect": {
+        "x": 1112.800048828125,
+        "y": 62,
+        "w": 459.20001220703125,
+        "h": 788
+      }
+    },
+    {
+      "step": "viewing writes nothing",
+      "unchanged": true
+    },
+    {
+      "step": "properties persisted into the same note row",
+      "sameNote": true,
+      "startsWithYaml": true,
+      "hasTag": true,
+      "hasDate": true,
+      "bodyIntact": true
+    },
+    {
+      "step": "note sidebar with properties",
+      "present": true,
+      "panel": true,
+      "folded": false,
+      "count": "2",
+      "rows": [
+        "tags",
+        "date"
+      ],
+      "editorHasYaml": false,
+      "editorText": "# 阅读笔记 5原生正文 legacy bodysecond line",
+      "saveState": "已保存",
+      "title": "阅读笔记 5",
+      "rect": {
+        "x": 1112.800048828125,
+        "y": 62,
+        "w": 459.20001220703125,
+        "h": 788
+      }
+    },
+    {
+      "step": "floating form shares the same properties",
+      "menuItem": "悬浮速记Ctrl+Alt+4叠在 PDF",
+      "present": true,
+      "panel": true,
+      "folded": false,
+      "count": "2",
+      "rows": [
+        "tags",
+        "date"
+      ],
+      "editorHasYaml": false,
+      "editorText": "# 阅读笔记 5原生正文 legacy bodysecond line",
+      "saveState": "已保存",
+      "title": "阅读笔记 5",
+      "rect": {
+        "x": 950.7999877929688,
+        "y": 173.1125030517578,
+        "w": 520.875,
+        "h": 486.95001220703125
+      }
+    },
+    {
+      "step": "writing form shares the same properties",
+      "menuItem": "专注写作Ctrl+Alt+3 / Ctr",
+      "present": true,
+      "panel": true,
+      "folded": false,
+      "count": "2",
+      "rows": [
+        "tags",
+        "date"
+      ],
+      "editorHasYaml": false,
+      "editorText": "# 阅读笔记 5原生正文 legacy bodysecond line",
+      "saveState": "已保存",
+      "title": "阅读笔记 5",
+      "rect": {
+        "x": 328.8000183105469,
+        "y": 62,
+        "w": 1243.2000732421875,
+        "h": 788
+      }
+    },
+    {
+      "step": "back to sidebar form",
+      "menuItem": "边读边记Ctrl+Alt+2PDF 与笔",
+      "present": true,
+      "panel": true,
+      "folded": false,
+      "count": "2",
+      "rows": [
+        "tags",
+        "date"
+      ],
+      "editorHasYaml": false,
+      "editorText": "# 阅读笔记 5原生正文 legacy bodysecond line",
+      "saveState": "已保存",
+      "title": "阅读笔记 5",
+      "rect": {
+        "x": 1112.800048828125,
+        "y": 62,
+        "w": 459.20001220703125,
+        "h": 788
+      }
+    },
+    {
+      "step": "after reload",
+      "sameNote": true,
+      "present": true,
+      "panel": true,
+      "folded": false,
+      "count": "2",
+      "rows": [
+        "tags",
+        "date"
+      ],
+      "editorHasYaml": false,
+      "editorText": "# 阅读笔记 5原生正文 legacy bodysecond line",
+      "saveState": "已保存",
+      "title": "阅读笔记 5",
+      "rect": {
+        "x": 1112.800048828125,
+        "y": 62,
+        "w": 459.20001220703125,
+        "h": 788
+      }
+    },
+    {
+      "step": "125% scaling",
+      "present": true,
+      "panel": true,
+      "folded": false,
+      "count": "2",
+      "rows": [
+        "tags",
+        "date"
+      ],
+      "editorHasYaml": false,
+      "editorText": "# 阅读笔记 5原生正文 legacy bodysecond line",
+      "saveState": "已保存",
+      "title": "阅读笔记 5",
+      "rect": {
+        "x": 790.7999877929688,
+        "y": 147.91250610351562,
+        "w": 386.4750061035156,
+        "h": 375.3500061035156
+      }
+    },
+    {
+      "step": "removing every property restores the legacy note bytes",
+      "identical": true,
+      "rows": []
+    }
+  ],
+  "errors": [],
+  "problem": null
+}
