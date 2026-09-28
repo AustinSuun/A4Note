@@ -1,31 +1,30 @@
 import { AnnotationToolIcon } from '../ReaderIcons';
+import type { SelectionPopupAnchor } from './pdfSelectionPopup';
 
 type SelectionPopupProps = {
-  visible: boolean;
-  x: number;
-  y: number;
+  /** Page-percentage anchor (see `selectionPopupAnchor`); the popup is rendered inside the page's render layer. */
+  anchor: SelectionPopupAnchor;
   onHighlight: () => void;
   onUnderline: () => void;
 };
 
 /**
- * 文字选中后在鼠标附近弹出的快捷标注工具。
- * 仅在 cursor 模式下显示。
+ * 文字选中后挂在选区所在行上方（页面顶部放不下时挂在末行下方）的快捷标注工具。
+ * 仅在 cursor 模式下显示；锚点与选区预览、落盘标注共用同一套页面百分比几何。
  */
 export function SelectionPopup({
-  visible,
-  x,
-  y,
+  anchor,
   onHighlight,
   onUnderline,
 }: SelectionPopupProps) {
-  if (!visible) return null;
-
   return (
     <div
-      className="selection-popup"
-      style={{ left: x, top: y }}
+      className={`selection-popup ${anchor.placement}`}
+      data-placement={anchor.placement}
+      style={{ left: `${anchor.x}%`, top: `${anchor.y}%` }}
       onMouseDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
     >
       <button
         type="button"

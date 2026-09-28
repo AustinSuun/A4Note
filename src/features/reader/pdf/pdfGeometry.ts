@@ -1,18 +1,20 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { PositionJson } from '../../../core/types';
 import { pdfCoordinateLayer } from './pdfCoordinates';
-import type { DragDraft, RectBox, TextItemBox, TextOrientation } from './types';
+import type { DragDraft, RectBox, TextFontFamily, TextItemBox, TextOrientation } from './types';
 
 const PDF_RENDER_BUFFER_SCALE = 2.15;
 
 export async function extractTextItemBoxes(page: pdfjsLib.PDFPageProxy, viewport: pdfjsLib.PageViewport): Promise<TextItemBox[]> {
   const textContent = await page.getTextContent();
+  const styles: Record<string, { fontFamily?: unknown } | undefined> = textContent.styles ?? {};
   return textContent.items
-    .filter((item): item is typeof item & { str: string; transform: number[]; width: number; height: number } => 'str' in item && Boolean(item.str?.trim()) && 'transform' in item)
+    .filter((item): item is typeof item & { str: string; transform: number[]; width: number; height: number; fontName: string } => 'str' in item && Boolean(item.str?.trim()) && 'transform' in item)
     .map((item) => {
       const transformed = pdfjsLib.Util.transform(viewport.transform, item.transform);
       const orientation = textOrientationFromTransform(transformed);
       const runLength = Math.max(item.width * viewport.scale, 1);
+      const fontFamily = textFontFamily(styles[item.fontName]?.fontFamily);
       if (orientation === 0) {
         const x = transformed[4];
         const y = transformed[5];
@@ -20,16 +22,22 @@ export async function extractTextItemBoxes(page: pdfjsLib.PDFPageProxy, viewport
         // `y` is the PDF text baseline. Keep the selectable/run box as ascent→baseline so hit
         // testing, offsets and old annotation data stay stable; highlight/underline helpers add
         // descender coverage on the baseline side instead of pretending this box contains it.
-        return textItemBox(item.str, x, y - height, runLength, height, height, viewport, orientation);
+        return textItemBox(item.str, x, y - height, runLength, height, height, viewport, orientation, fontFamily);
       }
       // `getViewport` already folds the page's /Rotate into `transform`, so a rotated run's
       // direction and ascent vectors are no longer axis aligned. Walk the run's four corners and
       // keep their axis-aligned bounds so the span covers the painted glyphs and stays on the page.
       const glyphHeight = Math.max(Math.hypot(transformed[2], transformed[3]), item.height * viewport.scale, 6);
       const bounds = rotatedRunBounds(transformed, runLength, glyphHeight);
-      return textItemBox(item.str, bounds.left, bounds.top, bounds.width, bounds.height, glyphHeight, viewport, orientation);
+      return textItemBox(item.str, bounds.left, bounds.top, bounds.width, bounds.height, glyphHeight, viewport, orientation, fontFamily);
     })
     .filter((item) => item.width > 0.15 && item.height > 0.15);
+}
+
+/** pdf.js classifies every PDF font as serif, sans-serif or monospace (`TextStyle.fontFamily`).
+ * Only those generic families are kept: the text layer must never name a concrete font. */
+export function textFontFamily(value: unknown): TextFontFamily | undefined {
+  return value === 'serif' || value === 'sans-serif' || value === 'monospace' ? value : undefined;
 }
 
 /** Reading direction of a text run in viewport space, quantized to clockwise quarter turns. */
@@ -51,7 +59,7 @@ function rotatedRunBounds(transform: ArrayLike<number>, runLength: number, glyph
   return { left, top, width: Math.max(...xs) - left, height: Math.max(...ys) - top };
 }
 
-function textItemBox(text: string, left: number, top: number, width: number, height: number, fontSize: number, viewport: pdfjsLib.PageViewport, orientation: TextOrientation): TextItemBox {
+function textItemBox(text: string, left: number, top: number, width: number, height: number, fontSize: number, viewport: pdfjsLib.PageViewport, orientation: TextOrientation, fontFamily: TextFontFamily | undefined): TextItemBox {
   const box: TextItemBox = {
     text,
     x: clamp((left / viewport.width) * 100, 0, 100),
@@ -60,6 +68,7 @@ function textItemBox(text: string, left: number, top: number, width: number, hei
     height: clamp((height / viewport.height) * 100, 0, 100),
     fontSize,
   };
+  if (fontFamily) box.fontFamily = fontFamily;
   return orientation ? { ...box, orientation } : box;
 }
 
