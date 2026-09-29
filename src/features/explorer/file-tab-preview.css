@@ -1,0 +1,84 @@
+/* Image and HTML previews in the generic file tab. The shared .file-tab rules in workbench.css stay untouched. */
+.file-tab-header > .file-tab-identity { flex: 1 1 auto; }
+.file-tab-segmented {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  margin-inline-start: auto;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.file-tab-segmented button {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--ui-body-small-font-size);
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.file-tab-segmented button:hover { color: var(--ink); }
+.file-tab-segmented button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface));
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+.file-tab-segmented button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Stacked body: a meta line on top and a preview that takes the remaining height. */
+.file-tab-body.file-tab-body-stacked { display: flex; flex-direction: column; }
+.file-tab-body-stacked > .file-tab-meta {
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.file-tab-body-stacked > .file-tab-preview,
+.file-tab-body-stacked > .file-tab-image-stage,
+.file-tab-body-stacked > .file-tab-html-frame { flex: 1 1 auto; min-height: 0; height: auto; }
+.file-tab-body-stacked > .file-tab-hint { padding: 12px; }
+.file-tab-notice { flex-basis: 100%; color: #a2463b; font-weight: 600; }
+.file-tab-safe-note { color: var(--accent-strong); font-weight: 600; }
+
+/* Images: centred on a quiet checkerboard (shows transparency); fit never upscales. */
+.file-tab-image-stage {
+  overflow: auto;
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(45deg, color-mix(in srgb, var(--line) 45%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, var(--line) 45%, transparent) 75%),
+    linear-gradient(45deg, color-mix(in srgb, var(--line) 45%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, var(--line) 45%, transparent) 75%);
+  background-position: 0 0, 8px 8px;
+  background-size: 16px 16px;
+}
+.file-tab-image-stage.fit { display: flex; align-items: center; justify-content: center; padding: 12px; }
+.file-tab-image-stage.fit img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.file-tab-image-stage.actual { display: grid; place-items: safe center; padding: 12px; }
+.file-tab-image-stage.actual img { display: block; max-width: none; max-height: none; }
+.file-tab-image-stage > .file-tab-hint { margin: auto; }
+
+.file-tab-preview-message {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 10px;
+  height: 100%;
+  padding: 28px 24px;
+  color: var(--ink);
+  text-align: center;
+}
+.file-tab-preview-message p { max-width: 420px; margin: 0; font-size: var(--ui-scene-font-size); line-height: 1.6; }
+.file-tab-preview-message .file-tab-preview-message-meta { color: var(--muted); font-size: var(--ui-body-small-font-size); }
+
+/* The rendered page keeps its own colours: always a white canvas, never inverted by the app theme. */
+.file-tab-html-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: #fff;
+  color-scheme: light;
+}
