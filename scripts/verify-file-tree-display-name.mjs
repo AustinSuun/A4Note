@@ -97,5 +97,10 @@ eq(find(tree, n => n.props?.className === 'file-tree-rename-extension').props.ch
 find(tree, n => n.props?.className === 'tree-edit-cancel').props.onClick(); tree = render();
 const pngRow = find(tree, n => n.type === 'button' && n.props?.['data-file-path'] === entries[3].path);
 pngRow.props.onContextMenu({ preventDefault() {}, stopPropagation() {}, clientX: 100, clientY: 100 }); tree = render();
-eq(find(tree, n => n.props?.className === 'file-tree-context-menu'), undefined, 'existing non-Markdown context-menu policy is unchanged');
+// Task 1f8d8317: non-Markdown files now open the same type-agnostic context menu.
+const pngMenu = find(tree, n => n.props?.className === 'file-tree-context-menu');
+assert.ok(pngMenu, 'non-Markdown rows open the context menu (task 1f8d8317)');
+const pngButtons = (function collect(node) { const kids = node?.props?.children; const list = Array.isArray(kids) ? kids : kids ? [kids] : []; return [node, ...list.flatMap(collect)]; })(pngMenu).filter(n => n?.type === 'button');
+assert.ok(pngButtons.length >= 3, 'context menu keeps rename/reveal/delete for non-Markdown files');
+checks++;
 console.log(`PASS ${checks} file-tree display/identity assertions; synthetic component state, no native file operations.`);

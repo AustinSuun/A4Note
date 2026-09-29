@@ -133,6 +133,7 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
   const [expandedPaths, setExpandedPaths] = useState<string[]>([]);
   const [sortMode, setSortMode] = useState<FileTreeSortMode>('name-asc');
   const [sortOpen, setSortOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [allFoldersExpanded, setAllFoldersExpanded] = useState(false);
   const [treeBusy, setTreeBusy] = useState(false);
   const [hoveredPath, setHoveredPath] = useState<string | null>(null);
@@ -150,6 +151,7 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
   const renameSubmittingRef = useRef(false);
   const rowRefs = useRef(new Map<string, HTMLElement>());
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
+  const createMenuRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const treeContentRef = useRef<HTMLDivElement | null>(null);
   const treeRowsRef = useRef<HTMLDivElement | null>(null);
@@ -223,6 +225,26 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [sortOpen]);
+  // Task 1f8d8317: the merged 新建 menu follows the same outside-click/Escape contract as the
+  // sort menu, returns focus to its trigger and supports ArrowUp/ArrowDown item navigation.
+  useEffect(() => {
+    if (!createOpen) return undefined;
+    const close = (event: MouseEvent) => {
+      if (!createMenuRef.current?.contains(event.target as Node)) setCreateOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setCreateOpen(false);
+        createMenuRef.current?.querySelector<HTMLButtonElement>('[data-create-trigger]')?.focus();
+      }
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [createOpen]);
 
   useEffect(() => {
     if (!contextMenu) return undefined;
@@ -341,7 +363,9 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
   };
 
   const openFileContextMenu = (event: ReactMouseEvent<HTMLButtonElement>, entry: DirectoryEntry) => {
-    if ((!entry.is_directory && !isMarkdownFile(entry)) || folderDraft || renamingEntry) return;
+    // Task 1f8d8317: every entry type gets the context menu (boards, HTML, images, PDF, …);
+    // the actions below are type-agnostic and the App-level delete flow confirms for all files.
+    if (folderDraft || renamingEntry) return;
     event.preventDefault();
     event.stopPropagation();
     // Viewport coordinates only; the layout-space `left/top` (root zoom aware) and the
@@ -628,8 +652,44 @@ export function FileTreePanel({ rootPath, onOpenFile, onDeleteFile, onRenameFile
   return (
     <aside className="file-tree-panel" aria-label={zh.workbench.fileTree}>
       <header className="file-tree-toolbar" role="toolbar" aria-label="文件树操作">
-        {canCreate && <button type="button" className="workbench-icon-button" title="新建笔记" aria-label="新建笔记" onClick={() => createFileIn(rootPath)}><FilePlus size={17} aria-hidden="true" /></button>}
-        {onCreateBoard && <button type="button" className="workbench-icon-button" title="新建白板" aria-label="新建白板" onClick={() => createBoardIn(rootPath)}><LayoutDashboard size={17} aria-hidden="true" /></button>}
+        {canCreate && (
+          <div ref={createMenuRef} className="file-tree-sort-wrap">
+            <button
+              type="button"
+              className={'workbench-icon-button' + (createOpen ? ' active' : '')}
+              title="新建"
+              aria-label="新建"
+              aria-haspopup="menu"
+              aria-expanded={createOpen}
+              data-create-trigger=""
+              onClick={() => setCreateOpen((open) => !open)}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowDown') return;
+                event.preventDefault();
+                if (!createOpen) setCreateOpen(true);
+                else createMenuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
+              }}
+            >
+              <FilePlus size={17} aria-hidden="true" />
+            </button>
+            {createOpen && (
+              <div
+                className="file-tree-sort-menu file-tree-create-menu"
+                role="menu"
+                aria-label="新建"
+                onKeyDown={(event) => {
+                  const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')];
+                  const index = items.indexOf(document.activeElement as HTMLButtonElement);
+                  if (event.key === 'ArrowDown') { event.preventDefault(); items[(index + 1) % items.length]?.focus(); }
+                  else if (event.key === 'ArrowUp') { event.preventDefault(); items[(index - 1 + items.length) % items.length]?.focus(); }
+                }}
+              >
+                <button type="button" role="menuitem" onClick={() => { setCreateOpen(false); createFileIn(rootPath); }}><FilePlus size={15} aria-hidden="true" /><span>新建笔记</span></button>
+                {onCreateBoard && <button type="button" role="menuitem" onClick={() => { setCreateOpen(false); createBoardIn(rootPath); }}><LayoutDashboard size={15} aria-hidden="true" /><span>新建白板</span></button>}
+              </div>
+            )}
+          </div>
+        )}
         {canCreateFolder && <button type="button" className="workbench-icon-button" title="新建文件夹" aria-label="新建文件夹" disabled={folderDraft?.saving || renamePending} onClick={() => createFolderIn(rootPath)}><FolderPlus size={17} aria-hidden="true" /></button>}
         <div ref={sortMenuRef} className="file-tree-sort-wrap">
           <button type="button" className={'workbench-icon-button' + (sortOpen ? ' active' : '')} title={`排序：${activeSortLabel}`} aria-label={`排序：${activeSortLabel}`} aria-haspopup="menu" aria-expanded={sortOpen} onClick={() => setSortOpen((open) => !open)}>

@@ -88,6 +88,7 @@ const steps = [
   ['npm', ['run', 'test:library-export']],
   ['npm', ['run', 'test:library-behavior']],
   ['npm', ['run', 'test:tree-guides-browser']],
+  ['npm', ['run', 'test:tree-new-menu-browser']],
   ['npm', ['run', 'test:annotation-tools-settings']],
   ['npm', ['run', 'test:annotation-tools-browser']],
   ['npm', ['run', 'test:viewport-to-layout']],
