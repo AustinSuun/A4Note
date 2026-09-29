@@ -1,7 +1,7 @@
 # 标题栏「打开 ▾」只作用于当前文件（bcabb18d）交付记录 · arena-b · 2026-09-29
 
 - 任务：`bcabb18d` 标题栏「打开 ▾」按钮只在打开具体文件时出现，并作用于该文件
-- 执行：arena-b（worker `a4f50d11`），分支 `fix/open-menu-file-arena-b`，worktree `.worktrees/open-menu-file-arena-b`，基线本地 main `a4f6a19`
+- 执行：arena-b（worker `a4f50d11`），分支 `fix/open-menu-file-arena-b`，worktree `.worktrees/open-menu-file-arena-b`，基线本地 main `a4f6a19`，交付前 rebase 到 main `c513766`（6d59b629 合入，无冲突）
 - 提交与合入：见第 8 节
 
 ## 1. 问题
@@ -100,7 +100,7 @@
 ## 8. 完整 verify 与已知问题
 
 - `npm run build`：通过。
-- `npm run verify`（PowerShell）：见第 9 节。
+- `npm run verify`（PowerShell，rebase 到 main `c513766` 之后）：83 步中 82 步通过（含 `test:open-menu-target`、`test:open-menu-browser` 34/34、cargo 249 通过），唯一失败 `test:ui-state`（`verify-ui-state.mjs:383`），main 上已有。
 - 已知且与本任务无关：`test:ui-state`（`verify-ui-state.mjs:383`）在 main 上已失败；未注册到 verify 的 `scripts/verify-note-toolbar.mjs` 在 main 上已失败（断言的 `DocumentToolbarProvider enabled=` 源码已被其他任务改掉）。均未修改。
 
 ## 9. 提交与合入
