@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-29T15:50:00+08:00",
+  "updatedAt": "2026-09-29T20:31:38+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "Arena-秋序 (arena-worker d5193e61)",
     "branch": "feat/doc2x-translate-qiuxu（worktree .worktrees/doc2x-translate-qiuxu，基线 b008046）",
     "scope": [
+      "release-0134-arena-b / 用户授权发布 0.1.34：以本地 main 273057e（较 origin/main 02fa56d 新增 54 个提交：白板与统一批注工具、Doc2X 翻译插件、笔记属性区、左缘场景切换、资源管理器新建/右键菜单、文件预览及多项阅读器/缩放修复）为产品基线。cf28501 修正 test:ui-state 过时断言（reader-toolbar-center 由 42184f1 有意恢复；工具选项/常量/类型随 97fcfb6c 迁入 src/features/annotationTools，31 条仅在新位置同样匹配时改指向，0 条删除），此前 383 行失败一直掩盖后续断言。桌面版 0.1.33→0.1.34；浏览器扩展 0.6.5→0.6.6（manifest 自 0.1.7 未变，而 1099622 修改了 collector/normalize 的 OpenReview PDF 下载）。流程：受保护 PR 必需 Verify 成功后正常合并；标准 package:windows 签名构建与配对扩展；版本/SHA-256/Minisign 验签；publish-release 草稿资产校验后发布为 latest。结果记录见 docs/mcp-release-0134-arena-b-2026-09-29.md。",
       "scene-edge-arena-b：80263463 内容区左缘悬停场景切换器（8px 热区、150ms 停留、240ms 宽限加安全三角、只动 transform/opacity、设置默认开启，调用现有 setScene）（arena-b）。",
       "file-preview-arena-b：4f5b33dd 通用文件页签直接显示图片（适应/实际大小、像素尺寸、上限与解码失败提示）并在 sandbox=\"\" 的 srcdoc iframe 中安全渲染 HTML（预览/源码按文件记忆、5MB 上限、GBK 等声明编码、相对图片内联）（arena-b）。",
       "md-open-reveal-arena-b：2891f95a 打开笔记不再露出首行源码（reveal 需要用户意图，失焦收起），切换笔记首帧 p95 441→206ms（arena-b）。",
