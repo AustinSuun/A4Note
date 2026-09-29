@@ -9,6 +9,7 @@ const coreTypesSource = await readFile('src/core/types.ts', 'utf8');
 const readerTypesSource = await readFile('src/features/reader/pdf/types.ts', 'utf8');
 const readerFeatureTypesSource = await readFile('src/features/reader/types.ts', 'utf8');
 const readerConstantsSource = await readFile('src/features/reader/readerConstants.ts', 'utf8');
+const annotationToolsConstantsSource = await readFile('src/features/annotationTools/constants.ts', 'utf8'); // Task 97fcfb6c moved the tool table into the shared module.
 const pdfGeometrySource = await readFile('src/features/reader/pdf/pdfGeometry.ts', 'utf8');
 const pdfSelectionSource = await readFile('src/features/reader/pdf/pdfSelection.ts', 'utf8');
 const pdfAnnotationHelpersSource = await readFile('src/features/reader/pdf/pdfAnnotationHelpers.ts', 'utf8');
@@ -91,12 +92,12 @@ assert.match(pdfAnnotationHelpersSource, /export function underlineThicknessForS
 assert.match(pdfAnnotationHelpersSource, /top: `\$\{y \+ height \+ baselineGap\}%`/);
 assert.match(coreTypesSource, /export type AnnotationType = 'highlight' \| 'comment' \| 'underline' \| 'area' \| 'text' \| 'ink' \| 'rect' \| 'arrow'/);
 assert.match(coreTypesSource, /export type ReaderTool = 'cursor' \| 'hand' \| 'eraser' \| AnnotationType/);
-assert.match(readerConstantsSource, /id: 'text'/);
-assert.match(readerConstantsSource, /id: 'ink'/);
-assert.match(readerConstantsSource, /id: 'eraser'/);
-assert.match(readerConstantsSource, /id: 'rect'/);
-assert.match(readerConstantsSource, /id: 'arrow'/);
-assert.doesNotMatch(readerConstantsSource, /id: 'comment'/);
+assert.match(annotationToolsConstantsSource, /id: 'text'/);
+assert.match(annotationToolsConstantsSource, /id: 'ink'/);
+assert.match(annotationToolsConstantsSource, /id: 'eraser'/);
+assert.match(annotationToolsConstantsSource, /id: 'rect'/);
+assert.match(annotationToolsConstantsSource, /id: 'arrow'/);
+assert.doesNotMatch(annotationToolsConstantsSource, /id: 'comment'/);
 assert.doesNotMatch(selectionPopupSource, /onComment/);
 assert.doesNotMatch(selectionPopupSource, /id="comment"/);
 assert.doesNotMatch(selectionPopupSource, /activeAnnotationColor/);
@@ -382,7 +383,7 @@ assert.match(annotationMarkSource, /onDoubleClick=\{handleDoubleClick\}/);
 assert.match(annotationMarkSource, /<EditIcon \/>/);
 assert.match(annotationMarkSource, /onAppendAnnotationToNote\?\.\(annotationId\)/);
 assert.match(annotationMarkSource, /void onDeleteAnnotation\?\.\(annotationId\)/);
-assert.match(readerConstantsSource, /export const toolColorPresets = \[/);
+assert.match(annotationToolsConstantsSource, /export const toolColorPresets = \[/); // Task 97fcfb6c: presets live in the shared module; readerConstants re-exports them.
 assert.match(annotationMarkSource, /toolColorPresets\.map\(\(color\) =>/);
 assert.match(annotationMarkSource, /className="annotation-color-custom-choice"/);
 assert.match(annotationMarkSource, /const actionColor = textLayout\?\.textColor \?\? annotation\.color/);

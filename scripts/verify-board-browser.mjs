@@ -163,6 +163,27 @@ const dark=await page.evaluate(()=>getComputedStyle(document.querySelector('[dat
 await page.evaluate(()=>{delete document.documentElement.dataset.theme;});await page.waitForTimeout(50);
 const light=await page.evaluate(()=>getComputedStyle(document.querySelector('[data-entry="a"] .board-stage')).backgroundColor);
 check('the canvas follows the theme tokens (dark differs from light) and strokes use currentColor',dark!==light&&await page.evaluate(()=>document.querySelector('[data-entry="a"] .board-element.rect rect').getAttribute('stroke')==='currentColor'),{dark,light});
+// d8505429: shared dock skin, background textures, per-board persistence, controls fallback.
+const dockRadius=await page.evaluate(()=>getComputedStyle(document.querySelector('[data-entry="a"] .board-annotation-dock .annotation-toolbar')).borderRadius);
+check('the board dock shares the floating-dock capsule skin (16px radius)',dockRadius==='16px',dockRadius);
+check('floating-dock.css skins the board dock from the shared file (no copied styles)',fs.readFileSync(path.join(process.cwd(),'src/shared/floating-dock.css'),'utf8').includes('.board-annotation-dock .annotation-toolbar'));
+const dotsStep=await page.evaluate(()=>{const fill=document.querySelector('[data-entry="a"] .board-grid')?.getAttribute('fill')??'';if(!fill.includes('url(#board-grid-'))return fill;const zoom=Number.parseFloat(document.querySelector('[data-entry="a"] .board-zoom')?.textContent??'100')/100;return {step:Number(document.querySelector('[data-entry="a"] pattern')?.getAttribute('width')),expect:24*zoom};});
+check('a legacy board without a background field opens with the default 24 world-px dots at the current zoom',typeof dotsStep==='object'&&Math.abs(dotsStep.step-dotsStep.expect)<0.6,dotsStep);
+check('background button present in the dock',await page.evaluate(()=>document.querySelectorAll('[data-entry="a"] .board-annotation-dock [aria-label="画布背景"]').length===1));
+await page.locator('[data-entry="a"] [aria-label="画布背景"]').click();
+const bgProbe=await page.evaluate(()=>({popovers:document.querySelectorAll('.reader-tool-popover').length,options:document.querySelectorAll('.board-bg-option').length,expanded:document.querySelector('[data-entry="a"] [aria-label="画布背景"]')?.getAttribute('aria-expanded'),body:document.querySelector('.reader-tool-popover')?.textContent?.slice(0,80)}));
+check('background popover opens with the style options',bgProbe.options>=5,bgProbe);
+await page.locator('.board-bg-option',{hasText:'方格纸'}).click();
+check('graph paper renders minor and major world-aligned grid lines',await page.evaluate(()=>Boolean(document.querySelector('[data-entry="a"] .board-grid-minor')&&document.querySelector('[data-entry="a"] .board-grid-line'))));
+await page.locator('.board-bg-option',{hasText:'大间距'}).click();
+check('density maps to world spacing (large = 40 world px at the current zoom)',await page.evaluate(()=>{const zoom=Number.parseFloat(document.querySelector('[data-entry="a"] .board-zoom')?.textContent??'100')/100;return Math.abs(Number(document.querySelector('[data-entry="a"] pattern')?.getAttribute('width'))-40*zoom)<0.6;}));
+await waitDoc(d=>d.background&&d.background.style==='graph'&&d.background.density==='large');
+check('the background choice persists into the .a4board document',(await doc()).background?.style==='graph');
+await page.evaluate(async()=>{const svg=document.querySelector('[data-entry="a"] svg.board-canvas');for(let i=0;i<14;i+=1){svg.dispatchEvent(new WheelEvent('wheel',{deltaY:240,ctrlKey:true,bubbles:true,cancelable:true}));await new Promise((r)=>setTimeout(r,30));}});
+await page.waitForFunction(()=>document.querySelector('[data-entry="a"] .board-grid')?.getAttribute('aria-hidden')==='true',null,{timeout:4000});
+check('zooming far out hides the texture to avoid moiré',true);
+await page.keyboard.press('Escape');
+check('without a title-bar host the document controls render as the stage overlay',await page.evaluate(()=>Boolean(document.querySelector('[data-entry="b"] .board-stage-controls .board-zoom'))));
 await page.setViewportSize({width:480,height:700});await page.waitForTimeout(100);
 check('narrow viewport keeps the tools and canvas usable',await page.evaluate(()=>{const t=document.querySelector('[data-entry="b"] [data-tool="select"]').getBoundingClientRect();const c=document.querySelector('[data-entry="b"] svg.board-canvas').getBoundingClientRect();return t.width>0&&c.width>200&&c.height>100;}));
 await page.screenshot({path:path.join(dir,'08-narrow.png')});

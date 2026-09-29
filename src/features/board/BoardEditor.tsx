@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  Check, Copy, Layers, LoaderCircle, Maximize2, Redo2, Trash2, Undo2, ZoomIn, ZoomOut,
+  Check, Copy, Layers, LoaderCircle, Maximize2, Palette, Redo2, Trash2, Undo2, ZoomIn, ZoomOut,
 } from 'lucide-react';
+import { useDocumentToolbar } from '../../workbench/DocumentToolbar';
+import { ReaderResponsiveToolbar } from '../reader/ReaderResponsiveToolbar';
 import {
   AnnotationToolIcon, AnnotationToolPopover, ToolColorPalette, ToolOptionsBar,
   annotationColorInputValue, defaultToolColors, toolColorToCss, toolHasSettings,
@@ -11,10 +14,10 @@ import type { AnnotationColor, ReaderTool } from '../../core/types';
 import type { SharedColorTool } from '../annotationTools';
 import { useTextDocument } from '../explorer/useTextDocument';
 import {
-  BOARD_MAX_ELEMENTS, appendInkPoint, applyArrowBindings, bindingFor, bringToFront, createElementId, createHistory, deleteElements, duplicateElements,
+  BOARD_MAX_ELEMENTS, appendInkPoint, applyArrowBindings, bindingFor, boardBackgroundSpacing, bringToFront, createElementId, createHistory, defaultBoardBackground, deleteElements, duplicateElements,
   elementBounds, elementsInRect, fitViewport, hitTest, normalizeRect, parseBoardDocument, recordHistory, redoHistory, sendToBack, serializeBoardDocument,
   transformElement, translateElement, undoHistory, unionBounds, updateElements, withBounds, withElements, zoomViewport, boardDisplayName, screenToWorld,
-  type BoardArrowElement, type BoardDocument, type BoardElement, type BoardHistory, type BoardInkElement, type BoardPoint, type BoardRect, type BoardViewport,
+  type BoardArrowElement, type BoardBackground, type BoardBackgroundDensity, type BoardBackgroundStyle, type BoardDocument, type BoardElement, type BoardHistory, type BoardInkElement, type BoardPoint, type BoardRect, type BoardViewport,
 } from '../../core/board';
 import './board.css';
 import { pointerToElementLayout } from '../../shared/ui/viewportToLayout';
@@ -84,6 +87,20 @@ const softFill = (value: string) => {
 
 const saveStateText = (state: string) => state === 'saving' ? '保存中…' : state === 'error' ? '保存失败' : state === 'paused' ? '等待文件操作…' : '已保存';
 
+/** Canvas background options (task d8505429): low-contrast world-aligned textures persisted per board. */
+const BG_STYLES: Array<{ id: BoardBackgroundStyle; label: string }> = [
+  { id: 'dots', label: '点阵' },
+  { id: 'grid', label: '网格' },
+  { id: 'lines', label: '横线' },
+  { id: 'graph', label: '方格纸' },
+  { id: 'solid', label: '纯色' },
+];
+const BG_DENSITIES: Array<{ id: BoardBackgroundDensity; label: string }> = [
+  { id: 'small', label: '小间距' },
+  { id: 'medium', label: '中' },
+  { id: 'large', label: '大间距' },
+];
+
 export function BoardEditor({ path, name, active = true, embedded = false, headerExtra, referenceText, onStatus, onRetry }: BoardEditorProps) {
   const { content, setContent, loading, error, saveState, saveError, save, reload } = useTextDocument(path);
   const parsed = useMemo(() => (loading || error ? null : parseBoardDocument(content)), [content, loading, error]);
@@ -108,6 +125,9 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
   const [toolSettings, setToolSettings] = useSharedAnnotationToolSettings();
   const [sharedToolColors, setSharedToolColor] = useSharedToolColors();
   const [optionsTool, setOptionsTool] = useState<BoardTool | null>(null);
+  const [bgOpen, setBgOpen] = useState(false);
+  const [renamingTitle, setRenamingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
   const [notice, setNotice] = useState('');
   const historyRef = useRef<BoardHistory>(createHistory());
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -170,6 +190,12 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
     setHistoryVersion((version) => version + 1);
     setContent(serializeBoardDocument(withElements(current, next)));
   }, [setContent, announce]);
+  /** Document-level metadata (background texture / title): persisted per board, outside element history. */
+  const setDocMeta = useCallback((patch: Partial<BoardDocument>) => {
+    const current = documentRef.current;
+    if (!current) return;
+    setContent(serializeBoardDocument({ ...current, ...patch }));
+  }, [setContent]);
 
   const undo = useCallback(() => {
     const current = documentRef.current; if (!current) return;
@@ -603,11 +629,14 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
     node.setSelectionRange(node.value.length, node.value.length);
   }, [editingElement?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return (
-    <div className={`board-editor${embedded ? ' embedded' : ''}`} data-board-id={document?.id ?? ''} data-board-tool={tool}>
-      <div className="board-toolbar" role="toolbar" aria-label="白板工具栏">
-        {!embedded && <div className="board-title" title={path}><Layers size={15} aria-hidden="true" /><span>{displayName}</span></div>}
-        <div className="board-tool-group annotation-toolbar" role="group" aria-label="工具">
+  const titleText = (document?.title ?? '').trim() || displayName;
+  const docToolbar = useDocumentToolbar();
+  const portalHost = active && docToolbar?.enabled && docToolbar.controlsHost ? docToolbar.controlsHost : null;
+  const background: BoardBackground = document?.background ?? defaultBoardBackground;
+  const bgStep = boardBackgroundSpacing(background) * viewport.zoom;
+  const bgPatternVisible = background.style !== 'solid' && bgStep >= 5;
+  const toolsGroup = (
+    <div className="annotation-toolbar" role="group" aria-label="工具">
           {TOOLS.map((item) => {
             const hasSettings = item.id === 'note' || toolHasSettings(item.readerTool);
             const color = ['select', 'hand', 'eraser'].includes(item.id) ? null : toolColorOf(item.id);
@@ -658,27 +687,56 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
               </div>
             );
           })}
-        </div>
-        <div className="board-tool-group" role="group" aria-label="编辑">
-          <button type="button" className="board-tool" onClick={undo} disabled={!canUndo} title="撤销（Ctrl+Z）" aria-label="撤销"><Undo2 size={16} aria-hidden="true" /></button>
+          <div className="annotation-tool-slot">
+            <button type="button" className={`annotation-tool-btn${bgOpen ? ' active' : ''}`} aria-label="画布背景" title="画布背景" aria-haspopup="dialog" aria-expanded={bgOpen}
+              onClick={() => setBgOpen((current) => !current)}>
+              <Palette size={22} aria-hidden="true" />
+            </button>
+            {bgOpen && (
+              <AnnotationToolPopover title="画布背景" onClose={() => setBgOpen(false)}>
+                <div className="reader-tool-options-bar tool-options-note" onMouseDown={(event) => event.stopPropagation()}>
+                  <small className="tool-option-hint">背景按白板保存进 .a4board 文件；深浅主题都保持低对比、随画布缩放对齐。</small>
+                  <div className="tool-option-block board-bg-options" role="group" aria-label="背景样式">
+                    {BG_STYLES.map((style) => (
+                      <button key={style.id} type="button" className={`board-bg-option${background.style === style.id ? ' active' : ''}`} aria-pressed={background.style === style.id}
+                        onClick={() => setDocMeta({ background: { style: style.id, density: background.density } })}>{style.label}</button>
+                    ))}
+                  </div>
+                  {background.style !== 'solid' && (
+                    <div className="tool-option-block board-bg-options" role="group" aria-label="背景密度">
+                      {BG_DENSITIES.map((density) => (
+                        <button key={density.id} type="button" className={`board-bg-option${background.density === density.id ? ' active' : ''}`} aria-pressed={background.density === density.id}
+                          onClick={() => setDocMeta({ background: { style: background.style, density: density.id } })}>{density.label}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </AnnotationToolPopover>
+            )}
+          </div>
+    </div>
+  );
+  const docControls = (
+    <>
+      <button type="button" className="board-tool" onClick={undo} disabled={!canUndo} title="撤销（Ctrl+Z）" aria-label="撤销"><Undo2 size={16} aria-hidden="true" /></button>
           <button type="button" className="board-tool" onClick={redo} disabled={!canRedo} title="重做（Ctrl+Shift+Z）" aria-label="重做"><Redo2 size={16} aria-hidden="true" /></button>
           <button type="button" className="board-tool" onClick={duplicateSelection} disabled={!selection.length} title="复制所选（Ctrl+D）" aria-label="复制所选"><Copy size={16} aria-hidden="true" /></button>
           <button type="button" className="board-tool" onClick={deleteSelection} disabled={!selection.length} title="删除所选（Delete）" aria-label="删除所选"><Trash2 size={16} aria-hidden="true" /></button>
-        </div>
-        <div className="board-tool-group" role="group" aria-label="视图">
+
           <button type="button" className="board-tool" onClick={() => zoomBy(1 / 1.2)} title="缩小（Ctrl+-）" aria-label="缩小"><ZoomOut size={16} aria-hidden="true" /></button>
           <button type="button" className="board-zoom" onClick={resetZoom} title="重置缩放（Ctrl+0）" aria-label="当前缩放，点击重置">{Math.round(viewport.zoom * 100)}%</button>
           <button type="button" className="board-tool" onClick={() => zoomBy(1.2)} title="放大（Ctrl+=）" aria-label="放大"><ZoomIn size={16} aria-hidden="true" /></button>
           <button type="button" className="board-tool" onClick={fitAll} title="适应内容（Ctrl+1）" aria-label="适应内容"><Maximize2 size={16} aria-hidden="true" /></button>
-        </div>
-        <div className="board-toolbar-spacer" />
+    </>
+  );
+  return (
+    <div className={`board-editor${embedded ? ' embedded' : ''}`} data-board-id={document?.id ?? ''} data-board-tool={tool}>
         {referenceText && <button type="button" className="board-text-button" onClick={() => void copyReference()} title={`复制笔记引用 ${referenceText}`}>复制引用</button>}
         {headerExtra}
         <span className={`board-save-state ${saveState}`} data-board-save-state={saveState} title={saveStateText(saveState)}>
           {saveState === 'saving' ? <LoaderCircle className="spin" size={14} aria-hidden="true" /> : saveState === 'saved' ? <Check size={14} aria-hidden="true" /> : null}
           <span>{saveStateText(saveState)}</span>
         </span>
-      </div>
       {document && document.links.length > 0 && (
         <div className="board-links" aria-label="关联文献">
           {document.links.map((link) => <span key={link.paperId} className="board-link-chip" title={`已关联文献 ${link.paperId}`}>文献：{link.title || link.paperId}</span>)}
@@ -695,6 +753,21 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
         </div>
       )}
       <div ref={containerRef} className="board-stage" tabIndex={0} role="application" aria-label={`白板 ${displayName}`} onKeyDown={onKeyDown} onKeyUp={onKeyUp} style={{ cursor }} data-board-active={active ? 'true' : 'false'}>
+        {!embedded && !loading && (renamingTitle ? (
+          <input
+            className="board-title-input"
+            value={titleDraft}
+            autoFocus
+            aria-label="白板标题"
+            onChange={(event) => setTitleDraft(event.target.value)}
+            onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Enter') event.currentTarget.blur(); else if (event.key === 'Escape') setRenamingTitle(false); }}
+            onBlur={() => { setRenamingTitle(false); const value = titleDraft.trim(); if (value && value !== titleText) setDocMeta({ title: value }); }}
+          />
+        ) : (
+          <div className="board-title" title={`${path}（双击重命名）`} onDoubleClick={(event) => { event.stopPropagation(); setTitleDraft(titleText); setRenamingTitle(true); }}>
+            <Layers size={14} aria-hidden="true" /><span>{titleText}</span>
+          </div>
+        ))}
         {loading && <div className="board-state"><LoaderCircle className="spin" aria-hidden="true" /><span>正在读取白板…</span></div>}
         {!loading && error && (
           <div className="board-state error" role="alert">
@@ -720,11 +793,30 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
           <>
             <svg ref={svgRef} className="board-canvas" width={size.width || '100%'} height={size.height || '100%'} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onDoubleClick={onDoubleClick} onContextMenu={(event) => event.preventDefault()}>
               <defs>
-                <pattern id={`board-grid-${document.id}`} width={24 * viewport.zoom} height={24 * viewport.zoom} patternUnits="userSpaceOnUse" x={viewport.x} y={viewport.y}>
-                  <circle cx={0.5} cy={0.5} r={Math.max(0.6, Math.min(1.4, viewport.zoom))} className="board-grid-dot" />
-                </pattern>
+                {background.style === 'dots' && bgPatternVisible && (
+                  <pattern id={`board-grid-${document.id}`} width={bgStep} height={bgStep} patternUnits="userSpaceOnUse" x={viewport.x} y={viewport.y}>
+                    <circle cx={0.5} cy={0.5} r={Math.max(0.5, Math.min(1.4, viewport.zoom))} className="board-grid-dot" />
+                  </pattern>
+                )}
+                {(background.style === 'grid' || background.style === 'graph') && bgPatternVisible && (
+                  <pattern id={`board-grid-${document.id}`} width={bgStep} height={bgStep} patternUnits="userSpaceOnUse" x={viewport.x} y={viewport.y}>
+                    {background.style === 'graph' && bgStep >= 12 && <path d={`M ${bgStep / 2} 0 L 0 0 0 ${bgStep / 2}`} className="board-grid-minor" fill="none" />}
+                    <path d={`M ${bgStep} 0 L 0 0 0 ${bgStep}`} className="board-grid-line" fill="none" />
+                  </pattern>
+                )}
+                {background.style === 'lines' && bgPatternVisible && (
+                  <pattern id={`board-grid-${document.id}`} width={bgStep} height={bgStep} patternUnits="userSpaceOnUse" x={viewport.x} y={viewport.y}>
+                    <path d={`M 0 0.5 H ${bgStep}`} className="board-grid-line" fill="none" />
+                  </pattern>
+                )}
               </defs>
-              <rect className="board-grid" width="100%" height="100%" fill={`url(#board-grid-${document.id})`} />
+              <rect
+                className="board-grid"
+                width="100%"
+                height="100%"
+                fill={background.style === 'solid' ? 'var(--bg)' : bgPatternVisible ? `url(#board-grid-${document.id})` : 'transparent'}
+                aria-hidden={background.style === 'solid' || !bgPatternVisible ? 'true' : undefined}
+              />
               <g transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.zoom})`}>
                 {elements.map((element) => <ElementView key={element.id} element={element} selected={selectedSet.has(element.id)} erasing={preview?.erasing?.has(element.id) ?? false} editing={editing?.id === element.id} />)}
                 {selectionBox && !editing && (
@@ -741,9 +833,13 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
             {document.elements.length === 0 && !preview && (
               <div className="board-empty" aria-hidden="true">
                 <strong>空白白板</strong>
-                <span>选择上方工具后在画布上点击或拖动：便签（N）、文本（T）、图形（R/O）、连线（A）、画笔（P）。按住空格或滚轮拖动可平移，Ctrl+滚轮缩放。</span>
+                <span>便签 N · 文本 T · 图形 R · 连线 A · 画笔 P；空格拖动平移，Ctrl+滚轮缩放。</span>
               </div>
             )}
+            <div className="board-annotation-dock" role="toolbar" aria-label="白板工具" onPointerDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+              {toolsGroup}
+            </div>
+            {!portalHost && <div className="board-stage-controls" role="group" aria-label="文档控制">{docControls}</div>}
             {editing && editingElement && (
               <textarea
                 ref={textareaRef}
@@ -774,6 +870,12 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
           </>
         )}
       </div>
+      {portalHost && createPortal(
+        <div className="reader-titlebar-tools" onDoubleClick={(event) => event.stopPropagation()}>
+          <ReaderResponsiveToolbar label="白板">{docControls}</ReaderResponsiveToolbar>
+        </div>,
+        portalHost,
+      )}
     </div>
   );
 }

@@ -61,6 +61,27 @@ export interface BoardPaperLink {
 }
 export type BoardLink = BoardPaperLink;
 
+export type BoardBackgroundStyle = 'dots' | 'grid' | 'lines' | 'graph' | 'solid';
+export type BoardBackgroundDensity = 'small' | 'medium' | 'large';
+export interface BoardBackground { style: BoardBackgroundStyle; density: BoardBackgroundDensity }
+
+/** 缺省背景 = 旧版点阵（旧文件缺省该字段时同样按此显示）。 */
+export const defaultBoardBackground: BoardBackground = { style: 'dots', density: 'medium' };
+
+/** 世界坐标间距（px），随密度三档；样式无关，保证纹理随缩放/平移与内容对齐。 */
+export function boardBackgroundSpacing(background: BoardBackground) {
+  return background.density === 'small' ? 16 : background.density === 'large' ? 40 : 24;
+}
+
+export function normalizeBoardBackground(value: unknown): BoardBackground | null {
+  if (!isRecord(value)) return null;
+  const style = value.style === 'dots' || value.style === 'grid' || value.style === 'lines'
+    || value.style === 'graph' || value.style === 'solid' ? value.style : null;
+  if (!style) return null;
+  const density = value.density === 'small' || value.density === 'large' ? value.density : 'medium';
+  return { style, density };
+}
+
 export interface BoardDocument {
   format: typeof BOARD_FORMAT;
   version: number;
@@ -70,6 +91,8 @@ export interface BoardDocument {
   createdAt: string;
   updatedAt: string;
   links: BoardLink[];
+  /** 按白板持久化的画布背景；缺省（旧文件）= defaultBoardBackground。 */
+  background?: BoardBackground;
   elements: BoardElement[];
 }
 
@@ -146,6 +169,12 @@ export function parseBoardDocument(text: string): BoardParseResult {
       if (elements.length >= BOARD_MAX_ELEMENTS) { warnings.push(`元素数量超过 ${BOARD_MAX_ELEMENTS}，多余部分未加载。`); break; }
     }
   }
+  let background: BoardBackground | undefined;
+  if (raw.background !== undefined) {
+    const parsedBackground = normalizeBoardBackground(raw.background);
+    if (parsedBackground) background = parsedBackground;
+    else warnings.push('忽略了无法识别的背景设置，按默认点阵显示。');
+  }
   return {
     ok: true,
     warnings,
@@ -159,6 +188,7 @@ export function parseBoardDocument(text: string): BoardParseResult {
       updatedAt: str(raw.updatedAt),
       links,
       elements,
+      ...(background ? { background } : {}),
     },
   };
 }

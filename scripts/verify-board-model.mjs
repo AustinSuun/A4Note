@@ -194,4 +194,32 @@ await check('relative board links and vault-wide board search behave like notes'
   assert.equal((await wiki.resolveWikiLink('D:/vault', from, 'sub/深处.a4board', list)).path, 'D:/vault/sub/深处.a4board');
   await assert.rejects(() => wiki.resolveWikiLink('D:/vault', from, 'sub/缺失.a4board', list), /未找到/);
 });
+await check('background: missing field means the default dots texture, unknown styles are rejected with a warning', () => {
+  const doc = createBoardDocument({ title: 'T' });
+  assert.equal(doc.background, undefined);
+  const parsed = parseBoardDocument(serializeBoardDocument(doc));
+  assert.ok(parsed.ok);
+  const fresh = JSON.parse(serializeBoardDocument(parsed.document));
+  assert.equal(fresh.background, undefined);
+  const legacy = JSON.parse(serializeBoardDocument(doc));
+  delete legacy.background;
+  const legacyParsed = parseBoardDocument(JSON.stringify(legacy));
+  assert.ok(legacyParsed.ok && legacyParsed.document.background === undefined);
+  const weird = parseBoardDocument(JSON.stringify({ ...legacy, background: { style: '星空', density: 'huge' } }));
+  assert.ok(weird.ok && weird.document.background === undefined && weird.warnings.some((w) => /背景/.test(w)));
+});
+await check('background: valid styles/densities round-trip per board and density maps to world spacing', () => {
+  const doc = createBoardDocument({ title: 'T' });
+  const withBackground = { ...doc, background: { style: 'graph', density: 'large' } };
+  const text = serializeBoardDocument(withBackground);
+  assert.ok(/"background"/.test(text));
+  const parsed = parseBoardDocument(text);
+  assert.ok(parsed.ok && parsed.document.background.style === 'graph' && parsed.document.background.density === 'large');
+  assert.equal(model.boardBackgroundSpacing({ style: 'grid', density: 'small' }), 16);
+  assert.equal(model.boardBackgroundSpacing({ style: 'grid', density: 'medium' }), 24);
+  assert.equal(model.boardBackgroundSpacing({ style: 'grid', density: 'large' }), 40);
+  assert.ok(model.normalizeBoardBackground({ style: 'lines' }).density === 'medium');
+  assert.equal(model.normalizeBoardBackground('dots'), null);
+  assert.equal(model.defaultBoardBackground.style, 'dots');
+});
 console.log(JSON.stringify({ passed }));

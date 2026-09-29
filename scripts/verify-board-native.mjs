@@ -136,7 +136,7 @@ try {
     await shot('02-board-empty');
     const filePath = `${vault}\\${boardName}.a4board`;
     await addSticky(NOTES_BOARD, { x: 240, y: 200 }, '来自笔记场景');
-    await ev(`(document.querySelector('${NOTES_BOARD} [data-tool="rect"]').click(),true)`);
+    await ev(`(document.querySelector('${NOTES_BOARD} [data-tool="shape"]').click(),true);`)
     let box = await canvasBox(NOTES_BOARD);
     await dragAt({ x: box.x + 520, y: box.y + 160 }, { x: box.x + 700, y: box.y + 280 });
     await wait(savedIn(NOTES_BOARD), 'saved after rect', 80);

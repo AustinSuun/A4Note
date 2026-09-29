@@ -95,7 +95,7 @@ for (const run of [
   const control = await read('src/features/reader/HighlightAppearanceControl.tsx');
   assert.match(control, /min=\{MIN_HIGHLIGHT_OPACITY\} max=\{MAX_HIGHLIGHT_OPACITY\}/);
   checks++;
-  const constants = await read('src/features/reader/readerConstants.ts');
+  const constants = await read('src/features/annotationTools/constants.ts'); // Task 97fcfb6c: the colour map lives in the shared annotation constants.
   assert.match(constants, /if \(color === 'yellow'\) return '#ffd54a';/);
   checks++;
 }
