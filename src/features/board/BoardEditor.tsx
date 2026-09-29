@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import {
-  ArrowUpRight, Check, Circle, Copy, Eraser, Hand, Layers, LoaderCircle, Maximize2, MousePointer2, PenLine, Redo2, Square, StickyNote, Trash2, Type, Undo2, ZoomIn, ZoomOut,
+  Check, Copy, Layers, LoaderCircle, Maximize2, Redo2, Trash2, Undo2, ZoomIn, ZoomOut,
 } from 'lucide-react';
+import {
+  AnnotationToolIcon, AnnotationToolPopover, ToolColorPalette, ToolOptionsBar,
+  annotationColorInputValue, defaultToolColors, toolColorToCss, toolHasSettings,
+  useSharedAnnotationToolSettings, useSharedToolColors,
+} from '../annotationTools';
+import type { AnnotationColor, ReaderTool } from '../../core/types';
+import type { SharedColorTool } from '../annotationTools';
 import { useTextDocument } from '../explorer/useTextDocument';
 import {
   BOARD_MAX_ELEMENTS, appendInkPoint, applyArrowBindings, bindingFor, bringToFront, createElementId, createHistory, deleteElements, duplicateElements,
@@ -12,7 +19,7 @@ import {
 import './board.css';
 import { pointerToElementLayout } from '../../shared/ui/viewportToLayout';
 
-export type BoardTool = 'select' | 'hand' | 'text' | 'note' | 'rect' | 'ellipse' | 'arrow' | 'pen' | 'eraser';
+export type BoardTool = 'select' | 'hand' | 'text' | 'note' | 'shape' | 'arrow' | 'pen' | 'eraser';
 
 export interface BoardEditorProps {
   path: string;
@@ -48,30 +55,32 @@ const HANDLES: Array<{ id: HandleId; fx: number; fy: number; cursor: string }> =
   { id: 'sw', fx: 0, fy: 1, cursor: 'nesw-resize' }, { id: 'w', fx: 0, fy: 0.5, cursor: 'ew-resize' },
 ];
 
-const TOOLS: Array<{ id: BoardTool; label: string; key: string; icon: ReactNode }> = [
-  { id: 'select', label: '选择', key: 'V', icon: <MousePointer2 size={16} aria-hidden="true" /> },
-  { id: 'hand', label: '平移', key: 'H', icon: <Hand size={16} aria-hidden="true" /> },
-  { id: 'text', label: '文本', key: 'T', icon: <Type size={16} aria-hidden="true" /> },
-  { id: 'note', label: '便签', key: 'N', icon: <StickyNote size={16} aria-hidden="true" /> },
-  { id: 'rect', label: '矩形', key: 'R', icon: <Square size={16} aria-hidden="true" /> },
-  { id: 'ellipse', label: '椭圆', key: 'O', icon: <Circle size={16} aria-hidden="true" /> },
-  { id: 'arrow', label: '连线', key: 'A', icon: <ArrowUpRight size={16} aria-hidden="true" /> },
-  { id: 'pen', label: '画笔', key: 'P', icon: <PenLine size={16} aria-hidden="true" /> },
-  { id: 'eraser', label: '橡皮（整笔擦除）', key: 'E', icon: <Eraser size={16} aria-hidden="true" /> },
+// Task 97fcfb6c: the board renders the same tool buttons, icons, labels, colours and option
+// panels as the reader's annotation toolbar; only the board-only tools (note) and the
+// select/hand pair are board-specific. `readerTool` maps a board tool onto the shared
+// reader tool id that owns its icon, options panel and recent colour.
+const TOOLS: Array<{ id: BoardTool; readerTool: ReaderTool; label: string; key: string }> = [
+  { id: 'select', readerTool: 'cursor', label: '选择', key: 'V' },
+  { id: 'hand', readerTool: 'hand', label: '平移', key: 'H' },
+  { id: 'text', readerTool: 'text', label: '文本', key: 'T' },
+  { id: 'note', readerTool: 'comment', label: '便签', key: 'N' },
+  { id: 'shape', readerTool: 'rect', label: '图形', key: 'R' },
+  { id: 'arrow', readerTool: 'arrow', label: '连线', key: 'A' },
+  { id: 'pen', readerTool: 'ink', label: '画笔', key: 'P' },
+  { id: 'eraser', readerTool: 'eraser', label: '橡皮（整笔擦除）', key: 'E' },
 ];
 const TOOL_BY_KEY = new Map(TOOLS.map((tool) => [tool.key.toLowerCase(), tool.id]));
-
-const STROKES = [
-  { value: 'auto', label: '自动（跟随主题）' }, { value: '#dc2626', label: '红' }, { value: '#2563eb', label: '蓝' }, { value: '#16a34a', label: '绿' },
-  { value: '#d97706', label: '橙' }, { value: '#7c3aed', label: '紫' }, { value: '#6b7280', label: '灰' },
-];
-const FILLS = [
-  { value: 'transparent', label: '无填充' }, { value: '#fef3c7', label: '黄' }, { value: '#dbeafe', label: '蓝' }, { value: '#dcfce7', label: '绿' },
-  { value: '#fce7f3', label: '粉' }, { value: '#ede9fe', label: '紫' }, { value: '#f3f4f6', label: '灰' },
-];
-const WIDTHS = [1, 2, 4, 8];
-const DEFAULT_NOTE_FILL = '#fef3c7';
+const TOOL_BY_ID = new Map(TOOLS.map((tool) => [tool.id, tool]));
+const readerToolOf = (tool: BoardTool): ReaderTool => TOOL_BY_ID.get(tool)!.readerTool;
+/** Board shapes keep solid/dashed; the reader's 双向箭头 maps onto the arrow's both-heads mode. */
 const paint = (value: string) => (value === 'auto' ? 'currentColor' : value);
+/** Hex for SVG paint / stored files from a shared preset name or hex. */
+const resolvePaint = (value: string) => (value.startsWith('#') ? value : annotationColorInputValue(value));
+/** Soft fill variant used by shapes with 填充开启 and by sticky notes (same idea as the reader). */
+const softFill = (value: string) => {
+  const hex = resolvePaint(value);
+  return hex.length === 7 ? `${hex}40` : hex;
+};
 
 const saveStateText = (state: string) => state === 'saving' ? '保存中…' : state === 'error' ? '保存失败' : state === 'paused' ? '等待文件操作…' : '已保存';
 
@@ -94,9 +103,11 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
   const [preview, setPreview] = useState<{ elements?: BoardElement[]; marquee?: BoardRect; erasing?: Set<string> } | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string; created?: boolean } | null>(null);
   const editingRef = useRef(editing); editingRef.current = editing;
-  const [stroke, setStroke] = useState('auto');
-  const [fill, setFill] = useState('transparent');
-  const [strokeWidth, setStrokeWidth] = useState(2);
+  // Shared with the PDF reader (task 97fcfb6c): option values and per-tool recent colours live
+  // in one store, so a change in either host is what the other one uses next.
+  const [toolSettings, setToolSettings] = useSharedAnnotationToolSettings();
+  const [sharedToolColors, setSharedToolColor] = useSharedToolColors();
+  const [optionsTool, setOptionsTool] = useState<BoardTool | null>(null);
   const [notice, setNotice] = useState('');
   const historyRef = useRef<BoardHistory>(createHistory());
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -179,7 +190,17 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
   // arrives in viewport px, so the root zoom must be divided out or every stroke lands up-left of the cursor.
   const screenPoint = (event: { clientX: number; clientY: number }): BoardPoint => pointerToElementLayout(event, svgRef.current);
   const worldPoint = (event: { clientX: number; clientY: number }) => screenToWorld(viewportRef.current, screenPoint(event));
-  const slop = () => 6 / viewportRef.current.zoom;
+  // The eraser keeps its whole-stroke semantics; the shared thickness scales its reach.
+  const slop = () => (toolRef.current === 'eraser' ? toolSettings.eraserSize / 2 : 6) / viewportRef.current.zoom;
+  const toolColorOf = (tool: BoardTool): string => {
+    const readerTool = readerToolOf(tool);
+    return sharedToolColors[readerTool as SharedColorTool] ?? defaultToolColors[readerTool];
+  };
+  /** Stored paint for NEW board elements: theme-following 'auto' unless the user overrode the tool colour. */
+  const boardPaintOf = (readerTool: string): string => {
+    const override = sharedToolColors[readerTool as SharedColorTool];
+    return override ? resolvePaint(override) : 'auto';
+  };
 
   const finishEditing = useCallback((commitText = true) => {
     const current = editingRef.current;
@@ -264,8 +285,8 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
         gestureRef.current = { kind: 'marquee', pointerId: event.pointerId, start: world, keep: event.shiftKey ? selection : [] };
         return;
       }
-      case 'rect': case 'ellipse': case 'note': case 'text':
-        gestureRef.current = { kind: 'shape', pointerId: event.pointerId, start: world, type: currentTool };
+      case 'shape': case 'note': case 'text':
+        gestureRef.current = { kind: 'shape', pointerId: event.pointerId, start: world, type: currentTool === 'shape' ? toolSettings.shapeKind : currentTool };
         return;
       case 'arrow':
         gestureRef.current = { kind: 'arrow', pointerId: event.pointerId, start: world };
@@ -286,12 +307,25 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
     }
   };
 
-  const inkElement = (points: BoardPoint[]): BoardInkElement => withBounds({ id: '__ink_preview', type: 'ink', x: 0, y: 0, w: 0, h: 0, stroke, fill: 'transparent', strokeWidth, points });
+  /** Shared arrow options → board arrow attributes. */
+  const arrowStyleAttrs = () => ({
+    strokeWidth: toolSettings.arrowStrokeWidth,
+    head: (toolSettings.arrowEnding === 'line' ? 'none' : toolSettings.arrowStyle === 'double' ? 'both' : 'end') as BoardArrowElement['head'],
+    ...(toolSettings.arrowStyle === 'dashed' ? { dash: 'dashed' as const } : {}),
+  });
+
+  const inkElement = (points: BoardPoint[]): BoardInkElement => withBounds({ id: '__ink_preview', type: 'ink', x: 0, y: 0, w: 0, h: 0, stroke: boardPaintOf('ink'), fill: 'transparent', strokeWidth: toolSettings.inkStrokeWidth, points });
   const newShape = (type: 'rect' | 'ellipse' | 'note' | 'text', rect: BoardRect): BoardElement => {
-    const base = { id: createElementId(), ...rect, strokeWidth };
-    if (type === 'note') return { ...base, type: 'note', text: '', stroke: 'transparent', fill: fill === 'transparent' ? DEFAULT_NOTE_FILL : fill, fontSize: 15 };
-    if (type === 'text') return { ...base, type: 'text', text: '', stroke, fill: 'transparent', fontSize: 16 };
-    return { ...base, type, stroke, fill, text: '' };
+    if (type === 'note') {
+      const fill = softFill(toolColorOf('note'));
+      return { id: createElementId(), ...rect, strokeWidth: toolSettings.shapeStrokeWidth, type: 'note', text: '', stroke: 'transparent', fill, fontSize: 15 };
+    }
+    if (type === 'text') {
+      return { id: createElementId(), ...rect, strokeWidth: toolSettings.shapeStrokeWidth, type: 'text', text: '', stroke: boardPaintOf('text'), fill: toolSettings.textBackgroundColor, fontSize: toolSettings.textFontSize };
+    }
+    const stroke = boardPaintOf('rect');
+    const fill = toolSettings.shapeFillEnabled ? softFill(stroke) : 'transparent';
+    return { id: createElementId(), ...rect, strokeWidth: toolSettings.shapeStrokeWidth, type, stroke, fill, text: '' };
   };
 
   const onPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -350,7 +384,7 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
       }
       case 'arrow': {
         const to = bindingFor(document.elements, world);
-        const arrow: BoardArrowElement = withBounds({ id: '__arrow_preview', type: 'arrow', x: 0, y: 0, w: 0, h: 0, stroke, fill: 'transparent', strokeWidth, points: [gesture.start, world], head: 'end', ...(to ? { to } : {}) });
+        const arrow: BoardArrowElement = withBounds({ id: '__arrow_preview', type: 'arrow', x: 0, y: 0, w: 0, h: 0, ...arrowStyleAttrs(), stroke: boardPaintOf('arrow'), fill: 'transparent', points: [gesture.start, world], ...(to ? { to } : {}) });
         setPreview({ elements: [...document.elements, arrow] });
         return;
       }
@@ -409,7 +443,7 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
       case 'arrow': {
         if (Math.hypot(world.x - gesture.start.x, world.y - gesture.start.y) * viewportRef.current.zoom < 4) return;
         const from = bindingFor(document.elements, gesture.start); const to = bindingFor(document.elements, world);
-        const arrow: BoardArrowElement = withBounds({ id: createElementId(), type: 'arrow', x: 0, y: 0, w: 0, h: 0, stroke, fill: 'transparent', strokeWidth, points: [gesture.start, world], head: 'end', ...(from ? { from } : {}), ...(to ? { to } : {}) });
+        const arrow: BoardArrowElement = withBounds({ id: createElementId(), type: 'arrow', x: 0, y: 0, w: 0, h: 0, ...arrowStyleAttrs(), stroke: boardPaintOf('arrow'), fill: 'transparent', points: [gesture.start, world], ...(from ? { from } : {}), ...(to ? { to } : {}) });
         commit((list) => [...list, arrow]);
         setSelection([arrow.id]);
         setTool('select');
@@ -471,11 +505,20 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
   };
   const selectAll = () => { if (document) setSelection(document.elements.map((element) => element.id)); };
   const nudge = (dx: number, dy: number) => { if (selection.length) { const ids = new Set(selection); commit((list) => moveSet(list, ids, dx, dy), 'nudge'); } };
+  /** Restyle the current selection without touching the shared tool defaults. */
   const applyStyle = (patch: Partial<Pick<BoardElement, 'stroke' | 'fill' | 'strokeWidth'>>) => {
-    if (patch.stroke !== undefined) setStroke(patch.stroke);
-    if (patch.fill !== undefined) setFill(patch.fill);
-    if (patch.strokeWidth !== undefined) setStrokeWidth(patch.strokeWidth);
-    if (selection.length) { const ids = new Set(selection); commit((list) => updateElements(list, ids, (element) => ({ ...element, ...patch })), 'style'); }
+    if (!selection.length) return;
+    const ids = new Set(selection);
+    commit((list) => updateElements(list, ids, (element) => ({ ...element, ...patch })), 'style');
+  };
+  /** Colour change from the shared panel: becomes the tool's recent colour and restyles the selection. */
+  const handleToolColor = (readerTool: SharedColorTool, color: string) => {
+    setSharedToolColor(readerTool, color);
+    const hex = resolvePaint(color);
+    if (readerTool === 'text') return;
+    if (readerTool === 'comment') { applyStyle({ fill: softFill(hex) }); return; }
+    if (readerTool === 'rect' && toolSettings.shapeFillEnabled) { applyStyle({ stroke: hex, fill: softFill(hex) }); return; }
+    applyStyle({ stroke: hex });
   };
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -514,8 +557,14 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
     if (key === 'ArrowDown') { event.preventDefault(); nudge(0, step); return; }
     if (key === '[') { event.preventDefault(); if (selection.length) { const ids = new Set(selection); commit((list) => sendToBack(list, ids)); } return; }
     if (key === ']') { event.preventDefault(); if (selection.length) { const ids = new Set(selection); commit((list) => bringToFront(list, ids)); } return; }
-    const nextTool = TOOL_BY_KEY.get(key.toLowerCase());
-    if (nextTool && !event.altKey) { event.preventDefault(); setTool(nextTool); }
+    // R/O both pick the shared 图形 tool and set its kind, like the reader's rect options.
+    const lower = key.toLowerCase();
+    const nextTool = TOOL_BY_KEY.get(lower) ?? (lower === 'o' ? 'shape' : undefined);
+    if (nextTool && !event.altKey) {
+      event.preventDefault();
+      if (lower === 'r' || lower === 'o') setToolSettings({ ...toolSettings, shapeKind: lower === 'r' ? 'rect' : 'ellipse' });
+      setTool(nextTool);
+    }
   };
   const onKeyUp = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === ' ') { spaceRef.current = false; setSpaceHeld(false); }
@@ -558,24 +607,57 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
     <div className={`board-editor${embedded ? ' embedded' : ''}`} data-board-id={document?.id ?? ''} data-board-tool={tool}>
       <div className="board-toolbar" role="toolbar" aria-label="白板工具栏">
         {!embedded && <div className="board-title" title={path}><Layers size={15} aria-hidden="true" /><span>{displayName}</span></div>}
-        <div className="board-tool-group" role="group" aria-label="工具">
-          {TOOLS.map((item) => (
-            <button key={item.id} type="button" className={`board-tool${tool === item.id ? ' active' : ''}`} aria-pressed={tool === item.id}
-              title={`${item.label}（${item.key}）`} aria-label={item.label} data-tool={item.id} onClick={() => { finishEditing(true); setTool(item.id); }}>{item.icon}</button>
-          ))}
-        </div>
-        <div className="board-tool-group" role="group" aria-label="样式">
-          <span className="board-swatches" aria-label="描边颜色">
-            {STROKES.map((item) => <button key={item.value} type="button" className={`board-swatch${stroke === item.value ? ' active' : ''}`} title={`描边：${item.label}`} aria-label={`描边 ${item.label}`} aria-pressed={stroke === item.value}
-              style={{ ['--swatch' as string]: paint(item.value) } as CSSProperties} onClick={() => applyStyle({ stroke: item.value })} />)}
-          </span>
-          <span className="board-swatches" aria-label="填充颜色">
-            {FILLS.map((item) => <button key={item.value} type="button" className={`board-swatch fill${fill === item.value ? ' active' : ''}${item.value === 'transparent' ? ' none' : ''}`} title={`填充：${item.label}`} aria-label={`填充 ${item.label}`} aria-pressed={fill === item.value}
-              style={{ ['--swatch' as string]: item.value } as CSSProperties} onClick={() => applyStyle({ fill: item.value })} />)}
-          </span>
-          <select className="board-width" aria-label="线宽" value={strokeWidth} onChange={(event) => applyStyle({ strokeWidth: Number(event.target.value) })}>
-            {WIDTHS.map((width) => <option key={width} value={width}>{width}px</option>)}
-          </select>
+        <div className="board-tool-group annotation-toolbar" role="group" aria-label="工具">
+          {TOOLS.map((item) => {
+            const hasSettings = item.id === 'note' || toolHasSettings(item.readerTool);
+            const color = ['select', 'hand', 'eraser'].includes(item.id) ? null : toolColorOf(item.id);
+            const isActive = tool === item.id;
+            return (
+              <div key={item.id} className="annotation-tool-slot">
+                <button type="button" className={`annotation-tool-btn${isActive ? ' active' : ''}`} aria-pressed={isActive}
+                  title={`${item.label}（${item.key}）`} aria-label={item.label} data-tool={item.id}
+                  aria-haspopup={hasSettings ? 'dialog' : undefined} aria-expanded={hasSettings ? optionsTool === item.id : undefined}
+                  onClick={() => {
+                    finishEditing(true);
+                    if (isActive && hasSettings) setOptionsTool((current) => (current === item.id ? null : item.id));
+                    else { setOptionsTool(null); setTool(item.id); }
+                  }}>
+                  <AnnotationToolIcon id={item.readerTool} />
+                  {color && <span className="annotation-tool-color-dot" style={{ background: toolColorToCss(color) }} />}
+                </button>
+                {optionsTool === item.id && (
+                  <AnnotationToolPopover title={item.label} onClose={() => setOptionsTool(null)}>
+                    {item.id === 'note' ? (
+                      <div className="reader-tool-options-bar tool-options-note" onMouseDown={(event) => event.stopPropagation()}>
+                        <small className="tool-option-hint">便签底色跟随「评论」工具的最近颜色，与阅读器批注互通。</small>
+                        <ToolColorPalette
+                          label="便签底色"
+                          value={toolColorOf('note')}
+                          customColor={annotationColorInputValue(toolColorOf('note'))}
+                          onChange={(color) => handleToolColor('comment', color)}
+                          onCustomColorChange={(color) => handleToolColor('comment', color)}
+                        />
+                      </div>
+                    ) : (
+                      <ToolOptionsBar
+                        tool={item.readerTool}
+                        toolSettings={toolSettings}
+                        activeColor={(item.readerTool === 'text' ? toolSettings.textColor : toolColorOf(item.id)) as AnnotationColor}
+                        customAnnotationColor={annotationColorInputValue(item.readerTool === 'text' ? toolSettings.textColor : toolColorOf(item.id))}
+                        onSelectAnnotationColor={(color) => handleToolColor(item.readerTool as SharedColorTool, color)}
+                        onCustomAnnotationColorChange={(color) => handleToolColor(item.readerTool as SharedColorTool, color)}
+                        onToolSettingsChange={setToolSettings}
+                        hint={item.id === 'eraser'
+                          ? '整笔擦除：一笔/一个元素一次擦除；粗细决定命中范围。'
+                          : item.readerTool === 'highlight' || item.readerTool === 'underline' ? undefined
+                          : '设置与 PDF 阅读器标注工具共用，改一处两处同步。'}
+                      />
+                    )}
+                  </AnnotationToolPopover>
+                )}
+              </div>
+            );
+          })}
         </div>
         <div className="board-tool-group" role="group" aria-label="编辑">
           <button type="button" className="board-tool" onClick={undo} disabled={!canUndo} title="撤销（Ctrl+Z）" aria-label="撤销"><Undo2 size={16} aria-hidden="true" /></button>
@@ -659,7 +741,7 @@ export function BoardEditor({ path, name, active = true, embedded = false, heade
             {document.elements.length === 0 && !preview && (
               <div className="board-empty" aria-hidden="true">
                 <strong>空白白板</strong>
-                <span>选择上方工具后在画布上点击或拖动：便签（N）、文本（T）、矩形（R）、连线（A）、画笔（P）。按住空格或滚轮拖动可平移，Ctrl+滚轮缩放。</span>
+                <span>选择上方工具后在画布上点击或拖动：便签（N）、文本（T）、图形（R/O）、连线（A）、画笔（P）。按住空格或滚轮拖动可平移，Ctrl+滚轮缩放。</span>
               </div>
             )}
             {editing && editingElement && (
@@ -764,7 +846,7 @@ function ElementView({ element, selected, erasing, editing }: { element: BoardEl
     case 'arrow': {
       const [a, b] = element.points;
       return <g className={className} data-element-id={element.id}>
-        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={strokeColor} strokeWidth={element.strokeWidth} strokeLinecap="round" />
+        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={strokeColor} strokeWidth={element.strokeWidth} strokeLinecap="round" strokeDasharray={element.dash === 'dashed' ? '7 5' : undefined} />
         {(element.head === 'end' || element.head === 'both') && <polygon points={arrowHead(a, b, element.strokeWidth)} fill={strokeColor} />}
         {element.head === 'both' && <polygon points={arrowHead(b, a, element.strokeWidth)} fill={strokeColor} />}
       </g>;

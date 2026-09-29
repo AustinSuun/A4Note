@@ -135,7 +135,7 @@ try {
     await page.locator('.file-tree-drag-preview').waitFor({ state: 'detached', timeout: 3000 });
 
     // Board: a rectangle dragged from (x1,y1) must render with its top-left on (x1,y1).
-    await page.locator('[data-board] .board-tool[data-tool="rect"]').first().click();
+    await page.locator('[data-board] .annotation-tool-btn[data-tool="shape"]').first().click();
     const canvas = await page.evaluate(() => { const r = document.querySelector('[data-board] svg.board-canvas').getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; });
     const before = await page.evaluate(() => document.querySelectorAll('[data-board] [data-element-id]').length);
     const from = { x: Math.round(canvas.left + canvas.width * 0.55), y: Math.round(canvas.top + canvas.height * 0.6) };

@@ -137,8 +137,9 @@ check('a missing file is an explicit error with the path, never a fresh board',a
 await page.screenshot({path:path.join(dir,'05-error-states.png')});
 // Performance bound: 1500 elements render and marquee-select within budget.
 const t0=Date.now();await page.evaluate(()=>window.mount('big'));await page.waitForFunction(()=>document.querySelectorAll('[data-entry="big"] [data-element-id]').length===1500,null,{timeout:15000});const renderMs=Date.now()-t0;
-await page.locator('[data-entry="big"] [aria-label="适应内容"]').click();const t1=Date.now();await drag('big',[10,10],[600,280],4);const selectMs=Date.now()-t1;
-check('1500 elements render under 6s and a marquee over them selects under 3s',renderMs<6000&&selectMs<3000&&/已选择 \d+ 个元素/.test(await status('big')),{renderMs,selectMs});
+await page.locator('[data-entry="big"] [aria-label="适应内容"]').click();await canvas('big').scrollIntoViewIfNeeded();const t1=Date.now();await drag('big',[10,10],[600,280],4);const selectMs=Date.now()-t1;
+const bigStatus=await status('big');
+check('1500 elements render under 6s and a marquee over them selects under 3s',renderMs<6000&&selectMs<3000&&/已选择 \d+ 个元素/.test(bigStatus),{renderMs,selectMs,bigStatus});
 await page.screenshot({path:path.join(dir,'06-many-elements.png')});
 await page.evaluate(()=>{window.unmount('big');window.unmount('broken');window.unmount('missing');});
 // Reader entry: link existing / create / unlink against the notes workspace scan.

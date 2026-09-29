@@ -43,6 +43,8 @@ export interface BoardArrowElement extends BoardElementBase {
   type: 'arrow';
   points: [BoardPoint, BoardPoint];
   head: 'none' | 'end' | 'both';
+  /** Optional dashed stroke (shared arrow options, task 97fcfb6c); absent = solid. */
+  dash?: 'dashed';
   from?: BoardArrowBinding;
   to?: BoardArrowBinding;
 }
@@ -184,7 +186,7 @@ function normalizeElement(item: unknown): BoardElement | null {
         ? { elementId: value.elementId, fx: num(value.fx, 0.5), fy: num(value.fy, 0.5) } : undefined;
       const head = item.head === 'none' || item.head === 'both' ? item.head : 'end';
       const from = binding(item.from); const to = binding(item.to);
-      return withBounds({ ...base, type: 'arrow', points: [points[0], points[1]], head, ...(from ? { from } : {}), ...(to ? { to } : {}) });
+      return withBounds({ ...base, type: 'arrow', points: [points[0], points[1]], head, ...(item.dash === 'dashed' ? { dash: 'dashed' as const } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) });
     }
     default: return null;
   }

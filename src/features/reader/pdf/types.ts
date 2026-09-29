@@ -1,5 +1,6 @@
 import type * as pdfjsLib from 'pdfjs-dist';
 import type { AnnotationColor, AnnotationDraft, AnnotationType, PositionJson } from '../../../core/types';
+import { defaultAnnotationToolSettings, type AnnotationToolSettings } from '../../annotationTools';
 
 export type PdfStatus = 'loading' | 'ready' | 'placeholder' | 'error';
 
@@ -62,41 +63,12 @@ export type PdfZoomAnchor = {
   contentOriginY: number;
 };
 
-export type ReaderToolSettings = {
-  inkStrokeWidth: number;
-  eraserSize: number;
-  eraserShape: EraserShape;
-  arrowStyle: ArrowStyle;
-  arrowEnding: ArrowEnding;
-  arrowStrokeWidth: number;
-  textBold: boolean;
-  textItalic: boolean;
-  textFontSize: number;
-  textColor: string;
-  textBorderColor: string;
-  textBackgroundColor: string;
-  shapeKind: ShapeKind;
-  shapeFillEnabled: boolean;
-  shapeStrokeWidth: number;
-};
-
-export const defaultReaderToolSettings: ReaderToolSettings = {
-  inkStrokeWidth: 4,
-  eraserSize: 18,
-  eraserShape: 'round',
-  arrowStyle: 'solid',
-  arrowEnding: 'arrow',
-  arrowStrokeWidth: 3.4,
-  textBold: false,
-  textItalic: false,
-  textFontSize: 24,
-  textColor: '#202822',
-  textBorderColor: '#ffffff',
-  textBackgroundColor: 'transparent',
-  shapeKind: 'rect',
-  shapeFillEnabled: false,
-  shapeStrokeWidth: 2.4,
-};
+/**
+ * Task 97fcfb6c: the reader's tool settings ARE the shared annotation tool settings – one
+ * store, one storage key, one set of defaults; the whiteboard reads and writes the same values.
+ */
+export type ReaderToolSettings = AnnotationToolSettings;
+export const defaultReaderToolSettings: ReaderToolSettings = defaultAnnotationToolSettings;
 
 export type DraftAnnotationPreview = (AnnotationDraft & { page: number }) & { id: string };
 

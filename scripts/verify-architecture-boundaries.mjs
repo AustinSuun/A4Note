@@ -24,6 +24,12 @@ const requiredFiles = [
   'src/features/reader/types.ts',
   'src/features/reader/readerHelpers.ts',
   'src/features/reader/readerConstants.ts',
+  'src/features/annotationTools/index.ts',
+  'src/features/annotationTools/constants.ts',
+  'src/features/annotationTools/toolSettings.ts',
+  'src/features/annotationTools/AnnotationToolIcon.tsx',
+  'src/features/annotationTools/AnnotationToolPopover.tsx',
+  'src/features/annotationTools/ToolOptionsBar.tsx',
   'src/features/reader/useAnnotationHistory.ts',
   'src/features/reader/ReaderToolbar.tsx',
   'src/features/reader/ReaderDocumentPane.tsx',
@@ -131,6 +137,8 @@ const readerTypesSource = await readFile('src/features/reader/types.ts', 'utf8')
 const readerHelpersSource = await readFile('src/features/reader/readerHelpers.ts', 'utf8');
 const readerConstantsSource = await readFile('src/features/reader/readerConstants.ts', 'utf8');
 const readerToolbarSource = await readFile('src/features/reader/ReaderToolbar.tsx', 'utf8');
+const boardEditorSource = await readFile('src/features/board/BoardEditor.tsx', 'utf8');
+const readerToolSettingsStorageSource = await readFile('src/features/reader/pdf/readerToolSettingsStorage.ts', 'utf8');
 const readerDocumentPaneSource = await readFile('src/features/reader/ReaderDocumentPane.tsx', 'utf8');
 const readerPdfSource = await readFile('src/features/reader/pdf/PdfReader.tsx', 'utf8');
 const readerPdfPageViewSource = await readFile('src/features/reader/pdf/PdfPageView.tsx', 'utf8');
@@ -321,6 +329,11 @@ assert.match(readerHelpersSource, /export function preferredReaderMode/);
 assert.match(readerHelpersSource, /export function annotationLabelText/);
 assert.match(readerConstantsSource, /export const annotationPresetColors/);
 assert.match(readerToolbarSource, /export function ReaderToolbar\(/);
+// Task 97fcfb6c: the whiteboard renders the reader's annotation tools from the shared module.
+assert.match(boardEditorSource, /from '\.\.\/annotationTools'/);
+assert.doesNotMatch(boardEditorSource, /board-swatch|board-width/);
+assert.match(readerToolbarSource, /from '\.\.\/annotationTools'/);
+assert.match(readerToolSettingsStorageSource, /from '[^']*annotationTools'/);
 assert.doesNotMatch(readerToolbarSource, /sidePanels\.map\(\(panel\) =>/);
 assert.match(readerSceneSource, /<ReaderNoteWorkbenchMenu/);
 assert.match(readerSceneSource, /data-note-mode=\{visibleNoteMode\}/);
