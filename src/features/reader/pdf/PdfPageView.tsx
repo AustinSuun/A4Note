@@ -3,6 +3,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { zh } from '../../../ui/zh';
 import { outputScaleForViewport } from './pdfGeometry';
 import { PdfTextLayer } from './PdfTextLayer';
+import { PdfLinkLayer, type PdfLinkFlash, type PdfLinkLayerConfig } from './PdfLinkLayer';
 import type { CommentPopover, PageMeta, ReaderToolSettings } from './types';
 
 export type PdfPageViewProps = {
@@ -13,6 +14,8 @@ export type PdfPageViewProps = {
   /** True while a text tool is active on a page whose text layer is empty. */
   textToolsUnavailable: boolean;
   annotationLayer: ReactNode;
+  /** Link annotations for this page (null hides the layer, e.g. translated PDFs). */
+  linkLayer: (PdfLinkLayerConfig & { flash: PdfLinkFlash | null }) | null;
   commentPopover: CommentPopover | null;
   /** Center uses page percentages; diameter remains a local CSS length. */
   eraserPreview: { xPercent: number; yPercent: number; size: number; shape: ReaderToolSettings['eraserShape'] } | null;
@@ -44,6 +47,7 @@ export function PdfPageView({
   selectableText,
   textToolsUnavailable,
   annotationLayer,
+  linkLayer,
   commentPopover,
   eraserPreview,
   pageHandlers,
@@ -208,6 +212,7 @@ export function PdfPageView({
       <div className="pdf-render-layer" style={{ width: pageMeta.baseWidth * displayZoom, height: pageMeta.baseHeight * displayZoom, '--pdf-display-zoom': displayZoom } as CSSProperties}>
         <canvas ref={canvasRef} className="pdf-canvas-page ready" />
         <PdfTextLayer textItems={pageMeta.textItems} zoom={displayZoom} selectable={selectableText} />
+        {linkLayer && <PdfLinkLayer pdfDocument={linkLayer.pdfDocument} pageMeta={pageMeta} active={shouldRender} onActivate={linkLayer.onActivate} flash={linkLayer.flash} />}
         {annotationLayer}
         {eraserPreview && (
           <div

@@ -3,7 +3,7 @@ import { formatBinding, resolveShortcuts } from '../core/shortcuts';
 import { useAppShortcuts } from './shortcuts/useAppShortcuts';
 import { withProjectTasksDefaultOff } from '../platform/projectTasksPreference';
 import { useNoteFolderWorkspaces } from '../features/markdown';
-import { capturePdfCenterAnchor, restorePdfPageAnchor, requestPdfFind } from '../features/reader';
+import { capturePdfCenterAnchor, restorePdfPageAnchor, requestPdfFind, requestPdfLinkBack } from '../features/reader';
 import { BrandUpdateNotice } from '../features/updates';
 import { DocumentToolbarProvider } from '../workbench/DocumentToolbar';
 import { openMenuSourceFromTab, resolveOpenMenuTarget } from '../workbench/openMenuTarget';
@@ -1559,6 +1559,7 @@ function AppContent() {
       importPdf: openImportDialog,
       librarySearch: () => { setScene('library'); requestAnimationFrame(() => librarySearchRef.current?.focus()); },
       pdfSearch: requestPdfFind, undo: undoAnnotationAction, redo: redoAnnotationAction,
+      linkBack: requestPdfLinkBack,
       deleteAnnotation: () => { if (readerFocusedAnnotationId) void deleteAnnotation(readerFocusedAnnotationId); },
       cancel: () => { if (!readerFocusedAnnotationId) return false; setReaderFocusedAnnotationId(null); return true; },
       selectTool: setActiveAnnotationTool,

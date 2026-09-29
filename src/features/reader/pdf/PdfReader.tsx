@@ -32,6 +32,11 @@ import { arrowPositionFromDrag, createDragDraft, currentVisiblePage, pointFromEv
 import { TEXT_EDGE_MARGIN_PERCENT, TEXT_FONT_UNIT_PAGE, clampTextBoxToPage, percentBoxOf, placeNewTextBox, roundPercent, textAnnotationLayout } from './pdfTextAnnotation';
 import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
+import { PdfLinkBackButton } from './PdfLinkBackButton';
+import type { PdfLinkFlash } from './PdfLinkLayer';
+import { PDF_LINK_FLASH_HEIGHT_PERCENT, linkTargetScrollTop, offsetTopWithin, type PdfLinkTarget, type PdfPageLink } from './pdfLinks';
+import { dismissReturnedOrigins, popLinkOrigin, pushLinkOrigin, topLinkOrigin, type PdfLinkOrigin } from './pdfLinkHistory';
+import { externalUrlRejectionMessage, inspectExternalUrl, openExternalUrl } from '../../../platform/externalUrl';
 import { selectionPopupAnchor, type SelectionPopupAnchor } from './pdfSelectionPopup';
 import { SELECTION_PREVIEW_COLOR } from './pdfHighlightAppearance';
 import { boundingBox, clipRangeToNode, dominantTextOrientation, mergeRectsIntoLineSegments, quoteFromTextItemSelections, textItemSelectionsFromRange, textRunExtentMeasurer, textSelectionFromDrag, textSelectionPageElements, textSelectionRectsFromLayer, withSegmentOrientation } from './pdfSelection';
@@ -165,6 +170,14 @@ export default function PdfReader({
   const [flash, setFlash] = useState<ReaderFlash | null>(null);
   const [textLayerHint, setTextLayerHint] = useState<string | null>(null);
   const textLayerHintTimerRef = useRef<number | null>(null);
+  // Link jumps (card e4c2fa22): where each jump left from (newest last) and the one-shot landing flash.
+  const [linkStack, setLinkStack] = useState<PdfLinkOrigin[]>([]);
+  const linkStackRef = useRef<PdfLinkOrigin[]>([]); linkStackRef.current = linkStack;
+  const [linkFlash, setLinkFlash] = useState<PdfLinkFlash | null>(null);
+  const linkFlashTimerRef = useRef<number | null>(null);
+  const linkBackRef = useRef<() => void>(() => {});
+  /** Link annotations only belong to the original PDF; translated renditions carry none worth trusting. */
+  const linksEnabled = source.request?.source !== 'paperFile' || source.request.kind === 'source';
   // Quick-action popup after a cursor-mode text selection. Its anchor lives in the page's
   // percentage space (rendered inside that page's render layer), computed from the same selection
   // segments as the preview band and the saved annotation.
@@ -220,14 +233,22 @@ export default function PdfReader({
   const selectableText = activeTool === 'cursor' || textSelectionToolsActive;
   /** Scanned pages carry no text items, so a text tool can never build a selection there. */
   const pageHasSelectableText = (pageNumber: number) => (pages.find((candidate) => candidate.pageNumber === pageNumber)?.textItems.length ?? 0) > 0;
-  const showTextLayerHint = () => {
-    setTextLayerHint(zh.reader.textLayerUnavailable);
+  const showReaderHint = (message: string) => {
+    setTextLayerHint(message);
     if (textLayerHintTimerRef.current !== null) window.clearTimeout(textLayerHintTimerRef.current);
     textLayerHintTimerRef.current = window.setTimeout(() => {
       textLayerHintTimerRef.current = null;
       setTextLayerHint(null);
     }, 5200);
   };
+  const showTextLayerHint = () => showReaderHint(zh.reader.textLayerUnavailable);
+
+  // A new document starts with an empty link-jump stack; a retained tab keeps its own PdfReader.
+  useEffect(() => {
+    linkStackRef.current = [];
+    setLinkStack([]);
+    setLinkFlash(null);
+  }, [source.key]);
 
   useEffect(() => {
     let cancelled = false;
@@ -427,7 +448,38 @@ export default function PdfReader({
 
   useEffect(() => () => {
     if (textLayerHintTimerRef.current !== null) window.clearTimeout(textLayerHintTimerRef.current);
+    if (linkFlashTimerRef.current !== null) window.clearTimeout(linkFlashTimerRef.current);
   }, []);
+
+  // Alt+← arrives as a DOM event on the visible surface (readerNavigation.requestPdfLinkBack).
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const handleBack = () => linkBackRef.current();
+    surface.addEventListener('reader-link-back', handleBack);
+    return () => surface.removeEventListener('reader-link-back', handleBack);
+  }, [status]);
+
+  // While a primary-button drag runs (text selection in the cursor tool), links must not catch the pointer,
+  // or the native selection would jump to the link box instead of the glyphs under it (pdf-links.css).
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const begin = (event: globalThis.MouseEvent) => {
+      if (event.button !== 0 || (event.target instanceof Element && event.target.closest('.pdf-link'))) return;
+      container.dataset.textSelecting = 'true';
+    };
+    const end = () => { delete container.dataset.textSelecting; };
+    container.addEventListener('mousedown', begin);
+    window.addEventListener('mouseup', end);
+    window.addEventListener('blur', end);
+    return () => {
+      container.removeEventListener('mousedown', begin);
+      window.removeEventListener('mouseup', end);
+      window.removeEventListener('blur', end);
+      end();
+    };
+  }, [status]);
 
   // Say why up front when the page in view has no text layer, instead of letting a
   // highlight/underline drag end silently (audit F6).
@@ -662,12 +714,93 @@ export default function PdfReader({
         setScrollProgress(latestProgress);
       }
       const currentPage = currentVisiblePage(latestContainer);
+      if (linkStackRef.current.length) {
+        const view = { page: currentPage, scrollTop: latestContainer.scrollTop, viewportHeight: latestContainer.clientHeight };
+        const remaining = dismissReturnedOrigins(linkStackRef.current, view, (origin) => (origin.zoom === zoom ? origin.scrollTop : scrollTopFromAnchor(latestContainer, origin.anchor)));
+        if (remaining !== linkStackRef.current) {
+          linkStackRef.current = remaining as PdfLinkOrigin[];
+          setLinkStack(remaining as PdfLinkOrigin[]);
+        }
+      }
       if (currentPage === visiblePageRef.current) return;
       visiblePageRef.current = currentPage;
       setVisiblePage(currentPage);
       onReaderStateChange?.({ currentPage, totalPages: pages.length || 1 });
     });
   };
+
+  const flashLinkTarget = (page: number, yPercent: number) => {
+    const height = PDF_LINK_FLASH_HEIGHT_PERCENT;
+    setLinkFlash({ page, yPercent: clamp(yPercent - height * 0.25, 0, 100 - height), heightPercent: height, token: Date.now() });
+    if (linkFlashTimerRef.current !== null) window.clearTimeout(linkFlashTimerRef.current);
+    linkFlashTimerRef.current = window.setTimeout(() => {
+      linkFlashTimerRef.current = null;
+      setLinkFlash(null);
+    }, 640);
+  };
+
+  /** The page's render box in scroll (layout) pixels: top distance from the scroller and height. */
+  const linkPageBox = (container: HTMLElement, pageElement: HTMLElement) => {
+    const layer = pageElement.querySelector<HTMLElement>('.pdf-render-layer') ?? pageElement;
+    return { top: offsetTopWithin(layer, container), height: Math.max(layer.offsetHeight, 1) };
+  };
+
+  /** Scrolls so a link target sits in the upper viewport (page top for page-level targets) and flashes it. */
+  const jumpToLinkTarget = (target: PdfLinkTarget, remember: boolean) => {
+    const container = containerRef.current;
+    const pageElement = container?.querySelector<HTMLElement>(`.pdf-page[data-page="${target.pageNumber}"]`);
+    if (!container || !pageElement) { showReaderHint(zh.reader.linkTargetMissing); return false; }
+    if (remember) {
+      const next = pushLinkOrigin(linkStackRef.current, {
+        page: visiblePageRef.current,
+        scrollTop: container.scrollTop,
+        anchor: scrollAnchorFromContainer(container),
+        zoom,
+        time: Date.now(),
+      });
+      linkStackRef.current = next;
+      setLinkStack(next);
+    }
+    const yPercent = target.precise ? target.yPercent : null;
+    const box = linkPageBox(container, pageElement);
+    const top = linkTargetScrollTop({ pageOffsetTop: box.top, pageHeight: box.height, yPercent, viewportHeight: container.clientHeight, scrollHeight: container.scrollHeight });
+    container.scrollTo({ top, behavior: 'auto' });
+    flashLinkTarget(target.pageNumber, yPercent ?? 0);
+    updateScrollProgress();
+    return true;
+  };
+
+  const activateLink = (link: PdfPageLink) => {
+    const { action } = link;
+    if (action.kind === 'external') {
+      const verdict = inspectExternalUrl(action.url);
+      if (!verdict.ok) { showReaderHint(externalUrlRejectionMessage(verdict)); return; }
+      void openExternalUrl(verdict.url).catch((error) => {
+        showReaderHint(`${zh.reader.linkOpenFailed}：${error instanceof Error ? error.message : String(error)}`);
+      });
+      return;
+    }
+    if (action.kind === 'unsupported' || !link.target) { showReaderHint(zh.reader.linkTargetUnresolved); return; }
+    jumpToLinkTarget(link.target, true);
+  };
+
+  /** 「返回」: pop the newest origin, restore its scroll offset (via the anchor if the zoom changed), flash it. */
+  const returnFromLink = () => {
+    const container = containerRef.current;
+    const { stack, origin } = popLinkOrigin(linkStackRef.current);
+    if (!origin || !container) return;
+    linkStackRef.current = stack;
+    setLinkStack(stack);
+    const top = origin.zoom === zoom ? origin.scrollTop : scrollTopFromAnchor(container, origin.anchor);
+    container.scrollTo({ top, behavior: 'auto' });
+    const pageElement = container.querySelector<HTMLElement>(`.pdf-page[data-page="${origin.page}"]`);
+    if (pageElement) {
+      const box = linkPageBox(container, pageElement);
+      flashLinkTarget(origin.page, clamp(((top - box.top + 28) / box.height) * 100, 0, 100));
+    }
+    updateScrollProgress();
+  };
+  linkBackRef.current = returnFromLink;
 
   const focusAnnotation = (annotationId: string, options: { scroll?: boolean } = {}) => {
     const annotation = currentFileAnnotations.find((item) => item.id === annotationId);
@@ -1448,6 +1581,7 @@ export default function PdfReader({
           {textLayerHint}
         </div>
       )}
+      <PdfLinkBackButton origin={topLinkOrigin(linkStack)} onBack={returnFromLink} />
       <div className="reader-toolbar-progress" data-reader-layer="progress" aria-hidden="true">
         <div style={{ transform: `scaleX(${Math.max(0.04, scrollProgress)})` }} />
       </div>
@@ -1478,6 +1612,7 @@ export default function PdfReader({
               pageHandlers={pageHandlers(page.pageNumber)}
               flashKind={flash?.page === page.pageNumber ? flash.kind : null}
               priorityDistance={Math.abs(page.pageNumber - visiblePage)}
+              linkLayer={linksEnabled && pdfDocument ? { pdfDocument, onActivate: activateLink, flash: linkFlash?.page === page.pageNumber ? linkFlash : null } : null}
                commentSaving={commentSaving}
                commentSaveError={commentSaveError}
                onCommentPopoverChange={value => { if (!commentSavingRef.current) { setCommentPopover(value); setCommentSaveError(''); } }}

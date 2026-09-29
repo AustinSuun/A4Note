@@ -59,6 +59,8 @@ const steps = [
   ['npm', ['run', 'test:pdf-text-layer-offset-browser']],
   ['npm', ['run', 'test:pdf-annotation-geometry']],
   ['npm', ['run', 'test:pdf-annotation-geometry-browser']],
+  ['npm', ['run', 'test:pdf-links']],
+  ['npm', ['run', 'test:pdf-links-browser']],
   ['npm', ['run', 'test:pdf-eraser-precision']],
   ['npm', ['run', 'test:pdf-eraser-alignment']],
   ['npm', ['run', 'test:pdf-text-annotation']],
