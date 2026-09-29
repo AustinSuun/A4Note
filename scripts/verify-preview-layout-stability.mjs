@@ -12,9 +12,13 @@ const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.Scri
 const math = { exports: {} };
 const mathPath = 'src/features/explorer/mathLayoutStability.ts';
 const compiledMath = ts.transpileModule(fs.readFileSync(mathPath, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } });
-vm.runInThisContext(`(function(require,module,exports){${compiledMath.outputText}\n})`, { filename: mathPath })(require, math, math.exports);
+const publishPath = 'src/features/explorer/layoutMeasurePublish.ts';
+const publish = { exports: {} };
+vm.runInThisContext(`(function(require,module,exports){${ts.transpileModule(fs.readFileSync(publishPath, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText}\n})`, { filename: publishPath })(require, publish, publish.exports);
+const localRequire = (id) => id === './layoutMeasurePublish' ? publish.exports : require(id);
+vm.runInThisContext(`(function(require,module,exports){${compiledMath.outputText}\n})`, { filename: mathPath })(localRequire, math, math.exports);
 const mod = { exports: {} };
-vm.runInThisContext(`(function(require,module,exports){${compiled.outputText}\n})`, { filename: path })((id) => id === './mathLayoutStability' ? math.exports : require(id), mod, mod.exports);
+vm.runInThisContext(`(function(require,module,exports){${compiled.outputText}\n})`, { filename: path })((id) => id === './mathLayoutStability' ? math.exports : localRequire(id), mod, mod.exports);
 const { previewSizes, previewSizesChanged, previewBlockAttributes, previewBlockSize, previewLineHeight } = mod.exports;
 const doc = 'START\n\n| a | b |\n| --- | --- |\n| x | y |\n\n[link](https://example.com)\n\nEND';
 const from = doc.indexOf('|'), to = doc.indexOf('\n\n[link]'), line = doc.indexOf('[link]');
@@ -55,6 +59,23 @@ assert.match(editor, /previewMeasureHighlight: true/);
 const field = editor.slice(editor.indexOf('function createDecorationsField'), editor.indexOf('function unfoldFoldsAtEditedBoundaries'));
 assert.doesNotMatch(field, /previewSizesChanged/, 'size updates must not recreate focused image widgets');
 assert.match(source, /view\.dom\.append\(this\.sheet\)/);
-assert.match(source, /this\.view\.state !== result\.state/);
+assert.match(source, /publishMeasurement\(this\.view, \{/);
+assert.match(source, /this\.unpublished\.state\.doc === view\.state\.doc/);
+// Both layout plugins publish from one measure pass: results read from the
+// current state share one transaction; an older result is handed back as stale.
+{
+  const { publishMeasurement } = publish.exports;
+  const current = EditorState.create({ doc: 'x' });
+  const dispatched = [];
+  const view = { state: current, dispatch: (spec) => dispatched.push(spec.effects.length) };
+  const stale = [];
+  publishMeasurement(view, { state: current, effect: previewSizesChanged.of({ signature: 'a', lines: new Map(), blocks: new Map() }), alive: () => true, stale: () => stale.push('preview') });
+  publishMeasurement(view, { state: current, effect: previewSizesChanged.of({ signature: 'b', lines: new Map(), blocks: new Map() }), alive: () => true, stale: () => stale.push('math') });
+  publishMeasurement(view, { state: EditorState.create({ doc: 'old' }), effect: previewSizesChanged.of({ signature: 'c', lines: new Map(), blocks: new Map() }), alive: () => true, stale: () => stale.push('older') });
+  publishMeasurement(view, { state: current, effect: previewSizesChanged.of({ signature: 'd', lines: new Map(), blocks: new Map() }), alive: () => false, stale: () => stale.push('dead') });
+  await Promise.resolve();
+  assert.deepEqual(dispatched, [2], 'sibling results from the same state are published in one transaction');
+  assert.deepEqual(stale, ['older'], 'only results read from an older state are re-measured; destroyed plugins are skipped');
+}
 assert.match(source, /removeEventListener\('loadingdone', this\.fontLoaded\)/);
 console.log('PASS preview layout state: text/history invariance, selection, mapped lines/tables, invalidation/deletion, shrinking, undo, scoped non-remounting integration. Browser geometry is verified separately.');

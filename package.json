@@ -92,6 +92,8 @@
     "test:viewport-to-layout": "node --experimental-strip-types scripts/verify-viewport-to-layout.mjs",
     "test:popover-zoom-browser": "node scripts/verify-popover-zoom-browser.mjs",
     "test:markdown-scroll-browser": "node scripts/verify-markdown-scroll-browser.mjs",
+    "test:markdown-open-reveal": "node scripts/verify-markdown-open-reveal.mjs && node scripts/verify-math-layout-stability.mjs && node scripts/verify-preview-layout-stability.mjs",
+    "test:markdown-open-reveal-browser": "node scripts/verify-markdown-open-reveal-browser.mjs",
     "test:board": "node scripts/verify-board-model.mjs",
     "test:board-browser": "node scripts/verify-board-browser.mjs",
     "test:board-native": "node scripts/verify-board-native.mjs",

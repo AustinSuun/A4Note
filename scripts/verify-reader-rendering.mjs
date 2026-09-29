@@ -237,7 +237,9 @@ assert.match(markdownReadContentSource, /annotationReferencePattern = \/@annotat
 assert.match(markdownReadContentSource, /onNavigateAnnotation\(annotationId\)/);
 assert.match(markdownReadContentSource, /remarkPlugins=\{\[remarkGfm, remarkMath, remarkAsterInline\]\}/);
 assert.match(markdownReadContentSource, /rehypePlugins=\{\[rehypeKatex\]\}/);
-assert.match(markdownLivePreviewEditorSource, /const externalDocumentSync = Annotation\.define<boolean>\(\)/);
+// External syncs are tagged so they neither echo back as edits nor arm live source reveal.
+assert.match(await readFile('src/features/explorer/liveRevealGate.ts', 'utf8'), /export const externalDocumentSync = Annotation\.define<boolean>\(\)/);
+assert.match(markdownLivePreviewEditorSource, /import \{[^}]*externalDocumentSync[^}]*\} from '\.\/liveRevealGate'/);
 assert.match(markdownLivePreviewEditorSource, /annotations: externalDocumentSync\.of\(true\)/);
 assert.match(markdownLivePreviewEditorSource, /update\.docChanged && !update\.transactions\.some\(\(transaction\) => transaction\.annotation\(externalDocumentSync\)\)/);
 assert.match(markdownLivePreviewEditorSource, /previousMarkdown: update\.startState\.doc\.toString\(\)/);

@@ -1,5 +1,6 @@
 import { StateEffect, StateField, type EditorState } from '@codemirror/state';
 import { ViewPlugin, type EditorView, type ViewUpdate } from '@codemirror/view';
+import { publishMeasurement } from './layoutMeasurePublish';
 
 interface BlockSize { height: number; sourceHeight: number; to: number; text: string }
 interface Sizes { signature: string; blocks: Map<number, BlockSize>; lines: Map<number, number> }
@@ -45,6 +46,10 @@ export function mathLayoutStability(render: RenderMath) {
   return [mathSizes, ViewPlugin.fromClass(class {
     private dead = false;
     private fontRevision = 0;
+    // Result measured in this pass but not yet published. CodeMirror can repeat
+    // its measure loop several times in one frame; later iterations build on it
+    // instead of re-measuring every visible line from the empty state.
+    private unpublished: { state: EditorState; sizes: Sizes } | undefined;
     private readonly fonts: FontFaceSet;
     private readonly fontLoaded = () => { this.fontRevision++; this.schedule(); };
     constructor(private readonly view: EditorView) {
@@ -60,11 +65,15 @@ export function mathLayoutStability(render: RenderMath) {
       if (this.dead) return;
       this.view.requestMeasure({ key: this, read: () => ({ state: this.view.state, sizes: this.measure() }), write: result => {
         // requestMeasure's write phase still belongs to an EditorView update.
-        // Dispatch only after it finishes, and reject stale asynchronous work.
-        if (result.sizes) queueMicrotask(() => {
-          if (this.dead) return;
-          if (this.view.state !== result.state) { this.schedule(); return; }
-          this.view.dispatch({ effects: mathSizesChanged.of(result.sizes!) });
+        // Publish after it finishes, and reject work read from an older state.
+        if (!result.sizes) return;
+        const sizes = result.sizes;
+        this.unpublished = { state: result.state, sizes };
+        publishMeasurement(this.view, {
+          state: result.state,
+          effect: mathSizesChanged.of(sizes),
+          alive: () => !this.dead,
+          stale: () => { if (this.unpublished?.sizes === sizes) this.unpublished = undefined; this.schedule(); },
         });
       } });
     }
@@ -76,35 +85,49 @@ export function mathLayoutStability(render: RenderMath) {
       const width = view.contentDOM.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       if (width <= 0) return;
       const signature = [width, style.font, style.lineHeight, style.letterSpacing, style.wordSpacing, style.tabSize, style.wordBreak, style.whiteSpace, this.fontRevision].join('|');
-      const previous = view.state.field(mathSizes);
+      const published = view.state.field(mathSizes);
+      const pending = this.unpublished && this.unpublished.state.doc === view.state.doc ? this.unpublished.sizes : undefined;
+      const previous = pending ?? published;
       const sizes: Sizes = previous.signature === signature
         ? { signature, blocks: new Map(previous.blocks), lines: new Map(previous.lines) }
         : { signature, blocks: new Map(), lines: new Map() };
       let changed = previous.signature !== signature;
       const doc = view.dom.ownerDocument;
-      const host = doc.createElement('div');
-      host.className = 'cm-content cm-md-layout-measure';
-      host.setAttribute('aria-hidden', 'true');
-      host.inert = true;
       // Match the content's typography and usable width, but not its min-height,
       // padding, reserved sizes or position in the document flow.
-      Object.assign(host.style, { position: 'absolute', visibility: 'hidden', pointerEvents: 'none', top: '0', left: '0', width: `${width}px`, minHeight: '0', height: 'auto', padding: '0', margin: '0', font: style.font, lineHeight: style.lineHeight, letterSpacing: style.letterSpacing, wordSpacing: style.wordSpacing, tabSize: style.tabSize, whiteSpace: style.whiteSpace, overflowWrap: style.overflowWrap, wordBreak: style.wordBreak });
-      view.dom.append(host);
+      const hostStyle = { position: 'absolute', visibility: 'hidden', pointerEvents: 'none', top: '0', left: '0', width: `${width}px`, minHeight: '0', height: 'auto', padding: '0', margin: '0', font: style.font, lineHeight: style.lineHeight, letterSpacing: style.letterSpacing, wordSpacing: style.wordSpacing, tabSize: style.tabSize, whiteSpace: style.whiteSpace, overflowWrap: style.overflowWrap, wordBreak: style.wordBreak };
+      // One isolated host per candidate keeps each measurement identical to a
+      // host containing only that candidate. All hosts are built first and read
+      // afterwards: alternating DOM replacement with getBoundingClientRect forced
+      // one synchronous layout per visible formula when a note opened.
+      const hosts: HTMLElement[] = [];
+      const measureHost = (...children: Node[]) => {
+        const host = doc.createElement('div');
+        host.className = 'cm-content cm-md-layout-measure';
+        host.setAttribute('aria-hidden', 'true');
+        host.inert = true;
+        Object.assign(host.style, hostStyle);
+        host.append(...children);
+        hosts.push(host);
+        return host;
+      };
+      const reads: Array<() => void> = [];
+      const pendingBlocks = new Set<number>(), pendingLines = new Set<number>();
       try {
         for (const node of nodes) {
           const from = Number(node.dataset.mathFrom), to = Number(node.dataset.mathTo);
           if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to > view.state.doc.length || to <= from) continue;
           if (node.dataset.mathDisplay === 'true') {
-            if (sizes.blocks.has(from)) continue;
+            if (sizes.blocks.has(from) || pendingBlocks.has(from)) continue;
             const first = view.state.doc.lineAt(from), last = view.state.doc.lineAt(to);
             // Mid-paragraph display syntax is not a whole-line block. Retain
             // its existing boundary behavior instead of deleting surrounding text.
             if (from !== first.from || to !== last.to) continue;
+            pendingBlocks.add(from);
             const raw = view.state.sliceDoc(from, to);
             const math = render(expression(raw), true);
-            host.replaceChildren(math);
-            const renderedHeight = math.getBoundingClientRect().height;
-            host.replaceChildren();
+            measureHost(math);
+            const lines: HTMLElement[] = [];
             for (const text of raw.split('\n')) {
               const line = doc.createElement('div'); line.className = 'cm-line';
               const source = doc.createElement('span'); source.className = 'cm-md-math-source cm-md-math-display-source';
@@ -115,17 +138,20 @@ export function mathLayoutStability(render: RenderMath) {
                 offset = token.index! + token[0].length;
               }
               source.append(text.slice(offset) || (text ? '' : '\u200b'));
-              line.append(source); host.append(line);
+              line.append(source); lines.push(line);
             }
-            const sourceHeight = host.getBoundingClientRect().height;
-            sizes.blocks.set(from, { height: ceil(Math.max(renderedHeight, sourceHeight)), sourceHeight, to, text: raw });
-            changed = true;
+            const sourceHost = measureHost(...lines);
+            reads.push(() => {
+              const renderedHeight = math.getBoundingClientRect().height;
+              const sourceHeight = sourceHost.getBoundingClientRect().height;
+              sizes.blocks.set(from, { height: ceil(Math.max(renderedHeight, sourceHeight)), sourceHeight, to, text: raw });
+            });
           } else {
             const line = node.closest<HTMLElement>('.cm-line');
             const lineFrom = view.state.doc.lineAt(from).from;
-            if (!line || sizes.lines.has(lineFrom)) continue;
-            let height = 0;
-            for (const sourceMode of [false, true]) {
+            if (!line || sizes.lines.has(lineFrom) || pendingLines.has(lineFrom)) continue;
+            pendingLines.add(lineFrom);
+            const clones = [false, true].map((sourceMode) => {
               const clone = line.cloneNode(true) as HTMLElement;
               clone.style.minHeight = '';
               const seen = new Set<number>();
@@ -139,14 +165,19 @@ export function mathLayoutStability(render: RenderMath) {
                 if (sourceMode) { replacement.className = 'cm-md-math-source'; replacement.textContent = raw; }
                 formula.replaceWith(replacement);
               }
-              host.replaceChildren(clone);
-              height = Math.max(height, clone.getBoundingClientRect().height);
-            }
-            sizes.lines.set(lineFrom, ceil(height));
-            changed = true;
+              measureHost(clone);
+              return clone;
+            });
+            reads.push(() => { sizes.lines.set(lineFrom, ceil(Math.max(0, ...clones.map((clone) => clone.getBoundingClientRect().height)))); });
           }
         }
-      } finally { host.remove(); }
+        if (reads.length) {
+          view.dom.append(...hosts);
+          // The first read flushes layout once for every host; the rest reuse it.
+          for (const read of reads) read();
+          changed = true;
+        }
+      } finally { for (const host of hosts) host.remove(); }
       return changed ? sizes : undefined;
     }
   })];

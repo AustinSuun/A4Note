@@ -94,6 +94,8 @@ const steps = [
   ['npm', ['run', 'test:popover-zoom-browser']],
   ['node', ['scripts/verify-markdown-toc-follow.mjs']],
   ['node', ['scripts/verify-markdown-toc-collapse-browser.mjs']],
+  ['npm', ['run', 'test:markdown-open-reveal']],
+  ['npm', ['run', 'test:markdown-open-reveal-browser']],
   ['npm', ['run', 'test:library-summary']],
   ['npm', ['run', 'test:summary-fields']],
   ['node', ['scripts/verify-summary-provision.mjs']],

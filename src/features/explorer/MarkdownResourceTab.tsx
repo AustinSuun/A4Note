@@ -1,7 +1,7 @@
 import { uploadMarkdownImage } from '../../platform/projects';
 import { useMarkdownEndSpace } from '../../shared/markdown/useMarkdownEndSpace';
 import { Bold, BookOpen, Check, CheckSquare, ChevronDown, ChevronRight, Clipboard, ClipboardPaste, Code2, Eraser, ExternalLink, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Highlighter, ImagePlus, Italic, Link as LinkIcon, List, ListChecks, ListOrdered, ListTree, LoaderCircle, Minus, Pencil, Pilcrow, Plus, Quote, Scissors, Sigma, Strikethrough, Table2 } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -164,7 +164,22 @@ function extractMarkdownHeadings(markdown: string, startIndex = 0): MarkdownHead
   return headings;
 }
 
-export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, active = true }: MarkdownResourceTabProps) {
+/** Every open tab stays mounted (TabHost / the Markdown scene), and hosts pass
+ * fresh inline callbacks on each render. Without a stable boundary, switching
+ * notes re-rendered every hidden editor tab (dock, properties, TOC) before the
+ * new one could paint. Callbacks are forwarded through the latest props, so the
+ * memoized view never calls a stale closure; path/name/active and context
+ * changes still re-render it. */
+export function MarkdownResourceTab(props: MarkdownResourceTabProps) {
+  const latest = useRef(props);
+  useLayoutEffect(() => { latest.current = props; });
+  const onRenamed = useCallback<NonNullable<MarkdownResourceTabProps['onRenamed']>>((...args) => latest.current.onRenamed?.(...args), []);
+  const onOpenWikiLink = useCallback<NonNullable<MarkdownResourceTabProps['onOpenWikiLink']>>((...args) => latest.current.onOpenWikiLink!(...args), []);
+  return <MarkdownResourceTabView path={props.path} name={props.name} active={props.active}
+    onRenamed={props.onRenamed ? onRenamed : undefined} onOpenWikiLink={props.onOpenWikiLink ? onOpenWikiLink : undefined} />;
+}
+
+const MarkdownResourceTabView = memo(function MarkdownResourceTabView({ path, name, onRenamed, onOpenWikiLink, active = true }: MarkdownResourceTabProps) {
   const documentToolbar = useDocumentToolbar();
   const hostTabActive = useDocumentToolbarActive();
   const toolbarInTopBar = Boolean(active && hostTabActive && documentToolbar?.enabled && documentToolbar.controlsHost && documentToolbar.saveHost);
@@ -730,4 +745,4 @@ export function MarkdownResourceTab({ path, name, onRenamed, onOpenWikiLink, act
       </div>
     </section>
   );
-}
+});
