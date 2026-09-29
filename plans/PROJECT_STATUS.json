@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-29T14:30:00+08:00",
+  "updatedAt": "2026-09-29T15:50:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "Arena-秋序 (arena-worker d5193e61)",
     "branch": "feat/doc2x-translate-qiuxu（worktree .worktrees/doc2x-translate-qiuxu，基线 b008046）",
     "scope": [
+      "scene-edge-arena-b：80263463 内容区左缘悬停场景切换器（8px 热区、150ms 停留、240ms 宽限加安全三角、只动 transform/opacity、设置默认开启，调用现有 setScene）（arena-b）。",
       "file-preview-arena-b：4f5b33dd 通用文件页签直接显示图片（适应/实际大小、像素尺寸、上限与解码失败提示）并在 sandbox=\"\" 的 srcdoc iframe 中安全渲染 HTML（预览/源码按文件记忆、5MB 上限、GBK 等声明编码、相对图片内联）（arena-b）。",
       "md-open-reveal-arena-b：2891f95a 打开笔记不再露出首行源码（reveal 需要用户意图，失焦收起），切换笔记首帧 p95 441→206ms（arena-b）。",
       "open-menu-file-arena-b：bcabb18d 标题栏「打开 ▾」只在活动标签是具体文件时渲染并作用于该文件（arena-b），reveal_path / reveal_paper_file 改为选中文件。",
@@ -66,10 +67,12 @@
     "sidebarNarrowSyncArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "6f9e0947：删除 ≤1040px 隐藏 .workbench-sidebar 的媒体查询，改由 sidebarVisibility 纯状态机统一决定 docked/overlay/hidden；标题栏按实际可见性显示，窄窗口用浮层抽屉，不改持久化偏好，侧栏隐藏时标题栏显示紧凑「返回场景」。实机验证时定位到 doc2x.core 重复注册导致的启动空白，main 已由 3866352 修复。", "doc": "docs/mcp-sidebar-narrow-sync-arena-b-2026-09-28.md"},
     "mdOpenRevealArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "2891f95a：liveRevealGate.ts 让实时预览只在点击/键盘/输入/跳转后露出源码，打开、切回、程序化 focus、外部同步都不露出，失焦收起；layoutMeasurePublish.ts 合并两个测量插件的发布并用未发布基线消除重复测量；KaTeX LRU + LatexWidget.updateDOM；imagePathCompartment 未变不 reconfigure；MarkdownResourceTab memo + 最新 props 转发，隐藏保活标签切换时不再 render。", "doc": "docs/mcp-md-open-reveal-arena-b-2026-09-29.md"},
     "openMenuFileArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "bcabb18d：纯函数 src/workbench/openMenuTarget.ts 决定「打开 ▾」目标；场景页/会话/无标签/缺路径不渲染按钮；md/文本/HTML 可在 VS Code 打开文件本身，白板/图片/PDF 隐藏；项目级 VS Code 入口移到同菜单「在 VS Code 中打开项目文件夹」；Explorer /select 选中文件。顺带修复工作区 PDF 打开时 PdfResourceTab 的 Maximum update depth 死循环。", "doc": "docs/mcp-open-menu-file-arena-b-2026-09-29.md"},
-    "filePreviewArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "4f5b33dd：filePreview.ts 纯规则（种类/上限/sandbox/CSP/字节解码/视图记忆）+ htmlPreviewDocument.ts（DOMParser 惰性处理：删脚本/handler/refresh/iframe/作者 base，表单变容器，锚点改 about:srcdoc#，外链 inert，相对图片经 loadNoteImage 内联，其余相对 URL 去除，注入文档 CSP 与 base about:blank）；FileTab 图片走 noteImageLoader，HTML 走 sandbox=\"\" srcdoc；加载结果按 path 归属修复切换首帧过期结果触发读取。", "doc": "docs/mcp-file-preview-arena-b-2026-09-29.md"}
+    "filePreviewArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "4f5b33dd：filePreview.ts 纯规则（种类/上限/sandbox/CSP/字节解码/视图记忆）+ htmlPreviewDocument.ts（DOMParser 惰性处理：删脚本/handler/refresh/iframe/作者 base，表单变容器，锚点改 about:srcdoc#，外链 inert，相对图片经 loadNoteImage 内联，其余相对 URL 去除，注入文档 CSP 与 base about:blank）；FileTab 图片走 noteImageLoader，HTML 走 sandbox=\"\" srcdoc；加载结果按 path 归属修复切换首帧过期结果触发读取。", "doc": "docs/mcp-file-preview-arena-b-2026-09-29.md"},
+    "sceneEdgeArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "80263463：sceneEdgeSwitcherModel.ts 纯状态机（closed/pending/open/leaving，来源 hover/press/keyboard）加安全三角与面板定位；SceneEdgeSwitcher.tsx 经 WorkbenchShell 的 edgeSwitcher 插槽挂载，scenes=sidebarScenes、onOpenScene=setScene，没有第二份场景数据；sceneGroups.ts 与 ProjectSidebar 共用分组；让位选择器包含侧栏拖宽把手、阅读器笔记把手、对话框与右键菜单；设置 usePersistedUiState.sceneEdgeSwitcher 默认开启。", "doc": "docs/mcp-scene-edge-switcher-arena-b-2026-09-29.md"}
   },
   "lastHandoff": {
     "completed": [
+      "scene-edge-arena-b / 80263463：左缘悬停场景切换器；新增 test:scene-edge-switcher 与 test:scene-edge-switcher-browser（旧代码均失败，已进 verify-all）；dev:live 性能 trace、浅/深色、侧栏展开/收起、118%、1000px 截图与误触清单逐项取证，console 0。",
       "file-preview-arena-b / 4f5b33dd：笔记文件页签图片预览与沙箱 HTML 渲染预览；新增 test:file-preview 与 test:file-preview-browser（均在旧代码上失败，已进 verify-all）；dev:live 浅/深色改前改后取证，打开文件前后样例目录 sha256/mtime 完全一致。",
       "md-open-reveal-arena-b / 2891f95a：Part A 首行标题打开时折叠、失焦收起（笔记、阅读器侧栏、总览摘要编辑器共用）；Part B profile 驱动优化，cold+warm 首帧 p95 441→206ms，最长任务 281→85ms，warm p95 83→57ms，burst 最后一次点击生效。",
       "open-menu-file-arena-b / bcabb18d：标题栏「打开 ▾」按活动文件显示与动作（纯函数 + ui 层原生调用 + Rust reveal_in_file_manager），新增单元测试与浏览器测试 40 项（旧代码 12/34 + 旧 TopBar 裁剪 4 项失败）；下拉面板原被 40px overflow:hidden 标题栏裁剪看不见（旧问题），改为 portal 到 body 并 fixed 锚定按钮。",
@@ -429,6 +432,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
+      "80263463：tsc 0；test:scene-edge-switcher PASS（旧代码缺模块 ENOENT）；test:scene-edge-switcher-browser 41/41（旧代码 37 项中 30 项失败）；dev:live 10 次进出 trace 0 长任务 0 掉帧（均帧 16.67ms、最大 17.3ms，60Hz），reduced-motion 同样 0/0；误触清单（文件拖拽、侧栏拖宽、阅读器笔记把手含专注写作、PDF 拖选、窗口左缘移出）均未打开，滚轮穿透、外部点击关闭且穿透；rebase 到 main 3e1cc08 后 PowerShell npm run verify 94 步中 93 步通过，唯一失败 test:ui-state:383（reader-toolbar-center 源码断言，干净 main 3e1cc08 同样失败）；build、architecture、sidebar-visibility、note-workbench、reader-note-sidebar 与两个新测试均在 verify 中 PASS。",
       "4f5b33dd：tsc 0、build、architecture 通过；test:file-preview PASS（旧代码缺模块失败）；test:file-preview-browser PASS（旧代码 PNG 落到暂不支持预览失败），含探针 HTML 宿主不变、上限不读取、未声明 GBK 回退、乱序快速切换三轮、深色不反色、只读；rebase 到 main 471953f 后 PowerShell npm run verify 仅 2 步未过：test:ui-state:383（main 既有失败）与 test:note-enter-motion-browser 一次进程崩溃（退出码 0xC0000409，非断言，单独复跑 73/73 通过），test:file-preview / test:file-preview-browser 在 verify 中 PASS；原生 WebView 每新建一个沙箱 frame 有一条宿主 Blocked script execution 日志（最简沙箱 frame 对照同样 1 条、无 sandbox 0 条），其余 console 0。",
       "2891f95a：新增 test:markdown-open-reveal（改前失败，并串联原本未注册的 math/preview layout stability 测试）与 test:markdown-open-reveal-browser（改前失败：首帧即露出源码），均已加入 verify-all；全部 test:markdown*/test:reader*（除 -native）与 test:architecture 通过；dev:live 改前/改后 A1–A5 截图与最终复核（切换、保存写盘并逐字节恢复）console/pageerror 0；perf 报告、trace、cpuprofile 在 .tmp/shots/2891f95a/perf。rebase 到 main 2ab5900 后 PowerShell npm run verify 89 步 85 步通过，两个新步骤通过；失败 4 步 test:ui-state、test:reader(94 行)、test:pdf-selection-preview、test:pdf-text-annotation 在干净 main 2ab5900 上同样失败（annotationTools 重构后源码断言过期）。新增可选/本地 npm run perf:markdown-switch（最后点击生效、切换显示目标笔记、console 0 时 PASS，耗时只报告），rebase 后两次运行 PASS。",
       "bcabb18d：test:open-menu-target 通过，test:open-menu-browser 34/34（旧代码 12/34，含任务要求的四条全部失败；追加面板裁剪修复后 40/40，旧 TopBar 36/40），cargo test explorer_select 2/2，build 通过；rebase 到 main c513766 后 PowerShell npm run verify 83 步中 82 步通过，唯一失败 test:ui-state:383 是 main 已有问题；dev:live 隔离实机总览/文献库/笔记空页无按钮，md/白板/工作区 PDF/论文/深层带空格路径按规则显示，Explorer 实际选中文件，改后 console/pageerror 0（.tmp/shots/bcabb18d）。",
@@ -954,6 +958,6 @@
       "文献库全部工作流、更完整双链/引用重命名以及大型App收敛仍是后续项；关系图、社区、云同步服务端和新AI扩展未动。",
       "capture-readable-pdf-arena：未在用户真实资料库或已安装桌面端验收；仅新采集PDF生效，旧哈希名仍保留。"
     ],
-    "updatedAt": "2026-09-29T14:30:00+08:00"
+    "updatedAt": "2026-09-29T15:50:00+08:00"
   }
 }
