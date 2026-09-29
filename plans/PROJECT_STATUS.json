@@ -66,7 +66,7 @@
   },
   "lastHandoff": {
     "completed": [
-      "open-menu-file-arena-b / bcabb18d：标题栏「打开 ▾」按活动文件显示与动作（纯函数 + ui 层原生调用 + Rust reveal_in_file_manager），新增单元测试与浏览器测试 34 项（旧代码 12/34）。",
+      "open-menu-file-arena-b / bcabb18d：标题栏「打开 ▾」按活动文件显示与动作（纯函数 + ui 层原生调用 + Rust reveal_in_file_manager），新增单元测试与浏览器测试 40 项（旧代码 12/34 + 旧 TopBar 裁剪 4 项失败）；下拉面板原被 40px overflow:hidden 标题栏裁剪看不见（旧问题），改为 portal 到 body 并 fixed 锚定按钮。",
       "pdf-annotation-geometry-yunshu / 6d59b629：PDF 阅读器高亮/下划线相对所选字形的偏移与选区弹窗错位修复（三处根因：弹窗坐标系、文本层字体度量/kerning、行合并容差），预览/弹窗/落盘共用一份 segments，pdfCoordinates.ts 与 annotationPositionOptimism 未动；新增单元 100 项 + 浏览器 159 项回归。",
       "sidebar-narrow-sync-arena-b / 6f9e0947：窄窗口侧栏状态同步（状态机 + 浮层抽屉 + 标题栏紧凑「返回场景」），新增单元测试 8 项与浏览器测试 39 项；另定位 doc2x.core 重复注册导致的启动空白（main 3866352 已修复）。",
       "doc2x-translate-qiuxu：Doc2X 翻译集成第二步。新增 src-tauri/src/doc2x_cli.rs 异步执行层（run_doc2x_command 带超时与 timedOut 回报、start_doc2x_login/cancel_doc2x_job 流式事件、OnceLock 进程登记、--auth-mode 白名单）与 src/platform/doc2x 的 outcome 映射；lib.rs 保持 <160 行。",
@@ -420,7 +420,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
-      "bcabb18d：test:open-menu-target 通过，test:open-menu-browser 34/34（旧代码 12/34，含任务要求的四条全部失败），cargo test explorer_select 2/2，build 通过；rebase 到 main c513766 后 PowerShell npm run verify 83 步中 82 步通过，唯一失败 test:ui-state:383 是 main 已有问题；dev:live 隔离实机总览/文献库/笔记空页无按钮，md/白板/工作区 PDF/论文/深层带空格路径按规则显示，Explorer 实际选中文件，改后 console/pageerror 0（.tmp/shots/bcabb18d）。",
+      "bcabb18d：test:open-menu-target 通过，test:open-menu-browser 34/34（旧代码 12/34，含任务要求的四条全部失败；追加面板裁剪修复后 40/40，旧 TopBar 36/40），cargo test explorer_select 2/2，build 通过；rebase 到 main c513766 后 PowerShell npm run verify 83 步中 82 步通过，唯一失败 test:ui-state:383 是 main 已有问题；dev:live 隔离实机总览/文献库/笔记空页无按钮，md/白板/工作区 PDF/论文/深层带空格路径按规则显示，Explorer 实际选中文件，改后 console/pageerror 0（.tmp/shots/bcabb18d）。",
       "6d59b629 云枢：tsc(app) 0；build 0；test:pdf-annotation-geometry 100（旧代码在 fontFamily 断言失败）；test:pdf-annotation-geometry-browser 159/159（旧代码 102/156：字形漂移 0.26–0.36em→≤0.05em、落盘 % 跨缩放漂移 0.11–0.24%→≤0.01%、弹窗底边偏 12–110px→Δ≤0.02px、9pt 双行 1 带→2 带）；reader/reader-helpers/text-layer-offset 55+113/selection-preview 38+28/crosspage 31/rotated 151/text-annotation 33/eraser-precision 26/eraser-alignment 217+24/annotation-layers 55/find-entry 35/pdfjs/architecture/core/viewport-to-layout 通过；npm run verify（a7d2023 基线，含 cargo test 247）仅 test:ui-state（既有）与 test:summary-fields 的焦点断言（在 main a4f6a19 上同样随机失败，既有不稳定）未过；rebase 到 a4f6a19 后 tsc/build/architecture/自有测试/sidebar-visibility 8+39/reader 复跑通过；dev:live yunshu 实例（1471/9371，DPR 1.25）120%/150% 改前/改后：弹窗底边 306.86 vs 期望 306.87、带边 Δ≤0.01px、下划线基线下 0.04em，console/pageerror 0。",
       "6f9e0947：test:sidebar-visibility 8/8，test:sidebar-visibility-browser 39/39（旧代码 7/39）；build、architecture、core 通过；rebase 到 main a7d2023 后 PowerShell npm run verify 81 步中 80 步通过，唯一失败 test:ui-state:383 是 main 已有问题；dev:live 隔离实机 文献库/白板/阅读器 × 100/118/125% 与宽/窄/边界检查通过，修复后 console/pageerror 为 0（.tmp/shots/6f9e0947-devlive）。",
       "npm run test:doc2x-cli → 15 pass / 0 fail；cargo test --manifest-path src-tauri/Cargo.toml --lib doc2x_cli:: → 6 passed / 0 failed；npx tsc -b → 退出 0；npm run test:architecture → 通过；git diff --check 干净。",

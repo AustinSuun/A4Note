@@ -1,5 +1,6 @@
 import { ChevronDown, FolderOpen, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { Project, Workspace } from '../core/workspace';
 import type { WorkbenchLabels } from './workbenchLabels';
 import { useDocumentToolbar } from './DocumentToolbar';
@@ -62,6 +63,8 @@ export function WorkbenchTopBar({
   const [openMenuOpen, setOpenMenuOpen] = useState(false);
   const workspacePickerRef = useRef<HTMLDivElement>(null);
   const openMenuRef = useRef<HTMLDivElement>(null);
+  const openPanelRef = useRef<HTMLDivElement>(null);
+  const [openPanelStyle, setOpenPanelStyle] = useState<CSSProperties | null>(null);
   const projectWorkspaces = project ? workspaces.filter((candidate) => candidate.projectId === project.id) : [];
 
   useEffect(() => {
@@ -76,11 +79,35 @@ export function WorkbenchTopBar({
   useEffect(() => {
     if (!openMenuOpen) return undefined;
     const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (!openMenuRef.current?.contains(event.target as Node)) setOpenMenuOpen(false);
+      const target = event.target as Node;
+      if (!openMenuRef.current?.contains(target) && !openPanelRef.current?.contains(target)) setOpenMenuOpen(false);
     };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpenMenuOpen(false); };
+    const close = () => setOpenMenuOpen(false);
     document.addEventListener('pointerdown', closeOnOutsidePointer);
-    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('resize', close);
+    };
   }, [openMenuOpen]);
+
+  // The title bar clips its content (overflow: hidden, 40px tall), so the panel is
+  // portalled to <body> and anchored under the trigger with fixed positioning.
+  // Rects are in zoomed viewport pixels while lengths inside a root `zoom` get
+  // scaled again, hence the division by the element's effective CSS zoom.
+  const toggleOpenMenu = () => {
+    if (openMenuOpen) { setOpenMenuOpen(false); return; }
+    const anchor = openMenuRef.current;
+    if (anchor) {
+      const rect = anchor.getBoundingClientRect();
+      const zoom = (document.body as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom || 1;
+      setOpenPanelStyle({ position: 'fixed', top: rect.bottom / zoom + 7, right: (window.innerWidth - rect.right) / zoom, zIndex: 1000, width: 'max-content', minWidth: 190, whiteSpace: 'nowrap' });
+    }
+    setOpenMenuOpen(true);
+  };
 
   // Switching tabs changes the target: never leave a menu open for the previous file.
   const openTargetKey = openTarget?.key ?? null;
@@ -169,14 +196,14 @@ export function WorkbenchTopBar({
               aria-label={`打开：${openTarget.name}`}
               title={middleEllipsisPath(openTarget.displayPath)}
               data-path={openTarget.displayPath}
-              onClick={() => setOpenMenuOpen((current) => !current)}
+              onClick={toggleOpenMenu}
             >
               <FolderOpen size={15} aria-hidden="true" />
               <span>打开</span>
               <ChevronDown size={14} aria-hidden="true" />
             </button>
-            {openMenuOpen && (
-              <div className="workbench-open-menu-panel" role="menu" aria-label="打开方式">
+            {openMenuOpen && createPortal(
+              <div className="workbench-open-menu-panel" role="menu" aria-label="打开方式" ref={openPanelRef} style={openPanelStyle ?? undefined}>
                 <button type="button" role="menuitem" onClick={() => { onRevealOpenTarget?.(openTarget); setOpenMenuOpen(false); }}><FolderOpen size={16} aria-hidden="true" /><span>在文件管理器中显示</span></button>
                 {openTarget.vscodePath && (
                   <button type="button" role="menuitem" onClick={() => { onOpenInVSCode?.(openTarget.vscodePath as string); setOpenMenuOpen(false); }}><span className="workbench-vscode-mark" aria-hidden="true">&lt;/&gt;</span><span>在 VS Code 中打开</span></button>
@@ -184,7 +211,8 @@ export function WorkbenchTopBar({
                 {openTarget.projectVSCodePath && (
                   <button type="button" role="menuitem" title={openTarget.projectVSCodePath} onClick={() => { onOpenInVSCode?.(openTarget.projectVSCodePath as string); setOpenMenuOpen(false); }}><span className="workbench-vscode-mark" aria-hidden="true">&lt;/&gt;</span><span>在 VS Code 中打开项目文件夹</span></button>
                 )}
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
         )}

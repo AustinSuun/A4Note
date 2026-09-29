@@ -103,7 +103,8 @@ function Host() {
         <small>已打开：{openFiles.join(', ') || '—'}</small>
       </aside>
       <main style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px', borderBottom: '1px solid #dde3dd' }}>
+        {/* Like .window-titlebar: fixed height and overflow hidden, which clips an in-place dropdown. */}
+        <div className="fixture-titlebar" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, overflow: 'hidden', padding: '0 8px', borderBottom: '1px solid #dde3dd' }}>
           <button type="button" className="fixture-sidebar-toggle" onClick={() => setSidebarCollapsed((value) => !value)}>{sidebarCollapsed ? '展开侧栏' : '收起侧栏'}</button>
           <div style={{ flex: 1, minWidth: 0 }}><WorkbenchTopBar {...topBarProps} /></div>
         </div>

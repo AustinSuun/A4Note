@@ -6,6 +6,8 @@
 //  - board → button present, "在 VS Code 中打开" hidden, reveal gets the board path;
 //  - library paper → reveal_paper_file(paper id, file id);
 //  - switching tabs closes an open menu; closing the last file tab removes the button;
+//  - the dropdown is really visible under a clipping 40px title bar (100% / 125% zoom),
+//    real pointer clicks inside it work, Esc / outside click close it;
 //  - collapsing the sidebar changes nothing.
 // Fails on the pre-fix code (button everywhere, reveal → project root).
 // Evidence: .tmp/shots/open-menu-browser/<run>/.
@@ -82,6 +84,26 @@ const clickItem = async (text) => {
   return clicked;
 };
 const width = text => [...text].reduce((sum, char) => sum + (char.codePointAt(0) >= 0x2e80 ? 2 : 1), 0);
+
+/* Is the open panel on screen (not clipped) and anchored under the trigger? */
+const PANEL_GEOMETRY = `(()=>{
+  const p=document.querySelector('.workbench-open-menu-panel'); const t=document.querySelector('.workbench-open-trigger');
+  if(!p||!t) return {panel:!!p};
+  const r=p.getBoundingClientRect(); const tr=t.getBoundingClientRect();
+  const items=[...p.querySelectorAll('[role=menuitem]')].map(b=>{const q=b.getBoundingClientRect();const h=document.elementFromPoint(q.left+q.width/2,q.top+q.height/2);return !!h&&b.contains(h)});
+  return {panel:true,allItemsHittable:items.length>0&&items.every(Boolean),items:items.length,gap:Math.round((r.top-tr.bottom)*10)/10,rightDelta:Math.round((r.right-tr.right)*10)/10,
+    width:Math.round(r.width),maxItemHeight:Math.max(...[...p.querySelectorAll('[role=menuitem]')].map(b=>b.getBoundingClientRect().height)),zoom:document.documentElement.style.zoom||'100%'}
+})()`;
+const mouseClick = async (x, y) => {
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: type === 'mouseMoved' ? 0 : 1 });
+  await settle();
+};
+const centerOf = selectorExpr => ev(`(()=>{const e=${selectorExpr};if(!e)return null;const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`);
+const pressKey = async (key, code) => {
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code: key, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code });
+  await settle();
+};
 const absent = p => !p.present && !p.menuOpen;
 
 async function scenarios() {
@@ -119,6 +141,39 @@ async function scenarios() {
   await clickItem('在 VS Code 中打开项目文件夹');
   calls = await ipc();
   check(calls.length === 1 && calls[0].cmd === 'open_path_in_vscode' && calls[0].args?.request?.path === ROOT, '「在 VS Code 中打开项目文件夹」：打开文件夹项目根目录', calls);
+
+  // The dropdown must be visible although the title bar clips its content.
+  for (const zoom of ['', '125%']) {
+    await ev(`document.documentElement.style.zoom=${JSON.stringify(zoom)}`);
+    await settle();
+    const trigger = await centerOf(`document.querySelector('.workbench-open-trigger')`);
+    await mouseClick(trigger.x, trigger.y);
+    const geometry = await ev(PANEL_GEOMETRY);
+    const scale = zoom ? 1.25 : 1;
+    check(geometry.panel && geometry.allItemsHittable && Math.abs(geometry.gap - 7 * scale) <= 2 && Math.abs(geometry.rightDelta) <= 2 && geometry.maxItemHeight <= 34 * scale,
+      `菜单面板在 40px 裁剪标题栏下仍可见、贴在按钮下方、菜单项单行（缩放 ${zoom || '100%'}）`, geometry);
+    await shot(`03b-md-menu-visible-zoom${zoom ? '125' : '100'}`);
+    await pressKey('Escape', 27);
+    p = await probe();
+    check(!p.menuOpen, `Esc 关闭菜单（缩放 ${zoom || '100%'}）`, p);
+  }
+  await ev(`document.documentElement.style.zoom=''`);
+  // Real pointer: pointerdown inside the (portalled) panel must not count as "outside".
+  {
+    const trigger = await centerOf(`document.querySelector('.workbench-open-trigger')`);
+    await mouseClick(trigger.x, trigger.y);
+    await clearIpc();
+    const item = await centerOf(`[...document.querySelectorAll('.workbench-open-menu-panel [role=menuitem]')][0]`);
+    if (item) await mouseClick(item.x, item.y);
+    const realCalls = await ipc();
+    p = await probe();
+    check(item && realCalls.length === 1 && realCalls[0].cmd === 'reveal_path' && realCalls[0].args?.request?.path === MD && !p.menuOpen,
+      '真实鼠标点击菜单项：reveal_path 收到 md 路径，菜单随后关闭', { item, realCalls, p });
+    await mouseClick(trigger.x, trigger.y);
+    await mouseClick(640, 500);
+    p = await probe();
+    check(!p.menuOpen, '点击菜单外部关闭菜单', p);
+  }
 
   // Menu open on md, switch tab → the menu must not stay open for the old file.
   await openMenu();

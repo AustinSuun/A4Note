@@ -97,10 +97,18 @@
 - 改后完整流程（`.tmp/arena-b/console-final.jsonl`，01:25 起，覆盖上表全部场景）：**0 条**。
 - 顺带修复的既有问题：打开**工作区 PDF**时持续刷 `Maximum update depth exceeded`（改前代码同样出现，见 `console-before.jsonl` 01:08:52 起，PDF 打开期间一直刷）。根因：`PdfResourceTab` 每次渲染都生成新的 `changeReaderState`，`PdfReader` 的 effect 依赖该回调并在其中回报 `{currentPage,totalPages}`，`setReaderState` 每次写入新对象 → 重新渲染 → 新回调 → 死循环。修复：值不变时保留原对象（3 行，`src/features/reader/PdfResourceTab.tsx`）。修复后打开并滚动 PDF：0 错误，页码正常跟随（`6 / 12`）。文献库阅读器传的是稳定的 `setState`，不受影响。
 
+## 7b. 追加修复：下拉面板被标题栏裁剪（旧代码即存在）
+
+- 现象：标题栏 `.window-titlebar` / `.window-titlebar-projectbar` 为 `overflow: hidden`、高 40px，面板原为 `position: absolute; top: calc(100% + 7px)`（top≈41px），整块被裁掉——DOM 里有菜单项、`el.click()` 也能触发，但用户看不到也点不到。旧代码截图 before-5 与新代码早期截图 after-4/5/7 均无可见面板，即旧问题。
+- 修复（仅 `WorkbenchTopBar.tsx` 打开菜单块，未动 `workbench.css` / 标题栏样式）：面板 `createPortal` 到 `<body>`，按触发按钮 `getBoundingClientRect()` 以 `position: fixed` 锚定在按钮右下（除以 `currentCSSZoom`，兼容根 `zoom`）；`width: max-content; min-width: 190px; white-space: nowrap`，「在 VS Code 中打开项目文件夹」不再折行；外部点击判断同时排除 portal 面板；新增 Esc 与窗口 resize 关闭。
+- 回归：`test:open-menu-browser` 夹具加 40px `overflow: hidden` 标题栏，新增 6 项（100%/125% 缩放下面板中心可命中、贴按钮、菜单项单行；Esc 关闭；真实 CDP 鼠标点击菜单项触发 `reveal_path` 且菜单关闭；点击外部关闭）。新代码 40/40；旧 TopBar 36/40（裁剪 ×2、Esc、真实点击失败）。
+- 真实应用：after-13 / after-14 截图面板完整可见；Playwright 真实点击触发 → 资源管理器打开 `openmenu-notes` 并选中 `读书笔记.md`（`explorer-select-real-click.txt`）；期间 console/pageerror 0（`console-portal-fix.jsonl`）。
+
 ## 8. 完整 verify 与已知问题
 
 - `npm run build`：通过。
 - `npm run verify`（PowerShell，rebase 到 main `c513766` 之后）：83 步中 82 步通过（含 `test:open-menu-target`、`test:open-menu-browser` 34/34、cargo 249 通过），唯一失败 `test:ui-state`（`verify-ui-state.mjs:383`），main 上已有。
+- 追加面板裁剪修复后再跑 PowerShell `npm run verify`：`test:open-menu-target` 通过、`test:open-menu-browser` 40/40；失败 2 步——`test:ui-state:383`（main 已有），以及 cargo 4 项 `managed_image_io` / `markdown_images` 报 `os error 32`（文件被其他进程占用，本轮未改 Rust）；单独重跑这 10 项及完整 `cargo test` 均通过（249 passed，`cargo-full-rerun.txt`），判定为 Windows 文件锁瞬时失败。`npm run build`、`test:architecture`、`test:agent-status` 通过。
 - 已知且与本任务无关：`test:ui-state`（`verify-ui-state.mjs:383`）在 main 上已失败；未注册到 verify 的 `scripts/verify-note-toolbar.mjs` 在 main 上已失败（断言的 `DocumentToolbarProvider enabled=` 源码已被其他任务改掉）。均未修改。
 
 ## 9. 提交与合入
@@ -110,5 +118,5 @@
 ## 10. 改动文件
 
 - 新增：`src/workbench/openMenuTarget.ts`、`src/ui/openMenuActions.ts`、`scripts/verify-open-menu-target.mjs`、`scripts/verify-open-menu-browser.mjs`、`scripts/fixtures/open-menu-host.tsx`、本文档
-- 修改：`src/workbench/WorkbenchTopBar.tsx`（仅 `.workbench-topbar-actions` 内的打开菜单块和 props；`.workbench-document-controls` 未动）、`src/ui/App.tsx`（TopBar 接线 + 目标计算，约 20 行）、`src-tauri/src/app_paths.rs`、`src-tauri/src/project_commands.rs`、`src-tauri/src/library_import.rs`、`src/features/reader/PdfResourceTab.tsx`、`scripts/verify-reader-labels.mjs`、`scripts/verify-all.mjs`、`package.json`、状态文件
+- 修改：`src/workbench/WorkbenchTopBar.tsx`（仅 `.workbench-topbar-actions` 内的打开菜单块和 props，面板 portal 到 body；`.workbench-document-controls` 未动）、`src/ui/App.tsx`（TopBar 接线 + 目标计算，约 20 行）、`src-tauri/src/app_paths.rs`、`src-tauri/src/project_commands.rs`、`src-tauri/src/library_import.rs`、`src/features/reader/PdfResourceTab.tsx`、`scripts/verify-reader-labels.mjs`、`scripts/verify-all.mjs`、`package.json`、状态文件
 - 未新增 `if (scene === …)` 分支；未改 `types.ts` / `lib.rs` / `tokens.css` / `workbench.css`；依赖方向 ui → workbench → core 保持
