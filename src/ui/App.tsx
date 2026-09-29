@@ -6,6 +6,8 @@ import { useNoteFolderWorkspaces } from '../features/markdown';
 import { capturePdfCenterAnchor, restorePdfPageAnchor, requestPdfFind } from '../features/reader';
 import { BrandUpdateNotice } from '../features/updates';
 import { DocumentToolbarProvider } from '../workbench/DocumentToolbar';
+import { openMenuSourceFromTab, resolveOpenMenuTarget } from '../workbench/openMenuTarget';
+import { openOpenMenuPathInVSCode, revealOpenMenuTarget } from './openMenuActions';
 import { onSummaryNoteSaved } from '../platform/library/summaryNotes';
 import { useCaptureLibraryUpdates } from '../features/library';
 import { flushPendingSaves } from '../platform/pendingSaves';
@@ -78,7 +80,6 @@ import {
   createTextFile,
   deleteTextFile,
   describeProjectFolder,
-  openPathInVSCode,
   renameTextFile,
   revealPath,
   selectProjectFolder,
@@ -2907,6 +2908,14 @@ function AppContent() {
 
   const hostItems: TabHostItem[] = workspaceTabs.map((tab) => ({ id: tab.id, content: renderTabContent(tab) }));
   const hostActiveTabId = activeFileTabId ?? activeTab?.id ?? null;
+  // 「打开 ▾」acts on the file the host is showing, and only exists while there is one (bcabb18d).
+  const hostActiveTab = hostActiveTabId ? workspaceTabs.find((tab) => tab.id === hostActiveTabId) ?? null : null;
+  const openMenuPaperId = hostActiveTab?.kind === 'tool' ? paperIdFromReaderTabKey(hostActiveTab.key) : null;
+  const openMenuResolution = resolveOpenMenuTarget(
+    openMenuSourceFromTab(hostActiveTab, { paperId: openMenuPaperId, paper: openMenuPaperId ? aster.documents.get(openMenuPaperId) ?? null : null }),
+    { projectRoot: folderProjectPath },
+  );
+  const openMenuTarget = openMenuResolution.visible ? openMenuResolution.target : null;
 
   return (
     <DocumentToolbarProvider enabled={['markdown', 'reader', 'library', 'tasks'].includes(activeScene ?? '') && !settingsOpen}>
@@ -2972,13 +2981,19 @@ function AppContent() {
           workspaces={workbench.workspaces}
           fileTreeVisible={sidebarTreeVisible}
           canToggleFileTree={Boolean(activeSidebarView && activeWorkspaceRecord)}
-          canBrowseFolder={Boolean(folderProjectPath) || Boolean(activeSidebarView)}
+          openTarget={openMenuTarget}
           providers={agentProviders}
           providersLoading={agentProvidersLoading}
           workspaceBreadcrumb={noteFolderWorkspaces.breadcrumb}
           onToggleFileTree={toggleFileTree}
-          onOpenInVSCode={() => folderProjectPath && void openPathInVSCode(folderProjectPath)}
-          onRevealFolder={() => folderProjectPath && void revealPath(folderProjectPath)}
+          onRevealOpenTarget={(target) => void revealOpenMenuTarget(target).catch((error) => {
+            console.error('Reveal active file failed', error);
+            setLibraryStatus(error instanceof Error ? error.message : zh.app.actionFailed);
+          })}
+          onOpenInVSCode={(path) => void openOpenMenuPathInVSCode(path).catch((error) => {
+            console.error('Open in VS Code failed', error);
+            setLibraryStatus(error instanceof Error ? error.message : zh.app.actionFailed);
+          })}
           onCreateAgentSession={createAgentSessionTab}
           onActivateWorkspace={(workspaceId) => workbenchStore.activateWorkspace(workspaceId)}
           onCreateWorkspace={(projectId) => workbenchStore.createWorkspace({ projectId })}

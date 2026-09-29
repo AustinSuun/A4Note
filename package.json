@@ -46,6 +46,8 @@
     "test:ui-state": "node scripts/verify-ui-state.mjs",
     "test:sidebar-visibility": "node --experimental-strip-types scripts/verify-sidebar-visibility.mjs",
     "test:sidebar-visibility-browser": "node scripts/verify-sidebar-visibility-browser.mjs",
+    "test:open-menu-target": "node --experimental-strip-types scripts/verify-open-menu-target.mjs",
+    "test:open-menu-browser": "node scripts/verify-open-menu-browser.mjs",
     "test:note-workbench": "node scripts/verify-note-workbench.mjs",
     "test:reader-note-sidebar": "node scripts/verify-reader-note-sidebar.mjs",
     "test:reader-note-sidebar-browser": "node scripts/verify-reader-note-sidebar-browser.mjs",

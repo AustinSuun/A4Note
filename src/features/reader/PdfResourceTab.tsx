@@ -133,7 +133,10 @@ export function PdfResourceTab({ path, name, resourceId, initialZoom = 1, initia
     onStateChange?.({ zoom: next });
   };
   const changeReaderState = (next: { currentPage: number; totalPages: number }) => {
-    setReaderState(next);
+    // PdfReader reports state from an effect keyed on this (per-render) callback;
+    // keeping the same object when nothing changed stops the render loop
+    // ("Maximum update depth exceeded" while a workspace PDF is open).
+    setReaderState((current) => (current.currentPage === next.currentPage && current.totalPages === next.totalPages ? current : next));
     if (next.currentPage !== readerState.currentPage) onStateChange?.({ page: next.currentPage });
   };
 

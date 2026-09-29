@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Project, Workspace } from '../core/workspace';
 import type { WorkbenchLabels } from './workbenchLabels';
 import { useDocumentToolbar } from './DocumentToolbar';
+import { middleEllipsisPath, type OpenMenuTarget } from './openMenuTarget';
 
 export interface TopBarProviderOption {
   id: string;
@@ -19,12 +20,16 @@ export interface WorkbenchTopBarProps {
   fileTreeVisible: boolean;
   /** Whether the active scene contributes a contextual sidebar to toggle. */
   canToggleFileTree?: boolean;
-  canBrowseFolder: boolean;
+  /**
+   * The concrete file the active tab shows. The「打开」menu is rendered only
+   * when this is set and every item acts on it (bcabb18d); see openMenuTarget.ts.
+   */
+  openTarget?: OpenMenuTarget | null;
   providers: TopBarProviderOption[];
   providersLoading?: boolean;
   onToggleFileTree: () => void;
-  onOpenInVSCode: () => void;
-  onRevealFolder: () => void;
+  onRevealOpenTarget?: (target: OpenMenuTarget) => void;
+  onOpenInVSCode?: (path: string) => void;
   onCreateAgentSession: (providerId: string) => void;
   onActivateWorkspace: (workspaceId: string) => void;
   onCreateWorkspace: (projectId: string) => void;
@@ -40,12 +45,12 @@ export function WorkbenchTopBar({
   workspaces,
   fileTreeVisible,
   canToggleFileTree = false,
-  canBrowseFolder,
+  openTarget = null,
   providers,
   providersLoading = false,
   onToggleFileTree,
+  onRevealOpenTarget,
   onOpenInVSCode,
-  onRevealFolder,
   onCreateAgentSession,
   onActivateWorkspace,
   onCreateWorkspace,
@@ -76,6 +81,10 @@ export function WorkbenchTopBar({
     document.addEventListener('pointerdown', closeOnOutsidePointer);
     return () => document.removeEventListener('pointerdown', closeOnOutsidePointer);
   }, [openMenuOpen]);
+
+  // Switching tabs changes the target: never leave a menu open for the previous file.
+  const openTargetKey = openTarget?.key ?? null;
+  useEffect(() => { setOpenMenuOpen(false); }, [openTargetKey]);
 
   return (
     <header className="workbench-topbar">
@@ -150,19 +159,35 @@ export function WorkbenchTopBar({
       </div>
       {documentToolbar?.enabled && <div className="workbench-document-controls" ref={documentToolbar.setControlsHost} />}
       <div className="workbench-topbar-actions">
-        <div className="workbench-open-menu" ref={openMenuRef}>
-          <button type="button" className="workbench-action workbench-open-trigger" disabled={!canBrowseFolder} aria-haspopup="menu" aria-expanded={openMenuOpen} onClick={() => setOpenMenuOpen((current) => !current)}>
-            <FolderOpen size={15} aria-hidden="true" />
-            <span>打开</span>
-            <ChevronDown size={14} aria-hidden="true" />
-          </button>
-          {openMenuOpen && (
-            <div className="workbench-open-menu-panel" role="menu" aria-label="打开方式">
-              <button type="button" role="menuitem" onClick={() => { onRevealFolder(); setOpenMenuOpen(false); }}><FolderOpen size={16} aria-hidden="true" /><span>在文件管理器中显示</span></button>
-              <button type="button" role="menuitem" onClick={() => { onOpenInVSCode(); setOpenMenuOpen(false); }}><span className="workbench-vscode-mark" aria-hidden="true">&lt;/&gt;</span><span>在 VS Code 中打开</span></button>
-            </div>
-          )}
-        </div>
+        {openTarget && (
+          <div className="workbench-open-menu" ref={openMenuRef} data-open-kind={openTarget.fileKind}>
+            <button
+              type="button"
+              className="workbench-action workbench-open-trigger"
+              aria-haspopup="menu"
+              aria-expanded={openMenuOpen}
+              aria-label={`打开：${openTarget.name}`}
+              title={middleEllipsisPath(openTarget.displayPath)}
+              data-path={openTarget.displayPath}
+              onClick={() => setOpenMenuOpen((current) => !current)}
+            >
+              <FolderOpen size={15} aria-hidden="true" />
+              <span>打开</span>
+              <ChevronDown size={14} aria-hidden="true" />
+            </button>
+            {openMenuOpen && (
+              <div className="workbench-open-menu-panel" role="menu" aria-label="打开方式">
+                <button type="button" role="menuitem" onClick={() => { onRevealOpenTarget?.(openTarget); setOpenMenuOpen(false); }}><FolderOpen size={16} aria-hidden="true" /><span>在文件管理器中显示</span></button>
+                {openTarget.vscodePath && (
+                  <button type="button" role="menuitem" onClick={() => { onOpenInVSCode?.(openTarget.vscodePath as string); setOpenMenuOpen(false); }}><span className="workbench-vscode-mark" aria-hidden="true">&lt;/&gt;</span><span>在 VS Code 中打开</span></button>
+                )}
+                {openTarget.projectVSCodePath && (
+                  <button type="button" role="menuitem" title={openTarget.projectVSCodePath} onClick={() => { onOpenInVSCode?.(openTarget.projectVSCodePath as string); setOpenMenuOpen(false); }}><span className="workbench-vscode-mark" aria-hidden="true">&lt;/&gt;</span><span>在 VS Code 中打开项目文件夹</span></button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {documentToolbar?.enabled && <div className="workbench-document-save" ref={documentToolbar.setSaveHost} />}
       </div>
     </header>
