@@ -94,6 +94,8 @@
     "test:markdown-scroll-browser": "node scripts/verify-markdown-scroll-browser.mjs",
     "test:markdown-open-reveal": "node scripts/verify-markdown-open-reveal.mjs && node scripts/verify-math-layout-stability.mjs && node scripts/verify-preview-layout-stability.mjs",
     "test:markdown-open-reveal-browser": "node scripts/verify-markdown-open-reveal-browser.mjs",
+    "perf:markdown-switch": "node scripts/perf-markdown-switch.mjs",
+    "perf:markdown-switch-notes": "node scripts/perf-markdown-switch-notes.mjs",
     "test:board": "node scripts/verify-board-model.mjs",
     "test:board-browser": "node scripts/verify-board-browser.mjs",
     "test:board-native": "node scripts/verify-board-native.mjs",
