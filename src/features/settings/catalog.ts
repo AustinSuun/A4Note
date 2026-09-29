@@ -31,6 +31,7 @@ export const SETTINGS_CATALOG: SettingsAnchor[] = [
   { id: 'setting-code-font', section: 'appearance', title: '代码字体', description: '代码块使用的等宽字体。', keywords: ['代码字体', '等宽', 'mono'] },
   { id: 'setting-line-height', section: 'appearance', title: '文档行距', description: '紧凑或舒适的正文行距。', keywords: ['行距', '行高', 'line height'] },
   { id: 'setting-document-layout', section: 'appearance', title: '文档版式', description: '流式或窄栏版式。', keywords: ['版式', '布局', '宽度', '窄栏'] },
+  { id: 'setting-scene-edge-switcher', section: 'appearance', title: '左边缘快速场景切换', description: '鼠标指向窗口左边缘即滑出场景列表。', keywords: ['场景', '切换', '左边缘', '侧栏', 'scene'] },
   { id: 'setting-library-paths', section: 'library', title: '资料库位置', description: '资料库根目录、数据库与文件库路径。', keywords: ['路径', '根目录', '数据库', '文件库', '位置'] },
   { id: 'setting-library-storage', section: 'library', title: '文件存储位置', description: '原文、采集与译文 PDF 及附件的保存目录，可迁移到其它磁盘。', keywords: ['存储', '位置', '磁盘', 'C盘', '迁移', 'PDF', '译文', '采集'] },
   { id: 'setting-backup', section: 'library', title: '创建资料库备份', description: '把资料库数据库与库内附件打包备份。', keywords: ['备份', 'backup', '导出'] },

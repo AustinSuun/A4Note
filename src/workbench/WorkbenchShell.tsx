@@ -17,6 +17,8 @@ export interface WorkbenchShellProps {
   /** Rendered over the tab host: settings and other full-surface panels. */
   overlay?: ReactNode;
   dialogs?: ReactNode;
+  /** Left-edge quick scene switcher; floats over the sidebar and content, never takes grid space. */
+  edgeSwitcher?: ReactNode;
   /**
    * Persisted user preference only. Whether the sidebar is actually on screen
    * also depends on the viewport; see `sidebarVisibility.ts`.
@@ -34,7 +36,7 @@ export interface WorkbenchShellProps {
  * Owns the workbench grid and nothing else. `App.tsx` fills the slots so the
  * shell stays free of store and platform calls.
  */
-export function WorkbenchShell({ sidebar, topBar, explorer, content, overlay, dialogs, sidebarCollapsed = false, onToggleSidebar, leadingAction, brandAccessory, sidebarWidth = WORKBENCH_SIDEBAR_MIN_WIDTH, onSidebarWidthChange }: WorkbenchShellProps) {
+export function WorkbenchShell({ sidebar, topBar, explorer, content, overlay, dialogs, edgeSwitcher, sidebarCollapsed = false, onToggleSidebar, leadingAction, brandAccessory, sidebarWidth = WORKBENCH_SIDEBAR_MIN_WIDTH, onSidebarWidthChange }: WorkbenchShellProps) {
   const [resizingSidebar, setResizingSidebar] = useState(false);
   const resizingRef = useRef(false);
   const resizeStartRef = useRef({ x: 0, width: sidebarWidth });
@@ -171,6 +173,7 @@ export function WorkbenchShell({ sidebar, topBar, explorer, content, overlay, di
         </main>
         {dialogs}
       </div>
+      {edgeSwitcher}
     </div>
   );
 }

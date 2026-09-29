@@ -95,6 +95,8 @@
     "test:markdown-scroll-browser": "node scripts/verify-markdown-scroll-browser.mjs",
     "test:markdown-open-reveal": "node scripts/verify-markdown-open-reveal.mjs && node scripts/verify-math-layout-stability.mjs && node scripts/verify-preview-layout-stability.mjs",
     "test:markdown-open-reveal-browser": "node scripts/verify-markdown-open-reveal-browser.mjs",
+    "test:scene-edge-switcher": "node scripts/verify-scene-edge-switcher.mjs",
+    "test:scene-edge-switcher-browser": "node scripts/verify-scene-edge-switcher-browser.mjs",
     "test:file-preview": "node scripts/verify-file-preview.mjs",
     "test:file-preview-browser": "node scripts/verify-file-preview-browser.mjs",
     "perf:markdown-switch": "node scripts/perf-markdown-switch.mjs",

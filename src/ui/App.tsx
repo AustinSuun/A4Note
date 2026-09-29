@@ -57,6 +57,7 @@ import {
 import {
   CommandPalette,
   ProjectSidebar,
+  SceneEdgeSwitcher,
   TabHost,
   WorkbenchShell,
   WORKBENCH_SIDEBAR_MAX_WIDTH,
@@ -506,6 +507,7 @@ function AppContent() {
     setSidebarWorkspaceOpen(scene?.sidebarMode === 'workspace');
   }, [activeScene, sceneDefinitions.map((scene) => `${scene.id}:${scene.sidebarMode ?? 'scene'}`).join('|')]);
   const [uiZoom, setUiZoom] = useState(persistedUiState.uiZoom);
+  const [sceneEdgeSwitcherEnabled, setSceneEdgeSwitcherEnabled] = useState(persistedUiState.sceneEdgeSwitcher);
   const [selectedPaperId, setSelectedPaperId] = useState(persistedUiState.selectedPaperId || initialDocuments[0]?.paperId || '');
   // Library selection can be followed by open in the same event (overview title).
   // A ref observes that newest selection before React batches its state update.
@@ -730,6 +732,7 @@ function AppContent() {
       readerSidePanelOpen,
       readerSidePanelTab,
       workspaceLayouts: currentWorkspaceLayouts,
+      sceneEdgeSwitcher: sceneEdgeSwitcherEnabled,
     });
   }, [
     activeAnnotationColor,
@@ -747,6 +750,7 @@ function AppContent() {
     readerTranslatedFileId,
     readerZoom,
     recentPaperIds,
+    sceneEdgeSwitcherEnabled,
     selectedPaperId,
     uiZoom,
     visibleSceneIds,
@@ -2717,6 +2721,7 @@ function AppContent() {
     <div className="workbench-overlay" role="region" aria-label={zh.scenes.settings}>
       <SettingsScene
         settings={settings}
+        sceneEdgeSwitcher={{ enabled: sceneEdgeSwitcherEnabled, onChange: setSceneEdgeSwitcherEnabled }}
         initialSection={settingsSection}
         pluginSettings={pluginSettingContributions}
         pluginSettingValues={pluginSettingValues}
@@ -2921,6 +2926,9 @@ function AppContent() {
     <DocumentToolbarProvider enabled={['markdown', 'reader', 'library', 'tasks'].includes(activeScene ?? '') && !settingsOpen}>
     <WorkbenchShell
       brandAccessory={<BrandUpdateNotice />}
+      edgeSwitcher={sceneEdgeSwitcherEnabled ? (
+        <SceneEdgeSwitcher scenes={sidebarScenes} activeSceneId={activeScene} onOpenScene={setScene} labels={zh.sceneEdgeSwitcher} />
+      ) : null}
       sidebar={
         <ProjectSidebar
           labels={zh.workbench}

@@ -50,6 +50,11 @@ export const zh = {
     ai: 'AI 对话',
     settings: '设置',
   },
+  sceneEdgeSwitcher: {
+    handle: '快速切换场景（鼠标指向窗口左边缘）',
+    panel: '切换场景',
+    current: '当前',
+  },
   command: {
     title: '命令面板',
     openShortcut: '命令面板 Ctrl+K',

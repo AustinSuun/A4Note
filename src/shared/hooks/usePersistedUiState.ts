@@ -26,6 +26,8 @@ export type PersistedUiState = {
   readerSidePanelOpen: boolean;
   readerSidePanelTab: ReaderSidePanelTab;
   workspaceLayouts: WorkspaceLayoutsByScene;
+  /** Left-edge quick scene switcher; on unless the user turned it off in Settings. */
+  sceneEdgeSwitcher: boolean;
 };
 
 export function usePersistedUiState(settings: AppSettings, knownWorkbenchPanelIds: readonly WorkbenchPanelId[]) {
@@ -128,6 +130,7 @@ function defaultUiState(settings = defaultSettings): PersistedUiState {
     readerSidePanelOpen: false,
     readerSidePanelTab: 'notes',
     workspaceLayouts,
+    sceneEdgeSwitcher: true,
   };
 }
 
@@ -173,6 +176,7 @@ function loadUiState(settings: AppSettings, knownWorkbenchPanelIds: readonly Wor
       readerSidePanelOpen,
       readerSidePanelTab,
       workspaceLayouts,
+      sceneEdgeSwitcher: parsed.sceneEdgeSwitcher !== false,
     };
   } catch {
     return fallback;

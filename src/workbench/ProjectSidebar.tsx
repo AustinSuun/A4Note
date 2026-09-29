@@ -3,6 +3,7 @@ import { Check, FolderPlus, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AgentSession, Project, Workspace } from '../core/workspace';
 import type { WorkbenchLabels } from './workbenchLabels';
+import { groupSidebarScenes } from './sceneGroups';
 
 export interface SidebarSceneItem {
   id: string;
@@ -108,11 +109,7 @@ export function ProjectSidebar({
   const visibleScenes = scenes.filter((scene) => selectedSceneSet.has(scene.id));
   const allScenesSelected = scenes.length > 0 && visibleScenes.length === scenes.length;
   const pickerLabel = allScenesSelected ? labels.allScenes : labels.selectedScenes(visibleScenes.length);
-  const sceneGroups = [
-    { id: 'research', label: '科研阅读', items: scenes.filter((scene) => scene.scope === 'research') },
-    { id: 'workspace', label: '工作区', items: scenes.filter((scene) => scene.scope === 'workspace') },
-    { id: 'custom', label: '插件场景', items: scenes.filter((scene) => scene.scope !== 'research' && scene.scope !== 'workspace') },
-  ].filter((group) => group.items.length > 0);
+  const sceneGroups = groupSidebarScenes(scenes);
   const workspaceSidebarVisible = sidebarWorkspaceOpen;
 
   useEffect(() => {
