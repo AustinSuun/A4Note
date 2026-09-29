@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-28T22:45:00+08:00",
+  "updatedAt": "2026-09-29T09:12:21+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "Arena-秋序 (arena-worker d5193e61)",
     "branch": "feat/doc2x-translate-qiuxu（worktree .worktrees/doc2x-translate-qiuxu，基线 b008046）",
     "scope": [
+      "pdf-annotation-geometry-yunshu：6d59b629 PDF 高亮/下划线/选区弹窗几何偏移已修复并合入本地 main（云枢）：文本层按 pdf.js 字体族选度量兼容字体并关 kerning、行合并容差改为相对行高、弹窗改为页内百分比锚点与预览/落盘共用 textSelectionGeometry；新增 test:pdf-annotation-geometry（100）与 -browser（159/159，旧代码 102/156）；dev:live 改前/改后取证在 .tmp/shots/pdf-annotation-geometry-live/。",
       "sidebar-narrow-sync-arena-b：6f9e0947 窄窗口侧栏与标题栏/返回场景同步已完成并合入本地 main（arena-b）；doc2x.core 重复注册导致的启动空白已由 main 3866352 修复。",
       "doc2x-translate-qiuxu：用户要求把 Doc2X 翻译接入文献库，已发布并领取任务 c889e6ad（rev2 进行中）。核对 @noedgeai-org/doc2x-cli 0.2.0 能力（Node≥22；OAuth+PKCE 本机回环登录，令牌由 CLI 自存；translate/parse/batch/account/records/usage/models；退出码 0-6；PDF≤300MB、图片≤3MB、并发固定 1），结论“可集成、成本中等”；官网独有的保留排版 Word/MathType/Typst/Excel 导出与图片翻译编辑无 CLI 参数，界面须标注暂不支持。新增 src/platform/doc2x/{doc2xCli.ts,doc2xDetect.ts,index.ts}：请求拼装、输入与设置校验、退出码中文映射、回执解析，统一 --auth-mode oauth 强制使用用户本机登录账号；新增 scripts/verify-doc2x-cli.mjs 与 npm run test:doc2x-cli，9/9 通过，npx tsc -b 退出 0；测试捕获并修正布尔标志未写入参数、--ignore-translate-types 多值只传第一项两处问题。未完成：异步 Rust 执行与流式命令、登录/设置/一键翻译 UI、译文入库、真实账号端到端（无可用账号，不得代登录）。详见 docs/mcp-doc2x-translate-integration-qiuxu-2026-09-28.md。更新：2026-09-28T12:45:00+08:00",
       "- 巡川 / f241fd40：悬浮笔记顶栏三形态按钮改为居中独立组，右侧仅留编辑/阅读等内容操作，标题左贴；拖动/四角缩放改命令式live CSS变量路径（rAF节流、松手一次提交），消除每move的React重渲染，帧间隔不劣于改前且无longtask。隔离dev:live原生before/after：centerOffset 164→0、12/12断言、980窄窗/125-220%缩放/midnight不重叠、四角缩放与拖动后位置保持正常，pageerror/console 0；合成回归motion73/73、workbench117/117、default-edit16/16，architecture/agent-status/build通过。82b2bb6已ff合入本地main。任务submit review待用户验收；未打包安装推送发布。 更新：2026-09-27T21:52:21+08:00",
@@ -58,10 +59,12 @@
     "libraryStorageNoticeXunchuan": "review",
     "readerNoteMotionXunchuan": "review",
     "shortcutLightXingxu": "review",
+    "pdfAnnotationGeometryYunshu": {"status": "review", "owner": "云枢 (4df1e730)", "summary": "6d59b629：RC1 弹窗把视口坐标当布局坐标（含 7px padding，UI 缩放下放大）→ 页内百分比锚点；RC2 文本层继承 UI CJK 字体栈+kerning，run 拟合只校正总宽 → 按 pdf.js styles 字体族选 Times/Arial/Courier 度量兼容栈并关 kerning/ligatures；RC3 固定 1.2% 页高行合并容差并掉 9pt/10pt 行 → 0.5×行高。分支 fix/pdf-annotation-geometry-yunshu，基线 b159a6a，rebase 到 a4f6a19 后 ff 合入。"},
     "sidebarNarrowSyncArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "6f9e0947：删除 ≤1040px 隐藏 .workbench-sidebar 的媒体查询，改由 sidebarVisibility 纯状态机统一决定 docked/overlay/hidden；标题栏按实际可见性显示，窄窗口用浮层抽屉，不改持久化偏好，侧栏隐藏时标题栏显示紧凑「返回场景」。实机验证时定位到 doc2x.core 重复注册导致的启动空白，main 已由 3866352 修复。", "doc": "docs/mcp-sidebar-narrow-sync-arena-b-2026-09-28.md"}
   },
   "lastHandoff": {
     "completed": [
+      "pdf-annotation-geometry-yunshu / 6d59b629：PDF 阅读器高亮/下划线相对所选字形的偏移与选区弹窗错位修复（三处根因：弹窗坐标系、文本层字体度量/kerning、行合并容差），预览/弹窗/落盘共用一份 segments，pdfCoordinates.ts 与 annotationPositionOptimism 未动；新增单元 100 项 + 浏览器 159 项回归。",
       "sidebar-narrow-sync-arena-b / 6f9e0947：窄窗口侧栏状态同步（状态机 + 浮层抽屉 + 标题栏紧凑「返回场景」），新增单元测试 8 项与浏览器测试 39 项；另定位 doc2x.core 重复注册导致的启动空白（main 3866352 已修复）。",
       "doc2x-translate-qiuxu：Doc2X 翻译集成第二步。新增 src-tauri/src/doc2x_cli.rs 异步执行层（run_doc2x_command 带超时与 timedOut 回报、start_doc2x_login/cancel_doc2x_job 流式事件、OnceLock 进程登记、--auth-mode 白名单）与 src/platform/doc2x 的 outcome 映射；lib.rs 保持 <160 行。",
       "doc2x-translate-qiuxu：Doc2X 翻译集成第一步落地。核对 CLI 能力并给出可行性结论（可集成、成本中等）；新增 src/platform/doc2x 适配层与 9 项 mock CLI 测试（9/9）、npx tsc -b 通过；设计文档 docs/mcp-doc2x-translate-integration-qiuxu-2026-09-28.md。",
@@ -414,6 +417,7 @@
       "capture-readable-pdf-arena：只为新采集PDF命名并保留完整哈希验证/去重，已有哈希文件路径和手工译文导入规则不变；代码44ca97c与状态da9695d已fast-forward合入本地main。"
     ],
     "verification": [
+      "6d59b629 云枢：tsc(app) 0；build 0；test:pdf-annotation-geometry 100（旧代码在 fontFamily 断言失败）；test:pdf-annotation-geometry-browser 159/159（旧代码 102/156：字形漂移 0.26–0.36em→≤0.05em、落盘 % 跨缩放漂移 0.11–0.24%→≤0.01%、弹窗底边偏 12–110px→Δ≤0.02px、9pt 双行 1 带→2 带）；reader/reader-helpers/text-layer-offset 55+113/selection-preview 38+28/crosspage 31/rotated 151/text-annotation 33/eraser-precision 26/eraser-alignment 217+24/annotation-layers 55/find-entry 35/pdfjs/architecture/core/viewport-to-layout 通过；npm run verify（a7d2023 基线，含 cargo test 247）仅 test:ui-state（既有）与 test:summary-fields 的焦点断言（在 main a4f6a19 上同样随机失败，既有不稳定）未过；rebase 到 a4f6a19 后 tsc/build/architecture/自有测试/sidebar-visibility 8+39/reader 复跑通过；dev:live yunshu 实例（1471/9371，DPR 1.25）120%/150% 改前/改后：弹窗底边 306.86 vs 期望 306.87、带边 Δ≤0.01px、下划线基线下 0.04em，console/pageerror 0。",
       "6f9e0947：test:sidebar-visibility 8/8，test:sidebar-visibility-browser 39/39（旧代码 7/39）；build、architecture、core 通过；rebase 到 main a7d2023 后 PowerShell npm run verify 81 步中 80 步通过，唯一失败 test:ui-state:383 是 main 已有问题；dev:live 隔离实机 文献库/白板/阅读器 × 100/118/125% 与宽/窄/边界检查通过，修复后 console/pageerror 为 0（.tmp/shots/6f9e0947-devlive）。",
       "npm run test:doc2x-cli → 15 pass / 0 fail；cargo test --manifest-path src-tauri/Cargo.toml --lib doc2x_cli:: → 6 passed / 0 failed；npx tsc -b → 退出 0；npm run test:architecture → 通过；git diff --check 干净。",
       "node --experimental-strip-types --test scripts/verify-doc2x-cli.mjs → 9 pass / 0 fail；npx tsc -b → 退出 0。",
