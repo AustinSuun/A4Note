@@ -48,7 +48,7 @@ try {
   check(Math.abs((corner.includes('w')?before.right:before.left)-(corner.includes('w')?after.right:after.left))<2,corner+' opposite horizontal anchor');
   check(Math.abs((corner.includes('n')?before.bottom:before.top)-(corner.includes('n')?after.bottom:after.top))<2,corner+' opposite vertical anchor');
   await control.focus();await control.press(corner.includes('w')?'ArrowLeft':'ArrowRight');await pause();check((await geometry()).card.width>after.width+2,corner+' keyboard resize');
-  const stroke=await control.evaluate(e=>getComputedStyle(e,'::before').borderTopWidth);check(stroke==='4px',corner+' 4px arc stroke');
+  const stroke=await control.evaluate(e=>getComputedStyle(e.querySelector('.reader-note-floating-corner-arc path')).strokeWidth);check(stroke==='4px',corner+' 4px arc stroke');
  }
  // Fixed logical viewport keeps all requested modes available at each CSS UI scale.
  // This is not an OS multi-monitor/DPI certification.

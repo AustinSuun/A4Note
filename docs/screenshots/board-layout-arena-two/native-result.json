@@ -1,0 +1,72 @@
+{
+  "label": "run2",
+  "results": [
+    {
+      "step": "dock",
+      "dock": true,
+      "position": "static",
+      "bottom": "auto",
+      "radius": "16px",
+      "btnSize": "36pxx36px",
+      "buttons": 9
+    },
+    {
+      "step": "legacy-gone + empty-hint",
+      "oldToolbar": false,
+      "swatches": false,
+      "widthSelect": false,
+      "stageControls": false,
+      "emptyStrong": null,
+      "emptyOpacity": null
+    },
+    {
+      "step": "titlebar-portal",
+      "portalControls": true,
+      "portalZoom": "100%",
+      "portalUndo": true,
+      "portalCopy": true,
+      "fallbackOverlay": false
+    },
+    {
+      "step": "rename",
+      "chip": true,
+      "input": true
+    },
+    {
+      "step": "bg-grid-large",
+      "lineNodes": 1,
+      "minor": false,
+      "patternWidth": 40,
+      "zoom": 1,
+      "worldStep": 40,
+      "saved": "saved",
+      "menu": {
+        "options": [
+          "点阵",
+          "网格",
+          "横线",
+          "方格纸",
+          "纯色",
+          "小间距",
+          "中",
+          "大间距"
+        ]
+      }
+    },
+    {
+      "step": "first-element-hides-empty",
+      "emptyGone": true,
+      "elements": 2,
+      "saved": "saving"
+    }
+  ],
+  "fileState": {
+    "title": "重构板",
+    "background": {
+      "style": "grid",
+      "density": "large"
+    },
+    "elements": 2
+  },
+  "logs": []
+}

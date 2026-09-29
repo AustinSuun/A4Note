@@ -73,10 +73,11 @@ const toolbar = read('src/features/reader/ReaderToolbar.tsx');
 check(!toolbar.includes('contextAnnotationTool ?? toolSettingsOpenFor'), 'selecting an annotation no longer auto-opens the tool settings popover');
 check(toolbar.includes("contextAnnotationId && contextAnnotationTool === tool && toolHasSettings(tool)"), 'the lit tool button opens the selected annotation settings on demand');
 check(!toolbar.includes('label="外边框"') && !toolbar.includes('text-size-option') && !toolbar.includes('FontSizeDropdown'), 'text tool settings remove border colour and font-size controls');
-check(toolbar.includes('label="文字颜色"') && toolbar.includes('label="背景"') && toolbar.includes('textBold') && toolbar.includes('textItalic'), 'text tool settings retain glyph colour, background, bold and italic controls');
+const toolOptions = read('src/features/annotationTools/ToolOptionsBar.tsx'); // Task 97fcfb6c moved the text tool settings into the shared options bar.
+check(toolOptions.includes('label="文字颜色"') && toolOptions.includes('label="背景"') && toolOptions.includes('textBold') && toolOptions.includes('textItalic'), 'text tool settings retain glyph colour, background, bold and italic controls');
 const pageView = read('src/features/reader/pdf/PdfPageView.tsx');
 check(pageView.includes("'--pdf-display-zoom': displayZoom"), 'render layer publishes the zoom for page-unit fonts');
-const types = read('src/features/reader/pdf/types.ts');
-check(/textFontSize: 24,/.test(types), 'tool default font size raised to 24');
+const settingsSource = read('src/features/annotationTools/toolSettings.ts');
+check(/textFontSize: 24,/.test(settingsSource), 'tool default font size raised to 24');
 
 console.log(`verify-pdf-text-annotation: ${passed} checks passed`);

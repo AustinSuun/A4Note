@@ -11,3 +11,7 @@
 .reader-responsive-heading > button { width: 28px; height: 28px; border: 0; border-radius: 5px; color: var(--muted); background: transparent; cursor: pointer; font: inherit; }
 .reader-responsive-popover .reader-toolbar { display: flex; flex-wrap: wrap; align-items: center; width: 100%; height: auto; min-height: 0; padding: 0; gap: 10px; overflow: visible; }
 .reader-responsive-popover .reader-toolbar-primary, .reader-responsive-popover .reader-toolbar-end, .reader-responsive-popover .reader-toolbar-group { display: flex; flex-wrap: wrap; min-width: 0; max-width: 100%; margin: 0; padding: 0; gap: 6px; }
+
+.reader-responsive-compact { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+.reader-responsive-compact .reader-responsive-trigger { flex: 0 1 auto; min-width: 0; }
+.reader-responsive-popover .reader-toolbar-center { display: none; }

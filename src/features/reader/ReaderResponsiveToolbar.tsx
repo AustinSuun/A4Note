@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import './reader-responsive-toolbar.css';
 
 /** Measure available titlebar space, not the window: the sidebar can consume most of it. */
-export function ReaderResponsiveToolbar({ children, label }: { children: ReactNode; label: string }) {
+export function ReaderResponsiveToolbar({ children, label, onReturnToLibrary }: { children: ReactNode; label: string; onReturnToLibrary?: () => void }) {
   const root = useRef<HTMLDivElement>(null);
   const full = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -57,7 +57,7 @@ export function ReaderResponsiveToolbar({ children, label }: { children: ReactNo
   const close = () => { setOpen(false); trigger.current?.focus({ preventScroll: true }); };
   return <div ref={root} className="reader-responsive-toolbar" data-compact={compact}>
     <div ref={full} className="reader-responsive-full" aria-hidden={compact || undefined} inert={compact}>{children}</div>
-    {compact && <button ref={trigger} className="reader-responsive-trigger" type="button" aria-label={`阅读工具：${label}`} title="阅读工具：文件模式与缩放" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(value => !value)}><span>{label}</span><span aria-hidden="true">⋯</span></button>}
+    {compact && <div className="reader-responsive-compact"><button ref={trigger} className="reader-responsive-trigger" type="button" aria-label={`阅读工具：${label}`} title="阅读工具：文件模式与缩放" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(value => !value)}><span>{label}</span><span aria-hidden="true">⋯</span></button>{onReturnToLibrary && <button type="button" className="reader-return-library" aria-label="返回文献库" title="返回文献库" onClick={onReturnToLibrary}>文献库</button>}</div>}
     {open && compact && createPortal(<div ref={popup} className="reader-responsive-popover" role="dialog" aria-label="阅读工具" style={{ visibility: 'hidden' }}
       onDoubleClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === 'Escape' && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); close(); } }}>
       <div className="reader-responsive-heading"><strong>阅读工具</strong><button type="button" aria-label="关闭阅读工具" onClick={close}>×</button></div>

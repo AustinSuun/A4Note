@@ -1,0 +1,115 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { chromium } from 'playwright-core';
+
+const phase = process.argv[2] ?? 'after';
+assert.ok(['before', 'after'].includes(phase));
+const instance = process.env.MD_DELETE_INSTANCE ?? 'xunchuan-md';
+const url = process.env.MD_DELETE_URL ?? 'http://127.0.0.1:1485';
+const cdpUrl = process.env.MD_DELETE_CDP ?? 'http://127.0.0.1:9385';
+const root = process.cwd();
+const shots = path.join(root, '.tmp', 'shots', 'md-delete-dialog');
+const fixture = path.join(root, '.tmp', 'md-delete-fixture');
+fs.mkdirSync(shots, { recursive: true });
+fs.mkdirSync(fixture, { recursive: true });
+const normal = '未命名 2.md';
+const long = '很长的笔记文件名称'.repeat(10) + '.md';
+for (const name of [normal, long]) fs.writeFileSync(path.join(fixture, name), 'test fixture\n');
+const report = { phase, checks: [], pageerrors: [], consoleErrors: [], shots: [] };
+const check = (name, value, detail) => { report.checks.push({ name, passed: Boolean(value), detail }); assert.ok(value, name + ': ' + JSON.stringify(detail)); };
+let browser, page, cdp;
+try {
+  browser = await chromium.connectOverCDP(cdpUrl);
+  page = browser.contexts().flatMap(context => context.pages()).find(p => p.url().startsWith(url));
+  assert.ok(page, 'Native DEV page missing');
+  page.setDefaultTimeout(25000);
+  page.on('pageerror', e => report.pageerrors.push(e.message));
+  page.on('console', m => { if (m.type() === 'error') report.consoleErrors.push(m.text()); });
+  if (phase === 'after') await page.reload();
+  await page.getByText('原生已核验', { exact: false }).waitFor();
+  const paths = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('get_aster_paths'));
+  check('isolated native identity', paths.root.includes(`app.aster.research.dev.${instance}.`), paths.root);
+  await page.evaluate(async folder => {
+    const { workbenchStore } = await import('/src/workbench/useWorkbench.ts');
+    const store = workbenchStore();
+    const existing = store.getState().projects.find(project => project.rootPath === folder);
+    const project = existing ?? store.createProject({ rootPath: folder, name: '隔离测试 MD 目录', kind: 'folder' });
+    const workspace = store.getState().workspaces.find(item => item.projectId === project.id);
+    store.activateWorkspace(workspace.id);
+    store.setWorkspaceLayout(workspace.id, { fileTreeVisible: true });
+  }, fixture);
+  if (!(await page.locator('.file-tree-panel').filter({ visible: true }).count()))
+    await page.getByText('笔记', { exact: true }).filter({ visible: true }).first().click();
+  await page.locator('.file-tree-panel').filter({ visible: true }).first().waitFor();
+  const dialog = () => page.locator('.confirm-dialog').filter({ visible: true });
+  const open = async name => {
+    const row = page.locator('.file-tree-row.file').filter({ hasText: path.parse(name).name }).filter({ visible: true }).first();
+    await row.waitFor();
+    await row.click({ button: 'right' });
+    await page.getByRole('menuitem', { name: '删除' }).filter({ visible: true }).first().click();
+    await dialog().waitFor();
+    check('filename visible', (await dialog().innerText()).includes(name));
+  };
+  const shot = async name => { await page.getByText('原生已核验', { exact: false }).waitFor(); await page.screenshot({ path: path.join(shots, `${phase}-${name}.png`) }); report.shots.push(name); };
+  await open(normal);
+  await shot('normal');
+  if (phase === 'after') {
+    const labels = await dialog().locator('button').allInnerTexts();
+    check('only cancel/delete', JSON.stringify(labels) === JSON.stringify(['取消', '删除']), labels);
+    check('no redundant copy', !(await dialog().innerText()).includes('文件内容将从磁盘移除'));
+    check('cancel focused', await dialog().locator('button:focus').innerText() === '取消');
+    await page.keyboard.press('Enter');
+    check('Enter cancels safely', await dialog().count() === 0 && fs.existsSync(path.join(fixture, normal)));
+    await open(normal);
+    await page.keyboard.press('Space');
+    check('Space cancels safely', await dialog().count() === 0 && fs.existsSync(path.join(fixture, normal)));
+    await open(normal);
+    await page.keyboard.press('Escape');
+    check('Escape cancels safely', await dialog().count() === 0 && fs.existsSync(path.join(fixture, normal)));
+    await open(normal);
+    await dialog().getByRole('button', { name: '取消' }).click();
+    check('cancel preserves file', await dialog().count() === 0 && fs.existsSync(path.join(fixture, normal)));
+    await open(long);
+    cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 420, height: 720, deviceScaleFactor: 1, mobile: false });
+    await page.evaluate(() => { document.documentElement.dataset.theme = 'midnight'; document.documentElement.style.zoom = '1.25'; });
+    await shot('long-narrow-dark-125pct');
+    const dims = await dialog().evaluate(el => { const box = el.getBoundingClientRect(); const text = el.querySelector('.scene-description'); return { left: box.left, right: box.right, width: innerWidth, scroll: text.scrollWidth, client: text.clientWidth }; });
+    check('long filename fits narrow dialog', dims.left >= -1 && dims.right <= dims.width + 1 && dims.scroll <= dims.client + 1, dims);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 640, deviceScaleFactor: 1, mobile: false });
+    await page.evaluate(() => { document.documentElement.dataset.theme = 'paper'; document.documentElement.style.zoom = '1.5'; });
+    await shot('long-320-light-150pct');
+    const small = await dialog().evaluate(el => { const box = el.getBoundingClientRect(); return { left: box.left, right: box.right, width: innerWidth, height: innerHeight, bottom: box.bottom }; });
+    check('320px viewport at 150% keeps entire dialog visible', small.left >= -1 && small.right <= small.width + 1 && small.bottom <= small.height + 1, small);
+    await page.evaluate(() => { document.documentElement.dataset.theme = 'paper'; document.documentElement.style.zoom = '1'; });
+    await cdp.send('Emulation.clearDeviceMetricsOverride');
+    await page.keyboard.press('Escape');
+    await open(normal);
+    fs.unlinkSync(path.join(fixture, normal));
+    await dialog().getByRole('button', { name: '删除' }).click();
+    await dialog().locator('.confirm-error').waitFor();
+    check('failure remains visible', (await dialog().locator('.confirm-error').innerText()).length > 5);
+    await shot('delete-failure');
+    await page.waitForFunction(() => [...document.querySelectorAll('.confirm-dialog button')].every(button => !button.disabled));
+    await page.keyboard.press('Escape');
+    check('Escape after failure safely closes', await dialog().count() === 0);
+    fs.writeFileSync(path.join(fixture, normal), 'safe to delete\n');
+    await open(normal);
+    await dialog().getByRole('button', { name: '删除' }).click();
+    await dialog().waitFor({ state: 'hidden' });
+    check('explicit delete removes fixture', !fs.existsSync(path.join(fixture, normal)));
+    check('no pageerror', report.pageerrors.length === 0, report.pageerrors);
+    check('only deliberate delete failure on console', report.consoleErrors.every(text => text.includes('Confirmation action failed')), report.consoleErrors);
+  }
+} catch (error) {
+  report.failure = String(error.stack ?? error);
+  if (page) await page.screenshot({ path: path.join(shots, `${phase}-failed.png`) }).catch(() => {});
+  throw error;
+} finally {
+  if (cdp) await cdp.send('Emulation.clearDeviceMetricsOverride').catch(() => {});
+  if (page) await page.evaluate(() => { document.documentElement.style.zoom = '1'; document.documentElement.dataset.theme = 'paper'; }).catch(() => {});
+  fs.writeFileSync(path.join(shots, `${phase}-result.json`), JSON.stringify(report, null, 2));
+  await browser?.close();
+  console.log(JSON.stringify(report));
+}

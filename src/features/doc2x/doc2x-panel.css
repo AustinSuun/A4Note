@@ -1,0 +1,129 @@
+.doc2x-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-primary, #1b1f24);
+}
+
+.doc2x-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.doc2x-panel__head h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.doc2x-panel__badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.doc2x-panel__badge--ok {
+  background: rgba(46, 160, 67, 0.16);
+  color: #1c6b32;
+}
+
+.doc2x-panel__badge--warn {
+  background: rgba(191, 97, 17, 0.16);
+  color: #8a4b0a;
+}
+
+.doc2x-panel__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.doc2x-panel__row button {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border, #d0d7de);
+  border-radius: 6px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+}
+
+.doc2x-panel__row button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.doc2x-panel__primary {
+  font-weight: 600;
+}
+
+.doc2x-panel__hint,
+.doc2x-panel__account,
+.doc2x-panel__message {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.doc2x-panel__error {
+  margin: 0;
+  color: #b3261e;
+  line-height: 1.6;
+}
+
+.doc2x-panel__account {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--surface-muted, rgba(127, 127, 127, 0.12));
+}
+
+.doc2x-panel__queue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.doc2x-panel__queue li[data-state='done'] .doc2x-panel__queue-detail {
+  color: #1c6b32;
+}
+
+.doc2x-panel__queue li[data-state='failed'] .doc2x-panel__queue-detail {
+  color: #b3261e;
+}
+
+.doc2x-panel__queue-detail {
+  display: block;
+  opacity: 0.8;
+}
+
+.doc2x-panel__log pre {
+  max-height: 160px;
+  margin: 6px 0 0;
+  overflow: auto;
+  padding: 6px;
+  border-radius: 6px;
+  background: var(--surface-muted, rgba(127, 127, 127, 0.12));
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+
+
+.doc2x-panel__install {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px dashed var(--border, #d0d7de);
+  border-radius: 6px;
+}
+
+.doc2x-panel__mirror {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

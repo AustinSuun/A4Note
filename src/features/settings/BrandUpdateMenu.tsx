@@ -2,7 +2,7 @@ import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Download, ExternalLink, X } from 'lucide-react';
 import { updateActions, useUpdateModel } from './updateModel';
-import { UpdateConsent, UpdateNotes, UpdateProgress } from './updateViews';
+import { UpdateNotes, UpdateProgress } from './updateViews';
 
 /* Titlebar shape of the shared update flow: same model, notes and actions as the
    Settings page, only the presentation (an anchored dialog) differs. */
@@ -10,7 +10,6 @@ export function BrandUpdateMenu({ anchor, onClose }: { anchor: HTMLButtonElement
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const model = useUpdateModel();
-  const [confirmed, setConfirmed] = useState(false);
   const [linkError, setLinkError] = useState('');
   const busy = model.busy;
   useLayoutEffect(() => {
@@ -19,7 +18,7 @@ export function BrandUpdateMenu({ anchor, onClose }: { anchor: HTMLButtonElement
     const place = () => {
       const rect = anchor?.getBoundingClientRect();
       const width = Math.min(340, window.innerWidth - 16);
-      const top = Math.max(8, Math.min((rect?.bottom ?? 32) + 8, window.innerHeight - 100));
+      const top = Math.max(8, Math.min((rect?.bottom ?? 32) + 8, window.innerHeight - Math.min(320, window.innerHeight - 16)));
       dialog.style.width = `${width}px`;
       dialog.style.left = `${Math.max(8, Math.min(rect?.left ?? 8, window.innerWidth - width - 8))}px`;
       dialog.style.top = `${top}px`;
@@ -46,15 +45,9 @@ export function BrandUpdateMenu({ anchor, onClose }: { anchor: HTMLButtonElement
     <UpdateNotes notes={model.notes} className="brand-update-notes" limitLines={6} />
     {model.canDownload ? <button type="button" className="brand-update-primary" disabled={busy} onClick={() => void updateActions.download()}><Download size={15} aria-hidden="true" />下载更新</button> : null}
     {model.phase === 'downloading' ? <UpdateProgress model={model} compact /> : null}
-    {model.downloaded ? <>
-      <p role="status" className="brand-update-install-hint">已下载并通过签名校验。安装会退出软件。</p>
-      <p className="brand-update-install-hint">{model.manualInstallHint}</p>
-      {model.backupPath ? <p className="brand-update-install-hint settings-path-ellipsis" title={model.backupPath}>本次资料库备份：{model.backupPath}</p> : null}
-      <UpdateConsent checked={confirmed} disabled={busy} onChange={setConfirmed} />
-      <button type="button" className="brand-update-primary" disabled={!confirmed || busy} onClick={() => { setConfirmed(false); void updateActions.install(); }}>{model.installLabel}</button>
-    </> : null}
+    {model.downloaded ? <button type="button" className="brand-update-primary" disabled={!model.canInstall} onClick={() => void updateActions.install()}>{model.installLabel}</button> : null}
     <button type="button" className="brand-update-release" onClick={() => { setLinkError(''); void updateActions.openReleases().catch(error => setLinkError(String(error))); }}><ExternalLink size={14} aria-hidden="true" />GitHub 发布说明</button>
     {(model.error || linkError) ? <p role="alert" className="brand-update-error">{model.error || linkError}</p> : null}
-    <small>仅提示，不会自动下载或安装。</small>
+
   </dialog>, document.body);
 }

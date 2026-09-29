@@ -22,7 +22,8 @@ import { ReaderSideDrawer } from './ReaderSideDrawer';
 import { ReaderToolbar } from './ReaderToolbar';
 import { preferredTranslatedFileId } from './readerHelpers';
 import { type ReaderSceneProps, type ReaderToolSettings } from './types';
-import { loadReaderToolSettings, saveReaderToolSettings } from './pdf/readerToolSettingsStorage';
+// Task 97fcfb6c: option values live in the shared annotation store (whiteboard + reader).
+import { useSharedAnnotationToolSettings } from '../annotationTools';
 
 export function ReaderScene({
   paper,
@@ -41,6 +42,7 @@ export function ReaderScene({
   aiThreadContexts,
   sidePanels,
   panelViews = [],
+  onReturnToLibrary,
   onLayoutChange,
   onContentModeChange,
   onFileModeChange,
@@ -139,8 +141,7 @@ export function ReaderScene({
      fading out and re-entering; the key covers every geometry change that is not a mode change. */
   useNoteLayoutFlip(drawer.containerRef, notePresentationMode, notePanelPresented,
     JSON.stringify([drawer.width, drawer.available, drawer.expanded, floatingRect, notePresence.phase, overlay]));
-  const [toolSettings, setToolSettings] = useState<ReaderToolSettings>(() => loadReaderToolSettings());
-  useEffect(() => { saveReaderToolSettings(toolSettings); }, [toolSettings]);
+  const [toolSettings, setToolSettings] = useSharedAnnotationToolSettings();
   const focusedAnnotation = paper.annotations.find((annotation) => annotation.id === focusedAnnotationId) ?? null;
   const focusedEditableAnnotation = focusedAnnotation && isEditableToolbarAnnotation(focusedAnnotation)
     ? focusedAnnotation
@@ -277,6 +278,7 @@ export function ReaderScene({
         <ReaderToolbar
               paper={paper}
               contentMode={contentMode}
+              onReturnToLibrary={onReturnToLibrary}
               fileMode={fileMode}
               currentTranslatedFileId={currentTranslatedFileId}
               parallelSyncLocked={parallelSyncLocked}

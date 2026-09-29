@@ -20,7 +20,7 @@ use tauri::AppHandle;
 use uuid::Uuid;
 
 use crate::app_paths::{
-    app_data_root, open_file_with_default_app, open_path_in_file_manager, path_to_string,
+    app_data_root, open_file_with_default_app, path_to_string, reveal_in_file_manager,
 };
 use crate::database::{
     current_timestamp_ms, initialize_database, normalized_tags, paper_exists, stable_tag_id,
@@ -118,8 +118,7 @@ pub fn reveal_paper_file(app: AppHandle, request: RevealPaperFileRequest) -> Res
         &request.kind,
         request.file_id.as_deref(),
     )?;
-    let target = path.parent().map(Path::to_path_buf).unwrap_or(path);
-    open_path_in_file_manager(&target)
+    reveal_in_file_manager(&path)
 }
 
 #[tauri::command]

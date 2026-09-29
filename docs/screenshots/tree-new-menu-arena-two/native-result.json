@@ -1,0 +1,50 @@
+{
+  "label": "run1",
+  "results": [
+    {
+      "step": "board-rightclick-118",
+      "click": [
+        177,
+        124
+      ],
+      "menu": {
+        "open": true,
+        "left": 177.03750610351562,
+        "top": 124.0250015258789,
+        "items": [
+          "重命名",
+          "在资源管理器中打开",
+          "删除"
+        ]
+      },
+      "dx": 0.04,
+      "dy": 0.03,
+      "onPointer": true
+    },
+    {
+      "step": "toolbar",
+      "trigger": true,
+      "legacyBoardButton": false,
+      "x": 35,
+      "y": 80
+    },
+    {
+      "step": "create-menu",
+      "open": true,
+      "items": [
+        "新建笔记",
+        "新建白板"
+      ]
+    },
+    {
+      "step": "create-board",
+      "before": 1,
+      "after": [
+        "D:\\WorkSpace\\Aster\\.worktrees\\board-tree-menu-arena-two\\.tmp\\native\\vault\\白板.a4board",
+        "D:\\WorkSpace\\Aster\\.worktrees\\board-tree-menu-arena-two\\.tmp\\native\\vault\\未命名白板.a4board"
+      ],
+      "created": true
+    }
+  ],
+  "logs": []
+}

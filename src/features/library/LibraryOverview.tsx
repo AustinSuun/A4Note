@@ -11,12 +11,14 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { remarkAsterInline } from '../../shared/markdown/remarkAsterInline';
 import type { PaperDocument } from '../../core/types';
+import { splitFrontmatter } from '../../core/markdownDocument';
 import type { TextDocumentSession } from '../../core/textDocumentSession';
 import { defaultSummaryColumns, summarySizing, fitSummaryWidths, type SummarySizing, summaryPaperMetadata, parseSummaryLayout, summaryFields, summaryRowHeight, type SummaryColumn } from '../../core/librarySummary';
 import { SummaryExcerpt } from './SummaryExcerpt';
 import { editSummary, invalidateSummaryPreviews, loadSummary, onSummaryChange, openSummaryUrl, summaryLayoutSession, type SummaryFile } from '../../platform/library/summaries';
 import { SummaryEditor } from './SummaryEditor';
 import './summary.css';
+import { pointerToElementLayout, viewportDeltaToLayout } from '../../shared/ui/viewportToLayout';
 interface Props { papers: PaperDocument[]; selectedIds: string[]; selectedId?: string; onSelect(id: string): void; onSelection(ids: string[]): void; onOpen(id: string): void }
 export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onSelection, onOpen }: Props) {
   const [titlePinned, setTitlePinned] = useState(() => {
@@ -96,8 +98,8 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
   }, []);
   const captureZoomPoint = useCallback((clientY?: number) => {
     const node = root.current; if (!node) return;
-    const rect = node.getBoundingClientRect();
-    const y = Math.max(0, Math.min(node.clientHeight, clientY === undefined ? node.clientHeight / 2 : clientY - rect.top));
+    // `clientHeight` is layout px; the viewport pointer is converted with the root zoom before clamping.
+    const y = Math.max(0, Math.min(node.clientHeight, clientY === undefined ? node.clientHeight / 2 : pointerToElementLayout({ clientX: 0, clientY }, node).y));
     // The title is frozen at the left edge. A cursor/center X anchor would
     // introduce horizontal scrolling even from scrollLeft=0 on zoom-in, hiding
     // the adjacent column under that title. Preserve the logical scroll start:
@@ -205,7 +207,7 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
       event.currentTarget.setPointerCapture(event.pointerId);
     }}
     onPointerMove={event => { const state = drag.current; if (!state || state.pointer !== event.pointerId) return;
-      const next = [...state.initial]; next[state.index] = Math.max(state.index === 0 ? 180 : 80, Math.min(800, Math.round(state.initial[state.index] + (event.clientX - state.x) / scaleRef.current)));
+      const next = [...state.initial]; next[state.index] = Math.max(state.index === 0 ? 180 : 80, Math.min(800, Math.round(state.initial[state.index] + viewportDeltaToLayout(event.clientX - state.x, 0).x / scaleRef.current)));
       state.current = next;
       if (!columnFrame.current) columnFrame.current = requestAnimationFrame(() => { columnFrame.current = 0; if (drag.current) setResizeWidths(drag.current.current); });
     }}
@@ -266,7 +268,21 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
       ]} onChange={(id, visible) => configure(columns.map(column => column.id === id ? { ...column, hidden: !visible } : column))} />
     </div>
     {error && <div role="alert" className="summary-warning">{error}<button type="button" onClick={() => void layout.current?.flush().then(() => setError('')).catch(e => setError(String(e)))}>重试保存列设置</button></div>}
-    <div ref={root} className={`summary-viewport ${titlePinned ? 'title-pinned' : 'title-scrolls'} ${contentZoom >= 120 ? 'expanded' : 'compact'}`} style={{ '--summary-grid': template, '--summary-lines': 2 } as CSSProperties} onPointerDown={cancelZoom} onScroll={() => {
+    <div ref={root} className={`summary-viewport ${titlePinned ? 'title-pinned' : 'title-scrolls'} ${contentZoom >= 120 ? 'expanded' : 'compact'}`} tabIndex={0} aria-label="总览表格，方向键选择文献，回车打开文献" style={{ '--summary-grid': template, '--summary-lines': 2 } as CSSProperties} onPointerDown={cancelZoom} onKeyDown={event => {
+      if (event.target !== event.currentTarget || !visible.length) return;
+      if (event.key === 'Enter' && selectedId && visible.some(p => p.paperId === selectedId)) { event.preventDefault(); onOpen(selectedId); return; }
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      event.preventDefault();
+      const index = visible.findIndex(p => p.paperId === selectedId);
+      const next = event.key === 'ArrowDown' ? (index < 0 ? 0 : Math.min(index + 1, visible.length - 1)) : (index < 0 ? 0 : Math.max(index - 1, 0));
+      onSelect(visible[next].paperId);
+      const node = root.current, item = rows[next];
+      if (node && item) {
+        const header = 34 * scale, top = (34 + item.top) * scale, bottom = top + item.height * scale;
+        if (top < node.scrollTop + header) node.scrollTop = Math.max(0, top - header);
+        else if (bottom > node.scrollTop + node.clientHeight) node.scrollTop = Math.max(0, bottom - node.clientHeight);
+      }
+    }} onScroll={() => {
       if (!scrollFrame.current) scrollFrame.current = requestAnimationFrame(() => {
         scrollFrame.current = 0; const node = root.current;
         if (node) setScroll({ top: node.scrollTop, height: node.clientHeight });
@@ -281,7 +297,7 @@ export function LibraryOverview({ papers, selectedIds, selectedId, onSelect, onS
         {cols.map((column, index) => <div key={column.id} title={column.name}><span>{column.name}</span>{resizeHandle(index + 1, column.name)}</div>)}
       </div>
       <div className="summary-rows" style={{ height: total, width: tableWidth }}>
-        {displayed.map(row => <SummaryRow key={row.paper.paperId} paper={row.paper} columns={cols} zoom={contentZoom} top={row.top} height={row.height} selected={selected.has(row.paper.paperId)} refresh={refresh}
+        {displayed.map(row => <SummaryRow key={row.paper.paperId} paper={row.paper} columns={cols} zoom={contentZoom} top={row.top} height={row.height} selected={selected.has(row.paper.paperId)} current={row.paper.paperId === selectedId} refresh={refresh}
           actions={actions} manualHeight={rowHeights[row.paper.paperId]} />)}
       </div>
       {!visible.length && <p className="summary-empty">当前范围没有文献{compare ? '或没有选中文献' : ''}。{(compare || focus) && <button type="button" onClick={resetScope}>返回当前范围</button>}</p>}
@@ -298,8 +314,8 @@ type SummaryRowActions = RowResizeActions & {
   open(id: string): void;
   edit(paper: PaperDocument, column?: SummaryColumn): void;
 };
-const SummaryRow = memo(function SummaryRow({ paper, columns, zoom, top, height, selected, refresh, actions, manualHeight }: {
-  paper: PaperDocument; columns: SummaryColumn[]; zoom: number; top: number; height: number; selected: boolean; refresh: number;
+const SummaryRow = memo(function SummaryRow({ paper, columns, zoom, top, height, selected, current, refresh, actions, manualHeight }: {
+  paper: PaperDocument; columns: SummaryColumn[]; zoom: number; top: number; height: number; selected: boolean; current: boolean; refresh: number;
   actions: { current: SummaryRowActions }; manualHeight?: number;
 }) {
   const onHeight = (value: number) => actions.current.height(paper.paperId, value);
@@ -320,8 +336,8 @@ const SummaryRow = memo(function SummaryRow({ paper, columns, zoom, top, height,
   const parsed = useMemo(() => { try { return { fields: summaryFields(file?.content ?? ''), error: '' }; } catch (e) { return { fields: new Map<string, { value: string }>(), error: String(e) }; } }, [file?.content]);
   const metadata = useMemo(() => summaryPaperMetadata(paper), [paper]);
   const online = parsed.fields.get('online')?.value.trim();
-  return <div ref={ref} className={`summary-row ${selected ? 'selected' : ''} ${manualHeight !== undefined ? 'manual-height' : ''}`} data-paper-id={paper.paperId} style={{ top, ...(zoom >= 120 && manualHeight === undefined ? { minHeight: summaryRowHeight(zoom) } : { height }) }}>
-    <div className="summary-pinned summary-title"><input type="checkbox" aria-label={`选择${paper.title}`} checked={selected} onChange={onToggle} /><div><button type="button" className="summary-paper-title" title={`打开文献：${metadata.title}`} onClick={() => { onSelect(); onOpen(); }}>{metadata.title}</button><PaperSignals paper={paper} /><div className="summary-meta-tags" aria-label="论文时间与期刊会议">
+  return <div ref={ref} className={`summary-row ${current ? 'current' : ''} ${selected ? 'bulk-selected' : ''} ${manualHeight !== undefined ? 'manual-height' : ''}`} aria-current={current ? 'true' : undefined} data-paper-id={paper.paperId} style={{ top, ...(zoom >= 120 && manualHeight === undefined ? { minHeight: summaryRowHeight(zoom) } : { height }) }} onClick={onSelect}>
+    <div className="summary-pinned summary-title"><input type="checkbox" aria-label={`选择${paper.title}`} checked={selected} onClick={event => event.stopPropagation()} onChange={onToggle} /><div><button type="button" className="summary-paper-title" title={`打开文献：${metadata.title}`} onClick={event => { event.stopPropagation(); onSelect(); onOpen(); }}>{metadata.title}</button><PaperSignals paper={paper} /><div className="summary-meta-tags" aria-label="论文时间与期刊会议">
       <span className="summary-meta-tag summary-year-tag" title={metadata.year ? `出版年份：${metadata.year}` : '文献元数据尚未填写年份'}>{metadata.year || '年份待补充'}</span>
       <span className="summary-meta-tag summary-venue-tag" title={`期刊/会议：${metadata.venue || '未填写'}`}>{metadata.venue || '期刊/会议待补充'}</span>
       {online && <span className="summary-meta-tag summary-online-tag" title={`用户记录的 online 时间：${online}`}>online {online}</span>}
@@ -330,7 +346,7 @@ const SummaryRow = memo(function SummaryRow({ paper, columns, zoom, top, height,
     {columns.map(column => {
       const value = column.source === 'venue' ? paper.venue : parsed.fields.get(column.id)?.value ?? '';
       const noteId = /^\[[^\]]*\]\(a4note-note:([^\s)]+)\)$/.exec(value.trim())?.[1]; const note = noteId ? paper.notes.find(n => n.id === noteId) : undefined;
-      const shown = note ? `${note.title}\n${note.content}` : value;
+      const shown = note ? `${note.title}\n${splitFrontmatter(note.content).body}` : value;
       if (column.source) return <div key={column.id} className="summary-cell" title="来自论文信息，请在论文详情中编辑">{zoom < 120 ? <SummaryExcerpt value={value || '—'} /> : <p className="summary-excerpt">{value || '—'}</p>}</div>;
       return <SummaryEditableCell key={column.id} paperId={paper.paperId} column={column} value={value}
         unavailable={error || parsed.error || (!file ? '正在读取总览 MD…' : undefined)} onRepair={() => onEdit()}>

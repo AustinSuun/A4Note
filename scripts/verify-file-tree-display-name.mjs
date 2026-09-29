@@ -65,6 +65,9 @@ const { FileTreePanel } = load('src/features/explorer/FileTreePanel.tsx', {
   '../../core/treeExpansion': { toggleTreeExpansion: () => [] },
   '../../ui/zh': { zh: { workbench: new Proxy({}, { get: (_target, key) => key }) } },
   './fileTreeDisplayName': helper,
+  // Task ae61143f: popover placement is a shared hook; the render contract here only needs its shape.
+  '../../shared/ui/usePointerAnchoredPosition': { usePointerAnchoredPosition: () => ({ ref: () => undefined, style: { left: 0, top: 0 }, placement: null, size: null }) },
+  '../../shared/ui/viewportToLayout': {},
 }, { window: { innerWidth: 1000, innerHeight: 800 }, document: { body: {} }, console });
 const find = (node, test) => {
   if (!node) return undefined;
@@ -94,5 +97,10 @@ eq(find(tree, n => n.props?.className === 'file-tree-rename-extension').props.ch
 find(tree, n => n.props?.className === 'tree-edit-cancel').props.onClick(); tree = render();
 const pngRow = find(tree, n => n.type === 'button' && n.props?.['data-file-path'] === entries[3].path);
 pngRow.props.onContextMenu({ preventDefault() {}, stopPropagation() {}, clientX: 100, clientY: 100 }); tree = render();
-eq(find(tree, n => n.props?.className === 'file-tree-context-menu'), undefined, 'existing non-Markdown context-menu policy is unchanged');
+// Task 1f8d8317: non-Markdown files now open the same type-agnostic context menu.
+const pngMenu = find(tree, n => n.props?.className === 'file-tree-context-menu');
+assert.ok(pngMenu, 'non-Markdown rows open the context menu (task 1f8d8317)');
+const pngButtons = (function collect(node) { const kids = node?.props?.children; const list = Array.isArray(kids) ? kids : kids ? [kids] : []; return [node, ...list.flatMap(collect)]; })(pngMenu).filter(n => n?.type === 'button');
+assert.ok(pngButtons.length >= 3, 'context menu keeps rename/reveal/delete for non-Markdown files');
+checks++;
 console.log(`PASS ${checks} file-tree display/identity assertions; synthetic component state, no native file operations.`);

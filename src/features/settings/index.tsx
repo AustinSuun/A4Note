@@ -75,6 +75,8 @@ export type SettingsSceneProps = {
   onImportPlugin: () => void | Promise<void>;
   onMarketUrlChange: (url: string) => void;
   onRefreshMarket: () => void | Promise<void>;
+  /** Stored in the UI state (`aster.uiState`), not in AppSettings. */
+  sceneEdgeSwitcher?: { enabled: boolean; onChange: (enabled: boolean) => void };
 };
 
 export function SettingsScene(props: SettingsSceneProps) {
@@ -82,7 +84,7 @@ export function SettingsScene(props: SettingsSceneProps) {
     settings, pluginSettings, pluginSettingValues, paths, diagnostics, aiProviders, providers, plugins, extensionCounts,
     scenes, enabledSceneIds, initialSection, onChange, onToggleScene, onTogglePlugin, onPluginSettingChange,
     onRefreshPaths, onRevealPath, onCreateBackup, onRestoreBackup, sync, onSync, onSyncLogin, onSyncLogout,
-    market, localPlugins, onImportPlugin, onMarketUrlChange, onRefreshMarket,
+    market, localPlugins, onImportPlugin, onMarketUrlChange, onRefreshMarket, sceneEdgeSwitcher,
   } = props;
   const [section, setSection] = useState<Section>(() => normalizeSection(initialSection));
   const [query, setQuery] = useState('');
@@ -170,7 +172,7 @@ export function SettingsScene(props: SettingsSceneProps) {
   const body = section === 'general' ? (
     <GeneralSection settings={settings} onChange={onChange} aiProviders={aiProviders} />
   ) : section === 'appearance' ? (
-    <AppearanceSection settings={settings} onChange={onChange} />
+    <AppearanceSection settings={settings} onChange={onChange} sceneEdgeSwitcher={sceneEdgeSwitcher} />
   ) : section === 'shortcuts' ? (
     <ShortcutEditor />
   ) : section === 'library' ? (

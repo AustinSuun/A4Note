@@ -1,4 +1,5 @@
 import { StateEffect, StateField, type EditorState } from '@codemirror/state';
+import { publishMeasurement } from './layoutMeasurePublish';
 import { EditorView, ViewPlugin, type DecorationSet, type ViewUpdate, type WidgetType } from '@codemirror/view';
 import { mathSizesChanged } from './mathLayoutStability';
 
@@ -141,6 +142,10 @@ export function previewLayoutStability(create: (view: EditorView) => Measurement
     private readonly sheet: HTMLStyleElement;
     private measurementModel: MeasurementDecorations | undefined;
     private fontRevision = 0;
+    // Result measured in this pass but not yet published. CodeMirror can repeat
+    // its measure loop several times in one frame; later iterations build on it
+    // instead of re-measuring every visible line from the empty state.
+    private unpublished: { state: EditorState; sizes: Sizes } | undefined;
     private readonly fontLoaded = () => { this.fontRevision++; this.schedule(); };
     constructor(private readonly view: EditorView) {
       measureRequests.set(view, () => { this.measurementModel = undefined; this.schedule(); });
@@ -178,10 +183,16 @@ export function previewLayoutStability(create: (view: EditorView) => Measurement
     }
     private schedule() {
       this.view.requestMeasure({ key: this, read: () => ({ state: this.view.state, sizes: this.measure() }), write: result => {
-        if (result.sizes) queueMicrotask(() => {
-          if (this.dead) return;
-          if (this.view.state !== result.state) { this.schedule(); return; }
-          this.view.dispatch({ effects: previewSizesChanged.of(result.sizes!) });
+        // requestMeasure's write phase still belongs to an EditorView update.
+        // Publish after it finishes, and reject work read from an older state.
+        if (!result.sizes) return;
+        const sizes = result.sizes;
+        this.unpublished = { state: result.state, sizes };
+        publishMeasurement(this.view, {
+          state: result.state,
+          effect: previewSizesChanged.of(sizes),
+          alive: () => !this.dead,
+          stale: () => { if (this.unpublished?.sizes === sizes) this.unpublished = undefined; this.schedule(); },
         });
       } });
     }
@@ -193,7 +204,9 @@ export function previewLayoutStability(create: (view: EditorView) => Measurement
       const width = view.contentDOM.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       if (width <= 0) return;
       const signature = [width, style.font, style.lineHeight, style.letterSpacing, style.wordSpacing, style.tabSize, style.whiteSpace, style.wordBreak, style.overflowWrap, style.direction, style.fontFeatureSettings, style.fontVariationSettings, this.fontRevision].join('|');
-      const previous = view.state.field(previewSizes);
+      const published = view.state.field(previewSizes);
+      const pending = this.unpublished && this.unpublished.state.doc === view.state.doc ? this.unpublished.sizes : undefined;
+      const previous = pending ?? published;
       const sizes: Sizes = previous.signature === signature ? { signature, lines: new Map(previous.lines), blocks: new Map(previous.blocks) } : { ...empty(), signature };
       let changed = previous.signature !== signature;
       let model: MeasurementDecorations | undefined;
@@ -231,11 +244,10 @@ export function previewLayoutStability(create: (view: EditorView) => Measurement
             sizes.blocks.set(from, { to, text: view.state.sliceDoc(from, to), height, lines }); changed = true;
           }
         }
-        // Construct every candidate before reading geometry. Alternating DOM
-        // replacement and getBoundingClientRect for each line forces a full
-        // synchronous layout per candidate during fast scrolling.
         host.replaceChildren();
-        const pending: Array<{ from: number; contentKey: string; candidates: HTMLElement[] }> = [];
+        // Read every line's content key before appending any candidate: image
+        // geometry reads after a host mutation force a layout per image line.
+        const keyed: Array<{ from: number; contentKey: string }> = [];
         for (const node of nodes) {
           if (node.dataset.previewLine == null) continue;
           const from = Number(node.dataset.previewLine);
@@ -249,7 +261,13 @@ export function previewLayoutStability(create: (view: EditorView) => Measurement
             const image = img.getBoundingClientRect(), wrapper = img.parentElement!.getBoundingClientRect();
             return `${img.complete}|${img.currentSrc}|${image.width}|${image.height}|${wrapper.width}|${wrapper.height}`;
           }).join(';');
-          if (sizes.lines.get(from)?.contentKey === contentKey) continue;
+          if (sizes.lines.get(from)?.contentKey !== contentKey) keyed.push({ from, contentKey });
+        }
+        // Construct every candidate before reading geometry. Alternating DOM
+        // replacement and getBoundingClientRect for each line forces a full
+        // synchronous layout per candidate during fast scrolling.
+        const pending: Array<{ from: number; contentKey: string; candidates: HTMLElement[] }> = [];
+        for (const { from, contentKey } of keyed) {
           model ??= this.measurementModel ?? (this.measurementModel = create(view));
           const candidates = [model.rendered, model.source].map(set => measurementLine(view, from, set, model!.widgetDOM));
           for (const pos of mixedStates(view, from, model)) candidates.push(measurementLine(view, from, model.at(pos), model.widgetDOM));

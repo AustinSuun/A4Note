@@ -24,6 +24,12 @@ const requiredFiles = [
   'src/features/reader/types.ts',
   'src/features/reader/readerHelpers.ts',
   'src/features/reader/readerConstants.ts',
+  'src/features/annotationTools/index.ts',
+  'src/features/annotationTools/constants.ts',
+  'src/features/annotationTools/toolSettings.ts',
+  'src/features/annotationTools/AnnotationToolIcon.tsx',
+  'src/features/annotationTools/AnnotationToolPopover.tsx',
+  'src/features/annotationTools/ToolOptionsBar.tsx',
   'src/features/reader/useAnnotationHistory.ts',
   'src/features/reader/ReaderToolbar.tsx',
   'src/features/reader/ReaderDocumentPane.tsx',
@@ -82,6 +88,8 @@ const requiredFiles = [
   'src/shared/ui/index.ts',
   'src/shared/ui/Button.tsx',
   'src/shared/ui/Panel.tsx',
+  'src/shared/ui/viewportToLayout.ts',
+  'src/shared/ui/usePointerAnchoredPosition.ts',
   'src/shared/hooks/index.ts',
   'src/shared/hooks/usePersistedUiState.ts',
   'src/shared/utils/index.ts',
@@ -129,6 +137,8 @@ const readerTypesSource = await readFile('src/features/reader/types.ts', 'utf8')
 const readerHelpersSource = await readFile('src/features/reader/readerHelpers.ts', 'utf8');
 const readerConstantsSource = await readFile('src/features/reader/readerConstants.ts', 'utf8');
 const readerToolbarSource = await readFile('src/features/reader/ReaderToolbar.tsx', 'utf8');
+const boardEditorSource = await readFile('src/features/board/BoardEditor.tsx', 'utf8');
+const readerToolSettingsStorageSource = await readFile('src/features/reader/pdf/readerToolSettingsStorage.ts', 'utf8');
 const readerDocumentPaneSource = await readFile('src/features/reader/ReaderDocumentPane.tsx', 'utf8');
 const readerPdfSource = await readFile('src/features/reader/pdf/PdfReader.tsx', 'utf8');
 const readerPdfPageViewSource = await readFile('src/features/reader/pdf/PdfPageView.tsx', 'utf8');
@@ -319,6 +329,11 @@ assert.match(readerHelpersSource, /export function preferredReaderMode/);
 assert.match(readerHelpersSource, /export function annotationLabelText/);
 assert.match(readerConstantsSource, /export const annotationPresetColors/);
 assert.match(readerToolbarSource, /export function ReaderToolbar\(/);
+// Task 97fcfb6c: the whiteboard renders the reader's annotation tools from the shared module.
+assert.match(boardEditorSource, /from '\.\.\/annotationTools'/);
+assert.doesNotMatch(boardEditorSource, /board-swatch|board-width/);
+assert.match(readerToolbarSource, /from '\.\.\/annotationTools'/);
+assert.match(readerToolSettingsStorageSource, /from '[^']*annotationTools'/);
 assert.doesNotMatch(readerToolbarSource, /sidePanels\.map\(\(panel\) =>/);
 assert.match(readerSceneSource, /<ReaderNoteWorkbenchMenu/);
 assert.match(readerSceneSource, /data-note-mode=\{visibleNoteMode\}/);
@@ -467,7 +482,14 @@ assert.match(fileTreePanelSource, /const FILE_TREE_DRAG_THRESHOLDS = \{[\s\S]*mo
 assert.match(fileTreePanelSource, /function dragThresholdFor\(pointerType: string\)/);
 assert.match(fileTreePanelSource, /className="file-tree-drag-preview"/);
 assert.match(fileTreePanelSource, /document\.addEventListener\('visibilitychange', cancelActiveDrag\)/);
-assert.match(fileTreePanelSource, /const clearDragState = \(\) => \{[\s\S]*setDragPreviewPosition\(null\);/);
+assert.match(fileTreePanelSource, /const clearDragState = \(\) => \{[\s\S]*setDragPreviewAnchor\(null\);/);
+// Task ae61143f: fixed popovers position through the shared root-zoom helpers, never raw clientX/Y or window.inner*.
+assert.match(fileTreePanelSource, /usePointerAnchoredPosition\(contextMenu\?\.anchor \?\? null, CONTEXT_MENU_PLACEMENT\)/);
+assert.match(fileTreePanelSource, /usePointerAnchoredPosition\(dragPreviewAnchor, DRAG_PREVIEW_PLACEMENT\)/);
+assert.doesNotMatch(fileTreePanelSource, /window\.inner(Width|Height)/);
+assert.match(await readFile('src/features/explorer/MarkdownResourceTab.tsx', 'utf8'), /viewportPointToLayout\(event, zoom\)/);
+assert.match(await readFile('src/features/board/BoardEditor.tsx', 'utf8'), /pointerToElementLayout\(event, svgRef\.current\)/);
+assert.match(await readFile('src/workbench/WorkbenchShell.tsx', 'utf8'), /viewportDeltaToLayout\(latestEvent\.clientX - resizeStartRef\.current\.x, 0\)/);
 assert.doesNotMatch(fileTreePanelSource, /onDragStart|onDragEnd|onDragOver|onDragLeave|onDrop|draggable=/);
 assert.doesNotMatch(workbenchStylesSource, /file-tree-row\[draggable="true"\]/);
 assert.match(workbenchStylesSource, /\.file-tree-row \{[\s\S]*cursor: default;[\s\S]*user-select: none;[\s\S]*touch-action: none;[\s\S]*\}/);

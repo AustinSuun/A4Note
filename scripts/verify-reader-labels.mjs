@@ -17,10 +17,13 @@ function load(path, mocks) {
 }
 const { WorkbenchTopBar } = load('src/workbench/WorkbenchTopBar.tsx', {
   './DocumentToolbar': { useDocumentToolbar: () => ({ enabled: true, setControlsHost() {}, setSaveHost() {} }) },
+  './openMenuTarget': { middleEllipsisPath: path => path },
 });
+// The「打开」menu is now bound to the active file (bcabb18d), so the render passes one.
+const openTarget = { key: 'path:D:/n/a.md', fileKind: 'markdown', name: 'a.md', displayPath: 'D:/n/a.md', reveal: { type: 'path', path: 'D:/n/a.md' }, vscodePath: 'D:/n/a.md', projectVSCodePath: null };
 for (const status of ['译文 PDF 已绑定到当前文献。', '初始化失败', '保存成功', '已加载 8 篇本地文献。', '']) {
   const html = renderToStaticMarkup(React.createElement(WorkbenchTopBar, {
-    labels: {}, project: null, workspace: null, workspaces: [], providers: [], canBrowseFolder: true,
+    labels: {}, project: null, workspace: null, workspaces: [], providers: [], openTarget,
     workspaceBreadcrumb: React.createElement('span', null, 'content'), status,
   }));
   assert.doesNotMatch(html, /workbench-topbar-status|workbench-status-text|role="status"/);

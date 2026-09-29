@@ -192,15 +192,20 @@
 .reader-note-mode-switch button[aria-pressed="true"], .reader-note-mode-switch button:hover { background: var(--accent-soft); color: var(--accent-strong); }
 .reader-workspace-shell[data-note-resizing="true"] .reader-workspace-drawer { transition: none; }
 .reader-note-workbench-menu {
-  position: fixed; z-index: 1000; width: 264px; min-width: 0; box-sizing: border-box; overflow: auto;
+  position: fixed; z-index: 1000; width: 300px; min-width: 0; box-sizing: border-box; overflow: auto;
   display: flex; flex-direction: column; gap: 2px; padding: 5px;
   border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 8px 22px rgba(26,41,33,.16);
 }
 .reader-note-workbench-item {
-  display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; align-items: center;
-  padding: 6px 8px; border: 0; border-radius: 5px; background: transparent; color: var(--text);
+  display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 3px 10px; align-items: start;
+  padding: 7px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--text);
   font-size: var(--ui-control-font-size, 13px); text-align: left; cursor: pointer;
 }
+.reader-note-workbench-item-label { font-weight: 600; }
+.reader-note-workbench-item-diagram { grid-row: 1 / span 3; margin-top: 1px; color: var(--muted); }
+.reader-note-workbench-item.current .reader-note-workbench-item-diagram,
+.reader-note-workbench-item:hover .reader-note-workbench-item-diagram,
+.reader-note-workbench-item:focus-visible .reader-note-workbench-item-diagram { color: var(--accent-strong); }
 .reader-note-workbench-item:hover, .reader-note-workbench-item:focus-visible { background: var(--accent-soft); }
 .reader-note-workbench-item.current { color: var(--accent-strong); font-weight: 600; }
 .reader-note-workbench-item-hint { grid-column: 2; color: var(--muted); font-size: var(--ui-caption-font-size, 11px); }
@@ -245,15 +250,17 @@
   width: 26px; height: 26px; padding: 0; border: 0; background: transparent; color: var(--muted); opacity: .55;
   transition: opacity 150ms ease, color 150ms ease, transform 150ms ease;
 }
-.reader-note-floating-corner::before { content: ''; position: absolute; inset: 0; border: 4px solid transparent; }
+/* Round caps fit the original 26px footprint: centerline ends at 24px + a 2px cap.
+   SVG avoids the pointed joins between colored and transparent CSS borders. */
+.reader-note-floating-corner-arc { position: absolute; inset: 0; display: block; width: 26px; height: 26px; overflow: visible;
+  pointer-events: none; transform-origin: center; }
 .reader-note-floating-corner[data-corner="nw"] { left: -4px; top: -4px; cursor: nwse-resize; }
-.reader-note-floating-corner[data-corner="nw"]::before { border-top-color: currentColor; border-left-color: currentColor; border-top-left-radius: 14px; }
 .reader-note-floating-corner[data-corner="ne"] { right: -4px; top: -4px; cursor: nesw-resize; }
-.reader-note-floating-corner[data-corner="ne"]::before { border-top-color: currentColor; border-right-color: currentColor; border-top-right-radius: 14px; }
+.reader-note-floating-corner[data-corner="ne"] .reader-note-floating-corner-arc { transform: rotate(90deg); }
 .reader-note-floating-corner[data-corner="sw"] { left: -4px; bottom: -4px; cursor: nesw-resize; }
-.reader-note-floating-corner[data-corner="sw"]::before { border-bottom-color: currentColor; border-left-color: currentColor; border-bottom-left-radius: 14px; }
+.reader-note-floating-corner[data-corner="sw"] .reader-note-floating-corner-arc { transform: rotate(270deg); }
 .reader-note-floating-corner[data-corner="se"] { right: -4px; bottom: -4px; cursor: nwse-resize; }
-.reader-note-floating-corner[data-corner="se"]::before { border-bottom-color: currentColor; border-right-color: currentColor; border-bottom-right-radius: 14px; }
+.reader-note-floating-corner[data-corner="se"] .reader-note-floating-corner-arc { transform: rotate(180deg); }
 .reader-note-floating-corner:is(:hover, :focus-visible, [data-active="true"]) { opacity: 1; color: var(--accent-strong); transform: scale(1.08); }
 .reader-note-floating-drag:focus-visible, .reader-note-floating-corner:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 10px; }
 
@@ -288,6 +295,11 @@
 .reader-workspace-drawer .note-document-header { min-height: 32px; padding: 0 0 3px; }
 /* Reserve only the slim drag lane above the header so the grip never masks the controls. */
 .reader-workspace-shell.note-mode-floating > .reader-workspace-drawer .note-document-header { padding-top: 14px; }
+/* Topbar zones: picker left, layout-mode group centered, content-state actions right. */
+.reader-workspace-drawer .note-document-header { display: grid; grid-template-columns: minmax(24px, 1fr) auto minmax(0, 1fr); column-gap: 4px; align-items: center; }
+.reader-workspace-drawer .note-document-header > .note-history-shell { justify-self: start; }
+.reader-workspace-drawer .note-layout-center { justify-self: center; display: flex; min-width: 0; }
+.reader-workspace-drawer .note-document-actions { justify-self: end; margin-left: 0; }
 /* Header row: the document picker hugs the left, layout/mode controls hug the right. */
 .reader-workspace-drawer .note-document-header > .note-history-shell { flex: 0 1 auto; min-width: 0; max-width: calc(100% - 96px); }
 .reader-workspace-drawer .note-document-trigger { width: auto; max-width: 100%; }
@@ -319,7 +331,7 @@
 .note-image-input { display: none; }
 
 /* Leave a real strip beside the card: the handle and all card controls remain hit-testable. */
-.reader-workspace-shell.note-mode-floating { --note-card-safe-height: min(var(--floating-note-height, 62%), 100%); --note-card-safe-top: max(0px, min(var(--floating-note-top, 14%), calc(100% - max(200px, var(--note-card-safe-height))))); --note-card-safe-width: min(var(--floating-note-width, 42%), calc(100% - 32px)); --note-card-safe-left: max(0px, min(var(--floating-note-left, 50%), calc(100% - max(240px, var(--note-card-safe-width)) - 32px))); }
+.reader-workspace-shell.note-mode-floating { --note-card-safe-height: min(var(--floating-note-height-live, var(--floating-note-height, 62%)), 100%); --note-card-safe-top: max(0px, min(var(--floating-note-top-live, var(--floating-note-top, 14%)), calc(100% - max(200px, var(--note-card-safe-height))))); --note-card-safe-width: min(var(--floating-note-width-live, var(--floating-note-width, 42%)), calc(100% - 32px)); --note-card-safe-left: max(0px, min(var(--floating-note-left-live, var(--floating-note-left, 50%)), calc(100% - max(240px, var(--note-card-safe-width)) - 32px))); }
 .reader-workspace-shell.note-mode-floating > .reader-workspace-drawer { left: var(--note-card-safe-left); top: var(--note-card-safe-top); height: var(--note-card-safe-height); width: var(--note-card-safe-width) !important; max-width: calc(100% - 32px); min-width: min(240px, calc(100% - 32px)); }
 .reader-workspace-shell.note-mode-floating > .reader-note-floating-controls { left: var(--note-card-safe-left); top: var(--note-card-safe-top); width: var(--note-card-safe-width); height: var(--note-card-safe-height); }
 .reader-workspace-shell[data-note-presence="exiting"] > .reader-note-floating-controls { pointer-events: none; }

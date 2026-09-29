@@ -247,6 +247,20 @@ try {
   const cornerBox = await boxOf('.reader-workspace-drawer');
   check(cornerBox.left > resizedBox.left + 20 && cornerBox.top > resizedBox.top + 15 && Math.abs((cornerBox.left + cornerBox.width) - (resizedBox.left + resizedBox.width)) <= 2 && Math.abs((cornerBox.top + cornerBox.height) - (resizedBox.top + resizedBox.height)) <= 2, '拖动左上角柄：右下角固定、左上角随手移动', { before: resizedBox, after: cornerBox });
   check(await ev('document.querySelectorAll(".reader-note-floating-corner").length === 4 && !document.querySelector(".reader-note-floating-resize") && !document.querySelector(".reader-workspace-drawer .reader-drawer-resize-handle")'), '悬浮卡有四个角柄、无旧右下角按钮、无左缘拖宽条');
+  for (const corner of ['nw', 'ne', 'sw', 'se']) {
+    const arc = await ev(`(() => {
+      const b = document.querySelector('.reader-note-floating-corner[data-corner="${corner}"]');
+      const svg = b.querySelector('svg'), path = svg?.querySelector('path'), r = b.getBoundingClientRect();
+      if (!svg || !path) return null;
+      const s = getComputedStyle(path);
+      return { cap: s.strokeLinecap, width: s.strokeWidth, color: s.stroke, buttonColor: getComputedStyle(b).color,
+        box: svg.getAttribute('viewBox'), decorative: svg.getAttribute('aria-hidden') === 'true' && svg.getAttribute('focusable') === 'false',
+        pointerEvents: getComputedStyle(svg).pointerEvents, hit: document.elementFromPoint(r.left+r.width/2,r.top+r.height/2) === b,
+        targetWidth: getComputedStyle(b).width, targetHeight: getComputedStyle(b).height };
+    })()`);
+    check(arc?.cap === 'round' && arc.width === '4px' && arc.color === arc.buttonColor && arc.box === '0 0 26 26', corner+' 圆头圆弧保留粗细/主题色/绘制尺寸', arc);
+    check(arc?.decorative && arc.pointerEvents === 'none' && arc.hit && arc.targetWidth === '26px' && arc.targetHeight === '26px', corner+' 装饰SVG不改变26px交互命中区域', arc);
+  }
   await shot('05-floating-resized');
   await ev('document.querySelector(".reader-note-floating-drag").focus()');
   await key('Escape', 'Escape', 27);

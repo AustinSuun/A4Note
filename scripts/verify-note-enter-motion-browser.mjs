@@ -106,7 +106,12 @@ const SNAPSHOT = `const shell=document.querySelector('.reader-workspace-shell');
 const firstFrame = selector => ev(`(async()=>{${PICK}const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('missing '+${JSON.stringify(selector)});window.__presenceLog=[];e.click();await Promise.resolve();await Promise.resolve();${SNAPSHOT}})()`);
 const snapshot = () => ev(`(()=>{${PICK}${SNAPSHOT}})()`);
 /* Polls frame by frame until the enter transition is running, then reports it. */
-const transitionStart = () => ev(`(async()=>{${PICK}const shell=document.querySelector('.reader-workspace-shell');for(let i=0;i<40;i++){await new Promise(r=>requestAnimationFrame(r));const anims=document.getAnimations().filter(a=>a.transitionProperty&&a.effect&&a.effect.target&&a.effect.target.closest('.reader-workspace-shell'));if(anims.length&&shell.dataset.notePresence==='entered'){const d=shell.querySelector(':scope > .reader-workspace-drawer');const c=shell.querySelector(':scope > .reader-note-floating-controls');return {frames:i,presence:shell.dataset.notePresence,animations:anims.map(a=>({property:a.transitionProperty,target:a.effect.target.className.split(' ')[0],duration:a.effect.getTiming().duration,easing:a.effect.getTiming().easing,playState:a.playState})),drawer:pick(d),controls:pick(c)}}}return {frames:40,presence:shell.dataset.notePresence,animations:[],drawer:null,controls:null}})()`);
+const TRANSITION_READ = `(async()=>{${PICK}const shell=document.querySelector('.reader-workspace-shell');for(let i=0;i<40;i++){await new Promise(r=>requestAnimationFrame(r));const anims=document.getAnimations().filter(a=>a.transitionProperty&&a.effect&&a.effect.target&&a.effect.target.closest('.reader-workspace-shell'));if(anims.length&&shell.dataset.notePresence==='entered'){const d=shell.querySelector(':scope > .reader-workspace-drawer');const c=shell.querySelector(':scope > .reader-note-floating-controls');return {frames:i,presence:shell.dataset.notePresence,animations:anims.map(a=>({property:a.transitionProperty,target:a.effect.target.className.split(' ')[0],duration:a.effect.getTiming().duration,easing:a.effect.getTiming().easing,playState:a.playState})),drawer:pick(d),controls:pick(c)}}}return {frames:40,presence:shell.dataset.notePresence,animations:[],drawer:null,controls:null}})()`;
+const transitionStart = () => ev(TRANSITION_READ);
+/* Capture the FLIP pose and its short transition in one renderer evaluation. Returning
+   to Node for trackOf() before arming the observer could miss the whole 220ms interval
+   on a busy Windows host. Keep every geometry/property/duration assertion unchanged. */
+const firstFrameAndTransition = selector => ev(`(async()=>{${PICK}const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('missing '+${JSON.stringify(selector)});window.__presenceLog=[];e.click();await Promise.resolve();await Promise.resolve();const first=(()=>{${SNAPSHOT}})();const transition=await ${TRANSITION_READ};return {first,transition}})()`);
 const freezeAt = ms => ev(`(async()=>{for(let i=0;i<40;i++){const anims=document.getAnimations().filter(a=>a.transitionProperty&&a.effect&&a.effect.target&&a.effect.target.closest('.reader-workspace-shell'));if(anims.length){for(const a of anims){a.pause();a.currentTime=${ms};}const d=document.querySelector('.reader-workspace-shell > .reader-workspace-drawer');const s=getComputedStyle(d);return {paused:anims.length,opacity:s.opacity,transform:s.transform}}await new Promise(r=>requestAnimationFrame(r));}return null})()`);
 const thaw = () => ev('(()=>{for(const a of document.getAnimations())a.play();return true})()');
 const stableAfterFrames = () => ev(`(async()=>{const d=document.querySelector('.reader-workspace-shell > .reader-workspace-drawer');const box=()=>[d.offsetLeft,d.offsetTop,d.offsetWidth,d.offsetHeight].join(',');const a=box();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));return {stable:a===box(),box:a,running:document.getAnimations().filter(x=>x.transitionProperty).length}})()`);
@@ -132,8 +137,17 @@ try {
     '--headless=new', '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check',
     '--disable-extensions', '--disable-background-networking', '--disable-component-update', '--user-data-dir=' + profile, '--window-size=1568,760', 'about:blank',
   ], { stdio: 'ignore' });
-  for (let index = 0; index < 150 && !fs.existsSync(path.join(profile, 'DevToolsActivePort')); index += 1) await pause(100);
-  const port = Number(fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+  // Windows can create DevToolsActivePort before releasing its write lock.
+  // Existence alone is not readiness: retry transient EBUSY/ENOENT, not other errors.
+  let port = 0;
+  for (let index = 0; index < 150 && !port; index += 1) {
+    try { port = Number(fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]); }
+    catch (error) {
+      if (error.code !== 'EBUSY' && error.code !== 'ENOENT') throw error;
+    }
+    if (!port) await pause(100);
+  }
+  if (!Number.isInteger(port) || port < 1) throw Error('Chrome did not publish a readable DevToolsActivePort');
   const tabs = await (await fetch('http://127.0.0.1:' + port + '/json/list')).json();
   const target = tabs.find(tab => tab.type === 'page');
   ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -220,14 +234,33 @@ try {
   check(headerSplit.save === 'none', '分屏同样不显示常态「已保存」（spec 12：所有形态）', headerSplit.save);
 
   /* 3. exit: the track slides shut with the ease-in token; drawer unmounts after the motion */
-  const closeFirst = await firstFrame('.motion-close');
-  const closeTrack = await trackOf();
-  check(closeFirst.presence === 'exiting' && closeFirst.track.sideVar === '0px' && sameCurve(curveOf(closeTrack.timing), tokens.easeIn), '收起：exiting 令轨道目标为 0，使用 ease-in 令牌', { closeFirst, closeTrack });
-  const closeRun = await ev(`(async()=>{const shell=document.querySelector('.reader-workspace-shell');const samples=[];for(let i=0;i<10;i++){await new Promise(r=>requestAnimationFrame(r));const cols=getComputedStyle(shell).gridTemplateColumns.split(' ');samples.push(+parseFloat(cols[cols.length-1]).toFixed(1));}return samples})()`);
-  check(closeRun.every((value, index) => index === 0 || value <= closeRun[index - 1] + 0.5) && closeRun[0] > closeRun[closeRun.length - 1], '收起：轨道逐帧单调收窄', closeRun);
+  // Read the first commit and seek the real grid transition in one renderer evaluation.
+  // Ten wall-clock rAFs can outlive the 220ms unmount timer on a busy Windows host.
+  const closeEvidence = await ev(`(async()=>{${PICK}const shell=document.querySelector('.reader-workspace-shell');document.querySelector('.motion-close').click();await Promise.resolve();await Promise.resolve();const first=(()=>{${SNAPSHOT}})();const timing=getComputedStyle(shell).transitionTimingFunction;getComputedStyle(shell).gridTemplateColumns;let anim=document.getAnimations().find(a=>a.transitionProperty==='grid-template-columns'&&a.effect?.target===shell);if(!anim){await new Promise(r=>requestAnimationFrame(r));anim=document.getAnimations().find(a=>a.transitionProperty==='grid-template-columns'&&a.effect?.target===shell)}if(!anim)return {first,timing,samples:[]};anim.pause();const samples=[];for(const t of [0,30,60,90,120,160,200]){anim.currentTime=t;const cols=getComputedStyle(shell).gridTemplateColumns.split(' ');samples.push(+parseFloat(cols[cols.length-1]).toFixed(1))}anim.play();return {first,timing,samples}})()`);
+  const closeFirst = closeEvidence.first, closeRun = closeEvidence.samples;
+  check(closeFirst.presence === 'exiting' && closeFirst.track.sideVar === '0px' && sameCurve(curveOf(closeEvidence.timing), tokens.easeIn), '收起：exiting 令轨道目标为 0，使用 ease-in 令牌', closeEvidence);
+  check(closeRun.length === 7 && closeRun.every((value, index) => index === 0 || value <= closeRun[index - 1] + 0.5) && closeRun[0] > closeRun[closeRun.length - 1], '收起：轨道定点采样单调收窄', closeRun);
   await settle();
   const closed = await snapshot();
   check(closed.presence === 'hidden' && closed.drawer === null, '退场结束后卸载抽屉（presence=hidden）', closed);
+
+  /* Reopen during the exit itself, not after a CDP screenshot/timer delay. A zero-duration
+     "entering" pose would snap the track to zero and make the PDF jump for one frame. */
+  await ev(`document.querySelector('.motion-open[data-mode="split"]').click()`);
+  await settle();
+  await wait("document.querySelector('.reader-workspace-shell')?.dataset.notePresence==='entered'", 100, 25);
+  const longDraft = '未保存的长笔记段落\n'.repeat(80);
+  await ev("(()=>{const n=document.querySelector('.reader-workspace-drawer textarea');window.__retainedNoteEditor=n;Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(n,('未保存的长笔记段落'+String.fromCharCode(10)).repeat(80));n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.pdf-document').scrollTop=420;return true})()");
+  const splitReverse = await ev(`(async()=>{const shell=document.querySelector('.reader-workspace-shell');const main=shell.querySelector(':scope > .reader-main-workspace');const sample=()=>({phase:shell.dataset.notePresence,width:+main.getBoundingClientRect().width.toFixed(2)});document.querySelector('.motion-close').click();await Promise.resolve();await Promise.resolve();getComputedStyle(shell).gridTemplateColumns;let track=document.getAnimations().find(a=>a.transitionProperty==='grid-template-columns'&&a.effect?.target===shell);if(!track){await new Promise(r=>requestAnimationFrame(r));track=document.getAnimations().find(a=>a.transitionProperty==='grid-template-columns'&&a.effect?.target===shell)}if(track){track.pause();track.currentTime=80}const before=sample();document.querySelector('.motion-open[data-mode="split"]').click();await Promise.resolve();await Promise.resolve();const immediate=sample();await new Promise(r=>requestAnimationFrame(r));return {before,immediate,next:sample(),hadTrack:!!track}})()`);
+  check(splitReverse.hadTrack && splitReverse.before.phase === 'exiting' && splitReverse.immediate.phase === 'entered'
+    && near(splitReverse.immediate.width, splitReverse.before.width, 3)
+    && splitReverse.next.width <= splitReverse.before.width + 3,
+    '中途反向：PDF 宽度连续、无 0 轨道瞬跳', splitReverse);
+  await settle();
+  const retained = await ev("({draft:document.querySelector('.reader-workspace-drawer textarea')?.value,pdfScroll:document.querySelector('.pdf-document')?.scrollTop,sameEditor:window.__retainedNoteEditor===document.querySelector('.reader-workspace-drawer textarea')})");
+  check(retained.draft === longDraft && retained.pdfScroll === 420 && retained.sameEditor, '长笔记草稿与 PDF 滚动位置在反向过渡后保持', { length: retained.draft?.length, expected: longDraft.length, pdfScroll: retained.pdfScroll, sameEditor: retained.sameEditor });
+  await ev(`document.querySelector('.motion-close').click()`);
+  await settle();
 
   /* 4. floating entrance: a scale/opacity pop out of the boundary bookmark (right edge, mid height) */
   await ev('document.querySelector(".motion-float[data-side=\\"right\\"]").click()');
@@ -252,6 +285,17 @@ try {
   /* offset box includes the card's 1px border on each side; floatingCardBox is the CSS box */
   check(near(floatSettled.drawer.left, floatState.floatingBox.left) && near(floatSettled.drawer.top, floatState.floatingBox.top) && near(floatSettled.drawer.width, floatState.floatingBox.width, 2.5) && near(floatSettled.drawer.height, floatState.floatingBox.height, 2.5), '浮卡最终几何 = floatingCardBox 计算值（位置/尺寸不受动效影响）', { settled: floatSettled.drawer, expected: floatState.floatingBox });
   await shot('03-floating-settled');
+
+  /* A floating exit also reverses from the current opacity/scale, without restarting
+     from the fully transparent bookmark pose. */
+  await ev("(()=>{const n=document.querySelector('.reader-workspace-drawer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(n,'');n.dispatchEvent(new Event('input',{bubbles:true}));return true})()");
+  const floatingReverse = await ev(`(async()=>{const shell=document.querySelector('.reader-workspace-shell');const d=shell.querySelector(':scope > .reader-workspace-drawer');const sample=()=>({phase:shell.dataset.notePresence,opacity:+getComputedStyle(d).opacity});document.querySelector('.motion-close').click();await Promise.resolve();await Promise.resolve();getComputedStyle(d).opacity;let fading=document.getAnimations().find(a=>a.transitionProperty==='opacity'&&a.effect?.target===d);if(!fading){await new Promise(r=>requestAnimationFrame(r));fading=document.getAnimations().find(a=>a.transitionProperty==='opacity'&&a.effect?.target===d)}if(fading){fading.pause();fading.currentTime=80}const before=sample();document.querySelector('.motion-open[data-mode="floating"]').click();await Promise.resolve();await Promise.resolve();const immediate=sample();await new Promise(r=>requestAnimationFrame(r));return {before,immediate,next:sample()}})()`);
+  check(floatingReverse.before.phase === 'exiting' && floatingReverse.before.opacity > 0.05 && floatingReverse.before.opacity < 1
+    && floatingReverse.immediate.phase === 'entered' && floatingReverse.next.opacity >= floatingReverse.before.opacity - 0.05,
+    '悬窗中途反向：从当前透明度恢复，无闪烁', floatingReverse);
+  await settle();
+
+  check(await ev("document.querySelector('.reader-workspace-drawer textarea')?.value") === '', '空笔记在悬窗反向过渡后保持');
 
   /* 4b. floating card chrome: slim drag lane, no save badge, no left resizer, dock inside the card */
   const cardChrome = await ev(`(()=>{const card=document.querySelector('.reader-workspace-drawer');const h=card.querySelector('.note-document-header');const drag=document.querySelector('.reader-note-floating-drag');const corners=[...document.querySelectorAll('.reader-note-floating-corner')];const dock=card.querySelector('.markdown-authoring-dock');const actions=dock.querySelector('.markdown-authoring-actions');const r=x=>x.getBoundingClientRect();const c=r(card);const shell=h.querySelector('.note-history-shell');const a=h.querySelector('.note-document-actions');return {headerPaddingTop:getComputedStyle(h).paddingTop,dragTop:r(drag).top-c.top,dragHeight:r(drag).height,save:getComputedStyle(card.querySelector('.note-save-state')).display,resizer:!!card.querySelector('.reader-drawer-resize-handle'),oldResize:!!document.querySelector('.reader-note-floating-resize'),corners:corners.map(x=>({corner:x.dataset.corner,left:r(x).left-c.left,top:r(x).top-c.top,right:c.right-r(x).right,bottom:c.bottom-r(x).bottom,cursor:getComputedStyle(x).cursor,size:r(x).width})),dock:{left:r(dock).left-c.left,right:c.right-r(dock).right,bottom:c.bottom-r(dock).bottom,width:r(dock).width,height:r(dock).height,display:getComputedStyle(actions).display,wrap:getComputedStyle(actions).flexWrap,card:c.width},header:{trigger:r(h.querySelector('.note-document-trigger')).width,width:r(h).width,shellLeft:r(shell).left-c.left,actionsRight:c.right-r(a).right}}})()`);
@@ -308,14 +352,15 @@ try {
   const flipObserver = `window.__flipSeen=false;new MutationObserver(()=>{if(document.querySelector('.reader-workspace-shell').dataset.noteFlip==='true')window.__flipSeen=true}).observe(document.querySelector('.reader-workspace-shell'),{attributes:true,attributeFilter:['data-note-flip']});`;
   await ev(flipObserver);
   const cardBeforeSplit = await boxOf('.reader-workspace-drawer');
-  const toSplit = await firstFrame('.reader-note-mode-switch [aria-label="边读边记"]');
-  const toSplitTrack = await trackOf();
+  const observedSplit = await firstFrameAndTransition('.reader-note-mode-switch [aria-label="边读边记"]');
+  const toSplit = observedSplit.first;
+  const toSplitTrack = toSplit.track;
   check(toSplit.presence === 'entered' && toSplit.motionMode === 'split' && toSplit.drawer.opacity === '1', '浮卡 → 分屏：presence 保持 entered（不淡出重进）', toSplit);
   check(/matrix\(/.test(toSplit.drawer.transform) && toSplit.drawer.transform !== 'matrix(1, 0, 0, 1, 0, 0)' && toSplit.drawer.origin === '0px 0px' && toSplit.running.length === 0, '浮卡 → 分屏：首帧以 FLIP 变换停留在旧位置（无过渡，origin 0 0）', toSplit.drawer);
   const flipMatrix = numbers(toSplit.drawer.transform);
   check(near(flipMatrix[0], cardBeforeSplit.width / toSplit.drawer.width, 0.02) && near(toSplit.drawer.vleft, cardBeforeSplit.left, 2) && near(toSplit.drawer.vtop, cardBeforeSplit.top, 2), '浮卡 → 分屏：FLIP 变换正好覆盖旧卡片盒（变换后的包围盒 = 旧卡片位置，统一缩放）', { matrix: flipMatrix, from: cardBeforeSplit, to: toSplit.drawer });
   check(toSplitTrack.track > 300, '浮卡 → 分屏：网格轨道立即为目标宽度（由 FLIP 而非轨道承担过渡）', toSplitTrack);
-  const flipRun = await transitionStart();
+  const flipRun = observedSplit.transition;
   check(flipRun.animations.length >= 1 && flipRun.animations.every(a => a.property === 'transform' && a.duration === 220), '浮卡 → 分屏：下一帧仅 transform 过渡到新位置', flipRun.animations);
   await settle();
   check((await log()).every(entry => !entry.startsWith('entering')) && await ev('window.__flipSeen'), '浮卡 → 分屏：无 entering 重放，FLIP 标记出现', await log());

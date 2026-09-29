@@ -66,4 +66,26 @@ const broken = new r.ShortcutStore({getItem:()=>'{bad',setItem:()=>{throw Error(
 eq(broken.save({schemaVersion:1,bindings:{x:null}}),false,'write failure reported'); eq(Object.keys(broken.overrides.bindings),[],'write failure preserves defaults');
 eq(new r.ShortcutStore().save({schemaVersion:1,bindings:{}}),false,'unavailable storage not silently saved');
 r.dispose(); eq(key('z').events,[],'unmount removes dispatcher');
+// A chord suppresses only its current Ctrl cycle, regardless of modifier order.
+for (const modifier of ['shiftKey', 'altKey', 'metaKey']) {
+  const t = shortcutTestRuntime();
+  t.key('Control', undefined, { [modifier]: true });
+  t.advance(650); eq(t.store.hintVisible, false, `${modifier} before Ctrl suppresses`);
+  t.win.emit('keyup', {key:'Shift',ctrlKey:true});
+  t.key('Control', undefined, {repeat:true}); t.advance(650);
+  eq(t.store.hintVisible, false, 'repeat cannot resurrect a used cycle');
+  t.win.emit('keyup', {key:'Control'}); t.key('Control'); t.advance(499);
+  eq(t.store.hintVisible, false, 'new cycle still waits 500ms'); t.advance(1);
+  eq(t.store.hintVisible, true, 'new cycle restores hints'); t.dispose();
+}
+for (const delay of [0, 450, 500, 650]) {
+  const t = shortcutTestRuntime(); t.key('Control'); t.advance(delay);
+  eq(t.store.hintVisible, delay >= 500, `pre-chord visibility at ${delay}ms`);
+  eq(t.key('h').events, ['highlight'], 'hint observer never changes command dispatch');
+  eq(t.store.hintVisible, false, 'chord immediately hides');
+  t.win.emit('keyup', {key:'h',ctrlKey:true}); t.advance(1000);
+  eq(t.store.hintVisible, false, 'ordinary key release cannot restart timer');
+  t.win.emit('keyup', {key:'Control'}); t.key('Control'); t.advance(500);
+  eq(t.store.hintVisible, true, 'next cycle not permanently suppressed'); t.dispose();
+}
 console.log(`Shortcut dispatcher verification passed: ${checks} checks`);

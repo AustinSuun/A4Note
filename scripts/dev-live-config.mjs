@@ -15,6 +15,7 @@ export function liveDevPlan(root, { instance = 'integration', port = 1421, cdpPo
     root, instance, port, cdpPort, identifier,
     url: `http://127.0.0.1:${port}`,
     stateDir,
+    viteCacheDir: path.join(stateDir, 'vite-cache'),
     configPath: path.join(stateDir, 'tauri.dev.json'),
     profileDir: path.join(stateDir, 'webview'),
     probePath: path.join(stateDir, 'hmr-probe.css'),

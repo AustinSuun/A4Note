@@ -1,4 +1,5 @@
 import { FileText, Plus } from 'lucide-react';
+import { splitFrontmatter } from '../core/markdownDocument';
 import type { Note } from '../core/types';
 import './paper-notes.css';
 
@@ -13,7 +14,7 @@ export function PaperNoteList({ paperId, notes, compact = false, onOpen, onCreat
       <FileText size={16} aria-hidden="true" />
       <span className="paper-note-card-body">
         <strong>{note.title || '未命名笔记'}</strong>
-        {!compact && <span className="paper-note-excerpt">{note.content.replace(/\s+/g, ' ').trim().slice(0, 140) || '尚未填写内容'}</span>}
+        {!compact && <span className="paper-note-excerpt">{splitFrontmatter(note.content).body.replace(/\s+/g, ' ').trim().slice(0, 140) || '尚未填写内容'}</span>}
         {!compact && <small>Markdown{note.updatedAt && Number.isFinite(Date.parse(note.updatedAt)) ? ` · ${new Date(note.updatedAt).toLocaleDateString()}` : ''}</small>}
       </span>
     </button>) : <p className="paper-notes-empty">暂无笔记</p>}

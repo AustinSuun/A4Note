@@ -115,6 +115,54 @@ pub(crate) fn open_path_in_file_manager(path: &Path) -> Result<(), String> {
     }
 }
 
+/// Shows `path` in the system file manager. A directory is opened as before;
+/// a file opens its folder with the file selected (Explorer `/select,`,
+/// Finder `open -R`). Linux file managers have no common "select" switch, so
+/// the containing folder is opened there.
+pub(crate) fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
+    if path.is_dir() {
+        return open_path_in_file_manager(path);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        // raw_arg: Explorer needs `/select,"C:\a b\x.md"` verbatim; Rust's own
+        // quoting would wrap the whole switch in quotes, which Explorer ignores.
+        Command::new("explorer")
+            .raw_arg(explorer_select_argument(path))
+            .spawn()
+            .map_err(|error| format!("Failed to reveal path: {error}"))?;
+        return Ok(());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg("-R")
+            .arg(path)
+            .spawn()
+            .map_err(|error| format!("Failed to reveal path: {error}"))?;
+        return Ok(());
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        let folder = path.parent().map(Path::to_path_buf).unwrap_or_else(|| path.to_path_buf());
+        return open_path_in_file_manager(&folder);
+    }
+}
+
+/// `/select,"<path>"` for explorer.exe: backslashes only, no `\\?\` prefix.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+pub(crate) fn explorer_select_argument(path: &Path) -> String {
+    let raw = path.to_string_lossy();
+    let plain = raw.strip_prefix(r"\\?\UNC\").map(|rest| format!(r"\\{rest}")).unwrap_or_else(|| {
+        raw.strip_prefix(r"\\?\").unwrap_or(&raw).to_string()
+    });
+    format!("/select,\"{}\"", plain.replace('/', "\\"))
+}
+
 pub(crate) fn open_file_with_default_app(path: &Path) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
@@ -171,5 +219,29 @@ pub(crate) fn open_external_url(url: &str) -> Result<(), String> {
     {
         Command::new("xdg-open").arg(trimmed).spawn().map_err(|error| format!("无法打开链接：{error}"))?;
         return Ok(());
+    }
+}
+
+#[cfg(test)]
+mod explorer_select_tests {
+    use super::explorer_select_argument;
+    use std::path::Path;
+
+    #[test]
+    fn selects_the_file_itself_with_backslashes_and_quotes() {
+        assert_eq!(
+            explorer_select_argument(Path::new(r"D:\Notes\读书 笔记.md")),
+            r#"/select,"D:\Notes\读书 笔记.md""#
+        );
+        assert_eq!(
+            explorer_select_argument(Path::new("D:/Notes/sub/board.a4board")),
+            r#"/select,"D:\Notes\sub\board.a4board""#
+        );
+    }
+
+    #[test]
+    fn strips_verbatim_prefixes() {
+        assert_eq!(explorer_select_argument(Path::new(r"\\?\C:\lib\paper.pdf")), r#"/select,"C:\lib\paper.pdf""#);
+        assert_eq!(explorer_select_argument(Path::new(r"\\?\UNC\srv\share\a.md")), r#"/select,"\\srv\share\a.md""#);
     }
 }

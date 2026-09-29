@@ -4,9 +4,8 @@
 //! first, so a request can never name a path that does not exist, and the logic
 //! and its tests stay in that module where no Tauri handle is needed.
 
-use std::path::Path;
 
-use crate::app_paths::{open_file_with_default_app, open_path_in_file_manager};
+use crate::app_paths::{open_file_with_default_app, reveal_in_file_manager};
 use crate::workspace_fs;
 
 #[tauri::command]
@@ -26,13 +25,9 @@ pub fn list_directory_entries(
 
 #[tauri::command]
 pub fn reveal_path(request: workspace_fs::PathRequest) -> Result<(), String> {
+    // Same request as before; a file is now selected instead of only opening its folder.
     let path = workspace_fs::resolve_existing_path(&request.path)?;
-    let target = if path.is_dir() {
-        path
-    } else {
-        path.parent().map(Path::to_path_buf).unwrap_or(path)
-    };
-    open_path_in_file_manager(&target)
+    reveal_in_file_manager(&path)
 }
 
 #[tauri::command]

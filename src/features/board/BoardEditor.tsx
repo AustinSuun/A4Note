@@ -1,0 +1,987 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Check, Copy, Layers, LoaderCircle, Maximize2, Palette, Redo2, Trash2, Undo2, ZoomIn, ZoomOut,
+} from 'lucide-react';
+import { useDocumentToolbar } from '../../workbench/DocumentToolbar';
+import { ReaderResponsiveToolbar } from '../reader/ReaderResponsiveToolbar';
+import {
+  AnnotationToolIcon, AnnotationToolPopover, ToolColorPalette, ToolOptionsBar,
+  annotationColorInputValue, defaultToolColors, toolColorToCss, toolHasSettings,
+  useSharedAnnotationToolSettings, useSharedToolColors,
+} from '../annotationTools';
+import type { AnnotationColor, ReaderTool } from '../../core/types';
+import type { SharedColorTool } from '../annotationTools';
+import { useTextDocument } from '../explorer/useTextDocument';
+import {
+  BOARD_MAX_ELEMENTS, appendInkPoint, applyArrowBindings, bindingFor, boardBackgroundSpacing, bringToFront, createElementId, createHistory, defaultBoardBackground, deleteElements, duplicateElements,
+  elementBounds, elementsInRect, fitViewport, hitTest, normalizeRect, parseBoardDocument, recordHistory, redoHistory, sendToBack, serializeBoardDocument,
+  transformElement, translateElement, undoHistory, unionBounds, updateElements, withBounds, withElements, zoomViewport, boardDisplayName, screenToWorld,
+  type BoardArrowElement, type BoardBackground, type BoardBackgroundDensity, type BoardBackgroundStyle, type BoardDocument, type BoardElement, type BoardHistory, type BoardInkElement, type BoardPoint, type BoardRect, type BoardViewport,
+} from '../../core/board';
+import './board.css';
+import { pointerToElementLayout } from '../../shared/ui/viewportToLayout';
+
+export type BoardTool = 'select' | 'hand' | 'text' | 'note' | 'shape' | 'arrow' | 'pen' | 'eraser';
+
+export interface BoardEditorProps {
+  path: string;
+  name: string;
+  /** Hidden tabs keep their editor mounted; inactive editors never grab keyboard focus. */
+  active?: boolean;
+  /** Reader side panel: compact chrome, no file title row. */
+  embedded?: boolean;
+  /** Extra header controls owned by the host (e.g. the reader's "back to note"). */
+  headerExtra?: ReactNode;
+  /** Re-read the file after a read error (missing/moved file that came back). */
+  onRetry?: () => void;
+  /** Wiki-link text for this board; enables the copy-reference action. */
+  referenceText?: string;
+  onStatus?: (message: string) => void;
+}
+
+type Gesture =
+  | { kind: 'pan'; pointerId: number; startScreen: BoardPoint; startViewport: BoardViewport }
+  | { kind: 'move'; pointerId: number; start: BoardPoint; ids: Set<string>; base: BoardElement[]; moved: boolean }
+  | { kind: 'resize'; pointerId: number; handle: HandleId; ids: Set<string>; base: BoardElement[]; box: BoardRect }
+  | { kind: 'endpoint'; pointerId: number; id: string; index: 0 | 1; base: BoardElement[] }
+  | { kind: 'marquee'; pointerId: number; start: BoardPoint; keep: string[] }
+  | { kind: 'shape'; pointerId: number; start: BoardPoint; type: 'rect' | 'ellipse' | 'note' | 'text' }
+  | { kind: 'arrow'; pointerId: number; start: BoardPoint }
+  | { kind: 'ink'; pointerId: number; points: BoardPoint[] }
+  | { kind: 'erase'; pointerId: number; ids: Set<string> };
+
+type HandleId = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+const HANDLES: Array<{ id: HandleId; fx: number; fy: number; cursor: string }> = [
+  { id: 'nw', fx: 0, fy: 0, cursor: 'nwse-resize' }, { id: 'n', fx: 0.5, fy: 0, cursor: 'ns-resize' }, { id: 'ne', fx: 1, fy: 0, cursor: 'nesw-resize' },
+  { id: 'e', fx: 1, fy: 0.5, cursor: 'ew-resize' }, { id: 'se', fx: 1, fy: 1, cursor: 'nwse-resize' }, { id: 's', fx: 0.5, fy: 1, cursor: 'ns-resize' },
+  { id: 'sw', fx: 0, fy: 1, cursor: 'nesw-resize' }, { id: 'w', fx: 0, fy: 0.5, cursor: 'ew-resize' },
+];
+
+// Task 97fcfb6c: the board renders the same tool buttons, icons, labels, colours and option
+// panels as the reader's annotation toolbar; only the board-only tools (note) and the
+// select/hand pair are board-specific. `readerTool` maps a board tool onto the shared
+// reader tool id that owns its icon, options panel and recent colour.
+const TOOLS: Array<{ id: BoardTool; readerTool: ReaderTool; label: string; key: string }> = [
+  { id: 'select', readerTool: 'cursor', label: '选择', key: 'V' },
+  { id: 'hand', readerTool: 'hand', label: '平移', key: 'H' },
+  { id: 'text', readerTool: 'text', label: '文本', key: 'T' },
+  { id: 'note', readerTool: 'comment', label: '便签', key: 'N' },
+  { id: 'shape', readerTool: 'rect', label: '图形', key: 'R' },
+  { id: 'arrow', readerTool: 'arrow', label: '连线', key: 'A' },
+  { id: 'pen', readerTool: 'ink', label: '画笔', key: 'P' },
+  { id: 'eraser', readerTool: 'eraser', label: '橡皮（整笔擦除）', key: 'E' },
+];
+const TOOL_BY_KEY = new Map(TOOLS.map((tool) => [tool.key.toLowerCase(), tool.id]));
+const TOOL_BY_ID = new Map(TOOLS.map((tool) => [tool.id, tool]));
+const readerToolOf = (tool: BoardTool): ReaderTool => TOOL_BY_ID.get(tool)!.readerTool;
+/** Board shapes keep solid/dashed; the reader's 双向箭头 maps onto the arrow's both-heads mode. */
+const paint = (value: string) => (value === 'auto' ? 'currentColor' : value);
+/** Hex for SVG paint / stored files from a shared preset name or hex. */
+const resolvePaint = (value: string) => (value.startsWith('#') ? value : annotationColorInputValue(value));
+/** Soft fill variant used by shapes with 填充开启 and by sticky notes (same idea as the reader). */
+const softFill = (value: string) => {
+  const hex = resolvePaint(value);
+  return hex.length === 7 ? `${hex}40` : hex;
+};
+
+const saveStateText = (state: string) => state === 'saving' ? '保存中…' : state === 'error' ? '保存失败' : state === 'paused' ? '等待文件操作…' : '已保存';
+
+/** Canvas background options (task d8505429): low-contrast world-aligned textures persisted per board. */
+const BG_STYLES: Array<{ id: BoardBackgroundStyle; label: string }> = [
+  { id: 'dots', label: '点阵' },
+  { id: 'grid', label: '网格' },
+  { id: 'lines', label: '横线' },
+  { id: 'graph', label: '方格纸' },
+  { id: 'solid', label: '纯色' },
+];
+const BG_DENSITIES: Array<{ id: BoardBackgroundDensity; label: string }> = [
+  { id: 'small', label: '小间距' },
+  { id: 'medium', label: '中' },
+  { id: 'large', label: '大间距' },
+];
+
+export function BoardEditor({ path, name, active = true, embedded = false, headerExtra, referenceText, onStatus, onRetry }: BoardEditorProps) {
+  const { content, setContent, loading, error, saveState, saveError, save, reload } = useTextDocument(path);
+  const parsed = useMemo(() => (loading || error ? null : parseBoardDocument(content)), [content, loading, error]);
+  const document = parsed?.ok ? parsed.document : null;
+  const documentRef = useRef<BoardDocument | null>(null); documentRef.current = document;
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [viewport, setViewport] = useState<BoardViewport>({ x: 0, y: 0, zoom: 1 });
+  const viewportRef = useRef(viewport); viewportRef.current = viewport;
+  const viewportReadyRef = useRef<string | null>(null);
+  const [tool, setTool] = useState<BoardTool>('select');
+  const toolRef = useRef(tool); toolRef.current = tool;
+  const [selection, setSelection] = useState<string[]>([]);
+  const selectionRef = useRef(selection); selectionRef.current = selection;
+  const [preview, setPreview] = useState<{ elements?: BoardElement[]; marquee?: BoardRect; erasing?: Set<string> } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; text: string; created?: boolean } | null>(null);
+  const editingRef = useRef(editing); editingRef.current = editing;
+  // Shared with the PDF reader (task 97fcfb6c): option values and per-tool recent colours live
+  // in one store, so a change in either host is what the other one uses next.
+  const [toolSettings, setToolSettings] = useSharedAnnotationToolSettings();
+  const [sharedToolColors, setSharedToolColor] = useSharedToolColors();
+  const [optionsTool, setOptionsTool] = useState<BoardTool | null>(null);
+  const [bgOpen, setBgOpen] = useState(false);
+  const [renamingTitle, setRenamingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [notice, setNotice] = useState('');
+  const historyRef = useRef<BoardHistory>(createHistory());
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const gestureRef = useRef<Gesture | null>(null);
+  const pointersRef = useRef(new Map<number, BoardPoint>());
+  const pinchRef = useRef<{ distance: number; center: BoardPoint; viewport: BoardViewport } | null>(null);
+  const spaceRef = useRef(false);
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const elements = preview?.elements ?? document?.elements ?? [];
+  const selectedSet = useMemo(() => new Set(selection), [selection]);
+  const selectedElements = useMemo(() => elements.filter((element) => selectedSet.has(element.id)), [elements, selectedSet]);
+  const selectionBox = useMemo(() => unionBounds(selectedElements.map(elementBounds)), [selectedElements]);
+
+  const announce = useCallback((message: string) => { setNotice(message); onStatus?.(message); }, [onStatus]);
+
+  // Container size drives fit/reset and the grid.
+  useLayoutEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+    const update = () => setSize({ width: node.clientWidth, height: node.clientHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  // Restore the last viewport per board id; fall back to fitting the content once.
+  useEffect(() => {
+    if (!document || !size.width || viewportReadyRef.current === document.id) return;
+    viewportReadyRef.current = document.id;
+    try {
+      const stored = JSON.parse(localStorage.getItem(`a4note.board.viewport:${document.id}`) ?? 'null');
+      if (stored && typeof stored.x === 'number' && typeof stored.y === 'number' && typeof stored.zoom === 'number') { setViewport(stored); return; }
+    } catch { /* ignore */ }
+    setViewport(fitViewport(unionBounds(document.elements.map(elementBounds)), size));
+  }, [document, size]);
+  useEffect(() => {
+    if (!document || viewportReadyRef.current !== document.id) return;
+    const timer = window.setTimeout(() => localStorage.setItem(`a4note.board.viewport:${document.id}`, JSON.stringify(viewport)), 300);
+    return () => window.clearTimeout(timer);
+  }, [viewport, document]);
+
+  // Drop selection entries that no longer exist (deleted by the other entry, undo, …).
+  useEffect(() => {
+    if (!document) return;
+    const ids = new Set(document.elements.map((element) => element.id));
+    if (selection.some((id) => !ids.has(id))) setSelection((current) => current.filter((id) => ids.has(id)));
+    // A freshly created element may not be in the parsed document yet on this render.
+    if (editing && !editing.created && !ids.has(editing.id)) setEditing(null);
+  }, [document, selection, editing]);
+
+  const commit = useCallback((mutate: (current: BoardElement[]) => BoardElement[], key: string | null = null) => {
+    const current = documentRef.current;
+    if (!current) return;
+    const next = applyArrowBindings(mutate(current.elements));
+    if (next.length > BOARD_MAX_ELEMENTS) { announce(`白板最多容纳 ${BOARD_MAX_ELEMENTS} 个元素。`); return; }
+    historyRef.current = recordHistory(historyRef.current, current.elements, key);
+    setHistoryVersion((version) => version + 1);
+    setContent(serializeBoardDocument(withElements(current, next)));
+  }, [setContent, announce]);
+  /** Document-level metadata (background texture / title): persisted per board, outside element history. */
+  const setDocMeta = useCallback((patch: Partial<BoardDocument>) => {
+    const current = documentRef.current;
+    if (!current) return;
+    setContent(serializeBoardDocument({ ...current, ...patch }));
+  }, [setContent]);
+
+  const undo = useCallback(() => {
+    const current = documentRef.current; if (!current) return;
+    const result = undoHistory(historyRef.current, current.elements);
+    if (!result) { announce('没有可撤销的操作。'); return; }
+    historyRef.current = result.history; setHistoryVersion((version) => version + 1);
+    setContent(serializeBoardDocument(withElements(current, result.elements)));
+  }, [setContent, announce]);
+  const redo = useCallback(() => {
+    const current = documentRef.current; if (!current) return;
+    const result = redoHistory(historyRef.current, current.elements);
+    if (!result) { announce('没有可重做的操作。'); return; }
+    historyRef.current = result.history; setHistoryVersion((version) => version + 1);
+    setContent(serializeBoardDocument(withElements(current, result.elements)));
+  }, [setContent, announce]);
+
+  // Screen space = the SVG's own layout px (its viewBox is sized from clientWidth/Height). The pointer
+  // arrives in viewport px, so the root zoom must be divided out or every stroke lands up-left of the cursor.
+  const screenPoint = (event: { clientX: number; clientY: number }): BoardPoint => pointerToElementLayout(event, svgRef.current);
+  const worldPoint = (event: { clientX: number; clientY: number }) => screenToWorld(viewportRef.current, screenPoint(event));
+  // The eraser keeps its whole-stroke semantics; the shared thickness scales its reach.
+  const slop = () => (toolRef.current === 'eraser' ? toolSettings.eraserSize / 2 : 6) / viewportRef.current.zoom;
+  const toolColorOf = (tool: BoardTool): string => {
+    const readerTool = readerToolOf(tool);
+    return sharedToolColors[readerTool as SharedColorTool] ?? defaultToolColors[readerTool];
+  };
+  /** Stored paint for NEW board elements: theme-following 'auto' unless the user overrode the tool colour. */
+  const boardPaintOf = (readerTool: string): string => {
+    const override = sharedToolColors[readerTool as SharedColorTool];
+    return override ? resolvePaint(override) : 'auto';
+  };
+
+  const finishEditing = useCallback((commitText = true) => {
+    const current = editingRef.current;
+    if (!current) return;
+    const text = textareaRef.current?.value ?? current.text;
+    setEditing(null);
+    commit((list) => {
+      const target = list.find((element) => element.id === current.id);
+      if (!target) return list;
+      if (!commitText) return current.created ? list.filter((element) => element.id !== current.id) : list;
+      if (target.type === 'text' && !text.trim()) return list.filter((element) => element.id !== current.id);
+      return list.map((element) => (element.id === current.id ? { ...element, text } : element));
+    }, `text:${current.id}`);
+  }, [commit]);
+
+  const startEditing = (element: BoardElement, created = false) => {
+    if (element.type === 'ink' || element.type === 'arrow') return;
+    setSelection([element.id]);
+    setEditing({ id: element.id, text: element.text ?? '', created });
+  };
+
+  const handleAt = (screen: BoardPoint): HandleId | null => {
+    if (!selectionBox || selectedElements.length === 0) return null;
+    if (selectedElements.length === 1 && selectedElements[0].type === 'arrow') return null;
+    const { zoom, x, y } = viewportRef.current;
+    for (const handle of HANDLES) {
+      const hx = (selectionBox.x + handle.fx * selectionBox.w) * zoom + x;
+      const hy = (selectionBox.y + handle.fy * selectionBox.h) * zoom + y;
+      if (Math.abs(hx - screen.x) <= 7 && Math.abs(hy - screen.y) <= 7) return handle.id;
+    }
+    return null;
+  };
+  const arrowEndpointAt = (screen: BoardPoint): 0 | 1 | null => {
+    const only = selectedElements.length === 1 ? selectedElements[0] : null;
+    if (!only || only.type !== 'arrow') return null;
+    const { zoom, x, y } = viewportRef.current;
+    for (const index of [0, 1] as const) {
+      const point = only.points[index];
+      if (Math.abs(point.x * zoom + x - screen.x) <= 8 && Math.abs(point.y * zoom + y - screen.y) <= 8) return index;
+    }
+    return null;
+  };
+
+  const onPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (!document) return;
+    if (editing) finishEditing(true);
+    containerRef.current?.focus({ preventScroll: true });
+    const screen = screenPoint(event);
+    pointersRef.current.set(event.pointerId, screen);
+    if (pointersRef.current.size === 2) {
+      // Second touch: turn whatever was in progress into a pinch.
+      gestureRef.current = null; setPreview(null);
+      const [a, b] = [...pointersRef.current.values()];
+      pinchRef.current = { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, viewport: viewportRef.current };
+      return;
+    }
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const world = worldPoint(event);
+    const currentTool = toolRef.current;
+    if (event.button === 1 || spaceRef.current || currentTool === 'hand') {
+      gestureRef.current = { kind: 'pan', pointerId: event.pointerId, startScreen: screen, startViewport: viewportRef.current };
+      return;
+    }
+    if (event.button !== 0) return;
+    const list = document.elements;
+    switch (currentTool) {
+      case 'select': {
+        const endpoint = arrowEndpointAt(screen);
+        if (endpoint !== null) { gestureRef.current = { kind: 'endpoint', pointerId: event.pointerId, id: selection[0], index: endpoint, base: list }; return; }
+        const handle = handleAt(screen);
+        if (handle && selectionBox) { gestureRef.current = { kind: 'resize', pointerId: event.pointerId, handle, ids: new Set(selection), base: list, box: selectionBox }; return; }
+        const hit = hitTest(list, world, slop());
+        if (hit) {
+          let ids: string[];
+          if (event.shiftKey) ids = selection.includes(hit.id) ? selection.filter((id) => id !== hit.id) : [...selection, hit.id];
+          else ids = selection.includes(hit.id) ? selection : [hit.id];
+          setSelection(ids);
+          if (ids.includes(hit.id)) gestureRef.current = { kind: 'move', pointerId: event.pointerId, start: world, ids: new Set(ids), base: list, moved: false };
+          return;
+        }
+        if (!event.shiftKey) setSelection([]);
+        gestureRef.current = { kind: 'marquee', pointerId: event.pointerId, start: world, keep: event.shiftKey ? selection : [] };
+        return;
+      }
+      case 'shape': case 'note': case 'text':
+        gestureRef.current = { kind: 'shape', pointerId: event.pointerId, start: world, type: currentTool === 'shape' ? toolSettings.shapeKind : currentTool };
+        return;
+      case 'arrow':
+        gestureRef.current = { kind: 'arrow', pointerId: event.pointerId, start: world };
+        return;
+      case 'pen':
+        gestureRef.current = { kind: 'ink', pointerId: event.pointerId, points: [world] };
+        setPreview({ elements: [...list, inkElement([world])] });
+        return;
+      case 'eraser': {
+        const ids = new Set<string>();
+        const hit = hitTest(list, world, slop());
+        if (hit) ids.add(hit.id);
+        gestureRef.current = { kind: 'erase', pointerId: event.pointerId, ids };
+        setPreview({ erasing: new Set(ids) });
+        return;
+      }
+      default: return;
+    }
+  };
+
+  /** Shared arrow options → board arrow attributes. */
+  const arrowStyleAttrs = () => ({
+    strokeWidth: toolSettings.arrowStrokeWidth,
+    head: (toolSettings.arrowEnding === 'line' ? 'none' : toolSettings.arrowStyle === 'double' ? 'both' : 'end') as BoardArrowElement['head'],
+    ...(toolSettings.arrowStyle === 'dashed' ? { dash: 'dashed' as const } : {}),
+  });
+
+  const inkElement = (points: BoardPoint[]): BoardInkElement => withBounds({ id: '__ink_preview', type: 'ink', x: 0, y: 0, w: 0, h: 0, stroke: boardPaintOf('ink'), fill: 'transparent', strokeWidth: toolSettings.inkStrokeWidth, points });
+  const newShape = (type: 'rect' | 'ellipse' | 'note' | 'text', rect: BoardRect): BoardElement => {
+    if (type === 'note') {
+      const fill = softFill(toolColorOf('note'));
+      return { id: createElementId(), ...rect, strokeWidth: toolSettings.shapeStrokeWidth, type: 'note', text: '', stroke: 'transparent', fill, fontSize: 15 };
+    }
+    if (type === 'text') {
+      return { id: createElementId(), ...rect, strokeWidth: toolSettings.shapeStrokeWidth, type: 'text', text: '', stroke: boardPaintOf('text'), fill: toolSettings.textBackgroundColor, fontSize: toolSettings.textFontSize };
+    }
+    const stroke = boardPaintOf('rect');
+    const fill = toolSettings.shapeFillEnabled ? softFill(stroke) : 'transparent';
+    return { id: createElementId(), ...rect, strokeWidth: toolSettings.shapeStrokeWidth, type, stroke, fill, text: '' };
+  };
+
+  const onPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    const screen = screenPoint(event);
+    if (pointersRef.current.has(event.pointerId)) pointersRef.current.set(event.pointerId, screen);
+    const pinch = pinchRef.current;
+    if (pinch && pointersRef.current.size >= 2) {
+      const [a, b] = [...pointersRef.current.values()];
+      const distance = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const zoomed = zoomViewport(pinch.viewport, pinch.viewport.zoom * (distance / pinch.distance), pinch.center);
+      setViewport({ ...zoomed, x: zoomed.x + center.x - pinch.center.x, y: zoomed.y + center.y - pinch.center.y });
+      return;
+    }
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId || !document) return;
+    const world = worldPoint(event);
+    switch (gesture.kind) {
+      case 'pan':
+        setViewport({ ...gesture.startViewport, x: gesture.startViewport.x + screen.x - gesture.startScreen.x, y: gesture.startViewport.y + screen.y - gesture.startScreen.y });
+        return;
+      case 'move': {
+        const dx = world.x - gesture.start.x; const dy = world.y - gesture.start.y;
+        if (!gesture.moved && Math.hypot(dx, dy) * viewportRef.current.zoom < 3) return;
+        gesture.moved = true;
+        setPreview({ elements: applyArrowBindings(moveSet(gesture.base, gesture.ids, dx, dy)) });
+        return;
+      }
+      case 'resize': {
+        const box = resizeBox(gesture.box, gesture.handle, world, event.shiftKey);
+        setPreview({ elements: applyArrowBindings(updateElements(gesture.base, gesture.ids, (element) => transformElement(element, gesture.box, box))) });
+        return;
+      }
+      case 'endpoint': {
+        setPreview({ elements: gesture.base.map((element) => {
+          if (element.id !== gesture.id || element.type !== 'arrow') return element;
+          const points: [BoardPoint, BoardPoint] = [element.points[0], element.points[1]];
+          points[gesture.index] = world;
+          const binding = bindingFor(gesture.base, world, element.id);
+          const next: BoardArrowElement = { ...element, points };
+          if (gesture.index === 0) { if (binding) next.from = binding; else delete next.from; } else if (binding) next.to = binding; else delete next.to;
+          return withBounds(next);
+        }) });
+        return;
+      }
+      case 'marquee': {
+        const rect = normalizeRect(gesture.start, world);
+        setPreview({ marquee: rect });
+        setSelection([...new Set([...gesture.keep, ...elementsInRect(document.elements, rect)])]);
+        return;
+      }
+      case 'shape': {
+        const rect = event.shiftKey ? squareRect(gesture.start, world) : normalizeRect(gesture.start, world);
+        setPreview({ elements: [...document.elements, { ...newShape(gesture.type, rect), id: '__shape_preview' }] });
+        return;
+      }
+      case 'arrow': {
+        const to = bindingFor(document.elements, world);
+        const arrow: BoardArrowElement = withBounds({ id: '__arrow_preview', type: 'arrow', x: 0, y: 0, w: 0, h: 0, ...arrowStyleAttrs(), stroke: boardPaintOf('arrow'), fill: 'transparent', points: [gesture.start, world], ...(to ? { to } : {}) });
+        setPreview({ elements: [...document.elements, arrow] });
+        return;
+      }
+      case 'ink': {
+        gesture.points = appendInkPoint(gesture.points, world, 1.2 / viewportRef.current.zoom);
+        setPreview({ elements: [...document.elements, inkElement(gesture.points)] });
+        return;
+      }
+      case 'erase': {
+        const hit = hitTest(document.elements, world, slop());
+        if (hit && !gesture.ids.has(hit.id)) { gesture.ids.add(hit.id); setPreview({ erasing: new Set(gesture.ids) }); }
+        return;
+      }
+      default: return;
+    }
+  };
+
+  const onPointerUp = (event: ReactPointerEvent<SVGSVGElement>) => {
+    pointersRef.current.delete(event.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    gestureRef.current = null;
+    const world = worldPoint(event);
+    const currentPreview = preview;
+    setPreview(null);
+    if (!document) return;
+    switch (gesture.kind) {
+      case 'move': {
+        if (!gesture.moved) return;
+        const dx = world.x - gesture.start.x; const dy = world.y - gesture.start.y;
+        commit((list) => moveSet(list, gesture.ids, dx, dy));
+        return;
+      }
+      case 'resize': {
+        const box = resizeBox(gesture.box, gesture.handle, world, event.shiftKey);
+        commit((list) => updateElements(list, gesture.ids, (element) => transformElement(element, gesture.box, box)));
+        return;
+      }
+      case 'endpoint': {
+        const moved = currentPreview?.elements?.find((element) => element.id === gesture.id);
+        if (moved) commit((list) => list.map((element) => (element.id === gesture.id ? moved : element)));
+        return;
+      }
+      case 'shape': {
+        const dragged = Math.hypot(world.x - gesture.start.x, world.y - gesture.start.y) * viewportRef.current.zoom >= 4;
+        const rect = dragged
+          ? (event.shiftKey ? squareRect(gesture.start, world) : normalizeRect(gesture.start, world))
+          : defaultRect(gesture.type, gesture.start);
+        const element = newShape(gesture.type, { ...rect, w: Math.max(rect.w, 8), h: Math.max(rect.h, 8) });
+        commit((list) => [...list, element]);
+        setTool('select');
+        if (gesture.type === 'note' || gesture.type === 'text') startEditing(element, true); else setSelection([element.id]);
+        return;
+      }
+      case 'arrow': {
+        if (Math.hypot(world.x - gesture.start.x, world.y - gesture.start.y) * viewportRef.current.zoom < 4) return;
+        const from = bindingFor(document.elements, gesture.start); const to = bindingFor(document.elements, world);
+        const arrow: BoardArrowElement = withBounds({ id: createElementId(), type: 'arrow', x: 0, y: 0, w: 0, h: 0, ...arrowStyleAttrs(), stroke: boardPaintOf('arrow'), fill: 'transparent', points: [gesture.start, world], ...(from ? { from } : {}), ...(to ? { to } : {}) });
+        commit((list) => [...list, arrow]);
+        setSelection([arrow.id]);
+        setTool('select');
+        return;
+      }
+      case 'ink': {
+        const element: BoardInkElement = { ...inkElement(gesture.points), id: createElementId() };
+        commit((list) => [...list, element]);
+        return;
+      }
+      case 'erase': {
+        if (gesture.ids.size) commit((list) => deleteElements(list, gesture.ids));
+        return;
+      }
+      default: return;
+    }
+  };
+  const onPointerCancel = (event: ReactPointerEvent<SVGSVGElement>) => {
+    pointersRef.current.delete(event.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    if (gestureRef.current?.pointerId === event.pointerId) { gestureRef.current = null; setPreview(null); }
+  };
+  const onDoubleClick = (event: { clientX: number; clientY: number }) => {
+    if (!document || toolRef.current !== 'select') return;
+    const hit = hitTest(document.elements, worldPoint(event), slop());
+    if (hit) startEditing(hit);
+  };
+
+  // Wheel must be non-passive to stop the host from scrolling the tab.
+  useEffect(() => {
+    const node = svgRef.current;
+    if (!node) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const current = viewportRef.current;
+      if (event.ctrlKey || event.metaKey) {
+        setViewport(zoomViewport(current, current.zoom * Math.exp(-event.deltaY * 0.0018), pointerToElementLayout(event, node)));
+      } else if (event.shiftKey && !event.deltaX) {
+        setViewport({ ...current, x: current.x - event.deltaY });
+      } else {
+        setViewport({ ...current, x: current.x - event.deltaX, y: current.y - event.deltaY });
+      }
+    };
+    node.addEventListener('wheel', onWheel, { passive: false });
+    return () => node.removeEventListener('wheel', onWheel);
+  }, [document?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const zoomBy = (factor: number) => setViewport((current) => zoomViewport(current, current.zoom * factor, { x: size.width / 2, y: size.height / 2 }));
+  const fitAll = () => { if (document) setViewport(fitViewport(unionBounds(document.elements.map(elementBounds)), size)); };
+  const resetZoom = () => setViewport((current) => zoomViewport(current, 1, { x: size.width / 2, y: size.height / 2 }));
+
+  const deleteSelection = () => { if (selection.length) { const ids = new Set(selection); setSelection([]); commit((list) => deleteElements(list, ids)); } };
+  const duplicateSelection = () => {
+    if (!selection.length) return;
+    const ids = new Set(selection);
+    let created: string[] = [];
+    commit((list) => { const result = duplicateElements(list, ids); created = result.ids; return result.elements; });
+    setSelection(created);
+  };
+  const selectAll = () => { if (document) setSelection(document.elements.map((element) => element.id)); };
+  const nudge = (dx: number, dy: number) => { if (selection.length) { const ids = new Set(selection); commit((list) => moveSet(list, ids, dx, dy), 'nudge'); } };
+  /** Restyle the current selection without touching the shared tool defaults. */
+  const applyStyle = (patch: Partial<Pick<BoardElement, 'stroke' | 'fill' | 'strokeWidth'>>) => {
+    if (!selection.length) return;
+    const ids = new Set(selection);
+    commit((list) => updateElements(list, ids, (element) => ({ ...element, ...patch })), 'style');
+  };
+  /** Colour change from the shared panel: becomes the tool's recent colour and restyles the selection. */
+  const handleToolColor = (readerTool: SharedColorTool, color: string) => {
+    setSharedToolColor(readerTool, color);
+    const hex = resolvePaint(color);
+    if (readerTool === 'text') return;
+    if (readerTool === 'comment') { applyStyle({ fill: softFill(hex) }); return; }
+    if (readerTool === 'rect' && toolSettings.shapeFillEnabled) { applyStyle({ stroke: hex, fill: softFill(hex) }); return; }
+    applyStyle({ stroke: hex });
+  };
+
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (editing || event.nativeEvent.isComposing) return;
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+    const mod = event.ctrlKey || event.metaKey;
+    const key = event.key;
+    if (key === ' ' && !spaceRef.current) { spaceRef.current = true; setSpaceHeld(true); event.preventDefault(); return; }
+    if (mod && key.toLowerCase() === 'z') { event.preventDefault(); if (event.shiftKey) redo(); else undo(); return; }
+    if (mod && key.toLowerCase() === 'y') { event.preventDefault(); redo(); return; }
+    if (mod && key.toLowerCase() === 'a') { event.preventDefault(); selectAll(); return; }
+    if (mod && key.toLowerCase() === 'd') { event.preventDefault(); duplicateSelection(); return; }
+    if (mod && key.toLowerCase() === 's') { event.preventDefault(); save(); return; }
+    if (mod && (key === '=' || key === '+')) { event.preventDefault(); zoomBy(1.2); return; }
+    if (mod && key === '-') { event.preventDefault(); zoomBy(1 / 1.2); return; }
+    if (mod && key === '0') { event.preventDefault(); resetZoom(); return; }
+    if (mod && key === '1') { event.preventDefault(); fitAll(); return; }
+    if (mod) return;
+    if (key === 'Delete' || key === 'Backspace') { event.preventDefault(); deleteSelection(); return; }
+    if (key === 'Escape') {
+      event.preventDefault();
+      if (gestureRef.current) { gestureRef.current = null; setPreview(null); return; }
+      if (selection.length) { setSelection([]); return; }
+      setTool('select');
+      return;
+    }
+    if (key === 'Enter' && selection.length === 1) {
+      const only = elements.find((element) => element.id === selection[0]);
+      if (only && only.type !== 'ink' && only.type !== 'arrow') { event.preventDefault(); startEditing(only); return; }
+    }
+    const step = event.shiftKey ? 10 : 1;
+    if (key === 'ArrowLeft') { event.preventDefault(); nudge(-step, 0); return; }
+    if (key === 'ArrowRight') { event.preventDefault(); nudge(step, 0); return; }
+    if (key === 'ArrowUp') { event.preventDefault(); nudge(0, -step); return; }
+    if (key === 'ArrowDown') { event.preventDefault(); nudge(0, step); return; }
+    if (key === '[') { event.preventDefault(); if (selection.length) { const ids = new Set(selection); commit((list) => sendToBack(list, ids)); } return; }
+    if (key === ']') { event.preventDefault(); if (selection.length) { const ids = new Set(selection); commit((list) => bringToFront(list, ids)); } return; }
+    // R/O both pick the shared 图形 tool and set its kind, like the reader's rect options.
+    const lower = key.toLowerCase();
+    const nextTool = TOOL_BY_KEY.get(lower) ?? (lower === 'o' ? 'shape' : undefined);
+    if (nextTool && !event.altKey) {
+      event.preventDefault();
+      if (lower === 'r' || lower === 'o') setToolSettings({ ...toolSettings, shapeKind: lower === 'r' ? 'rect' : 'ellipse' });
+      setTool(nextTool);
+    }
+  };
+  const onKeyUp = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === ' ') { spaceRef.current = false; setSpaceHeld(false); }
+  };
+  useEffect(() => {
+    const clear = () => { spaceRef.current = false; setSpaceHeld(false); };
+    window.addEventListener('blur', clear);
+    return () => window.removeEventListener('blur', clear);
+  }, []);
+
+  const copyReference = async () => {
+    if (!referenceText) return;
+    try { await navigator.clipboard.writeText(referenceText); announce(`已复制引用：${referenceText}`); }
+    catch { announce(`复制失败，请手动输入：${referenceText}`); }
+  };
+
+  const exportDraft = () => {
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement('a');
+    link.href = url; link.download = name || 'board.a4board'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(''), 4000); return () => window.clearTimeout(timer); }, [notice]);
+
+  const displayName = boardDisplayName(name);
+  const cursor = spaceHeld || tool === 'hand' ? 'grab' : tool === 'select' ? 'default' : tool === 'eraser' ? 'cell' : 'crosshair';
+  const canUndo = historyRef.current.past.length > 0; const canRedo = historyRef.current.future.length > 0; void historyVersion;
+  const single = selectedElements.length === 1 ? selectedElements[0] : null;
+  const editingElement = editing ? elements.find((element) => element.id === editing.id) : null;
+  useEffect(() => {
+    const node = textareaRef.current;
+    if (!editingElement || !node) return;
+    node.focus();
+    node.setSelectionRange(node.value.length, node.value.length);
+  }, [editingElement?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const titleText = (document?.title ?? '').trim() || displayName;
+  const docToolbar = useDocumentToolbar();
+  const portalHost = active && docToolbar?.enabled && docToolbar.controlsHost ? docToolbar.controlsHost : null;
+  const background: BoardBackground = document?.background ?? defaultBoardBackground;
+  const bgStep = boardBackgroundSpacing(background) * viewport.zoom;
+  const bgPatternVisible = background.style !== 'solid' && bgStep >= 5;
+  const toolsGroup = (
+    <div className="annotation-toolbar" role="group" aria-label="工具">
+          {TOOLS.map((item) => {
+            const hasSettings = item.id === 'note' || toolHasSettings(item.readerTool);
+            const color = ['select', 'hand', 'eraser'].includes(item.id) ? null : toolColorOf(item.id);
+            const isActive = tool === item.id;
+            return (
+              <div key={item.id} className="annotation-tool-slot">
+                <button type="button" className={`annotation-tool-btn${isActive ? ' active' : ''}`} aria-pressed={isActive}
+                  title={`${item.label}（${item.key}）`} aria-label={item.label} data-tool={item.id}
+                  aria-haspopup={hasSettings ? 'dialog' : undefined} aria-expanded={hasSettings ? optionsTool === item.id : undefined}
+                  onClick={() => {
+                    finishEditing(true);
+                    if (isActive && hasSettings) setOptionsTool((current) => (current === item.id ? null : item.id));
+                    else { setOptionsTool(null); setTool(item.id); }
+                  }}>
+                  <AnnotationToolIcon id={item.readerTool} />
+                  {color && <span className="annotation-tool-color-dot" style={{ background: toolColorToCss(color) }} />}
+                </button>
+                {optionsTool === item.id && (
+                  <AnnotationToolPopover title={item.label} onClose={() => setOptionsTool(null)}>
+                    {item.id === 'note' ? (
+                      <div className="reader-tool-options-bar tool-options-note" onMouseDown={(event) => event.stopPropagation()}>
+                        <small className="tool-option-hint">便签底色跟随「评论」工具的最近颜色，与阅读器批注互通。</small>
+                        <ToolColorPalette
+                          label="便签底色"
+                          value={toolColorOf('note')}
+                          customColor={annotationColorInputValue(toolColorOf('note'))}
+                          onChange={(color) => handleToolColor('comment', color)}
+                          onCustomColorChange={(color) => handleToolColor('comment', color)}
+                        />
+                      </div>
+                    ) : (
+                      <ToolOptionsBar
+                        tool={item.readerTool}
+                        toolSettings={toolSettings}
+                        activeColor={(item.readerTool === 'text' ? toolSettings.textColor : toolColorOf(item.id)) as AnnotationColor}
+                        customAnnotationColor={annotationColorInputValue(item.readerTool === 'text' ? toolSettings.textColor : toolColorOf(item.id))}
+                        onSelectAnnotationColor={(color) => handleToolColor(item.readerTool as SharedColorTool, color)}
+                        onCustomAnnotationColorChange={(color) => handleToolColor(item.readerTool as SharedColorTool, color)}
+                        onToolSettingsChange={setToolSettings}
+                        hint={item.id === 'eraser'
+                          ? '整笔擦除：一笔/一个元素一次擦除；粗细决定命中范围。'
+                          : item.readerTool === 'highlight' || item.readerTool === 'underline' ? undefined
+                          : '设置与 PDF 阅读器标注工具共用，改一处两处同步。'}
+                      />
+                    )}
+                  </AnnotationToolPopover>
+                )}
+              </div>
+            );
+          })}
+          <div className="annotation-tool-slot">
+            <button type="button" className={`annotation-tool-btn${bgOpen ? ' active' : ''}`} aria-label="画布背景" title="画布背景" aria-haspopup="dialog" aria-expanded={bgOpen}
+              onClick={() => setBgOpen((current) => !current)}>
+              <Palette size={22} aria-hidden="true" />
+            </button>
+            {bgOpen && (
+              <AnnotationToolPopover title="画布背景" onClose={() => setBgOpen(false)}>
+                <div className="reader-tool-options-bar tool-options-note" onMouseDown={(event) => event.stopPropagation()}>
+                  <small className="tool-option-hint">背景按白板保存进 .a4board 文件；深浅主题都保持低对比、随画布缩放对齐。</small>
+                  <div className="tool-option-block board-bg-options" role="group" aria-label="背景样式">
+                    {BG_STYLES.map((style) => (
+                      <button key={style.id} type="button" className={`board-bg-option${background.style === style.id ? ' active' : ''}`} aria-pressed={background.style === style.id}
+                        onClick={() => setDocMeta({ background: { style: style.id, density: background.density } })}>{style.label}</button>
+                    ))}
+                  </div>
+                  {background.style !== 'solid' && (
+                    <div className="tool-option-block board-bg-options" role="group" aria-label="背景密度">
+                      {BG_DENSITIES.map((density) => (
+                        <button key={density.id} type="button" className={`board-bg-option${background.density === density.id ? ' active' : ''}`} aria-pressed={background.density === density.id}
+                          onClick={() => setDocMeta({ background: { style: background.style, density: density.id } })}>{density.label}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </AnnotationToolPopover>
+            )}
+          </div>
+    </div>
+  );
+  const docControls = (
+    <>
+      <button type="button" className="board-tool" onClick={undo} disabled={!canUndo} title="撤销（Ctrl+Z）" aria-label="撤销"><Undo2 size={16} aria-hidden="true" /></button>
+          <button type="button" className="board-tool" onClick={redo} disabled={!canRedo} title="重做（Ctrl+Shift+Z）" aria-label="重做"><Redo2 size={16} aria-hidden="true" /></button>
+          <button type="button" className="board-tool" onClick={duplicateSelection} disabled={!selection.length} title="复制所选（Ctrl+D）" aria-label="复制所选"><Copy size={16} aria-hidden="true" /></button>
+          <button type="button" className="board-tool" onClick={deleteSelection} disabled={!selection.length} title="删除所选（Delete）" aria-label="删除所选"><Trash2 size={16} aria-hidden="true" /></button>
+
+          <button type="button" className="board-tool" onClick={() => zoomBy(1 / 1.2)} title="缩小（Ctrl+-）" aria-label="缩小"><ZoomOut size={16} aria-hidden="true" /></button>
+          <button type="button" className="board-zoom" onClick={resetZoom} title="重置缩放（Ctrl+0）" aria-label="当前缩放，点击重置">{Math.round(viewport.zoom * 100)}%</button>
+          <button type="button" className="board-tool" onClick={() => zoomBy(1.2)} title="放大（Ctrl+=）" aria-label="放大"><ZoomIn size={16} aria-hidden="true" /></button>
+          <button type="button" className="board-tool" onClick={fitAll} title="适应内容（Ctrl+1）" aria-label="适应内容"><Maximize2 size={16} aria-hidden="true" /></button>
+    </>
+  );
+  return (
+    <div className={`board-editor${embedded ? ' embedded' : ''}`} data-board-id={document?.id ?? ''} data-board-tool={tool}>
+        {referenceText && <button type="button" className="board-text-button" onClick={() => void copyReference()} title={`复制笔记引用 ${referenceText}`}>复制引用</button>}
+        {headerExtra}
+        <span className={`board-save-state ${saveState}`} data-board-save-state={saveState} title={saveStateText(saveState)}>
+          {saveState === 'saving' ? <LoaderCircle className="spin" size={14} aria-hidden="true" /> : saveState === 'saved' ? <Check size={14} aria-hidden="true" /> : null}
+          <span>{saveStateText(saveState)}</span>
+        </span>
+      {document && document.links.length > 0 && (
+        <div className="board-links" aria-label="关联文献">
+          {document.links.map((link) => <span key={link.paperId} className="board-link-chip" title={`已关联文献 ${link.paperId}`}>文献：{link.title || link.paperId}</span>)}
+        </div>
+      )}
+      {(saveError || (parsed && parsed.ok && parsed.warnings.length > 0)) && (
+        <div className="board-banner" role="alert">
+          <span>{saveError || parsed?.ok && parsed.warnings.join(' ')}</span>
+          {saveError && <>
+            <button type="button" onClick={save}>重试保存</button>
+            <button type="button" onClick={() => void reload()}>重新加载磁盘版本</button>
+            <button type="button" onClick={exportDraft}>导出草稿</button>
+          </>}
+        </div>
+      )}
+      <div ref={containerRef} className="board-stage" tabIndex={0} role="application" aria-label={`白板 ${displayName}`} onKeyDown={onKeyDown} onKeyUp={onKeyUp} style={{ cursor }} data-board-active={active ? 'true' : 'false'}>
+        {!embedded && !loading && (renamingTitle ? (
+          <input
+            className="board-title-input"
+            value={titleDraft}
+            autoFocus
+            aria-label="白板标题"
+            onChange={(event) => setTitleDraft(event.target.value)}
+            onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Enter') event.currentTarget.blur(); else if (event.key === 'Escape') setRenamingTitle(false); }}
+            onBlur={() => { setRenamingTitle(false); const value = titleDraft.trim(); if (value && value !== titleText) setDocMeta({ title: value }); }}
+          />
+        ) : (
+          <div className="board-title" title={`${path}（双击重命名）`} onDoubleClick={(event) => { event.stopPropagation(); setTitleDraft(titleText); setRenamingTitle(true); }}>
+            <Layers size={14} aria-hidden="true" /><span>{titleText}</span>
+          </div>
+        ))}
+        {loading && <div className="board-state"><LoaderCircle className="spin" aria-hidden="true" /><span>正在读取白板…</span></div>}
+        {!loading && error && (
+          <div className="board-state error" role="alert">
+            <strong>无法打开白板</strong>
+            <span>{error}</span>
+            <span className="board-state-path">{path}</span>
+            {onRetry && <div className="board-state-actions"><button type="button" onClick={onRetry}>重试</button></div>}
+            {headerExtra}
+          </div>
+        )}
+        {!loading && !error && parsed && !parsed.ok && (
+          <div className="board-state error" role="alert">
+            <strong>无法解析白板文件</strong>
+            <span>{parsed.error}</span>
+            <span>为避免覆盖内容，白板已切换为只读。你可以重新加载磁盘版本，或导出当前内容后手工修复。</span>
+            <div className="board-state-actions">
+              <button type="button" onClick={() => void reload()}>重新加载</button>
+              <button type="button" onClick={exportDraft}>导出当前内容</button>
+            </div>
+          </div>
+        )}
+        {document && (
+          <>
+            <svg ref={svgRef} className="board-canvas" width={size.width || '100%'} height={size.height || '100%'} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onDoubleClick={onDoubleClick} onContextMenu={(event) => event.preventDefault()}>
+              <defs>
+                {background.style === 'dots' && bgPatternVisible && (
+                  <pattern id={`board-grid-${document.id}`} width={bgStep} height={bgStep} patternUnits="userSpaceOnUse" x={viewport.x} y={viewport.y}>
+                    <circle cx={0.5} cy={0.5} r={Math.max(0.5, Math.min(1.4, viewport.zoom))} className="board-grid-dot" />
+                  </pattern>
+                )}
+                {(background.style === 'grid' || background.style === 'graph') && bgPatternVisible && (
+                  <pattern id={`board-grid-${document.id}`} width={bgStep} height={bgStep} patternUnits="userSpaceOnUse" x={viewport.x} y={viewport.y}>
+                    {background.style === 'graph' && bgStep >= 12 && <path d={`M ${bgStep / 2} 0 L 0 0 0 ${bgStep / 2}`} className="board-grid-minor" fill="none" />}
+                    <path d={`M ${bgStep} 0 L 0 0 0 ${bgStep}`} className="board-grid-line" fill="none" />
+                  </pattern>
+                )}
+                {background.style === 'lines' && bgPatternVisible && (
+                  <pattern id={`board-grid-${document.id}`} width={bgStep} height={bgStep} patternUnits="userSpaceOnUse" x={viewport.x} y={viewport.y}>
+                    <path d={`M 0 0.5 H ${bgStep}`} className="board-grid-line" fill="none" />
+                  </pattern>
+                )}
+              </defs>
+              <rect
+                className="board-grid"
+                width="100%"
+                height="100%"
+                fill={background.style === 'solid' ? 'var(--bg)' : bgPatternVisible ? `url(#board-grid-${document.id})` : 'transparent'}
+                aria-hidden={background.style === 'solid' || !bgPatternVisible ? 'true' : undefined}
+              />
+              <g transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.zoom})`}>
+                {elements.map((element) => <ElementView key={element.id} element={element} selected={selectedSet.has(element.id)} erasing={preview?.erasing?.has(element.id) ?? false} editing={editing?.id === element.id} />)}
+                {selectionBox && !editing && (
+                  <g className="board-selection" pointerEvents="none">
+                    <rect x={selectionBox.x} y={selectionBox.y} width={selectionBox.w} height={selectionBox.h} vectorEffect="non-scaling-stroke" />
+                    {single?.type === 'arrow'
+                      ? single.points.map((point, index) => <circle key={index} cx={point.x} cy={point.y} r={6 / viewport.zoom} className={`board-handle${(index === 0 ? single.from : single.to) ? ' bound' : ''}`} vectorEffect="non-scaling-stroke" />)
+                      : HANDLES.map((handle) => <rect key={handle.id} x={selectionBox.x + handle.fx * selectionBox.w - 5 / viewport.zoom} y={selectionBox.y + handle.fy * selectionBox.h - 5 / viewport.zoom} width={10 / viewport.zoom} height={10 / viewport.zoom} className="board-handle" vectorEffect="non-scaling-stroke" />)}
+                  </g>
+                )}
+                {preview?.marquee && <rect className="board-marquee" x={preview.marquee.x} y={preview.marquee.y} width={preview.marquee.w} height={preview.marquee.h} vectorEffect="non-scaling-stroke" />}
+              </g>
+            </svg>
+            {document.elements.length === 0 && !preview && (
+              <div className="board-empty" aria-hidden="true">
+                <strong>空白白板</strong>
+                <span>便签 N · 文本 T · 图形 R · 连线 A · 画笔 P；空格拖动平移，Ctrl+滚轮缩放。</span>
+              </div>
+            )}
+            <div className="board-annotation-dock" role="toolbar" aria-label="白板工具" onPointerDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+              {toolsGroup}
+            </div>
+            {!portalHost && <div className="board-stage-controls" role="group" aria-label="文档控制">{docControls}</div>}
+            {editing && editingElement && (
+              <textarea
+                ref={textareaRef}
+                className={`board-text-editor ${editingElement.type}`}
+                aria-label="编辑文本"
+                defaultValue={editing.text}
+                style={{
+                  left: editingElement.x * viewport.zoom + viewport.x,
+                  top: editingElement.y * viewport.zoom + viewport.y,
+                  width: Math.max(editingElement.w * viewport.zoom, 40),
+                  height: Math.max(editingElement.h * viewport.zoom, 24),
+                  fontSize: (editingElement.fontSize ?? 15) * viewport.zoom,
+                  color: editingElement.type === 'note' ? '#1f2937' : paint(editingElement.stroke),
+                  background: editingElement.type === 'note' ? editingElement.fill : 'transparent',
+                }}
+                onBlur={() => finishEditing(true)}
+                onKeyDown={(event) => {
+                  event.stopPropagation();
+                  if (event.key === 'Escape') { event.preventDefault(); finishEditing(true); containerRef.current?.focus(); }
+                  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); finishEditing(true); containerRef.current?.focus(); }
+                }}
+                onPointerDown={(event) => event.stopPropagation()}
+              />
+            )}
+            <div className="board-status" aria-live="polite">
+              {notice || (selection.length ? `已选择 ${selection.length} 个元素` : `${document.elements.length} 个元素`)}
+            </div>
+          </>
+        )}
+      </div>
+      {portalHost && createPortal(
+        <div className="reader-titlebar-tools" onDoubleClick={(event) => event.stopPropagation()}>
+          <ReaderResponsiveToolbar label="白板">{docControls}</ReaderResponsiveToolbar>
+        </div>,
+        portalHost,
+      )}
+    </div>
+  );
+}
+
+/** Move a set of elements; a bound arrow moved without its target is released instead of snapping back. */
+function moveSet(list: BoardElement[], ids: Set<string>, dx: number, dy: number): BoardElement[] {
+  return updateElements(list, ids, (element) => {
+    const moved = translateElement(element, dx, dy);
+    if (moved.type !== 'arrow') return moved;
+    const next: BoardArrowElement = { ...moved };
+    if (next.from && !ids.has(next.from.elementId)) delete next.from;
+    if (next.to && !ids.has(next.to.elementId)) delete next.to;
+    return next;
+  });
+}
+
+function resizeBox(box: BoardRect, handle: HandleId, world: BoardPoint, keepRatio: boolean): BoardRect {
+  let { x, y, w, h } = box;
+  const right = x + w; const bottom = y + h;
+  const minSize = 4;
+  if (handle.includes('w')) { x = Math.min(world.x, right - minSize); w = right - x; }
+  if (handle.includes('e')) { w = Math.max(minSize, world.x - x); }
+  if (handle.includes('n')) { y = Math.min(world.y, bottom - minSize); h = bottom - y; }
+  if (handle.includes('s')) { h = Math.max(minSize, world.y - y); }
+  if (keepRatio && box.w && box.h && handle.length === 2) {
+    const ratio = box.w / box.h;
+    if (w / h > ratio) w = h * ratio; else h = w / ratio;
+    if (handle.includes('w')) x = right - w;
+    if (handle.includes('n')) y = bottom - h;
+  }
+  return { x, y, w, h };
+}
+
+function squareRect(start: BoardPoint, end: BoardPoint): BoardRect {
+  const side = Math.max(Math.abs(end.x - start.x), Math.abs(end.y - start.y));
+  return { x: end.x < start.x ? start.x - side : start.x, y: end.y < start.y ? start.y - side : start.y, w: side, h: side };
+}
+
+function defaultRect(type: 'rect' | 'ellipse' | 'note' | 'text', at: BoardPoint): BoardRect {
+  const size = type === 'note' ? { w: 180, h: 140 } : type === 'text' ? { w: 220, h: 44 } : { w: 160, h: 100 };
+  return { x: at.x - size.w / 2, y: at.y - size.h / 2, ...size };
+}
+
+function ElementView({ element, selected, erasing, editing }: { element: BoardElement; selected: boolean; erasing: boolean; editing: boolean }) {
+  const className = `board-element ${element.type}${selected ? ' selected' : ''}${erasing ? ' erasing' : ''}`;
+  const strokeColor = paint(element.stroke);
+  switch (element.type) {
+    case 'rect':
+      return <g className={className} data-element-id={element.id}>
+        <rect x={element.x} y={element.y} width={element.w} height={element.h} rx={6} fill={element.fill} stroke={strokeColor} strokeWidth={element.strokeWidth} />
+        {!editing && <TextBlock element={element} color={strokeColor} />}
+      </g>;
+    case 'ellipse':
+      return <g className={className} data-element-id={element.id}>
+        <ellipse cx={element.x + element.w / 2} cy={element.y + element.h / 2} rx={element.w / 2} ry={element.h / 2} fill={element.fill} stroke={strokeColor} strokeWidth={element.strokeWidth} />
+        {!editing && <TextBlock element={element} color={strokeColor} />}
+      </g>;
+    case 'note':
+      return <g className={className} data-element-id={element.id}>
+        <rect x={element.x} y={element.y} width={element.w} height={element.h} rx={4} fill={element.fill} className="board-note-paper" />
+        {!editing && <TextBlock element={element} color="#1f2937" align="start" />}
+      </g>;
+    case 'text':
+      return <g className={className} data-element-id={element.id}>
+        <rect x={element.x} y={element.y} width={element.w} height={element.h} fill="transparent" className="board-text-hit" />
+        {!editing && <TextBlock element={element} color={strokeColor} align="start" />}
+      </g>;
+    case 'ink':
+      return <path className={className} data-element-id={element.id} d={inkPath(element.points)} fill="none" stroke={strokeColor} strokeWidth={element.strokeWidth} strokeLinecap="round" strokeLinejoin="round" />;
+    case 'arrow': {
+      const [a, b] = element.points;
+      return <g className={className} data-element-id={element.id}>
+        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={strokeColor} strokeWidth={element.strokeWidth} strokeLinecap="round" strokeDasharray={element.dash === 'dashed' ? '7 5' : undefined} />
+        {(element.head === 'end' || element.head === 'both') && <polygon points={arrowHead(a, b, element.strokeWidth)} fill={strokeColor} />}
+        {element.head === 'both' && <polygon points={arrowHead(b, a, element.strokeWidth)} fill={strokeColor} />}
+      </g>;
+    }
+    default: return null;
+  }
+}
+
+function TextBlock({ element, color, align = 'center' }: { element: BoardElement; color: string; align?: 'start' | 'center' }) {
+  if (!element.text || element.w <= 0 || element.h <= 0) return null;
+  return <foreignObject x={element.x} y={element.y} width={element.w} height={element.h} pointerEvents="none">
+    <div className={`board-text-block ${align}`} style={{ color, fontSize: element.fontSize ?? 15 }}>{element.text}</div>
+  </foreignObject>;
+}
+
+function inkPath(points: BoardPoint[]) {
+  if (!points.length) return '';
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y} l 0.01 0`;
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1]; const point = points[index];
+    const mid = { x: (previous.x + point.x) / 2, y: (previous.y + point.y) / 2 };
+    d += ` Q ${previous.x} ${previous.y} ${mid.x} ${mid.y}`;
+  }
+  const last = points[points.length - 1];
+  d += ` L ${last.x} ${last.y}`;
+  return d;
+}
+
+function arrowHead(from: BoardPoint, to: BoardPoint, width: number) {
+  const size = 8 + width * 2;
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+  const left = { x: to.x - size * Math.cos(angle - Math.PI / 7), y: to.y - size * Math.sin(angle - Math.PI / 7) };
+  const right = { x: to.x - size * Math.cos(angle + Math.PI / 7), y: to.y - size * Math.sin(angle + Math.PI / 7) };
+  return `${to.x},${to.y} ${left.x},${left.y} ${right.x},${right.y}`;
+}

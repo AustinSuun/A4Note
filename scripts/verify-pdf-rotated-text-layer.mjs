@@ -178,10 +178,10 @@ for (const rotate of [0, 90, 180, 270]) {
       ok(everything.position.segments.length === 3, `rotate ${rotate}: one segment per line`);
       const [highlight] = appearance.highlightRects(drag.position);
       ok(highlight && onPage(highlight), `rotate ${rotate}: highlight rect stays on the page`, highlight);
-      // The run box ends at the baseline. The band contains the whole box and extends 20% only on
-      // the descender side, so painted glyphs cannot be cut off and adjacent-line growth is bounded.
-      ok(coverage(first, highlight) >= 0.83 && coverage(highlight, first) >= 0.999, `rotate ${rotate}: highlight covers the run plus bounded descender space`, { highlight, first });
-      if (rotate === 0) ok(Math.abs(highlight.y - first.y) < 1e-9 && highlight.y + highlight.height > first.y + first.height, 'rotate 0: highlight extends below the baseline', { highlight, first });
+      // Horizontal paint retreats only 10% of the ascender box (the saved run/hitbox does not);
+      // rotated glyphs retain their original full ascent coverage and descender-side growth.
+      ok(coverage(first, highlight) >= (rotate === 0 ? 0.80 : 0.83) && coverage(highlight, first) >= (rotate === 0 ? 0.899 : 0.999), `rotate ${rotate}: highlight covers the run plus bounded descender space`, { highlight, first });
+      if (rotate === 0) ok(Math.abs(highlight.y - first.y - first.height * 0.1) < 1e-9 && Math.abs(highlight.y + highlight.height - first.y - first.height * 1.2) < 1e-9, 'rotate 0: trimmed upper edge and unchanged lower edge', { highlight, first });
       if (rotate === 90) ok(highlight.x < first.x && Math.abs(highlight.x + highlight.width - first.x - first.width) < 1e-9, 'rotate 90: highlight extends left of the baseline', { highlight, first });
       if (rotate === 180) ok(highlight.y < first.y && Math.abs(highlight.y + highlight.height - first.y - first.height) < 1e-9, 'rotate 180: highlight extends above the baseline', { highlight, first });
       if (rotate === 270) ok(Math.abs(highlight.x - first.x) < 1e-9 && highlight.x + highlight.width > first.x + first.width, 'rotate 270: highlight extends right of the baseline', { highlight, first });

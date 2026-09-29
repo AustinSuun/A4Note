@@ -21,7 +21,7 @@ const checks = [
   ['switching flushes pending content before changing sessions', /await session\.flush\(\);[\s\S]*setSession\(acquireLibraryNoteSession/.test(markdown)],
   ['switch/create guard prevents duplicate asynchronous actions', /switchingRef\.current/.test(markdown) && /if \(switchingRef\.current\) return/.test(markdown)],
   ['editor still uses the shared MarkdownLiveEditor', /<MarkdownLiveEditor/.test(markdown)],
-  ['annotation reference navigation remains wired', /renderMarkdownWithAnnotationRefs\(content, paper, onNavigateAnnotation\)/.test(markdown)],
+  ['annotation reference navigation remains wired', /renderMarkdownWithAnnotationRefs\((?:content|split\.body|propertiesEditable \? noteBody : content), paper, onNavigateAnnotation\)/.test(markdown)],
   ['retained reader focus fallback targets the new document trigger', /\.note-document-trigger, button/.test(retained)],
   ['picker styles use shared theme tokens and reduced motion', /background:var\(--surface\)/.test(css) && /prefers-reduced-motion:reduce/.test(css)],
 ];

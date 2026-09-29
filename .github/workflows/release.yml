@@ -43,7 +43,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          A4NOTE_RELEASE_NOTES: '新增阅读器笔记面板三态模式记忆与按论文隔离；收紧面板边距，滚动条贴右且正文舒适限宽；改进悬浮圆弧缩放手柄、入口可见性和长短按提示。包含0.1.32的总览字段联动、图片托管、快捷键提示延迟及已有资料库存储/页码修复。更新前请备份重要资料；浏览器扩展保持0.6.5。'
+          A4NOTE_RELEASE_NOTES: '新增白板（笔记与阅读器共用），白板与阅读器批注工具统一；新增Doc2X文献翻译插件（确认后一键安装CLI）；阅读器笔记支持属性区；左侧边缘悬停切换场景；资源管理器合并新建菜单并为各类文件提供右键菜单，文件标签页可预览图片与HTML；总览字段卡片按全局顺序拖拽排序并可直接编辑。修复界面缩放下弹窗与指针偏移、高亮与下划线对齐选中文字、窄窗口侧栏同步、从文献库打开的PDF返回原标签等问题。浏览器扩展升级至0.6.6，修正OpenReview页面PDF下载。更新前请备份重要资料。'
         run: |
           npm run package:windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

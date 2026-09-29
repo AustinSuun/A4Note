@@ -7,13 +7,14 @@ import { markdown as markdownLanguage, markdownKeymap } from '@codemirror/lang-m
 import { languages as codeLanguages } from '@codemirror/language-data';
 import { calloutLabel, isKnownCalloutType } from '../../shared/markdown';
 import { defaultKeymap, indentWithTab, historyKeymap, isolateHistory, undo, redo } from '@codemirror/commands';
-import { Annotation, Compartment, Facet, EditorState, StateEffect, StateField, type Range, type Transaction } from '@codemirror/state';
+import { Compartment, Facet, EditorState, StateEffect, StateField, type Range, type Transaction } from '@codemirror/state';
 import { codeFolding, defaultHighlightStyle, foldedRanges, foldEffect, HighlightStyle, highlightingFor, syntaxHighlighting, syntaxTree, unfoldEffect } from '@codemirror/language';
 import { tags, highlightTree } from '@lezer/highlight';
 import { previewBlockAttributes, previewLayoutStability, requestPreviewLayoutMeasure, type MeasurementDecorations } from './previewLayoutStability';
 import './preview-layout-stability.css';
 import './markdown-selection.css';
 import { Decoration, EditorView, WidgetType, keymap, placeholder } from '@codemirror/view';
+import { externalDocumentSync, liveRevealArmed, liveRevealGate, setLiveRevealArmed } from './liveRevealGate';
 import katex from 'katex';
 import { mathAttributes, mathBlockSize, mathLayoutStability, mathLineHeight, mathSizesChanged } from './mathLayoutStability';
 import 'katex/dist/katex.min.css';
@@ -56,11 +57,6 @@ interface MarkdownLivePreviewEditorProps {
 const modeChanged = StateEffect.define<boolean>();
 const noteDocumentPath = Facet.define<string, string>({ combine: values => values[0] ?? '' });
 const imageDisposers = new WeakMap<HTMLElement, () => void>();
-// Parent state can update the editor (for example after changing the document
-// title or applying an external patch). Those transactions must not be
-// reported back as user edits, otherwise the parent and CodeMirror can keep
-// re-inserting the heading into each other.
-const externalDocumentSync = Annotation.define<boolean>();
 
 function safeExternalMarkdownUrl(url: string) {
   const trimmed = url.trim();
@@ -259,9 +255,25 @@ function renderLegacyLatexHtml(source: string) {
   return `${renderLatexInlineHtml(before)}${renderLatexEnvironmentHtml(environment[1] as 'cases' | 'array', environment[2])}${renderLatexInlineHtml(after)}`;
 }
 
+// KaTeX output is a pure function of (expression, display mode). While a note
+// opens, the same formula is typeset for its widget, for the layout measurement
+// and again when a reservation recreates the widget; switching back to a note
+// typesets everything again. Keep a small LRU of the generated HTML.
+const latexHtmlCache = new Map<string, string>();
+const LATEX_HTML_CACHE_LIMIT = 500;
 function renderLatexHtml(source: string, display: boolean): string {
   const expression = source.trim();
   if (!expression) return '';
+  const key = (display ? 'D' : 'I') + expression;
+  const cached = latexHtmlCache.get(key);
+  if (cached !== undefined) { latexHtmlCache.delete(key); latexHtmlCache.set(key, cached); return cached; }
+  const html = typesetLatex(expression, display);
+  latexHtmlCache.set(key, html);
+  if (latexHtmlCache.size > LATEX_HTML_CACHE_LIMIT) latexHtmlCache.delete(latexHtmlCache.keys().next().value!);
+  return html;
+}
+
+function typesetLatex(expression: string, display: boolean): string {
   try {
     return katex.renderToString(expression, {
       displayMode: display,
@@ -291,6 +303,7 @@ function createMathElement(source: string, display: boolean) {
   return element;
 }
 
+const latexWidgetOwners = new WeakMap<HTMLElement, LatexWidget>();
 class LatexWidget extends WidgetType {
   constructor(private readonly source: string, private readonly display: boolean, private readonly from: number, private readonly to: number, private readonly cursorOffset = 1, private readonly minHeight = 0) { super(); }
   eq(other: LatexWidget) { return other.source === this.source && other.display === this.display && other.from === this.from && other.to === this.to && other.cursorOffset === this.cursorOffset && other.minHeight === this.minHeight; }
@@ -298,16 +311,28 @@ class LatexWidget extends WidgetType {
     const element = createMathElement(this.source, this.display);
     for (const [name, value] of Object.entries(mathAttributes(this.from, this.to, this.display))) element.setAttribute(name, value);
     if (this.minHeight) element.style.minHeight = `${this.minHeight}px`;
+    latexWidgetOwners.set(element, this);
     // Replaced widgets do not contain an editable text node. Clicking the
     // rendered formula must still place the cursor in its original source so
     // live preview can reveal the syntax for editing.
     element.addEventListener('mousedown', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      view.dispatch({ selection: { anchor: Math.min(this.from + this.cursorOffset, this.to) } });
+      const owner = latexWidgetOwners.get(element) ?? this;
+      view.dispatch({ selection: { anchor: Math.min(owner.from + owner.cursorOffset, owner.to) } });
       view.focus();
     });
     return element;
+  }
+  // A size reservation or an edit above the formula changes only min-height or
+  // positions. Keep the typeset DOM instead of running KaTeX and rebuilding it.
+  updateDOM(dom: HTMLElement) {
+    const previous = latexWidgetOwners.get(dom);
+    if (!previous || previous.source !== this.source || previous.display !== this.display) return false;
+    for (const [name, value] of Object.entries(mathAttributes(this.from, this.to, this.display))) dom.setAttribute(name, value);
+    dom.style.minHeight = this.minHeight ? `${this.minHeight}px` : '';
+    latexWidgetOwners.set(dom, this);
+    return true;
   }
 }
 
@@ -1186,7 +1211,11 @@ function buildLiveDecorations(state: EditorState, sourceMode: boolean, measuring
   const headings = collectMarkdownHeadings(state);
   const isMeasuring = measuring !== undefined;
   const activePos = typeof measuring === 'number' ? measuring : state.selection.main.head;
-  const activeLine = typeof measuring === 'string' ? -1 : state.doc.lineAt(activePos).number;
+  // Measuring passes explicit states. Otherwise the caret reveals only after
+  // the user has placed it (see liveRevealArmed); states without the field
+  // (tests, other hosts) keep the selection-driven behaviour.
+  const revealArmed = typeof measuring === 'number' || (state.field(liveRevealArmed, false) ?? true);
+  const activeLine = typeof measuring === 'string' || !revealArmed ? -1 : state.doc.lineAt(activePos).number;
   // Keep source markers scoped to the line (or block) under the cursor. A
   // one-character global allowance makes a cursor at the end of the previous
   // line accidentally reveal the syntax at the start of the next line.
@@ -1720,7 +1749,9 @@ function createMeasurementDecorations(view: EditorView): MeasurementDecorations 
   };
   const rendered = build('rendered');
   const source = build('source');
-  const tableIdle = build('table-idle');
+  // Only table blocks read the idle-table state; most notes never need this
+  // third whole-document pass.
+  let tableIdle: ReturnType<typeof Decoration.set> | undefined;
   const intrinsicWidgetLines = new Set<number>();
   rendered.between(0, view.state.doc.length, (from, to, value) => {
     const widget = value.spec.widget;
@@ -1730,7 +1761,7 @@ function createMeasurementDecorations(view: EditorView): MeasurementDecorations 
     for (let line = first; line <= last; line += 1) intrinsicWidgetLines.add(line);
   });
   return {
-    rendered, source, tableIdle, at: build,
+    rendered, source, get tableIdle() { return tableIdle ??= build('table-idle'); }, at: build,
     needsMixedStates: from => intrinsicWidgetLines.has(view.state.doc.lineAt(from).number),
     widgetDOM: widget => widget instanceof ImageWidget ? widget.measurementDOM(view) : widget.toDOM(view),
   };
@@ -1740,7 +1771,7 @@ function createDecorationsField(sourceMode: () => boolean) {
   return StateField.define<ReturnType<typeof Decoration.set>>({
     create: (state) => buildLiveDecorations(state, sourceMode()),
     update: (decorations, transaction: Transaction) => {
-      if (transaction.docChanged || transaction.selection || transaction.reconfigured || transaction.effects.some((effect) => effect.is(modeChanged) || effect.is(mathSizesChanged) || effect.is(foldEffect) || effect.is(unfoldEffect))) {
+      if (transaction.docChanged || transaction.selection || transaction.reconfigured || transaction.startState.field(liveRevealArmed, false) !== transaction.state.field(liveRevealArmed, false) || transaction.effects.some((effect) => effect.is(modeChanged) || effect.is(mathSizesChanged) || effect.is(foldEffect) || effect.is(unfoldEffect))) {
         return buildLiveDecorations(transaction.state, sourceMode());
       }
       return decorations.map(transaction.changes);
@@ -1782,6 +1813,9 @@ function replaceEditorDocument(view: EditorView, markdown: string) {
   view.dispatch({
     changes: { from: 0, to: view.state.doc.length, insert: markdown },
     annotations: externalDocumentSync.of(true),
+    // A reused view showing another note must not keep the previous caret
+    // revealed; an external sync while the user is typing keeps it.
+    effects: view.hasFocus ? [] : setLiveRevealArmed.of(false),
   });
 }
 
@@ -1836,6 +1870,7 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
           placeholder(emptyPlaceholder),
           mathLayoutStability(createMathElement),
           previewLayoutStability(createMeasurementDecorations),
+          liveRevealGate,
           decorations,
           keymap.of([...defaultKeymap, ...historyKeymap, ...markdownKeymap, indentWithTab]),
           EditorView.theme({
@@ -1904,7 +1939,11 @@ export const MarkdownLivePreviewEditor = forwardRef<MarkdownLivePreviewEditorHan
     }, [emptyPlaceholder, sessionId]);
 
     useEffect(() => {
-      viewRef.current?.dispatch({ effects: imagePathCompartment.current.reconfigure(noteDocumentPath.of(documentPath)) });
+      const view = viewRef.current;
+      // A new view is created with this path already. Reconfiguring to the same
+      // value still rebuilds every decoration of the note that just opened.
+      if (!view || view.state.facet(noteDocumentPath) === documentPath) return;
+      view.dispatch({ effects: imagePathCompartment.current.reconfigure(noteDocumentPath.of(documentPath)) });
     }, [documentPath, sessionId]);
 
     useEffect(() => {

@@ -1,6 +1,6 @@
 import { Button } from '../../../shared/ui';
 import { zh } from '../../../ui/zh';
-import { ActionRow, SettingField, SettingGroup } from '../primitives';
+import { ActionRow, SettingField, SettingGroup, ToggleRow } from '../primitives';
 import type { AppSettings, AppTheme, CodeFont, DocumentFont, DocumentLayout, DocumentLineHeight, InterfaceFont } from '../types';
 
 export function clampSettingNumber(value: string, min: number, max: number, fallback: number) {
@@ -8,7 +8,11 @@ export function clampSettingNumber(value: string, min: number, max: number, fall
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
 }
 
-export function AppearanceSection({ settings, onChange }: { settings: AppSettings; onChange: (settings: AppSettings) => void }) {
+export function AppearanceSection({ settings, onChange, sceneEdgeSwitcher }: {
+  settings: AppSettings;
+  onChange: (settings: AppSettings) => void;
+  sceneEdgeSwitcher?: { enabled: boolean; onChange: (enabled: boolean) => void };
+}) {
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => onChange({ ...settings, [key]: value });
   return (
     <>
@@ -60,6 +64,17 @@ export function AppearanceSection({ settings, onChange }: { settings: AppSetting
           </select>
         </SettingField>
       </SettingGroup>
+      {sceneEdgeSwitcher && (
+        <SettingGroup title="场景切换" description="侧栏中的场景列表、「返回场景」与场景快捷键始终可用。" anchorId="scene-switching">
+          <ToggleRow
+            id="setting-scene-edge-switcher"
+            label="左边缘快速场景切换"
+            description="鼠标指向窗口左边缘片刻即滑出场景列表，点击直接切换；也可聚焦左边缘把手后按 Enter 打开。"
+            checked={sceneEdgeSwitcher.enabled}
+            onChange={sceneEdgeSwitcher.onChange}
+          />
+        </SettingGroup>
+      )}
     </>
   );
 }

@@ -1,0 +1,128 @@
+{
+  "label": "run2",
+  "results": [
+    {
+      "zoom": 1,
+      "tool": "pen",
+      "from": [
+        614,
+        383
+      ],
+      "box": [
+        614,
+        383,
+        704,
+        423
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "zoom": 1,
+      "tool": "shape",
+      "from": [
+        868,
+        496
+      ],
+      "to": [
+        998,
+        576
+      ],
+      "box": [
+        868,
+        496,
+        998,
+        576
+      ],
+      "dx": 0,
+      "dy": 0,
+      "dx2": 0,
+      "dy2": 0
+    },
+    {
+      "zoom": 1,
+      "tool": "text",
+      "at": [
+        790,
+        298
+      ],
+      "editorOpen": true,
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "zoom": 1,
+      "tool": "eraser",
+      "shapesBefore": 3,
+      "shapesAfter": 2,
+      "removed": true
+    },
+    {
+      "zoom": 1.25,
+      "tool": "pen",
+      "from": [
+        665,
+        417
+      ],
+      "box": [
+        665,
+        417,
+        755,
+        457
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "zoom": 1.25,
+      "tool": "shape",
+      "from": [
+        900,
+        518
+      ],
+      "to": [
+        1030,
+        598
+      ],
+      "box": [
+        900,
+        518,
+        1030,
+        598
+      ],
+      "dx": 0,
+      "dy": 0,
+      "dx2": 0,
+      "dy2": 0
+    },
+    {
+      "zoom": 1.25,
+      "tool": "text",
+      "at": [
+        828,
+        340
+      ],
+      "editorOpen": true,
+      "dx": 0,
+      "dy": -0.01
+    },
+    {
+      "zoom": 1.25,
+      "tool": "eraser",
+      "shapesBefore": 5,
+      "shapesAfter": 4,
+      "removed": true
+    }
+  ],
+  "fileState": {
+    "elements": 5,
+    "rect": [
+      78,
+      56.599998474121094,
+      130,
+      80
+    ],
+    "dashes": 0
+  },
+  "logs": []
+}

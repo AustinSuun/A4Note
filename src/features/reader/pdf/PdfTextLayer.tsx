@@ -24,7 +24,13 @@ function textOrientationStyle(orientation: TextOrientation | undefined): CSSProp
 /** The box along the flow axis is left to the glyphs (`max-content`) and scaled onto the PDF run
  * afterwards; only the cross axis takes the pdf.js measurement directly. A fixed flow-axis width
  * would clip or pad the substitute font's advance, so the caret position under the pointer and
- * the character offset would drift apart along the run (visibly at high zoom). */
+ * the character offset would drift apart along the run (visibly at high zoom).
+ * The substitute font follows the generic family pdf.js resolved for the PDF font (serif /
+ * sans-serif / monospace, applied through `data-text-font` in reader.css): the run-fit scale can
+ * only correct the run's total advance, so the closer the substitute's per-glyph advances are to
+ * the painted font, the closer every caret, Range rect and band edge inside the run sits to the
+ * bitmap glyph it stands for. Inheriting the UI font (a CJK sans) put mid-run characters of a
+ * serif paper up to a third of an em away. */
 function textRunBoxStyle(item: TextItemBox): CSSProperties {
   const vertical = item.orientation === 90 || item.orientation === 270;
   return vertical
@@ -76,6 +82,7 @@ function PdfTextLayerView({
           key={`${index}-${item.x}-${item.y}`}
           data-text-index={index}
           data-text-orientation={item.orientation || undefined}
+          data-text-font={item.fontFamily}
           style={{
             ...textRunBoxStyle(item),
             fontSize: `${Math.max(item.fontSize * zoom, 6)}px`,

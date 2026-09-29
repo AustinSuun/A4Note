@@ -6,6 +6,8 @@ import { useNoteFolderWorkspaces } from '../features/markdown';
 import { capturePdfCenterAnchor, restorePdfPageAnchor, requestPdfFind } from '../features/reader';
 import { BrandUpdateNotice } from '../features/updates';
 import { DocumentToolbarProvider } from '../workbench/DocumentToolbar';
+import { openMenuSourceFromTab, resolveOpenMenuTarget } from '../workbench/openMenuTarget';
+import { openOpenMenuPathInVSCode, revealOpenMenuTarget } from './openMenuActions';
 import { onSummaryNoteSaved } from '../platform/library/summaryNotes';
 import { useCaptureLibraryUpdates } from '../features/library';
 import { flushPendingSaves } from '../platform/pendingSaves';
@@ -16,6 +18,7 @@ import { createAsterCore } from '../core/asterCore';
 import { AgentSessionPanel, useAgentProviders } from '../features/agents';
 import { useChatThreads, type AiReasoningLevel, type AiRunMode, type AiToolProviderId } from '../features/ai';
 import { DiffResourceTab, FileTab, FileTreePanel, TerminalResourceTab } from '../features/explorer';
+import { createBoardFile, setBoardWorkspaceRoot } from '../features/board';
 import { ImportDialog, TagInput, useImportFlow, usePaperState, type LibrarySortDirection, type LibrarySortKey } from '../features/library';
 import {
   createBuiltinSceneUiContributions,
@@ -54,6 +57,7 @@ import {
 import {
   CommandPalette,
   ProjectSidebar,
+  SceneEdgeSwitcher,
   TabHost,
   WorkbenchShell,
   WORKBENCH_SIDEBAR_MAX_WIDTH,
@@ -77,7 +81,6 @@ import {
   createTextFile,
   deleteTextFile,
   describeProjectFolder,
-  openPathInVSCode,
   renameTextFile,
   revealPath,
   selectProjectFolder,
@@ -146,6 +149,7 @@ type ConfirmDialogState = {
   title: string;
   message: string;
   detail?: string;
+  variant?: 'markdown-file-delete';
   confirmLabel: string;
   danger?: boolean;
   onConfirm: () => void | Promise<void>;
@@ -250,6 +254,7 @@ function createLiveBuiltinSceneUiRuntimeProxy(
     'libraryPanel',
     'readerPanel',
     'readerResource',
+    'doc2x',
   ];
   for (const key of objectKeys) {
     Object.defineProperty(proxy, key, {
@@ -502,7 +507,17 @@ function AppContent() {
     setSidebarWorkspaceOpen(scene?.sidebarMode === 'workspace');
   }, [activeScene, sceneDefinitions.map((scene) => `${scene.id}:${scene.sidebarMode ?? 'scene'}`).join('|')]);
   const [uiZoom, setUiZoom] = useState(persistedUiState.uiZoom);
+  const [sceneEdgeSwitcherEnabled, setSceneEdgeSwitcherEnabled] = useState(persistedUiState.sceneEdgeSwitcher);
   const [selectedPaperId, setSelectedPaperId] = useState(persistedUiState.selectedPaperId || initialDocuments[0]?.paperId || '');
+  // Library selection can be followed by open in the same event (overview title).
+  // A ref observes that newest selection before React batches its state update.
+  const librarySelectionRef = useRef({ paperId: selectedPaperId, version: 0 });
+  const selectLibraryPaper = (paperId: string) => {
+    librarySelectionRef.current = { paperId, version: librarySelectionRef.current.version + 1 };
+    setSelectedPaperId(paperId);
+  };
+  // Ephemeral per-reader-tab origin. The library tab itself owns its view/columns/scroll; never snapshot it.
+  const [libraryReturnOrigins, setLibraryReturnOrigins] = useState<Record<string, { workspaceId: string; tabId: string; selectedPaperId: string; selectionVersion: number }>>({});
   const [recentPaperIds, setRecentPaperIds] = useState<string[]>(persistedUiState.recentPaperIds);
   const [readerLayout, setReaderLayout] = useState<ReaderLayout>(persistedUiState.readerLayout || settings.defaultReaderLayout);
   const [readerContentMode, setReaderContentMode] = useState<ReaderContentMode>('pdf');
@@ -717,6 +732,7 @@ function AppContent() {
       readerSidePanelOpen,
       readerSidePanelTab,
       workspaceLayouts: currentWorkspaceLayouts,
+      sceneEdgeSwitcher: sceneEdgeSwitcherEnabled,
     });
   }, [
     activeAnnotationColor,
@@ -734,6 +750,7 @@ function AppContent() {
     readerTranslatedFileId,
     readerZoom,
     recentPaperIds,
+    sceneEdgeSwitcherEnabled,
     selectedPaperId,
     uiZoom,
     visibleSceneIds,
@@ -1027,6 +1044,8 @@ function AppContent() {
   };
 
   const folderProjectPath = activeProject && activeProject.kind === 'folder' ? activeProject.rootPath : null;
+  // The reader's note switcher lists boards from the notes workspace; it has no project prop of its own.
+  useEffect(() => { setBoardWorkspaceRoot(folderProjectPath); }, [folderProjectPath]);
 
   /** First run seeds the built-in library project so a workspace always exists. */
   useEffect(() => {
@@ -1113,6 +1132,10 @@ function AppContent() {
     const isReaderDocumentTab = tab.kind === 'tool' && Boolean(paperIdFromReaderTabKey(tab.key));
     const sceneId = isResourceWorkspaceTabKind(tab.kind) || isReaderDocumentTab ? sceneForWorkspaceTab(tab) : null;
     workbenchStore.closeTab(tabId);
+    if (isReaderDocumentTab) {
+      const paperId = paperIdFromReaderTabKey(tab.key);
+      if (paperId) setLibraryReturnOrigins(current => { const next = { ...current }; delete next[paperId]; return next; });
+    }
     if (!wasActive || !sceneId) return;
     const updatedWorkspace = workbenchStore.getState().workspaces.find((candidate) => candidate.id === workspace.id);
     const canonicalTab = updatedWorkspace?.tabs.find((candidate) => candidate.kind === 'tool' && candidate.key === toolTabKey(sceneId));
@@ -1377,7 +1400,14 @@ function AppContent() {
     setReaderTranslatedFileId((current) => preferredTranslatedFileId(paper, current));
   };
 
-  const openReaderForPaper = (paperId: string) => {
+  const openReaderForPaper = (paperId: string, libraryOrigin?: { workspaceId: string; tabId: string; selectedPaperId: string; selectionVersion: number }) => {
+    // An opening from any other scene supersedes the previous origin for this paper.
+    setLibraryReturnOrigins(current => {
+      const next = { ...current };
+      if (libraryOrigin) next[paperId] = libraryOrigin;
+      else delete next[paperId];
+      return next;
+    });
     focusReaderPaper(paperId);
     setSettingsOpen(false);
     setSidebarWorkspaceOpen(true);
@@ -1399,6 +1429,30 @@ function AppContent() {
       state: { paperId },
     });
     ensureContextualSidebar('reader', workspaceId);
+  };
+
+  const openReaderFromLibrary = (paperId: string) => {
+    const origin = activeScene === 'library' && activeWorkspaceRecord && activeTab && sceneForWorkspaceTab(activeTab) === 'library'
+      ? { workspaceId: activeWorkspaceRecord.id, tabId: activeTab.id, selectedPaperId: librarySelectionRef.current.paperId || selectedPaperId, selectionVersion: librarySelectionRef.current.version }
+      : undefined;
+    openReaderForPaper(paperId, origin);
+  };
+
+  const returnToLibrary = (paperId: string) => {
+    const origin = libraryReturnOrigins[paperId];
+    // Do not re-create a closed library tab or overwrite state changed since opening the reader.
+    const tab = workbenchStore.getState().workspaces.find(workspace => workspace.id === origin?.workspaceId)
+      ?.tabs.find(candidate => candidate.id === origin?.tabId && sceneForWorkspaceTab(candidate) === 'library');
+    if (!origin || !tab) return;
+    // A later library selection wins even when reopening the reader tab temporarily refocused its paper.
+    if (librarySelectionRef.current.version !== origin.selectionVersion) {
+      const latest = librarySelectionRef.current.paperId;
+      if (latest && aster.documents.get(latest)) setSelectedPaperId(latest);
+    } else if (selectedPaperId === paperId && origin.selectedPaperId && aster.documents.get(origin.selectedPaperId)) {
+      setSelectedPaperId(origin.selectedPaperId);
+    }
+    setScene('library', origin.workspaceId);
+    workbenchStore.setActiveTab(origin.tabId);
   };
 
   const openReaderPanel = (paperId: string, tab: ReaderSidePanelTab) => {
@@ -1900,6 +1954,12 @@ function AppContent() {
       paper={withVisibleLayers(paper)}
       layout={readerLayout}
       contentMode={readerContentMode}
+      onReturnToLibrary={activeScene === 'reader' && activeTab?.key === readerPaperTabKey(paper.paperId)
+         && (() => {
+           const origin = libraryReturnOrigins[paper.paperId];
+           return origin && workbenchStore.getState().workspaces.find(workspace => workspace.id === origin.workspaceId)
+             ?.tabs.some(tab => tab.id === origin.tabId && sceneForWorkspaceTab(tab) === 'library');
+         })() ? () => returnToLibrary(paper.paperId) : undefined}
       fileMode={readerFileMode}
       translatedFileId={readerTranslatedFileId}
       activeParallelFileKind={readerActiveFileKind}
@@ -1981,6 +2041,16 @@ function AppContent() {
     }
   };
 
+  const createMarkdownBoardIn = async (directoryPath: string) => {
+    try {
+      const created = await createBoardFile(directoryPath);
+      openFileTab(created.path, created.name);
+      setMarkdownTreeRevision((current) => current + 1);
+    } catch (error) {
+      setLibraryStatus(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const createMarkdownFolderIn = async (directoryPath: string, name: string) => {
     await createDirectory(directoryPath, name);
   };
@@ -2002,6 +2072,8 @@ function AppContent() {
       setMarkdownTreeRevision((current) => current + 1);
     } catch (error) {
       setLibraryStatus(error instanceof Error ? error.message : String(error));
+      // A failed file deletion must not be reported as a successful confirmation.
+      if (!entry.is_directory) throw error;
     }
   };
 
@@ -2009,7 +2081,8 @@ function AppContent() {
     setConfirmDialog({
       title: zh.workbench.fileDelete,
       message: `确定删除“${entry.name}”吗？`,
-      detail: entry.is_directory ? '只允许删除空文件夹；非空目录将拒绝删除，不会删除其中的笔记。' : '文件内容将从磁盘移除。',
+      detail: entry.is_directory ? '只允许删除空文件夹；非空目录将拒绝删除，不会删除其中的笔记。' : undefined,
+      variant: entry.is_directory ? undefined : 'markdown-file-delete',
       confirmLabel: zh.workbench.fileDelete,
       danger: true,
       onConfirm: () => executeDeleteMarkdownFile(entry),
@@ -2069,7 +2142,7 @@ function AppContent() {
 
   const activeMarkdownPath = activeTab
     && (activeTab.kind === 'markdown' || activeTab.kind === 'file')
-    && /\.(?:md|markdown|mdx)$/i.test(tabStateString(activeTab, 'path'))
+    && /\.(?:md|markdown|mdx|a4board)$/i.test(tabStateString(activeTab, 'path'))
     ? tabStateString(activeTab, 'path')
     : undefined;
 
@@ -2083,6 +2156,7 @@ function AppContent() {
       onRevealFile={(entry) => void revealMarkdownFile(entry)}
       onMoveEntry={moveMarkdownEntry}
       onCreateFile={createMarkdownNoteIn}
+      onCreateBoard={createMarkdownBoardIn}
       onCreateFolder={createMarkdownFolderIn}
       activePath={activeMarkdownPath}
     />
@@ -2137,7 +2211,7 @@ function AppContent() {
       searchInputRef: librarySearchRef,
       sidePanels: librarySidePanelDefinitions,
       onQueryChange: setQuery,
-      onSelectPaper: setSelectedPaperId,
+      onSelectPaper: selectLibraryPaper,
       onBulkSelectionChange: setBulkSelectedPaperIds,
       onMovePapersToFolder: async (paperIds, folderId) => {
         if (!paperIds.length) return;
@@ -2155,13 +2229,13 @@ function AppContent() {
           setLibraryStatus(error instanceof Error ? error.message : String(error));
         }
       },
-      onOpenPaper: openReaderForPaper,
+      onOpenPaper: openReaderFromLibrary,
       onSelectTag: setActiveTag,
       onSelectFolder: selectLibraryFolder,
       onSortChange: setLibrarySort,
       onDetailOpenChange: setLibraryDetailOpen,
       onOpenImport: openImportDialog,
-      onOpenReader: () => selectedPaper && openReaderForPaper(selectedPaper.paperId),
+      onOpenReader: () => selectedPaper && openReaderFromLibrary(selectedPaper.paperId),
       onOpenRelations: () => selectedPaper && openReaderRelationsForPaper(selectedPaper.paperId),
       onOpenTranslationImport: importTranslatedPdf,
       onRevealSourcePdf: (paperId) => void revealContextPaperSourceFile(paperId),
@@ -2178,6 +2252,12 @@ function AppContent() {
       onCopyBibtex: () => void copySelectedBibtex(),
       onCopyBulkBibtex: () => void copyBulkBibtex(),
     },
+    doc2x: {
+      paper: selectedPaper,
+      papers: filteredPapers,
+      bulkSelectedPaperIds,
+      settingValues: pluginSettingValues,
+    },
     librarySidebar: {
       papers: documents,
       folders: libraryFolders,
@@ -2185,7 +2265,7 @@ function AppContent() {
       activeTag,
       tags,
       selectedPaperId,
-      onOpenPaper: openReaderForPaper,
+      onOpenPaper: openReaderFromLibrary,
       onMovePapersToFolder: async (paperIds, folderId) => {
         if (!paperIds.length) return;
         try {
@@ -2201,7 +2281,7 @@ function AppContent() {
       },
       onSelectFolder: selectLibraryFolder,
       onSelectTag: setActiveTag,
-      onSelectPaper: setSelectedPaperId,
+      onSelectPaper: selectLibraryPaper,
       onCreateFolder: async (name, parentId) => {
         try {
           if (!isTauriRuntime()) {
@@ -2641,6 +2721,7 @@ function AppContent() {
     <div className="workbench-overlay" role="region" aria-label={zh.scenes.settings}>
       <SettingsScene
         settings={settings}
+        sceneEdgeSwitcher={{ enabled: sceneEdgeSwitcherEnabled, onChange: setSceneEdgeSwitcherEnabled }}
         initialSection={settingsSection}
         pluginSettings={pluginSettingContributions}
         pluginSettingValues={pluginSettingValues}
@@ -2832,11 +2913,22 @@ function AppContent() {
 
   const hostItems: TabHostItem[] = workspaceTabs.map((tab) => ({ id: tab.id, content: renderTabContent(tab) }));
   const hostActiveTabId = activeFileTabId ?? activeTab?.id ?? null;
+  // 「打开 ▾」acts on the file the host is showing, and only exists while there is one (bcabb18d).
+  const hostActiveTab = hostActiveTabId ? workspaceTabs.find((tab) => tab.id === hostActiveTabId) ?? null : null;
+  const openMenuPaperId = hostActiveTab?.kind === 'tool' ? paperIdFromReaderTabKey(hostActiveTab.key) : null;
+  const openMenuResolution = resolveOpenMenuTarget(
+    openMenuSourceFromTab(hostActiveTab, { paperId: openMenuPaperId, paper: openMenuPaperId ? aster.documents.get(openMenuPaperId) ?? null : null }),
+    { projectRoot: folderProjectPath },
+  );
+  const openMenuTarget = openMenuResolution.visible ? openMenuResolution.target : null;
 
   return (
     <DocumentToolbarProvider enabled={['markdown', 'reader', 'library', 'tasks'].includes(activeScene ?? '') && !settingsOpen}>
     <WorkbenchShell
       brandAccessory={<BrandUpdateNotice />}
+      edgeSwitcher={sceneEdgeSwitcherEnabled ? (
+        <SceneEdgeSwitcher scenes={sidebarScenes} activeSceneId={activeScene} onOpenScene={setScene} labels={zh.sceneEdgeSwitcher} />
+      ) : null}
       sidebar={
         <ProjectSidebar
           labels={zh.workbench}
@@ -2897,13 +2989,19 @@ function AppContent() {
           workspaces={workbench.workspaces}
           fileTreeVisible={sidebarTreeVisible}
           canToggleFileTree={Boolean(activeSidebarView && activeWorkspaceRecord)}
-          canBrowseFolder={Boolean(folderProjectPath) || Boolean(activeSidebarView)}
+          openTarget={openMenuTarget}
           providers={agentProviders}
           providersLoading={agentProvidersLoading}
           workspaceBreadcrumb={noteFolderWorkspaces.breadcrumb}
           onToggleFileTree={toggleFileTree}
-          onOpenInVSCode={() => folderProjectPath && void openPathInVSCode(folderProjectPath)}
-          onRevealFolder={() => folderProjectPath && void revealPath(folderProjectPath)}
+          onRevealOpenTarget={(target) => void revealOpenMenuTarget(target).catch((error) => {
+            console.error('Reveal active file failed', error);
+            setLibraryStatus(error instanceof Error ? error.message : zh.app.actionFailed);
+          })}
+          onOpenInVSCode={(path) => void openOpenMenuPathInVSCode(path).catch((error) => {
+            console.error('Open in VS Code failed', error);
+            setLibraryStatus(error instanceof Error ? error.message : zh.app.actionFailed);
+          })}
           onCreateAgentSession={createAgentSessionTab}
           onActivateWorkspace={(workspaceId) => workbenchStore.activateWorkspace(workspaceId)}
           onCreateWorkspace={(projectId) => workbenchStore.createWorkspace({ projectId })}
@@ -3153,6 +3251,22 @@ function commonTags(papers: PaperDocument[]) {
 function ConfirmDialog({ dialog, onClose }: { dialog: ConfirmDialogState; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const isMarkdownFileDelete = dialog.variant === 'markdown-file-delete';
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!isMarkdownFileDelete) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || busy) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onEscape, true);
+    return () => window.removeEventListener('keydown', onEscape, true);
+  }, [isMarkdownFileDelete, busy, onClose]);
+  useEffect(() => {
+    if (isMarkdownFileDelete && error && !busy) cancelRef.current?.focus();
+  }, [isMarkdownFileDelete, error, busy]);
   const confirm = async () => {
     if (busy) return;
     setError('');
@@ -3162,27 +3276,33 @@ function ConfirmDialog({ dialog, onClose }: { dialog: ConfirmDialogState; onClos
       onClose();
     } catch (error) {
       console.error('Confirmation action failed', error);
-      setError(zh.app.actionFailed);
+      setError(isMarkdownFileDelete ? (error instanceof Error ? error.message : String(error)) : zh.app.actionFailed);
     } finally {
       setBusy(false);
     }
   };
   return (
-    <div className="modal-backdrop">
-      <section className="import-dialog edit-dialog confirm-dialog">
+    <div className={isMarkdownFileDelete ? 'modal-backdrop modal-backdrop--markdown-delete' : 'modal-backdrop'}>
+      <section
+        className={`import-dialog edit-dialog confirm-dialog${isMarkdownFileDelete ? ' confirm-dialog--markdown-delete' : ''}`}
+        role={isMarkdownFileDelete ? 'alertdialog' : undefined}
+        aria-modal={isMarkdownFileDelete ? true : undefined}
+        aria-labelledby={isMarkdownFileDelete ? 'markdown-delete-title' : undefined}
+        aria-describedby={isMarkdownFileDelete ? 'markdown-delete-message' : undefined}
+      >
         <header>
           <div>
-            <h2>{dialog.title}</h2>
-            <p className="scene-description">{dialog.message}</p>
+            <h2 id={isMarkdownFileDelete ? 'markdown-delete-title' : undefined}>{dialog.title}</h2>
+            <p id={isMarkdownFileDelete ? 'markdown-delete-message' : undefined} className="scene-description">{dialog.message}</p>
             {dialog.detail && <code className="confirm-detail">{dialog.detail}</code>}
           </div>
-          <button type="button" className="rounded-button subtle-button" onClick={onClose} disabled={busy}>
+          {!isMarkdownFileDelete && <button type="button" className="rounded-button subtle-button" onClick={onClose} disabled={busy}>
             {zh.editDialog.close}
-          </button>
+          </button>}
         </header>
         {error && <div className="confirm-error">{error}</div>}
         <footer>
-          <button type="button" className="rounded-button subtle-button" onClick={onClose} disabled={busy}>
+          <button ref={cancelRef} type="button" className="rounded-button subtle-button" onClick={onClose} disabled={busy} autoFocus={isMarkdownFileDelete}>
             {zh.editDialog.cancel}
           </button>
           <button type="button" className={dialog.danger ? 'primary rounded-button danger-confirm' : 'primary rounded-button'} onClick={() => void confirm()} disabled={busy}>

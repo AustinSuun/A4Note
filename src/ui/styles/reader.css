@@ -462,6 +462,12 @@
   transform-origin: 0 0;
   line-height: 1;
   cursor: text;
+  /* pdf.js paints every glyph at its PDF advance: no pair kerning, and ligatures already split
+     into their letters by the text extraction. Laying the substitute run out the same way keeps
+     one glyph per character, so Range offsets, caret positions and band edges stay per letter
+     instead of sliding with the substitute font's kerning pairs or merged "fi"/"fl" glyphs. */
+  font-kerning: none;
+  font-variant-ligatures: none;
   /* Each run is laid out at its natural advance and scaled onto the box pdf.js measured for it
      (--pdf-run-scale, set by pdfTextLayerFit). Native caret/hit positions, Range rects and the
      selection preview then follow the painted glyphs at every zoom and layout instead of drifting
@@ -472,6 +478,13 @@
 .pdf-text-layer span[data-text-orientation="270"] {
   transform: scaleY(var(--pdf-run-scale, 1));
 }
+/* Substitute fonts per pdf.js font class (PdfTextLayer `data-text-font`). Named Latin families with
+   Times/Arial/Courier metrics come first: the generic keyword alone resolves through the page
+   language (zh-CN → SimSun/宋体 with half-width Latin), whose uniform advances put mid-run glyphs
+   far from the bitmap. CJK characters fall through to the system CJK font at the same 1em advance. */
+.pdf-text-layer span[data-text-font="serif"] { font-family: "Times New Roman", Times, "Nimbus Roman", "Liberation Serif", "Noto Serif CJK SC", "Source Han Serif SC", serif; }
+.pdf-text-layer span[data-text-font="sans-serif"] { font-family: Arial, Helvetica, "Liberation Sans", "Nimbus Sans", "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; }
+.pdf-text-layer span[data-text-font="monospace"] { font-family: "Courier New", Courier, "Liberation Mono", "Nimbus Mono PS", monospace; }
 .pdf-text-layer.selectable span {
   box-sizing: content-box;
   margin-top: -0.08em;
@@ -848,7 +861,8 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
   box-shadow: none;
 }
 
-/* SelectionPopup — 选中文本后弹出的快捷标注工具 */
+/* SelectionPopup — 选中文本后弹出的快捷标注工具。挂在页面 .pdf-render-layer 内，left/top 为页面百分比
+   （与选区预览、落盘标注同一坐标空间），默认悬在选区首行上方，页面顶部放不下时挂在末行下方。 */
 .selection-popup {
   position: absolute;
   z-index: 42;
@@ -861,8 +875,12 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
   background: rgba(255,255,255,.96);
   box-shadow: 0 5px 14px rgba(26,41,33,.12);
   pointer-events: auto;
+  line-height: normal;
+  user-select: none;
+  -webkit-user-select: none;
   transform: translate(-50%, calc(-100% - 10px));
 }
+.selection-popup.below { transform: translate(-50%, 10px); }
 .selection-popup-btn {
   display: grid;
   place-items: center;
@@ -875,6 +893,7 @@ textarea { height: 46%; resize: none; padding: 11px; line-height: 1.6; }
   background: transparent;
   color: var(--accent-strong);
   box-shadow: none;
+  cursor: pointer;
 }
 .selection-popup-btn:hover { background: rgba(77,131,107,.1); color: var(--accent-strong); }
 .selection-popup-btn svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }

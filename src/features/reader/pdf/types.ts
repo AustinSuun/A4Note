@@ -1,5 +1,6 @@
 import type * as pdfjsLib from 'pdfjs-dist';
 import type { AnnotationColor, AnnotationDraft, AnnotationType, PositionJson } from '../../../core/types';
+import { defaultAnnotationToolSettings, type AnnotationToolSettings } from '../../annotationTools';
 
 export type PdfStatus = 'loading' | 'ready' | 'placeholder' | 'error';
 
@@ -20,7 +21,14 @@ export type TextItemBox = {
   fontSize: number;
   /** Quantized on-screen reading direction of the run; absent means left-to-right. */
   orientation?: TextOrientation;
+  /** Generic family pdf.js resolved for the run's PDF font. The transparent text layer lays the
+   * run out in a substitute of this family so its glyph advances stay close to the painted
+   * glyphs; absent when pdf.js reported none (older page metas, unusual fonts). */
+  fontFamily?: TextFontFamily;
 };
+
+/** Generic CSS families pdf.js assigns to PDF fonts (`TextStyle.fontFamily`). */
+export type TextFontFamily = 'serif' | 'sans-serif' | 'monospace';
 
 /** Clockwise quarter turns of a text run on screen: 0 reads left→right, 90 top→bottom (page /Rotate 90), 180 right→left, 270 bottom→top. */
 export type TextOrientation = 0 | 90 | 180 | 270;
@@ -55,41 +63,12 @@ export type PdfZoomAnchor = {
   contentOriginY: number;
 };
 
-export type ReaderToolSettings = {
-  inkStrokeWidth: number;
-  eraserSize: number;
-  eraserShape: EraserShape;
-  arrowStyle: ArrowStyle;
-  arrowEnding: ArrowEnding;
-  arrowStrokeWidth: number;
-  textBold: boolean;
-  textItalic: boolean;
-  textFontSize: number;
-  textColor: string;
-  textBorderColor: string;
-  textBackgroundColor: string;
-  shapeKind: ShapeKind;
-  shapeFillEnabled: boolean;
-  shapeStrokeWidth: number;
-};
-
-export const defaultReaderToolSettings: ReaderToolSettings = {
-  inkStrokeWidth: 4,
-  eraserSize: 18,
-  eraserShape: 'round',
-  arrowStyle: 'solid',
-  arrowEnding: 'arrow',
-  arrowStrokeWidth: 3.4,
-  textBold: false,
-  textItalic: false,
-  textFontSize: 24,
-  textColor: '#202822',
-  textBorderColor: '#ffffff',
-  textBackgroundColor: 'transparent',
-  shapeKind: 'rect',
-  shapeFillEnabled: false,
-  shapeStrokeWidth: 2.4,
-};
+/**
+ * Task 97fcfb6c: the reader's tool settings ARE the shared annotation tool settings – one
+ * store, one storage key, one set of defaults; the whiteboard reads and writes the same values.
+ */
+export type ReaderToolSettings = AnnotationToolSettings;
+export const defaultReaderToolSettings: ReaderToolSettings = defaultAnnotationToolSettings;
 
 export type DraftAnnotationPreview = (AnnotationDraft & { page: number }) & { id: string };
 

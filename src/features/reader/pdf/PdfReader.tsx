@@ -32,8 +32,10 @@ import { arrowPositionFromDrag, createDragDraft, currentVisiblePage, pointFromEv
 import { TEXT_EDGE_MARGIN_PERCENT, TEXT_FONT_UNIT_PAGE, clampTextBoxToPage, percentBoxOf, placeNewTextBox, roundPercent, textAnnotationLayout } from './pdfTextAnnotation';
 import { PdfPageView } from './PdfPageView';
 import { SelectionPopup } from './SelectionPopup';
+import { selectionPopupAnchor, type SelectionPopupAnchor } from './pdfSelectionPopup';
 import { SELECTION_PREVIEW_COLOR } from './pdfHighlightAppearance';
 import { boundingBox, clipRangeToNode, dominantTextOrientation, mergeRectsIntoLineSegments, quoteFromTextItemSelections, textItemSelectionsFromRange, textRunExtentMeasurer, textSelectionFromDrag, textSelectionPageElements, textSelectionRectsFromLayer, withSegmentOrientation } from './pdfSelection';
+import { pointerToElementLayout } from '../../../shared/ui/viewportToLayout';
 import type {
   AnnotationMarkModel,
   AnnotationResize,
@@ -163,7 +165,11 @@ export default function PdfReader({
   const [flash, setFlash] = useState<ReaderFlash | null>(null);
   const [textLayerHint, setTextLayerHint] = useState<string | null>(null);
   const textLayerHintTimerRef = useRef<number | null>(null);
-  const [selectionPopup, setSelectionPopup] = useState<{ visible: boolean; x: number; y: number; pageNumber: number; pageElement: HTMLElement | null }>({ visible: false, x: 0, y: 0, pageNumber: 0, pageElement: null });
+  // Quick-action popup after a cursor-mode text selection. Its anchor lives in the page's
+  // percentage space (rendered inside that page's render layer), computed from the same selection
+  // segments as the preview band and the saved annotation.
+  const [selectionPopup, setSelectionPopup] = useState<{ visible: boolean; pageNumber: number; pageElement: HTMLElement | null; anchor: SelectionPopupAnchor | null }>({ visible: false, pageNumber: 0, pageElement: null, anchor: null });
+  const selectionPopupAnchorRef = useRef<(pageElement: HTMLElement, range: Range, clientX: number, clientY: number) => SelectionPopupAnchor | null>(() => null);
   const pan = usePdfPan(containerRef, activeTool === 'hand', source.key, () => {
     if (zoomFrameRef.current !== null) window.cancelAnimationFrame(zoomFrameRef.current);
     if (zoomTimerRef.current !== null) window.clearTimeout(zoomTimerRef.current);
@@ -441,12 +447,15 @@ export default function PdfReader({
         setSelectionPopup((s) => ({ ...s, visible: false }));
         return;
       }
-      const anchor = selection.anchorNode?.parentElement?.closest('.pdf-page[data-page]');
-      const pageElement = anchor as HTMLElement | null;
+      // The popup hangs off the page the drag ended on (falls back to where it started).
+      const pageOf = (node: Node | null) => (node instanceof Element ? node : node?.parentElement)?.closest<HTMLElement>('.pdf-page[data-page]') ?? null;
+      const pageElement = pageOf(selection.focusNode) ?? pageOf(selection.anchorNode);
       if (!pageElement || !containerRef.current?.contains(pageElement) || !pageElement.getBoundingClientRect().width) { setSelectionPopup((s) => ({ ...s, visible: false })); return; }
       const pageNumber = Number(pageElement.dataset.page);
       if (!Number.isFinite(pageNumber)) return;
-      setSelectionPopup({ visible: true, x: event.clientX, y: event.clientY, pageNumber, pageElement });
+      const anchor = selectionPopupAnchorRef.current(pageElement, selection.getRangeAt(0), event.clientX, event.clientY);
+      if (!anchor) { setSelectionPopup((s) => ({ ...s, visible: false })); return; }
+      setSelectionPopup({ visible: true, pageNumber, pageElement, anchor });
     };
     window.addEventListener('mouseup', handleMouseUp);
     return () => window.removeEventListener('mouseup', handleMouseUp);
@@ -894,7 +903,10 @@ export default function PdfReader({
     for (const draft of drafts) await saveAnnotationDraft(draft);
   };
 
-  const textSelectionDraft = (pageElement: HTMLElement, range: Range, tool: AnnotationType) => {
+  /** Segments, bounds and quote of the part of `range` inside one page: the single geometry
+   * source shared by the live preview band, the quick-action popup anchor and the saved
+   * highlight/underline, so none of them can drift from the others. */
+  const textSelectionGeometry = (pageElement: HTMLElement, range: Range) => {
     const pageNumber = Number(pageElement.dataset.page);
     const layer = pdfCoordinateLayer(pageElement);
     const textLayer = layer.querySelector('.pdf-text-layer');
@@ -927,11 +939,30 @@ export default function PdfReader({
     const segments = withSegmentOrientation(mergeRectsIntoLineSegments(rects, textOrientation), textOrientation);
     const bounds = boundingBox(segments);
     if (!bounds.width || !bounds.height) return null;
+    return { pageNumber, segments, bounds, quote: selectionText };
+  };
+
+  const textSelectionDraft = (pageElement: HTMLElement, range: Range, tool: AnnotationType) => {
+    const geometry = textSelectionGeometry(pageElement, range);
+    if (!geometry) return null;
     return {
-      ...buildAnnotationDraft(tool, { ...bounds, segments }, activeAnnotationColor),
-      quote: selectionText,
-      page: pageNumber,
+      ...buildAnnotationDraft(tool, { ...geometry.bounds, segments: geometry.segments }, activeAnnotationColor),
+      quote: geometry.quote,
+      page: geometry.pageNumber,
     };
+  };
+
+  // The mouseup listener is registered once per tool/document; read the latest page metas through a ref.
+  selectionPopupAnchorRef.current = (pageElement, range, clientX, clientY) => {
+    const geometry = textSelectionGeometry(pageElement, range);
+    if (!geometry) return null;
+    const pointer = pdfPointerCoordinates(pageElement, clientX, clientY);
+    const layer = pdfCoordinateLayer(pageElement);
+    return selectionPopupAnchor(
+      geometry.segments,
+      pointer ? { x: pointer.xPercent, y: pointer.yPercent } : null,
+      { width: pointer?.layoutWidth ?? layer.clientWidth, height: pointer?.layoutHeight ?? layer.clientHeight },
+    );
   };
 
   const finishInkAnnotation = async () => {
@@ -1108,8 +1139,7 @@ export default function PdfReader({
       page: pageNumber,
       x: point.x,
       y: point.y,
-      leftPx: event.clientX - rect.left,
-      topPx: event.clientY - rect.top,
+      ...pointerToCommentOffset(event, pdfCoordinateLayer(event.currentTarget)),
       text: '',
       fontSize: 13,
       bold: false,
@@ -1139,7 +1169,6 @@ export default function PdfReader({
       return;
     }
     const layer = event.currentTarget.closest<HTMLElement>('.pdf-render-layer');
-    const rect = layer?.getBoundingClientRect();
     setFocusedAnnotationId(annotation.id);
     onFocusAnnotation?.(annotation.id);
     setCommentPopover({
@@ -1148,8 +1177,7 @@ export default function PdfReader({
       page: annotation.page,
       x: numberValue(annotation.positionJson.x, 0),
       y: numberValue(annotation.positionJson.y, 0),
-      leftPx: rect ? event.clientX - rect.left : 0,
-      topPx: rect ? event.clientY - rect.top : 0,
+      ...pointerToCommentOffset(event, layer),
       text: annotation.comment || annotation.quote || '',
       fontSize: numberValue(annotation.positionJson.fontSize, 13),
       bold: Boolean(annotation.positionJson.bold),
@@ -1455,51 +1483,58 @@ export default function PdfReader({
                onCommentPopoverChange={value => { if (!commentSavingRef.current) { setCommentPopover(value); setCommentSaveError(''); } }}
               onSaveComment={saveComment}
               annotationLayer={
-                <AnnotationOverlay
-                  annotations={annotationsByPage[page.pageNumber] ?? []}
-                  drafts={draftAnnotationsByPage[page.pageNumber] ?? []}
-                  selectionPreview={selectionPreviewByPage[page.pageNumber] ?? []}
-                  dragDraft={dragDraft?.page === page.pageNumber ? dragDraft : null}
-                  inkDraft={inkDraft?.page === page.pageNumber ? inkDraft : null}
-                  activeTool={annotationsEnabled ? activeTool : 'hand'}
-                  activeAnnotationColor={activeAnnotationColor}
-                  toolSettings={toolSettings}
-                  onSelectAnnotation={selectAnnotation}
-                  onBeginStickyDrag={beginStickyDrag}
-                  onBeginAnnotationResize={beginAnnotationResize}
-                  onEditStickyAnnotation={editStickyAnnotation}
-                  onUpdateAnnotationColor={(id, color) => { void saves.run('修改标注颜色', async () => onUpdateAnnotationColor(id, color), undefined, id); }}
-                  onDeleteAnnotation={id => { void saves.run('删除标注', async () => onDeleteAnnotation(id), undefined, id); }}
-                  onAppendAnnotationToNote={onAppendAnnotationToNote}
-                  onUpdateTextStyle={updateTextStyle}
-                  inlineTextEditor={inlineText?.page === page.pageNumber ? inlineText : null}
-                  onCommitInlineText={commitInlineText}
-                  onInlineEditorReady={(element) => { inlineEditorRef.current = element; }}
-                  onInlineEditorLayout={keepInlineTextOnPage}
-                  focusedAnnotationId={focusedAnnotationId}
-                />
+                <>
+                  <AnnotationOverlay
+                    annotations={annotationsByPage[page.pageNumber] ?? []}
+                    drafts={draftAnnotationsByPage[page.pageNumber] ?? []}
+                    selectionPreview={selectionPreviewByPage[page.pageNumber] ?? []}
+                    dragDraft={dragDraft?.page === page.pageNumber ? dragDraft : null}
+                    inkDraft={inkDraft?.page === page.pageNumber ? inkDraft : null}
+                    activeTool={annotationsEnabled ? activeTool : 'hand'}
+                    activeAnnotationColor={activeAnnotationColor}
+                    toolSettings={toolSettings}
+                    onSelectAnnotation={selectAnnotation}
+                    onBeginStickyDrag={beginStickyDrag}
+                    onBeginAnnotationResize={beginAnnotationResize}
+                    onEditStickyAnnotation={editStickyAnnotation}
+                    onUpdateAnnotationColor={(id, color) => { void saves.run('修改标注颜色', async () => onUpdateAnnotationColor(id, color), undefined, id); }}
+                    onDeleteAnnotation={id => { void saves.run('删除标注', async () => onDeleteAnnotation(id), undefined, id); }}
+                    onAppendAnnotationToNote={onAppendAnnotationToNote}
+                    onUpdateTextStyle={updateTextStyle}
+                    inlineTextEditor={inlineText?.page === page.pageNumber ? inlineText : null}
+                    onCommitInlineText={commitInlineText}
+                    onInlineEditorReady={(element) => { inlineEditorRef.current = element; }}
+                    onInlineEditorLayout={keepInlineTextOnPage}
+                    focusedAnnotationId={focusedAnnotationId}
+                  />
+                  {annotationsEnabled && selectionPopup.visible && selectionPopup.anchor && selectionPopup.pageNumber === page.pageNumber && (
+                    <SelectionPopup
+                      anchor={selectionPopup.anchor}
+                      onHighlight={() => {
+                        if (selectionPopup.pageElement) void finishTextSelection(selectionPopup.pageNumber, selectionPopup.pageElement, 'highlight');
+                        setSelectionPopup((s) => ({ ...s, visible: false }));
+                      }}
+                      onUnderline={() => {
+                        if (selectionPopup.pageElement) void finishTextSelection(selectionPopup.pageNumber, selectionPopup.pageElement, 'underline');
+                        setSelectionPopup((s) => ({ ...s, visible: false }));
+                      }}
+                    />
+                  )}
+                </>
               }
             />
           ))}
-          {annotationsEnabled && selectionPopup.visible && (
-            <SelectionPopup
-              visible={selectionPopup.visible}
-              x={selectionPopup.x - (containerRef.current?.getBoundingClientRect().left ?? 0) + (containerRef.current?.scrollLeft ?? 0)}
-              y={selectionPopup.y - (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.scrollTop ?? 0)}
-              onHighlight={() => {
-                if (selectionPopup.pageElement) void finishTextSelection(selectionPopup.pageNumber, selectionPopup.pageElement, 'highlight');
-                setSelectionPopup((s) => ({ ...s, visible: false }));
-              }}
-              onUnderline={() => {
-                if (selectionPopup.pageElement) void finishTextSelection(selectionPopup.pageNumber, selectionPopup.pageElement, 'underline');
-                setSelectionPopup((s) => ({ ...s, visible: false }));
-              }}
-            />
-          )}
         </div>
       </div>
     </div>
   );
+}
+
+/** Popover offset inside a page layer: viewport pointer → layer layout px (root zoom aware). */
+function pointerToCommentOffset(point: { clientX: number; clientY: number }, layer: Element | null | undefined) {
+  if (!layer) return { leftPx: 0, topPx: 0 };
+  const local = pointerToElementLayout(point, layer);
+  return { leftPx: local.x, topPx: local.y };
 }
 
 function measuredPercentBox(target: HTMLElement, layer: HTMLElement) {

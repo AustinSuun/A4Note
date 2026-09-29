@@ -26,3 +26,15 @@
 .reader-main-workspace:not(:has(> .reader-toolbar)) { grid-template-rows: minmax(0, 1fr); }
 .reader-tool-popover { position: fixed; z-index: 500; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; -webkit-app-region: no-drag; }
 .reader-tool-popover .reader-tool-options-bar { position: static; transform: none; box-sizing: border-box; max-width: 100%; flex-wrap: wrap; background: var(--surface); color: var(--ink); }
+
+/* Keep all three groups in separate grid tracks; the responsive toolbar collapses before overlap. */
+.reader-titlebar-tools .reader-toolbar:has(.reader-toolbar-center) {
+  grid-template-columns: max-content minmax(76px, 1fr) max-content;
+}
+.reader-return-library {
+  padding: 3px 12px; border: 1px solid var(--line); border-radius: 6px;
+  color: var(--ink); background: transparent; cursor: pointer; white-space: nowrap;
+  font: inherit;
+}
+.reader-return-library:hover { background: var(--surface-hover, var(--surface)); border-color: var(--accent-strong); }
+.reader-return-library:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }

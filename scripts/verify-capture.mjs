@@ -63,3 +63,28 @@ assert.equal(stronger.metadata.title,'Page title');assert.equal(stronger.metadat
 
 assert.equal(arxiv.metadata.identifiers.arxivVersion, "v2");
 
+// OpenReview hosts the note but serves the PDF from the publisher: the page's own
+// "Download PDF" control must win over the same-site citation_pdf_url proxy.
+const cvf='https://openaccess.thecvf.com/content/CVPR2026/papers/Geng_Improved_Mean_Flows_CVPR_2026_paper.pdf';
+const openreview=parse({url:'https://openreview.net/forum?id=aVC3VMPUmR',meta:[row('citation_title','Improved Mean Flows: On the Challenges of Fastforward Generative Models'),row('citation_pdf_url','https://openreview.net/pdf?id=aVC3VMPUmR')],links:[{href:cvf,label:'',title:'Download PDF',primaryPdf:true}]});
+assert.equal(openreview.artifacts.length,1);
+assert.equal(openreview.artifacts[0].url,cvf);
+assert.equal(openreview.artifacts[0].role,'fulltext');
+assert.equal(openreview.artifacts[0].label,'Download PDF');
+assert.ok(openreview.warnings.some(w=>w.includes('页面下载链接')));
+assert.ok(openreview.evidence.some(e=>e.method==='primary_pdf_link'&&e.value===cvf));
+// An unambiguous control that matches metadata changes nothing.
+const hosted=parse({url:'https://openreview.net/forum?id=WPcqBri0DF',meta:[row('citation_title','Discrete MeanFlow'),row('citation_pdf_url','https://openreview.net/pdf?id=WPcqBri0DF')],links:[{href:'https://openreview.net/pdf?id=WPcqBri0DF',label:'',title:'Download PDF',primaryPdf:true}]});
+assert.equal(hosted.artifacts.length,1);
+assert.equal(hosted.artifacts[0].url,'https://openreview.net/pdf?id=WPcqBri0DF');
+assert.ok(!hosted.warnings.some(w=>w.includes('页面下载链接')));
+// Several page controls are ambiguous: keep metadata, never guess.
+const ambiguous=parse({url:'https://openreview.net/forum?id=multi',meta:[row('citation_title','Multi'),row('citation_pdf_url','https://openreview.net/pdf?id=multi')],links:[{href:cvf,label:'',title:'Download PDF',primaryPdf:true},{href:'https://example.org/other.pdf',label:'',title:'Download PDF',primaryPdf:true}]});
+assert.equal(ambiguous.artifacts.length,1);
+assert.equal(ambiguous.artifacts[0].url,'https://openreview.net/pdf?id=multi');
+// A page control alone still resolves without metadata.
+const controlOnly=parse({url:'https://example.org/paper',meta:[row('citation_title','Control only')],links:[{href:'/paper.pdf',label:'Download PDF',primaryPdf:true}]});
+assert.equal(controlOnly.artifacts.length,1);
+assert.equal(controlOnly.artifacts[0].url,'https://example.org/paper.pdf');
+assert.equal(controlOnly.artifacts[0].label,'Download PDF');
+

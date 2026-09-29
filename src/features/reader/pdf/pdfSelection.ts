@@ -211,13 +211,24 @@ export function sliceTextItemBox(item: TextItemBox, startRatio: number, endRatio
   return { x: item.x + item.width * startRatio, y: item.y, width: item.width * span, height: item.height };
 }
 
+/** Rects on one line share (nearly) one edge across the reading direction: a run may sit off its
+ * neighbours by a superscript rise or a font-size change, never by a whole line, since leading is
+ * at least one glyph height. The tolerance therefore follows the run height (width for rotated
+ * runs). The old fixed 1.2% of the page merged consecutive lines of small text — 9pt at 10pt
+ * leading on A4 is 1.19% apart — into one block, so a multi-line highlight covered the gap and the
+ * next line's top and a multi-line underline kept only the last line's rule. */
+const SAME_LINE_TOLERANCE = 0.5;
+/** Along the line, runs of one selection may leave word or justification gaps; this share of the
+ * page (≈7pt on A4) bridges them while two-column gutters stay apart. */
+const SAME_LINE_GAP = 1.2;
+
 export function mergeRectsIntoLineSegments(rects: RectBox[], orientation: TextOrientation = 0) {
   if (isVerticalTextOrientation(orientation)) return mergeRectsIntoColumnSegments(rects);
   const sorted = [...rects].sort((a, b) => a.y - b.y || a.x - b.x);
   const merged: RectBox[] = [];
   for (const rect of sorted) {
     const previous = merged[merged.length - 1];
-    if (previous && Math.abs(previous.y - rect.y) < 1.2 && rect.x <= previous.x + previous.width + 1.2) {
+    if (previous && Math.abs(previous.y - rect.y) < Math.max(previous.height, rect.height) * SAME_LINE_TOLERANCE && rect.x <= previous.x + previous.width + SAME_LINE_GAP) {
       const left = Math.min(previous.x, rect.x);
       const top = Math.min(previous.y, rect.y);
       const right = Math.max(previous.x + previous.width, rect.x + rect.width);
@@ -235,7 +246,7 @@ function mergeRectsIntoColumnSegments(rects: RectBox[]) {
   const merged: RectBox[] = [];
   for (const rect of sorted) {
     const previous = merged[merged.length - 1];
-    if (previous && Math.abs(previous.x - rect.x) < 1.2 && rect.y <= previous.y + previous.height + 1.2) {
+    if (previous && Math.abs(previous.x - rect.x) < Math.max(previous.width, rect.width) * SAME_LINE_TOLERANCE && rect.y <= previous.y + previous.height + SAME_LINE_GAP) {
       merged[merged.length - 1] = boundingBox([previous, rect]);
     } else {
       merged.push(rect);

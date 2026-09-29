@@ -1,4 +1,5 @@
 import type { AiThreadContext, KnowledgeGraphSnapshot, KnowledgeObject, ObjectType, PaperDocument, Relation, RelationType } from './types';
+import { splitFrontmatter } from './markdownDocument';
 
 export type RelationDirectionFilter = 'source' | 'target' | 'both';
 
@@ -119,7 +120,7 @@ export function buildPaperKnowledgeGraph(paper: PaperDocument, options: { aiThre
       id: noteObjectId,
       type: 'note',
       title: note.title || 'Markdown 笔记',
-      summary: note.content.slice(0, 140),
+      summary: splitFrontmatter(note.content).body.slice(0, 140),
       metadata: {
         originalId: note.id,
         format: note.format,

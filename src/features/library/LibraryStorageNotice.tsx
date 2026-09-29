@@ -48,8 +48,8 @@ export function LibraryStorageNotice() {
       <div className="library-storage-notice-copy">
         <strong>把 PDF 与译文放到系统盘之外</strong>
         <p>
-          资料库文件目前保存在 <code>{info.filesRoot}</code>{info.onSystemDrive ? '（系统盘）' : ''}。
-          建议改到 <code>{info.recommendedRoot}</code>：之后浏览器采集的 PDF、译文与附件都会保存到那里，不再占用 C 盘。
+          资料库文件目前保存在 <span className="library-storage-notice-path">{info.filesRoot}</span>{info.onSystemDrive ? '（系统盘）' : ''}。
+          建议改到 <span className="library-storage-notice-path">{info.recommendedRoot}</span>：之后浏览器采集的 PDF、译文与附件都会保存到那里，不再占用 C 盘。
           随时可在「设置 → 资料库 → 文件存储位置」更改。
         </p>
         {message ? <p className="library-storage-notice-message">{message}</p> : null}
