@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './doc2x-panel.css';
 import type { PaperDocument } from '../../core/types.ts';
-import { doc2xSettingIds, setDoc2xCommandHandlers } from '../../core/doc2xPlugin.ts';
-import { getAsterPaths, importTranslatedPdfToLibrary } from '../../platform/nativeApi.ts';
+import { doc2xSettingIds } from '../../core/doc2xPlugin.ts';
+import { getAsterPaths } from '../../platform/nativeApi.ts';
 import {
   buildDoc2xAccountStatusRequest,
   buildDoc2xLoginRequest,
   buildDoc2xLogoutRequest,
-  buildDoc2xTranslateRequest,
   parseDoc2xJsonPayload,
   DOC2X_MIN_NODE_MAJOR,
   DOC2X_NODE_DOWNLOAD_URL,
@@ -23,11 +22,9 @@ import {
   startDoc2xLogin,
 } from '../../platform/doc2x/index.ts';
 import {
-  buildDoc2xRunPaths,
-  createDoc2xRunId,
   readDoc2xTranslateSettings,
-  resolveDoc2xSourcePath,
 } from './doc2xSettings.ts';
+import { translatePaperWithDoc2x } from './doc2xEntry.ts';
 
 export interface Doc2xPanelProps {
   paper: PaperDocument | null;
@@ -203,30 +200,8 @@ const logout = useCallback(async () => {
   const runOne = useCallback(
     async (target: PaperDocument): Promise<string> => {
       const root = await ensureRoot();
-      const source = resolveDoc2xSourcePath(target, root);
-      if (!source) return '该文献没有主 PDF，跳过。';
-      const runId = createDoc2xRunId();
-      const paths = buildDoc2xRunPaths(root, target.paperId, runId);
-      const outcome = await runDoc2xCommand(
-        buildDoc2xTranslateRequest(
-          { path: source, bytes: 0 },
-          resolution.settings,
-          { out: paths.out, receiptPath: paths.receiptPath },
-          root || '.',
-        ),
-      );
-      if (outcome.kind === 'failed') return outcome.failure.message;
-      if (outcome.kind === 'timeout') return '翻译超时（15 分钟），请重试或换用更小的文件。';
-      if (outcome.kind === 'error') return outcome.message;
-      const outputs = outcome.receipt?.outputFiles ?? [];
-      if (!outputs.length) return 'CLI 未报告译文文件，请查看输出目录。';
-      const primary = outputs.find((file) => /\.pdf$/i.test(file)) ?? outputs[0];
-      await importTranslatedPdfToLibrary({
-        paperId: target.paperId,
-        originalPath: primary,
-        language: resolution.settings.targetLanguage,
-      });
-      return `译文已回到该文献：${primary}`;
+      // One implementation for the panel and the library entries.
+      return translatePaperWithDoc2x(target, resolution.settings, root);
     },
     [ensureRoot, resolution.settings],
   );
@@ -290,21 +265,9 @@ const logout = useCallback(async () => {
   );
   const targets = selected.length ? selected : paper ? [paper] : [];
 
-  // The core plugin declares these commands; the host supplies the real work.
-  useEffect(() => {
-  return setDoc2xCommandHandlers({
-    login: async () => {
-      await login();
-      return "正在等待浏览器授权，完成后点「查询额度/订阅」确认。";
-    },
-    logout: async () => logout(),
-    accountStatus: () => refreshAccount(),
-    translateCurrentPaper: async () => {
-      await startQueue(targets);
-      return "翻译任务已结束，详见面板列表。";
-    },
-  });
-}, [login, logout, refreshAccount, startQueue, targets]);
+  // The Doc2X commands are installed by `Doc2xCommandHost` at the app root, so
+  // they work before this panel has ever been opened. The panel keeps its own
+  // controls below.
 
   return (
     <section className="doc2x-panel" aria-label="Doc2X 翻译">
@@ -431,6 +394,10 @@ const logout = useCallback(async () => {
           <code>{lines.join('\n')}</code>
         </pre>
       </details>
+
+      <p className="doc2x-panel__hint">
+        文献列表右键菜单与文献详情面板也有「Doc2X 翻译」入口，不打开本面板也能直接发起。
+      </p>
 
       <p className="doc2x-panel__hint">
         译文写入应用数据区 <code>translations/&lt;文献ID&gt;/&lt;runId&gt;/</code>，并作为该文献的译文绑定，

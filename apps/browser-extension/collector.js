@@ -10,6 +10,9 @@ export function collectPage() {
     type: el.getAttribute('type') || '', rel: el.getAttribute('rel') || '',
     primaryPdf: el.matches('a[data-track-action="download pdf"],a[data-test="pdf-link"],a.article-pdfLink,a.pdf-download,a[aria-label="Download PDF"],a[title="Download PDF"]'),
     title: (el.getAttribute('title') || '').slice(0, 300),
+    // Publisher download endpoints that carry their permission in the URL (IEEE stamp.jsp,
+    // Wiley/MDPI ref=download, …). Recorded as evidence of an entry point, never fetched.
+    gated: el.matches('[href*="stamp.jsp"]') || /(?:^|[?&])ref=(?:download|getpdf|pdfdirect)/i.test(el.getAttribute('href') || ''),
     supplementary: Boolean(el.closest('#supplementary-material,.supplementary-material,.supplemental-material,[data-section="supplementary-material"]')),
   }));
   const jsonLd=[];let jsonBytes=0;
@@ -17,7 +20,8 @@ export function collectPage() {
     const text=node.textContent||'';if(text.length>64000||jsonBytes+text.length>256000)continue;
     jsonBytes+=text.length;try{jsonLd.push(JSON.parse(text));}catch{}
   }
-  const abstractNode=document.querySelector('[itemprop="abstract"],section.abstract,#abstract,#Abs1,#abstract1');
+  // Class hints cover SPAs (IEEE Xplore uses .abstract-text) that ship no meta abstract.
+  const abstractNode=document.querySelector('[itemprop="abstract"],section.abstract,#abstract,#Abs1,#abstract1,[class~="abstract-text"],[class*="abstract-text" i]');
   const domAbstract=abstractNode?.textContent?.trim().replace(/^abstract[:\s]*/i,'').slice(0,24000);
   // Only scholarly data scripts and an explicit abstract element; no executable scripts/forms/cookies.
   return { url: location.href, title: document.title, meta, links, jsonLd, domAbstract,

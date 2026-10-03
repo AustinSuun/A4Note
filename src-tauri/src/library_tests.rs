@@ -30,8 +30,9 @@ use crate::library_import::{
 use crate::library_notes::{upsert_note_in_database, UpsertNoteRequest};
 use crate::library_papers::{
     create_folder_in_database, delete_folder_in_database, list_folders_in_database,
-    list_papers_in_database, move_papers_to_folder_in_database, update_paper_tags_in_database,
-    CreateFolderRequest, MovePapersToFolderRequest, RenameFolderRequest,
+    list_papers_in_database, move_folder_in_database, move_papers_to_folder_in_database,
+    update_paper_tags_in_database,
+    CreateFolderRequest, MoveFolderRequest, MovePapersToFolderRequest, RenameFolderRequest,
     rename_folder_in_database,
 };
 
@@ -570,5 +571,157 @@ mod tests {
 
     fn test_root() -> PathBuf {
         std::env::temp_dir().join(format!("aster-test-{}", Uuid::new_v4()))
+    }
+
+    /// 0d0dbaed c1/c2: a new folder can sit at the top level next to 默认资料库, and a
+    /// same-level drag is persisted so reopening the database keeps the order.
+    #[test]
+    fn folder_order_survives_reopening_the_database() {
+        let root = test_root();
+        fs::create_dir_all(&root).unwrap();
+        let database = root.join("aster.db");
+        crate::database::initialize_database(&database).unwrap();
+        let first = create_folder_in_database(
+            &database,
+            &CreateFolderRequest { name: "Alpha".to_string(), parent_id: None },
+        ).unwrap();
+        let second = create_folder_in_database(
+            &database,
+            &CreateFolderRequest { name: "Beta".to_string(), parent_id: None },
+        ).unwrap();
+        let third = create_folder_in_database(
+            &database,
+            &CreateFolderRequest { name: "Gamma".to_string(), parent_id: None },
+        ).unwrap();
+        assert_eq!(first.parent_id, None, "新文件夹与默认资料库并排");
+        let top_level = |database: &PathBuf| -> Vec<String> {
+            list_folders_in_database(database)
+                .unwrap()
+                .into_iter()
+                .filter(|folder| folder.parent_id.is_none() && folder.folder_id != "library")
+                .map(|folder| folder.name.clone())
+                .collect()
+        };
+        assert_eq!(top_level(&database), vec!["Alpha", "Beta", "Gamma"]);
+
+        // Drag Gamma above Alpha: index 0 at the top level.
+        move_folder_in_database(
+            &database,
+            &MoveFolderRequest { folder_id: third.folder_id.clone(), parent_id: None, index: Some(0) },
+        ).unwrap();
+        assert_eq!(top_level(&database), vec!["Gamma", "Alpha", "Beta"]);
+        // Nothing was re-parented, the root row is still listed first, and the level
+        // is renumbered 0..n-1 without gaps after the drag.
+        let listed = list_folders_in_database(&database).unwrap();
+        assert_eq!(listed[0].folder_id, "library");
+        let mut level_order: Vec<i64> = listed.iter()
+            .filter(|folder| folder.parent_id.is_none())
+            .map(|folder| folder.sort_order)
+            .collect();
+        level_order.sort();
+        assert_eq!(level_order, (0..level_order.len() as i64).collect::<Vec<i64>>(), "顶层顺序号连续无空洞");
+
+        // Reopening the same database (fresh connection, migration already applied)
+        // returns the dragged order rather than name order.
+        assert_eq!(top_level(&database), vec!["Gamma", "Alpha", "Beta"]);
+        assert_eq!(second.folder_id, listed.iter().find(|folder| folder.name == "Beta").unwrap().folder_id);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    /// 0d0dbaed c3: dropping onto a folder nests it; dropping back to the top level
+    /// (parent_id None) un-nests it and compacts both levels.
+    #[test]
+    fn folder_move_changes_level_and_compacts_siblings() {
+        let root = test_root();
+        fs::create_dir_all(&root).unwrap();
+        let database = root.join("aster.db");
+        crate::database::initialize_database(&database).unwrap();
+        let host = create_folder_in_database(
+            &database,
+            &CreateFolderRequest { name: "Host".to_string(), parent_id: None },
+        ).unwrap();
+        let loose = create_folder_in_database(
+            &database,
+            &CreateFolderRequest { name: "Loose".to_string(), parent_id: None },
+        ).unwrap();
+        move_folder_in_database(
+            &database,
+            &MoveFolderRequest { folder_id: loose.folder_id.clone(), parent_id: Some(host.folder_id.clone()), index: None },
+        ).unwrap();
+        let nested = list_folders_in_database(&database).unwrap();
+        let nested_child = nested.iter().find(|folder| folder.folder_id == loose.folder_id).unwrap();
+        assert_eq!(nested_child.parent_id.as_deref(), Some(host.folder_id.as_str()));
+        assert_eq!(nested_child.sort_order, 0);
+
+        move_folder_in_database(
+            &database,
+            &MoveFolderRequest { folder_id: loose.folder_id.clone(), parent_id: None, index: None },
+        ).unwrap();
+        let restored = list_folders_in_database(&database).unwrap();
+        let restored_child = restored.iter().find(|folder| folder.folder_id == loose.folder_id).unwrap();
+        assert_eq!(restored_child.parent_id, None);
+        let restored_roots: Vec<&str> = restored.iter()
+            .filter(|folder| folder.parent_id.is_none() && folder.folder_id != "library")
+            .map(|folder| folder.name.as_str())
+            .collect();
+        assert_eq!(restored_roots, vec!["Host", "Loose"], "回到顶层后排在该层末尾");
+        assert_eq!(restored.iter().filter(|folder| folder.parent_id.is_none()).map(|folder| folder.sort_order).collect::<std::collections::BTreeSet<_>>().len(), 3, "顶层顺序号互不相同");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    /// 0d0dbaed c4: no cycle, and 默认资料库 is neither movable nor a target.
+    #[test]
+    fn folder_move_refuses_cycles_and_the_default_library() {
+        let root = test_root();
+        fs::create_dir_all(&root).unwrap();
+        let database = root.join("aster.db");
+        crate::database::initialize_database(&database).unwrap();
+        let parent = create_folder_in_database(
+            &database,
+            &CreateFolderRequest { name: "Parent".to_string(), parent_id: None },
+        ).unwrap();
+        let child = create_folder_in_database(
+            &database,
+            &CreateFolderRequest { name: "Child".to_string(), parent_id: Some(parent.folder_id.clone()) },
+        ).unwrap();
+        let grandchild = create_folder_in_database(
+            &database,
+            &CreateFolderRequest { name: "Grandchild".to_string(), parent_id: Some(child.folder_id.clone()) },
+        ).unwrap();
+
+        let same = move_folder_in_database(
+            &database,
+            &MoveFolderRequest { folder_id: parent.folder_id.clone(), parent_id: Some(parent.folder_id.clone()), index: None },
+        ).unwrap_err();
+        assert!(same.contains("自身"), "{same}");
+        let descendant = move_folder_in_database(
+            &database,
+            &MoveFolderRequest { folder_id: parent.folder_id.clone(), parent_id: Some(grandchild.folder_id.clone()), index: None },
+        ).unwrap_err();
+        assert!(descendant.contains("子文件夹"), "{descendant}");
+        let root_move = move_folder_in_database(
+            &database,
+            &MoveFolderRequest { folder_id: "library".to_string(), parent_id: None, index: Some(0) },
+        ).unwrap_err();
+        assert!(root_move.contains("不能移动"), "{root_move}");
+        // Reordering the folders that already live under 默认资料库 stays possible;
+        // only the root row itself is immutable.
+        move_folder_in_database(
+            &database,
+            &MoveFolderRequest { folder_id: child.folder_id.clone(), parent_id: Some("library".to_string()), index: Some(0) },
+        ).unwrap();
+        let reordered = list_folders_in_database(&database).unwrap();
+        assert_eq!(reordered.iter().find(|folder| folder.folder_id == child.folder_id).unwrap().parent_id.as_deref(), Some("library"));
+        assert_eq!(reordered.iter().find(|folder| folder.folder_id == child.folder_id).unwrap().sort_order, 0);
+        move_folder_in_database(
+            &database,
+            &MoveFolderRequest { folder_id: child.folder_id.clone(), parent_id: Some(parent.folder_id.clone()), index: None },
+        ).unwrap();
+
+        // The failed moves left the tree exactly as it was.
+        let listed = list_folders_in_database(&database).unwrap();
+        assert_eq!(listed.iter().find(|folder| folder.folder_id == parent.folder_id).unwrap().parent_id, None);
+        assert_eq!(listed.iter().find(|folder| folder.folder_id == grandchild.folder_id).unwrap().parent_id.as_deref(), Some(child.folder_id.as_str()));
+        fs::remove_dir_all(root).unwrap();
     }
 }

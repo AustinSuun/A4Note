@@ -1,12 +1,14 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-29T20:31:38+08:00",
+  "updatedAt": "2026-10-03T17:10:00+08:00",
   "activePlan": "scene-pluginization-and-agent-handbook",
   "activeWork": {
     "status": "in_progress",
     "owner": "Arena-秋序 (arena-worker d5193e61)",
     "branch": "feat/doc2x-translate-qiuxu（worktree .worktrees/doc2x-translate-qiuxu，基线 b008046）",
     "scope": [
+      "pdf-links-yunshu：e4c2fa22 spec1 PDF 链接跳转与外部 URL 打开。云枢 0e7b557 实现每页 pdf.js /Link 注解层（懒加载 + 页面百分比几何，不乘 zoom/DPR）、内部跳转（数组/命名 dest、XYZ/Fit*/Named 动作）+ 目标闪烁、右侧「返回 第 N 页」与返回栈（Alt+← 走快捷键系统、Esc 不触发、手动回位 ≤0.4 视口高自动淡出、切换文档清空）、外链唯一出口 open_external_url（仅 http(s)，javascript:/mailto:/file: 拒绝并提示），并新增 test:pdf-links（141）与 test:pdf-links-browser（54/54，旧代码对照失败）纳入 verify-all。接手后补 dev:live 实机驱动 scripts/verify-pdf-links-live.mjs（真实 WebView2 真实鼠标，arXiv 2505.13447 16 页 + 5 页夹具）：59 项断言、15 张截图、pageerror/console 0，含浅/深色、笔记抽屉开合、150% 与 /Rotate 90 对齐（geoDiff 0.01）；期间修正驱动自身三处判据（非活动场景仍带完整布局盒导致切场景被跳过、视口外链接矩形不可点、__TAURI_INTERNALS__.invoke 不可写导致 IPC 记录恒空——改在 fetch/ipc.localhost 传输层取证并就地应答）。npm run build exit 0；npm run verify 唯一失败为主干既有 test:ui-state 陈旧断言（本次 diff 未触碰 toolbar 文件）；Rust 249 passed/0 failed/7 ignored。基线 347fae9，交付分支 deliver/pdf-links-e4c2fa22。未安装、未打包、未发布、未重启 43319、未触碰正式资料库。详见 docs/mcp-pdf-links-yunshu-2026-10-03.md。 更新：2026-10-03T17:10:00+08:00",
+      "release-0134-arena-b / 已发布 A4 Note v0.1.34（Latest，扩展 0.6.6）：PR #20 必需 Verify pass 14m29s 后正常合并（9f9210d），标签 v0.1.34 → 8d4664d；本地 PowerShell npm run verify EXIT=0；标准 package:windows 331 秒与扩展打包成功，build-info sourceCommit=HEAD、EXE VersionInfo 0.1.34、Minisign 独立验签有效（篡改负对照被拒）；publish-release 草稿资产校验后发布，5 个公开附件 SHA-256 与本地一致，latest/download/latest.json 与本地逐字节一致；旧 0.1.33 本地构建归档到 artifacts/windows/archive/0.1.34-20260929-205124-17972。详见 docs/mcp-release-0134-arena-b-2026-09-29.md；下一版须升到 0.1.35+。",
       "release-0134-arena-b / 用户授权发布 0.1.34：以本地 main 273057e（较 origin/main 02fa56d 新增 54 个提交：白板与统一批注工具、Doc2X 翻译插件、笔记属性区、左缘场景切换、资源管理器新建/右键菜单、文件预览及多项阅读器/缩放修复）为产品基线。cf28501 修正 test:ui-state 过时断言（reader-toolbar-center 由 42184f1 有意恢复；工具选项/常量/类型随 97fcfb6c 迁入 src/features/annotationTools，31 条仅在新位置同样匹配时改指向，0 条删除），此前 383 行失败一直掩盖后续断言。桌面版 0.1.33→0.1.34；浏览器扩展 0.6.5→0.6.6（manifest 自 0.1.7 未变，而 1099622 修改了 collector/normalize 的 OpenReview PDF 下载）。流程：受保护 PR 必需 Verify 成功后正常合并；标准 package:windows 签名构建与配对扩展；版本/SHA-256/Minisign 验签；publish-release 草稿资产校验后发布为 latest。结果记录见 docs/mcp-release-0134-arena-b-2026-09-29.md。",
       "scene-edge-arena-b：80263463 内容区左缘悬停场景切换器（8px 热区、150ms 停留、240ms 宽限加安全三角、只动 transform/opacity、设置默认开启，调用现有 setScene）（arena-b）。",
       "file-preview-arena-b：4f5b33dd 通用文件页签直接显示图片（适应/实际大小、像素尺寸、上限与解码失败提示）并在 sandbox=\"\" 的 srcdoc iframe 中安全渲染 HTML（预览/源码按文件记忆、5MB 上限、GBK 等声明编码、相对图片内联）（arena-b）。",
@@ -31,10 +33,26 @@
     ]
   },
   "tracks": {
-    "openreviewImfQiuxu": {"status":"review","owner":"Arena-秋序","summary":"021ac264：根因已定位并修复。用户失败入口 openreview.net/forum?id=aVC3VMPUmR（iMF，CVPR 2026，公开）的 PDF 由 openaccess.thecvf.com 托管，而 OpenReview 服务端 generateMetadata 对任何带 content.pdf 的论文都把 citation_pdf_url 写成 openreview.net/pdf?id=…（本机实测 403 text/html，非 PDF）；旧 collector 的 primaryPdf 选择器不匹配其 title\"Download PDF\" 图标链接、normalize 只在没有任何正文候选时才做 DOM 兜底，于是唯一候选就是会 403 的同站代理地址，识别成功但下载失败。修复仅改候选选择：collector 链接记录新增 title 并补充 a[title\"Download PDF\"]；normalize 在页面存在唯一 Download PDF 控制链接且与 citation_pdf_url 不同时优先采用页面链接并给出可理解警告，多个控制链接不猜测。下载器公共 HTTPS/443、公网地址检查、DNS 固定、逐跳重定向、HTML/登录页拒绝、大小与 lopdf 校验，以及超时、代理白名单、TLS、SSRF、登录/验证码与 browser-assist 授权流程均未改。证据：隔离 Chrome DOM 重放（复刻 OpenReview 真实服务端标记）修复前唯一候选 /pdf?id=aVC3VMPUmR、修复后为 CVF PDF 且标题/6 作者正确；原生 download::process 下载该 CVF 地址 complete、3,438,232 字节、SHA-256 41aa05bf6981da6922b74937b5b98ca41144da32fa4377ef1c8c3ae1ddadca6d（与独立直接下载一致）、lopdf 结构/页校验通过，一次性隔离库导入 hasSourcePdf=true 且重复导入同一 paperId；verify-capture.mjs（新增 4 组 OpenReview 边界断言）与 verify-capture-native.mjs 通过；cargo test --lib capture:: 27 通过/0 失败/6 忽略；改动文件诊断 0。复跑不稳定已定位为远端 CDN 对本机出口 IP 的限速/连接重置（同机 curl 浏览器 UA 也被限速，arxiv.org 不受影响），非 UA 判定、非代码缺陷，未改超时。仍缺：已安装扩展真实点击 E2E、可视原生阅读器打开复核、完整 npm run verify 与前端生产 build；分支 fix/openreview-imf-qiuxu 已 fast-forward 合入本地 main 10996220290b31c5d0b1f18087e73317d0e5e48d 并 submit review，待用户在实际浏览器验收；未自行验收归档、未触碰正式库。"},
-    "queueFollowupQiuxu": {"status":"blocked","owner":"Arena-秋序","summary":"三项已预检释放但未完成：021ac264公开样例仍challenge/403非PDF，等待实际失败链接/错误与合法验证条件；4093839c待Phase0/首版/同资源删除冲突设计确认；07abf228待9ddfe985同SummaryDocumentEditor等组件串行交接。7e18与8cc9已review；3eab由巡川进行中，不接管。"},
-    "communityResearchQiuxu": {"status":"review","owner":"Arena-秋序","summary":"8cc9b2c8仅研究：登录矩阵、双轨/来源/分享/风险/成本/分期/验证方案完成，等待用户选择，不开发或部署。报告docs/mcp-community-identity-research-qiuxu-2026-09-27.md。"},
-    "shortcutCycleQiuxu": {"status":"review","owner":"Arena-秋序","summary":"7e18e7d8：500ms不变；原生31/31、组件16/16、dispatcher95、浏览器491、PDF搜索35及build/architecture/agent-status通过；实现e94c3e6，整合556c4c7已ff合main，submit review rev14，9份附件；不改并行提示样式。"},
+    "openreviewImfQiuxu": {
+      "status": "review",
+      "owner": "Arena-秋序",
+      "summary": "021ac264：根因已定位并修复。用户失败入口 openreview.net/forum?id=aVC3VMPUmR（iMF，CVPR 2026，公开）的 PDF 由 openaccess.thecvf.com 托管，而 OpenReview 服务端 generateMetadata 对任何带 content.pdf 的论文都把 citation_pdf_url 写成 openreview.net/pdf?id=…（本机实测 403 text/html，非 PDF）；旧 collector 的 primaryPdf 选择器不匹配其 title\"Download PDF\" 图标链接、normalize 只在没有任何正文候选时才做 DOM 兜底，于是唯一候选就是会 403 的同站代理地址，识别成功但下载失败。修复仅改候选选择：collector 链接记录新增 title 并补充 a[title\"Download PDF\"]；normalize 在页面存在唯一 Download PDF 控制链接且与 citation_pdf_url 不同时优先采用页面链接并给出可理解警告，多个控制链接不猜测。下载器公共 HTTPS/443、公网地址检查、DNS 固定、逐跳重定向、HTML/登录页拒绝、大小与 lopdf 校验，以及超时、代理白名单、TLS、SSRF、登录/验证码与 browser-assist 授权流程均未改。证据：隔离 Chrome DOM 重放（复刻 OpenReview 真实服务端标记）修复前唯一候选 /pdf?id=aVC3VMPUmR、修复后为 CVF PDF 且标题/6 作者正确；原生 download::process 下载该 CVF 地址 complete、3,438,232 字节、SHA-256 41aa05bf6981da6922b74937b5b98ca41144da32fa4377ef1c8c3ae1ddadca6d（与独立直接下载一致）、lopdf 结构/页校验通过，一次性隔离库导入 hasSourcePdf=true 且重复导入同一 paperId；verify-capture.mjs（新增 4 组 OpenReview 边界断言）与 verify-capture-native.mjs 通过；cargo test --lib capture:: 27 通过/0 失败/6 忽略；改动文件诊断 0。复跑不稳定已定位为远端 CDN 对本机出口 IP 的限速/连接重置（同机 curl 浏览器 UA 也被限速，arxiv.org 不受影响），非 UA 判定、非代码缺陷，未改超时。仍缺：已安装扩展真实点击 E2E、可视原生阅读器打开复核、完整 npm run verify 与前端生产 build；分支 fix/openreview-imf-qiuxu 已 fast-forward 合入本地 main 10996220290b31c5d0b1f18087e73317d0e5e48d 并 submit review，待用户在实际浏览器验收；未自行验收归档、未触碰正式库。"
+    },
+    "queueFollowupQiuxu": {
+      "status": "blocked",
+      "owner": "Arena-秋序",
+      "summary": "三项已预检释放但未完成：021ac264公开样例仍challenge/403非PDF，等待实际失败链接/错误与合法验证条件；4093839c待Phase0/首版/同资源删除冲突设计确认；07abf228待9ddfe985同SummaryDocumentEditor等组件串行交接。7e18与8cc9已review；3eab由巡川进行中，不接管。"
+    },
+    "communityResearchQiuxu": {
+      "status": "review",
+      "owner": "Arena-秋序",
+      "summary": "8cc9b2c8仅研究：登录矩阵、双轨/来源/分享/风险/成本/分期/验证方案完成，等待用户选择，不开发或部署。报告docs/mcp-community-identity-research-qiuxu-2026-09-27.md。"
+    },
+    "shortcutCycleQiuxu": {
+      "status": "review",
+      "owner": "Arena-秋序",
+      "summary": "7e18e7d8：500ms不变；原生31/31、组件16/16、dispatcher95、浏览器491、PDF搜索35及build/architecture/agent-status通过；实现e94c3e6，整合556c4c7已ff合main，submit review rev14，9份附件；不改并行提示样式。"
+    },
     "whiteboardPhase0ArenaBoard": "review",
     "markdownTocArenaBoard": "review",
     "eraserAlignmentXingxu": "in_progress",
@@ -64,12 +82,41 @@
     "libraryStorageNoticeXunchuan": "review",
     "readerNoteMotionXunchuan": "review",
     "shortcutLightXingxu": "review",
-    "pdfAnnotationGeometryYunshu": {"status": "review", "owner": "云枢 (4df1e730)", "summary": "6d59b629：RC1 弹窗把视口坐标当布局坐标（含 7px padding，UI 缩放下放大）→ 页内百分比锚点；RC2 文本层继承 UI CJK 字体栈+kerning，run 拟合只校正总宽 → 按 pdf.js styles 字体族选 Times/Arial/Courier 度量兼容栈并关 kerning/ligatures；RC3 固定 1.2% 页高行合并容差并掉 9pt/10pt 行 → 0.5×行高。分支 fix/pdf-annotation-geometry-yunshu，基线 b159a6a，rebase 到 a4f6a19 后 ff 合入。"},
-    "sidebarNarrowSyncArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "6f9e0947：删除 ≤1040px 隐藏 .workbench-sidebar 的媒体查询，改由 sidebarVisibility 纯状态机统一决定 docked/overlay/hidden；标题栏按实际可见性显示，窄窗口用浮层抽屉，不改持久化偏好，侧栏隐藏时标题栏显示紧凑「返回场景」。实机验证时定位到 doc2x.core 重复注册导致的启动空白，main 已由 3866352 修复。", "doc": "docs/mcp-sidebar-narrow-sync-arena-b-2026-09-28.md"},
-    "mdOpenRevealArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "2891f95a：liveRevealGate.ts 让实时预览只在点击/键盘/输入/跳转后露出源码，打开、切回、程序化 focus、外部同步都不露出，失焦收起；layoutMeasurePublish.ts 合并两个测量插件的发布并用未发布基线消除重复测量；KaTeX LRU + LatexWidget.updateDOM；imagePathCompartment 未变不 reconfigure；MarkdownResourceTab memo + 最新 props 转发，隐藏保活标签切换时不再 render。", "doc": "docs/mcp-md-open-reveal-arena-b-2026-09-29.md"},
-    "openMenuFileArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "bcabb18d：纯函数 src/workbench/openMenuTarget.ts 决定「打开 ▾」目标；场景页/会话/无标签/缺路径不渲染按钮；md/文本/HTML 可在 VS Code 打开文件本身，白板/图片/PDF 隐藏；项目级 VS Code 入口移到同菜单「在 VS Code 中打开项目文件夹」；Explorer /select 选中文件。顺带修复工作区 PDF 打开时 PdfResourceTab 的 Maximum update depth 死循环。", "doc": "docs/mcp-open-menu-file-arena-b-2026-09-29.md"},
-    "filePreviewArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "4f5b33dd：filePreview.ts 纯规则（种类/上限/sandbox/CSP/字节解码/视图记忆）+ htmlPreviewDocument.ts（DOMParser 惰性处理：删脚本/handler/refresh/iframe/作者 base，表单变容器，锚点改 about:srcdoc#，外链 inert，相对图片经 loadNoteImage 内联，其余相对 URL 去除，注入文档 CSP 与 base about:blank）；FileTab 图片走 noteImageLoader，HTML 走 sandbox=\"\" srcdoc；加载结果按 path 归属修复切换首帧过期结果触发读取。", "doc": "docs/mcp-file-preview-arena-b-2026-09-29.md"},
-    "sceneEdgeArenaB": {"status": "review", "owner": "arena-b (a4f50d11)", "summary": "80263463：sceneEdgeSwitcherModel.ts 纯状态机（closed/pending/open/leaving，来源 hover/press/keyboard）加安全三角与面板定位；SceneEdgeSwitcher.tsx 经 WorkbenchShell 的 edgeSwitcher 插槽挂载，scenes=sidebarScenes、onOpenScene=setScene，没有第二份场景数据；sceneGroups.ts 与 ProjectSidebar 共用分组；让位选择器包含侧栏拖宽把手、阅读器笔记把手、对话框与右键菜单；设置 usePersistedUiState.sceneEdgeSwitcher 默认开启。", "doc": "docs/mcp-scene-edge-switcher-arena-b-2026-09-29.md"}
+    "pdfAnnotationGeometryYunshu": {
+      "status": "review",
+      "owner": "云枢 (4df1e730)",
+      "summary": "6d59b629：RC1 弹窗把视口坐标当布局坐标（含 7px padding，UI 缩放下放大）→ 页内百分比锚点；RC2 文本层继承 UI CJK 字体栈+kerning，run 拟合只校正总宽 → 按 pdf.js styles 字体族选 Times/Arial/Courier 度量兼容栈并关 kerning/ligatures；RC3 固定 1.2% 页高行合并容差并掉 9pt/10pt 行 → 0.5×行高。分支 fix/pdf-annotation-geometry-yunshu，基线 b159a6a，rebase 到 a4f6a19 后 ff 合入。"
+    },
+    "sidebarNarrowSyncArenaB": {
+      "status": "review",
+      "owner": "arena-b (a4f50d11)",
+      "summary": "6f9e0947：删除 ≤1040px 隐藏 .workbench-sidebar 的媒体查询，改由 sidebarVisibility 纯状态机统一决定 docked/overlay/hidden；标题栏按实际可见性显示，窄窗口用浮层抽屉，不改持久化偏好，侧栏隐藏时标题栏显示紧凑「返回场景」。实机验证时定位到 doc2x.core 重复注册导致的启动空白，main 已由 3866352 修复。",
+      "doc": "docs/mcp-sidebar-narrow-sync-arena-b-2026-09-28.md"
+    },
+    "mdOpenRevealArenaB": {
+      "status": "review",
+      "owner": "arena-b (a4f50d11)",
+      "summary": "2891f95a：liveRevealGate.ts 让实时预览只在点击/键盘/输入/跳转后露出源码，打开、切回、程序化 focus、外部同步都不露出，失焦收起；layoutMeasurePublish.ts 合并两个测量插件的发布并用未发布基线消除重复测量；KaTeX LRU + LatexWidget.updateDOM；imagePathCompartment 未变不 reconfigure；MarkdownResourceTab memo + 最新 props 转发，隐藏保活标签切换时不再 render。",
+      "doc": "docs/mcp-md-open-reveal-arena-b-2026-09-29.md"
+    },
+    "openMenuFileArenaB": {
+      "status": "review",
+      "owner": "arena-b (a4f50d11)",
+      "summary": "bcabb18d：纯函数 src/workbench/openMenuTarget.ts 决定「打开 ▾」目标；场景页/会话/无标签/缺路径不渲染按钮；md/文本/HTML 可在 VS Code 打开文件本身，白板/图片/PDF 隐藏；项目级 VS Code 入口移到同菜单「在 VS Code 中打开项目文件夹」；Explorer /select 选中文件。顺带修复工作区 PDF 打开时 PdfResourceTab 的 Maximum update depth 死循环。",
+      "doc": "docs/mcp-open-menu-file-arena-b-2026-09-29.md"
+    },
+    "filePreviewArenaB": {
+      "status": "review",
+      "owner": "arena-b (a4f50d11)",
+      "summary": "4f5b33dd：filePreview.ts 纯规则（种类/上限/sandbox/CSP/字节解码/视图记忆）+ htmlPreviewDocument.ts（DOMParser 惰性处理：删脚本/handler/refresh/iframe/作者 base，表单变容器，锚点改 about:srcdoc#，外链 inert，相对图片经 loadNoteImage 内联，其余相对 URL 去除，注入文档 CSP 与 base about:blank）；FileTab 图片走 noteImageLoader，HTML 走 sandbox=\"\" srcdoc；加载结果按 path 归属修复切换首帧过期结果触发读取。",
+      "doc": "docs/mcp-file-preview-arena-b-2026-09-29.md"
+    },
+    "sceneEdgeArenaB": {
+      "status": "review",
+      "owner": "arena-b (a4f50d11)",
+      "summary": "80263463：sceneEdgeSwitcherModel.ts 纯状态机（closed/pending/open/leaving，来源 hover/press/keyboard）加安全三角与面板定位；SceneEdgeSwitcher.tsx 经 WorkbenchShell 的 edgeSwitcher 插槽挂载，scenes=sidebarScenes、onOpenScene=setScene，没有第二份场景数据；sceneGroups.ts 与 ProjectSidebar 共用分组；让位选择器包含侧栏拖宽把手、阅读器笔记把手、对话框与右键菜单；设置 usePersistedUiState.sceneEdgeSwitcher 默认开启。",
+      "doc": "docs/mcp-scene-edge-switcher-arena-b-2026-09-29.md"
+    }
   },
   "lastHandoff": {
     "completed": [

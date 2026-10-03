@@ -61,6 +61,7 @@ export function LibraryScene({
   onDeletePaper,
   onCopyBibtex,
   onCopyBulkBibtex,
+  doc2xEntry,
 }: LibrarySceneProps) {
   const [paperMenu, setPaperMenu] = useState<PaperMenuAnchor | null>(null);
   const closePaperMenu = useCallback(() => setPaperMenu(null), []);
@@ -89,6 +90,34 @@ export function LibraryScene({
     // Select before rendering actions: callbacks supplied by the host use the selected paper.
     onSelectPaper(paperId);
     setPaperMenu({ paperId, x, y, trigger });
+  };
+
+  // Doc2X entry feedback. The host owns the durable notice (so the detail panel
+  // shows the same message); this state only covers the in-flight run.
+  const [doc2xBusy, setDoc2xBusy] = useState(false);
+  const [doc2xMessage, setDoc2xMessage] = useState('');
+  const doc2xNotice = doc2xMessage || doc2xEntry?.notice || '';
+  const runDoc2xTranslate = useCallback(async (paperId: string): Promise<string> => {
+    if (!doc2xEntry?.enabled) return 'Doc2X 翻译入口当前不可用。';
+    if (doc2xBusy) return 'Doc2X 正在翻译上一篇文献，请稍候。';
+    setDoc2xBusy(true);
+    const pending = '正在准备 Doc2X 翻译…完成后译文会回到该文献。';
+    setDoc2xMessage(pending);
+    try {
+      const message = await doc2xEntry.onTranslate(paperId);
+      setDoc2xMessage(message || pending);
+      return message;
+    } catch (error) {
+      const failure = `Doc2X 翻译未启动：${error instanceof Error ? error.message : String(error)}`;
+      setDoc2xMessage(failure);
+      return failure;
+    } finally {
+      setDoc2xBusy(false);
+    }
+  }, [doc2xBusy, doc2xEntry]);
+  const dismissDoc2xNotice = () => {
+    setDoc2xMessage('');
+    doc2xEntry?.onDismissNotice?.();
   };
 
 
@@ -180,6 +209,16 @@ export function LibraryScene({
           </div>
 
 
+
+          {doc2xNotice ? (
+            <div className="library-doc2x-notice" role="status" aria-live="polite">
+              <LibraryIcon name="translate" />
+              <span>{doc2xNotice}</span>
+              <button type="button" onClick={dismissDoc2xNotice} title="关闭提示" aria-label="关闭提示">
+                <LibraryIcon name="close" />
+              </button>
+            </div>
+          ) : null}
 
           {bulkSelectedPaperIds.length > 0 ? (
             <div className="bulk-actions library-bulkbar">
@@ -289,7 +328,8 @@ export function LibraryScene({
         onRead={() => onOpenPaper(menuPaper.paperId)} onDetails={() => onDetailOpenChange(true)}
         onRelations={onOpenRelations} onEdit={onOpenMetadataEdit} onTags={onOpenTagsEdit}
         onRevealSourcePdf={() => onRevealSourcePdf(menuPaper.paperId)}
-        onTranslation={onOpenTranslationImport} onCopy={onCopyBibtex} onDelete={onDeletePaper}
+        onTranslation={onOpenTranslationImport} doc2x={doc2xEntry ? { ...doc2xEntry, busy: doc2xEntry.busy || doc2xBusy, onTranslate: runDoc2xTranslate } : undefined}
+        onCopy={onCopyBibtex} onDelete={onDeletePaper}
         onMove={(folderId) => onMovePapersToFolder([menuPaper.paperId], folderId)} />}
     </section>
   );

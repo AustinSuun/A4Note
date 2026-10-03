@@ -20,8 +20,7 @@ mod library_annotations;
 mod library_import;
 mod library_notes;
 mod library_summaries; mod managed_image_io; mod markdown_images; mod storage;
-mod library_summary_notes;
-mod library_summary_provision;
+mod library_summary_notes; mod library_summary_provision;
 mod library_papers;
 mod library_state;
 mod pdf_metadata;
@@ -112,6 +111,7 @@ pub fn run() {
             library_papers::create_folder,
             library_papers::rename_folder,
             library_papers::delete_folder,
+            library_papers::move_folder,
             library_papers::move_papers_to_folder,
             library_annotations::create_annotation,
             library_annotations::restore_annotation,

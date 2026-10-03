@@ -1067,3 +1067,20 @@
 .library-context-separator { height: 1px; margin: 4px 6px; background: #e9eeea; }
 .library-context-folder-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .library-paper-context-menu small { margin-left: auto; white-space: nowrap; }
+
+/* Library Doc2X entry feedback (65aab909): the context menu and the detail
+   panel share this bar, so a missing prerequisite explains the next step
+   instead of the click doing nothing. */
+.library-doc2x-notice {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin: 0 0 10px; padding: 9px 11px; border-radius: 9px;
+  border: 1px solid #d7e6dc; background: #f2f9f4; color: #245f47; font-size: 12px;
+}
+.library-doc2x-notice > svg { width: 16px; height: 16px; flex: 0 0 16px; margin-top: 1px; }
+.library-doc2x-notice span { flex: 1; min-width: 0; line-height: 1.6; overflow-wrap: anywhere; }
+.library-doc2x-notice button {
+  flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px;
+  border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer;
+}
+.library-doc2x-notice button:hover,
+.library-doc2x-notice button:focus-visible { background: #e2f0e7; outline: none; }

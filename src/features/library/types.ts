@@ -13,6 +13,20 @@ export type ImportDialogSettings = {
   onlineMetadataEnabled: boolean;
 };
 
+/**
+ * Host-supplied Doc2X entry. The library never imports the Doc2X feature: the
+ * host passes the callbacks and mirrors the plugin setting in `enabled`, so a
+ * disabled entry disappears instead of failing after the click.
+ */
+export type LibraryDoc2xEntry = {
+  enabled: boolean;
+  busy?: boolean;
+  /** Starts one translation and resolves to the message to show the user. */
+  onTranslate: (paperId: string) => Promise<string>;
+  notice?: string;
+  onDismissNotice?: () => void;
+};
+
 export type LibrarySceneProps = {
   papers: PaperDocument[];
   folders: LibraryFolder[];
@@ -26,6 +40,7 @@ export type LibrarySceneProps = {
   aiThreadContexts: AiThreadContext[];
   bulkSelectedPaperIds: string[];
   searchInputRef: RefObject<HTMLInputElement | null>;
+  doc2xEntry?: LibraryDoc2xEntry;
   sidePanels: WorkspacePanelDefinition<WorkbenchPanelId>[];
   panelViews?: WorkbenchPanelViewContribution[];
   onQueryChange: (query: string) => void;
@@ -64,6 +79,7 @@ export type LibraryDetailPanelProps = {
   onOpenReader: () => void;
   onOpenRelations: () => void;
   onOpenTranslationImport: () => void;
+  doc2xEntry?: LibraryDoc2xEntry;
   onRevealSourcePdf: () => void;
   onRevealTranslatedPdf: () => void;
   onOpenSourcePdfExternal: () => void;
@@ -88,6 +104,8 @@ export type LibraryFolderActionProps = {
   onSelectPaper: (paperId: string) => void;
   onOpenPaper?: (paperId: string) => void;
   onMovePapersToFolder: (paperIds: string[], folderId: string | null) => void | Promise<void>;
+  /** Folder drag result: new parent (null = top level beside 默认资料库) and 0-based sibling index. */
+  onMoveFolder: (folderId: string, parentId: string | null, index: number) => void | Promise<void>;
   onCreateFolder: (name: string, parentId: string | null) => void | Promise<void>;
   onRenameFolder: (folderId: string, name: string) => void | Promise<void>;
   onDeleteFolder: (folderId: string) => void | Promise<void>;

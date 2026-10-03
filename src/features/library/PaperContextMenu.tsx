@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BookOpen, FileText, Network, Folder, FolderOpen, Pencil, Tags, Languages, Copy, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, FileText, Network, Folder, FolderOpen, Pencil, Tags, Languages, Copy, Trash2, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import type { LibraryFolder, PaperDocument } from '../../core/types';
 import { pointPlacement, toCssPixels, viewportScale } from './portalPlacement';
+import type { LibraryDoc2xEntry } from './types';
 
 export type PaperMenuAnchor = { paperId: string; x: number; y: number; trigger: HTMLElement };
 type Props = {
@@ -17,13 +18,14 @@ type Props = {
   onTags: () => void;
   onRevealSourcePdf: () => void;
   onTranslation: () => void;
+  doc2x?: LibraryDoc2xEntry;
   onCopy: () => void;
   onDelete: () => void;
   onMove: (folderId: string) => void | Promise<void>;
 };
 
 /** Body-level portal: neither the table scrollport nor scene overflow can clip this menu. */
-export function PaperContextMenu({ anchor, paper, folders, onClose, onRead, onDetails, onRelations, onEdit, onTags, onRevealSourcePdf, onTranslation, onCopy, onDelete, onMove }: Props) {
+export function PaperContextMenu({ anchor, paper, folders, onClose, onRead, onDetails, onRelations, onEdit, onTags, onRevealSourcePdf, onTranslation, doc2x, onCopy, onDelete, onMove }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const [folderMode, setFolderMode] = useState(false);
   const [position, setPosition] = useState({ left: 8, top: 8 });
@@ -119,6 +121,7 @@ export function PaperContextMenu({ anchor, paper, folders, onClose, onRead, onDe
         <button type="button" role="menuitem" onClick={() => run(onTags)}><Tags />编辑标签</button>
         <button type="button" role="menuitem" onClick={() => run(onRevealSourcePdf)} disabled={!paper.sourcePdf}><FolderOpen />打开 PDF 所在文件夹</button>
         <button type="button" role="menuitem" onClick={() => run(onTranslation)}><Languages />导入译文 PDF</button>
+        {doc2x?.enabled && <button type="button" role="menuitem" disabled={doc2x.busy} onClick={() => run(() => { void doc2x.onTranslate(paper.paperId); })}><Sparkles />Doc2X 翻译（本机 CLI）</button>}
         <button type="button" role="menuitem" onClick={() => run(onCopy)}><Copy />复制 BibTeX</button>
         <div role="separator" className="library-context-separator" />
         <button type="button" role="menuitem" className="danger" onClick={() => run(onDelete)}><Trash2 />删除论文</button>

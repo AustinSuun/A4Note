@@ -1,5 +1,5 @@
-/** Request search only in the focused/active visible PDF, never in a hidden retained tab. */
-export function requestPdfFind() {
+/** The focused/active visible PDF surface, never a hidden retained tab. */
+function activePdfSurface(): HTMLElement | null {
   const visible = (node: HTMLElement | null) => node && node.getClientRects().length > 0
     && !node.closest('[inert], [aria-hidden="true"]') && getComputedStyle(node).visibility !== 'hidden';
   const focused = document.activeElement?.closest<HTMLElement>('.pdf-reader-surface') ?? null;
@@ -7,8 +7,21 @@ export function requestPdfFind() {
     ...document.querySelectorAll<HTMLElement>('.workbench-tab-frame.active .pdf-keepalive-pane.active .pdf-reader-surface'),
     ...document.querySelectorAll<HTMLElement>('.workbench-tab-frame.active .pdf-reader-surface'),
     ...document.querySelectorAll<HTMLElement>('.pdf-reader-surface')];
-  const surface = candidates.find(visible);
+  return candidates.find(visible) ?? null;
+}
+
+/** Request search only in the focused/active visible PDF, never in a hidden retained tab. */
+export function requestPdfFind() {
+  const surface = activePdfSurface();
   surface?.dispatchEvent(new Event('reader-find'));
+  return Boolean(surface);
+}
+
+/** Alt+← (`reader.linkBack`): pop the visible PDF's link-jump stack (card e4c2fa22). The reader ignores
+ * the event when nothing was jumped from, so the binding is harmless elsewhere. */
+export function requestPdfLinkBack() {
+  const surface = activePdfSurface();
+  surface?.dispatchEvent(new Event('reader-link-back'));
   return Boolean(surface);
 }
 

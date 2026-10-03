@@ -19,7 +19,7 @@ pub(crate) fn schema_sql() -> &'static str {
 
 // Bump this when Rust-only migrations change; schema.sql changes invalidate
 // the key automatically. This caches only a build constant, never DB readiness.
-const MIGRATION_REVISION: &str = "startup-2-annotation-layers";
+const MIGRATION_REVISION: &str = "startup-3-folder-order";
 fn schema_key() -> &'static str {
     static KEY: OnceLock<String> = OnceLock::new();
     KEY.get_or_init(|| {
@@ -68,6 +68,22 @@ pub(crate) fn initialize_database(database_path: &Path) -> Result<(), String> {
     ).map_err(|error| error.to_string())?;
     ensure_column(&transaction, "papers", "is_favorite", "INTEGER NOT NULL DEFAULT 0")?;
     ensure_column(&transaction, "papers", "last_viewed_at", "INTEGER")?;
+    // Folder sibling order (0d0dbaed): existing rows are ranked by the order the
+    // sidebar already displayed them in (lowercased name, then id), so upgrading
+    // never reshuffles a user's tree.
+    ensure_column(&transaction, "folders", "sort_order", "INTEGER")?;
+    transaction
+        .execute_batch(
+            "UPDATE folders SET sort_order = (
+                 SELECT COUNT(*) FROM folders sibling
+                 WHERE COALESCE(sibling.parent_id, '') = COALESCE(folders.parent_id, '')
+                   AND sibling.id <> folders.id
+                   AND (LOWER(sibling.name) < LOWER(folders.name)
+                        OR (LOWER(sibling.name) = LOWER(folders.name) AND sibling.id < folders.id))
+             )
+             WHERE sort_order IS NULL;",
+        )
+        .map_err(|error| error.to_string())?;
     ensure_column(&transaction, "paper_files", "content_hash", "TEXT")?;
     ensure_column(&transaction, "notes", "server_version", "INTEGER NOT NULL DEFAULT 0")?;
     ensure_column(&transaction, "notes", "deleted_at", "INTEGER")?;

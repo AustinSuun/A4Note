@@ -723,6 +723,26 @@ body.is-horizontal-resizing .workbench-sidebar-resizer::after { transition: none
 .library-sidebar-folder-tree .file-tree-row.directory[data-drop-target="true"] .file-tree-name::after { content: '放入此文件夹'; }
 .library-sidebar-folder-tree .file-tree-row.file { cursor: grab; }
 .library-sidebar-folder-tree .file-tree-row.file:active { cursor: grabbing; }
+/* ---------- folder drag: reorder, re-parent, drop back to the top level ---------- */
+.library-sidebar-folder-tree .file-tree-row.directory { cursor: grab; }
+.library-sidebar-folder-tree .file-tree-row.directory:active { cursor: grabbing; }
+.library-sidebar-folder-tree .file-tree-row[data-library-root="true"] { cursor: default; }
+.library-sidebar-folder-tree .file-tree-row[data-dragging="true"] { opacity: .55; }
+.library-sidebar-folder-tree .file-tree-row[data-drop-position] { position: relative; }
+.library-sidebar-folder-tree .file-tree-row[data-drop-position="before"] { box-shadow: inset 0 2px 0 0 var(--accent); }
+.library-sidebar-folder-tree .file-tree-row[data-drop-position="after"] { box-shadow: inset 0 -2px 0 0 var(--accent); }
+.library-sidebar-folder-tree .file-tree-row[data-drop-position="inside"] { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+.library-folder-root-drop {
+  margin: 6px 2px 2px;
+  padding: 7px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 50%, transparent);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: var(--ui-caption-font-size);
+  text-align: center;
+}
+.library-folder-root-drop[data-active="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--ink); border-style: solid; }
+.library-folder-drop-hint { margin: 4px 2px 0; color: var(--muted); font-size: var(--ui-caption-font-size); }
 .library-sidebar-tag-list { display: grid; gap: 2px; }
 .library-sidebar-tag-mark { color: #826db5; font-weight: 700; text-align: center; }
 .library-sidebar-tags { min-height: 0; }
