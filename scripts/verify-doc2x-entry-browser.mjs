@@ -39,6 +39,9 @@ const papers: PaperDocument[] = [
   { paperId: 'p1', title: 'Attention Is All You Need', authors: 'Ashish Vaswani et al.', year: 2017, venue: 'NeurIPS', doi: '10.5555/3295222', folderId: 'library', sourceFileId: 'file-1', sourcePdf: 'D:/papers/attention.pdf', translatedFileIds: [], translatedPdfs: [], tags: ['nlp'], notes: [], annotations: [], aiThreads: [], metadataSource: 'manual' },
   { paperId: 'p2', title: 'Deep Residual Learning for Image Recognition', authors: 'Kaiming He et al.', year: 2016, venue: 'CVPR', doi: '10.1109/CVPR.2016.90', folderId: 'f-cv', sourceFileId: 'file-2', sourcePdf: 'D:/papers/resnet.pdf', translatedFileIds: [], translatedPdfs: [], tags: ['cv'], notes: [], annotations: [], aiThreads: [], metadataSource: 'manual' },
 ];
+const translatedPapers: PaperDocument[] = [
+  { ...papers[0], translatedFileIds: ['file-1-zh'], translatedPdfs: ['D:/papers/attention.zh.pdf'] },
+];
 const folders: LibraryFolder[] = [
   { folderId: 'library', name: '默认资料库', parentId: null },
   { folderId: 'f-cv', name: '计算机视觉', parentId: null },
@@ -49,7 +52,7 @@ const cliMissing = describeDoc2xEntryCli({ available: false, nodeMajor: 22 });
 const authMissing = describeDoc2xEntryFailure({ kind: 'auth', message: 'Doc2X 登录已失效、额度或订阅不足，请重新登录或检查账号订阅' });
 
 function Host() {
-  const [state, setState] = useState({ enabled: true, busy: false, notice: cliMissing as string });
+  const [state, setState] = useState({ enabled: true, busy: false, translated: false, notice: cliMissing as string });
   const calls = useRef<string[]>([]);
   const translate = (paperId: string) => {
     calls.current.push(paperId);
@@ -88,10 +91,11 @@ function Host() {
         onCopyBibtex={noop} onCopyBulkBibtex={noop} />
       </div>
       <div data-pane="detail"><LibraryDetailPanel
-        paper={papers[0]} aiThreadContexts={[]} onOpenReader={noop} onOpenRelations={noop}
-        onOpenTranslationImport={noop} doc2xEntry={doc2xEntry} onRevealSourcePdf={noop} onRevealTranslatedPdf={noop}
-        onOpenSourcePdfExternal={noop} onOpenTranslatedPdfExternal={noop} onOpenMetadataEdit={noop}
-        onOpenTagsEdit={noop} onCopyBibtex={noop} />
+        paper={state.translated ? translatedPapers[0] : papers[0]} aiThreadContexts={[]} onOpenReader={noop} onOpenRelations={noop}
+        onOpenTranslationImport={noop} doc2xEntry={doc2xEntry}
+        onRevealSourcePdf={() => calls.current.push('reveal-source')} onRevealTranslatedPdf={() => calls.current.push('reveal-translated')}
+        onOpenSourcePdfExternal={noop} onOpenTranslatedPdfExternal={() => calls.current.push('open-translated-external')}
+        onOpenMetadataEdit={noop} onOpenTagsEdit={noop} onCopyBibtex={noop} />
       </div>
     </div>
   );
@@ -227,6 +231,21 @@ try {
     const authText = (await notice.innerText()).replace(/\s+/g, ' ').trim();
     check('未登录/额度不足引导给出登录下一步', authText.includes('登录') && authText.includes('额度'), authText);
     await shot('07-guidance-not-logged-in');
+
+    // 9. 收口遗留：译文回到文献后，详情面板能看到并可打开该译文文件
+    const translatedRow = page.locator('[data-pane="detail"] .binding-row', { hasText: '译文' }).first();
+    check('未导入译文时该行为未绑定且按钮禁用', (await translatedRow.innerText()).includes('未绑定')
+      && await translatedRow.locator('button').first().isDisabled(), (await translatedRow.innerText()).replace(/\s+/g, ' ').trim());
+    await page.evaluate(() => window.__harness.set({ translated: true, notice: '' }));
+    await pause(200);
+    const translatedText = (await translatedRow.innerText()).replace(/\s+/g, ' ').trim();
+    check('译文回到文献后该行显示 1 份译文', translatedText.includes('1 份译文'), translatedText);
+    check('译文行「显示」按钮可用', await translatedRow.locator('button').first().isEnabled());
+    await translatedRow.locator('button').first().click();
+    await pause(150);
+    const calls3 = await page.evaluate(() => window.__harness.calls());
+    check('「显示」按钮走宿主回调（打开译文所在位置）', calls3.includes('reveal-translated'), JSON.stringify(calls3.slice(-3)));
+    await shot('08-translated-file-visible');
 
     check('页面无脚本错误（忽略宿主自身噪声）', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
     if (ignored.length) console.log('NOTE 已忽略隔离宿主噪声 ' + ignored.length + ' 条：' + ignored[0]);
