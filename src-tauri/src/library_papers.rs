@@ -7,7 +7,7 @@
 //! Deleting a paper removes its rows and its copied files under `files/papers`.
 //! It never touches the user's original PDF, which lives wherever they chose.
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -71,6 +71,8 @@ pub(crate) struct FolderSummary {
     pub(crate) folder_id: String,
     pub(crate) name: String,
     pub(crate) parent_id: Option<String>,
+    /// Sibling order inside `parent_id` (0-based). Persisted so a drag survives restart.
+    pub(crate) sort_order: i64,
     pub(crate) paper_count: i64,
 }
 
@@ -84,6 +86,15 @@ pub(crate) struct CreateFolderRequest {
 pub(crate) struct RenameFolderRequest {
     pub(crate) folder_id: String,
     pub(crate) name: String,
+}
+
+/// Move one folder to a new parent and/or sibling position (task 0d0dbaed).
+/// `parent_id: None` means the top level, next to 默认资料库. `index: None` appends.
+#[derive(Debug, Deserialize)]
+pub(crate) struct MoveFolderRequest {
+    pub(crate) folder_id: String,
+    pub(crate) parent_id: Option<String>,
+    pub(crate) index: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -127,6 +138,13 @@ pub fn delete_folder(app: AppHandle, folder_id: String) -> Result<(), String> {
     let _access = crate::library_access::operation()?;
     let root = app_data_root(&app)?;
     delete_folder_in_database(&root.join("aster.db"), &folder_id)
+}
+
+#[tauri::command]
+pub fn move_folder(app: AppHandle, request: MoveFolderRequest) -> Result<(), String> {
+    let _access = crate::library_access::operation()?;
+    let root = app_data_root(&app)?;
+    move_folder_in_database(&root.join("aster.db"), &request)
 }
 
 #[tauri::command]
@@ -373,9 +391,11 @@ pub(crate) fn list_folders_in_database(database_path: &Path) -> Result<Vec<Folde
     let mut statement = connection
         .prepare(
             "SELECT f.id, f.name, f.parent_id,
+                    COALESCE(f.sort_order, 0),
                     (SELECT COUNT(*) FROM papers p WHERE COALESCE(p.folder_id, 'library') = f.id)
              FROM folders f
-             ORDER BY CASE WHEN f.id = 'library' THEN 0 ELSE 1 END, LOWER(f.name), f.id",
+             ORDER BY CASE WHEN f.id = 'library' THEN 0 ELSE 1 END,
+                      COALESCE(f.sort_order, 0), LOWER(f.name), f.id",
         )
         .map_err(|error| error.to_string())?;
     let rows = statement
@@ -384,7 +404,8 @@ pub(crate) fn list_folders_in_database(database_path: &Path) -> Result<Vec<Folde
                 folder_id: row.get(0)?,
                 name: row.get(1)?,
                 parent_id: row.get(2)?,
-                paper_count: row.get(3)?,
+                sort_order: row.get(3)?,
+                paper_count: row.get(4)?,
             })
         })
         .map_err(|error| error.to_string())?;
@@ -421,13 +442,146 @@ pub(crate) fn create_folder_in_database(
     }
     let folder_id = format!("folder-{}", Uuid::new_v4());
     let now = current_timestamp_ms();
-    connection
-        .execute(
-            "INSERT INTO folders (id, name, parent_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-            rusqlite::params![folder_id, name, request.parent_id, now, now],
+    // New folders land at the end of their level; the default library stays first.
+    let sort_order: i64 = connection
+        .query_row(
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM folders WHERE COALESCE(parent_id, '') = COALESCE(?1, '')",
+            rusqlite::params![request.parent_id],
+            |row| row.get(0),
         )
         .map_err(|error| error.to_string())?;
-    Ok(FolderSummary { folder_id, name: name.to_string(), parent_id: request.parent_id.clone(), paper_count: 0 })
+    connection
+        .execute(
+            "INSERT INTO folders (id, name, parent_id, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![folder_id, name, request.parent_id, sort_order, now, now],
+        )
+        .map_err(|error| error.to_string())?;
+    Ok(FolderSummary { folder_id, name: name.to_string(), parent_id: request.parent_id.clone(), sort_order, paper_count: 0 })
+}
+
+/// Reorder/reparent one folder. Rejects the immutable root and any cycle, so the
+/// tree the UI renders can never contain a folder that is its own ancestor.
+pub(crate) fn move_folder_in_database(
+    database_path: &Path,
+    request: &MoveFolderRequest,
+) -> Result<(), String> {
+    initialize_database(database_path)?;
+    if request.folder_id == "library" {
+        return Err("「默认资料库」不能移动".to_string());
+    }
+    let mut connection = Connection::open(database_path).map_err(|error| error.to_string())?;
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| error.to_string())?;
+    let current_parent: Option<String> = transaction
+        .query_row(
+            "SELECT parent_id FROM folders WHERE id = ?1",
+            [&request.folder_id],
+            |row| row.get(0),
+        )
+        .map_err(|_| "文件夹不存在".to_string())?;
+    let name: String = transaction
+        .query_row("SELECT name FROM folders WHERE id = ?1", [&request.folder_id], |row| row.get(0))
+        .map_err(|_| "文件夹不存在".to_string())?;
+    if request.parent_id.as_deref() == Some(request.folder_id.as_str()) {
+        return Err("不能把文件夹移动到自身".to_string());
+    }
+    if let Some(parent_id) = request.parent_id.as_deref() {
+        // `library` stays a legal *parent*: the folders that already live under the
+        // default library keep their level and can still be reordered among
+        // themselves. The sidebar refuses to drop onto the 默认资料库 row itself.
+        let exists: i64 = transaction
+            .query_row("SELECT COUNT(*) FROM folders WHERE id = ?1", [parent_id], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        if exists == 0 {
+            return Err("目标文件夹不存在".to_string());
+        }
+        // Walk up from the target: meeting the moved folder means the target is inside it.
+        let mut ancestor = Some(parent_id.to_string());
+        let mut visited: Vec<String> = Vec::new();
+        while let Some(id) = ancestor {
+            if id == request.folder_id {
+                return Err("不能把文件夹移动到自身或子文件夹中".to_string());
+            }
+            if visited.contains(&id) {
+                break;
+            }
+            visited.push(id.clone());
+            ancestor = transaction
+                .query_row("SELECT parent_id FROM folders WHERE id = ?1", [&id], |row| row.get(0))
+                .map_err(|error| error.to_string())?;
+        }
+        let duplicate: i64 = transaction
+            .query_row(
+                "SELECT COUNT(*) FROM folders WHERE id <> ?1 AND COALESCE(parent_id, '') = ?2 AND LOWER(name) = LOWER(?3)",
+                rusqlite::params![request.folder_id, parent_id, name],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        if duplicate > 0 {
+            return Err("目标位置存在同名文件夹".to_string());
+        }
+    }
+    let now = current_timestamp_ms();
+    let destination = request.parent_id.clone();
+    // Existing siblings in the destination, in their persisted order, without the moved folder.
+    let mut siblings: Vec<String> = {
+        let mut statement = transaction
+            .prepare(
+                "SELECT id FROM folders
+                 WHERE id <> ?1 AND COALESCE(parent_id, '') = COALESCE(?2, '')
+                 ORDER BY COALESCE(sort_order, 0), LOWER(name), id",
+            )
+            .map_err(|error| error.to_string())?;
+        let rows = statement
+            .query_map(rusqlite::params![request.folder_id, destination], |row| row.get::<_, String>(0))
+            .map_err(|error| error.to_string())?;
+        rows.map(|row| row.map_err(|error| error.to_string())).collect::<Result<Vec<String>, String>>()?
+    };
+    let index = match request.index {
+        Some(index) => index.clamp(0, siblings.len() as i64) as usize,
+        None => siblings.len(),
+    };
+    siblings.insert(index, request.folder_id.clone());
+    transaction
+        .execute(
+            "UPDATE folders SET parent_id = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![destination, now, request.folder_id],
+        )
+        .map_err(|error| error.to_string())?;
+    // Renumber the destination level from the exact order that was just computed.
+    for (position, id) in siblings.iter().enumerate() {
+        transaction
+            .execute(
+                "UPDATE folders SET sort_order = ?1 WHERE id = ?2 AND COALESCE(sort_order, -1) <> ?1",
+                rusqlite::params![position as i64, id],
+            )
+            .map_err(|error| error.to_string())?;
+    }
+    // Compact the level that lost the folder so it stays gap-free too.
+    if current_parent != destination {
+        let remaining: Vec<String> = {
+            let mut statement = transaction
+                .prepare(
+                    "SELECT id FROM folders WHERE COALESCE(parent_id, '') = COALESCE(?1, '')
+                     ORDER BY COALESCE(sort_order, 0), LOWER(name), id",
+                )
+                .map_err(|error| error.to_string())?;
+            let rows = statement
+                .query_map(rusqlite::params![current_parent], |row| row.get::<_, String>(0))
+                .map_err(|error| error.to_string())?;
+            rows.map(|row| row.map_err(|error| error.to_string())).collect::<Result<Vec<String>, String>>()?
+        };
+        for (position, id) in remaining.iter().enumerate() {
+            transaction
+                .execute(
+                    "UPDATE folders SET sort_order = ?1 WHERE id = ?2 AND COALESCE(sort_order, -1) <> ?1",
+                    rusqlite::params![position as i64, id],
+                )
+                .map_err(|error| error.to_string())?;
+        }
+    }
+    transaction.commit().map_err(|error| error.to_string())
 }
 
 pub(crate) fn rename_folder_in_database(

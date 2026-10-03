@@ -270,6 +270,8 @@ export interface LibraryFolder {
   folderId: string;
   name: string;
   parentId: string | null;
+  /** Persisted sibling position inside `parentId` (0-based); undefined on legacy rows. */
+  sortOrder?: number;
   paperCount?: number;
 }
 

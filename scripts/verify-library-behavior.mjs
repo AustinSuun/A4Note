@@ -60,8 +60,15 @@ assert.match(sidebar, /creation=\{creation\}[^\n]+onSelectFolder/);
 assert.match(sidebar, /data-library-folder-draft-parent=\{creation.parentId\}/);
 assert.match(sidebar, /setExpandedIds\(\(current\) => Array.from\(new Set\(\[...current, ...path\]\)\)\)/);
 assert.match(sidebar, /onCreateSubfolder=\{startNewFolder\}/);
-assert.match(sidebar, /startNewFolder\('library'\)/);
-assert.match(sidebar, /if \(folderSavingRef.current \|\| newFolderParentId === null\) return/);
+// 0d0dbaed: new folders are siblings of 默认资料库, so the ＋ creates at the top level.
+assert.match(sidebar, /startNewFolder\(null\)/);
+assert.match(sidebar, /creation && creation\.parentId === null && <NewFolderTreeRow/);
+assert.match(sidebar, /LIBRARY_FOLDER_DRAG_TYPE/);
+assert.match(sidebar, /planLibraryFolderDrop\(folders, draggingFolderId \?\? '', \{ placement, folderId \}\)/);
+assert.match(sidebar, /folderIsProtected \? onCreateTopLevelFolder : onCreateSubfolder/);
+assert.match(sidebar, /draggable=\{!folderIsProtected && !saving\}/);
+assert.match(readFileSync('src/features/library/folderOrdering.ts', 'utf8'), /不能把文件夹移动到它的子文件夹中/);
+assert.match(sidebar, /if \(folderSavingRef.current \|\| newFolderTarget === null\) return/);
 assert.match(sidebar, /await onCreateFolder\(name, parentId\)/);
 assert.match(sidebar, /composingRef.current \|\| event.nativeEvent.isComposing \|\| event.keyCode === 229/);
 assert.match(sidebar, /event.key === 'Escape'.*creation.onCancel\(\)/);

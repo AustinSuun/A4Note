@@ -72,6 +72,8 @@
     "test:managed-images": "node --experimental-strip-types scripts/verify-managed-image-insertion.mjs && node scripts/verify-managed-images-browser.mjs",
     "test:markdown-safety": "node --experimental-strip-types scripts/verify-markdown-safety.mjs",
     "test:library-behavior": "node --experimental-strip-types scripts/verify-library-behavior.mjs",
+    "test:library-folder-order": "node --experimental-strip-types scripts/verify-library-folder-order.mjs",
+    "test:library-folder-drag-browser": "node scripts/verify-library-folder-drag-browser.mjs",
     "test:startup-safety": "node scripts/verify-startup-safety.mjs",
     "test:reliability": "node --experimental-strip-types scripts/verify-reliability.mjs",
     "test:summary-fields": "node scripts/verify-summary-field-catalog.mjs && node scripts/verify-summary-document.mjs && node scripts/verify-summary-editor-patch.mjs && node scripts/verify-summary-catalog-browser.mjs && node scripts/verify-summary-reader-bridge-browser.mjs && node scripts/verify-summary-per-note-catalog-browser.mjs && node scripts/verify-summary-transaction-browser.mjs && node scripts/verify-summary-assignment-ui-browser.mjs && node scripts/verify-summary-excerpt-browser.mjs && node scripts/verify-tab-host-isolation-browser.mjs && node scripts/verify-summary-scroll-browser.mjs && node scripts/verify-summary-direct-edit-browser.mjs && node scripts/verify-summary-field-order.mjs && node scripts/verify-summary-field-sort-browser.mjs",

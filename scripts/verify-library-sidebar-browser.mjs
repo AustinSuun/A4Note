@@ -113,7 +113,9 @@ try {
   await key('Enter');
   await wait(`Array.from(document.querySelectorAll('.library-sidebar-folder-tree [role="treeitem"], .library-sidebar-folder-tree .file-tree-row')).some(r=>r.textContent.includes('回归测试夹'))`);
   const created = (await calls()).filter(entry => entry[0] === 'create');
-  check(created.length === 1 && created[0][1] === '回归测试夹' && created[0][2] === 'library', 'onCreateFolder 收到名称与根级父目录', created);
+  // 0d0dbaed: a new folder becomes a sibling of 默认资料库, so the parent is the
+  // top level (null), not the 'library' row.
+  check(created.length === 1 && created[0][1] === '回归测试夹' && created[0][2] === null, 'onCreateFolder 收到名称与顶层父级（null，与默认资料库并排）', created);
   check(!(await ev(`!!document.querySelector('.library-folder-draft')`)), '创建成功后草稿行关闭');
   await shot('02-root-folder-created');
 

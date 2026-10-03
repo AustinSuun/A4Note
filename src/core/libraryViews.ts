@@ -75,7 +75,19 @@ export function buildLibraryFolderTree(folders: LibraryFolder[]): LibraryFolderN
     if (parent) parent.children.push(node); else roots.push(node);
   }
   const sort = (items: LibraryFolderNode[]) => {
-    items.sort((a, b) => a.folderId === 'library' ? -1 : b.folderId === 'library' ? 1 : a.name.localeCompare(b.name, 'zh-CN'));
+    // A sibling level switches to the persisted drag order as soon as one of its rows
+    // carries a sortOrder; untouched levels keep the historical name order, so an
+    // upgrade never reshuffles an existing tree.
+    const byOrder = items.some((item) => item.folderId !== 'library' && Number.isFinite(item.sortOrder));
+    items.sort((a, b) => {
+      if (a.folderId === 'library') return -1;
+      if (b.folderId === 'library') return 1;
+      if (byOrder) {
+        const order = (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER);
+        if (order) return order;
+      }
+      return a.name.localeCompare(b.name, 'zh-CN');
+    });
     items.forEach((item) => sort(item.children));
   };
   sort(roots); return roots;

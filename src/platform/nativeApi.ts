@@ -111,6 +111,7 @@ export interface NativeLibraryFolder {
   folder_id: string;
   name: string;
   parent_id: string | null;
+  sort_order: number;
   paper_count: number;
 }
 
@@ -274,6 +275,7 @@ export async function listNativeFolders() {
     folderId: folder.folder_id,
     name: folder.name,
     parentId: folder.parent_id,
+    sortOrder: folder.sort_order,
     paperCount: folder.paper_count,
   } satisfies LibraryFolder));
 }
@@ -286,6 +288,7 @@ export async function createNativeFolder(request: LibraryFolderRequest) {
     folderId: folder.folder_id,
     name: folder.name,
     parentId: folder.parent_id,
+    sortOrder: folder.sort_order,
     paperCount: folder.paper_count,
   } satisfies LibraryFolder;
 }
@@ -296,6 +299,11 @@ export async function renameNativeFolder(folderId: string, name: string) {
 
 export async function deleteNativeFolder(folderId: string) {
   return invoke<void>('delete_folder', { folderId });
+}
+
+/** Persist a folder drag: new parent (null = top level, next to 默认资料库) and 0-based position. */
+export async function moveNativeFolder(folderId: string, parentId: string | null, index: number) {
+  return invoke<void>('move_folder', { request: { folder_id: folderId, parent_id: parentId, index } });
 }
 
 export async function moveNativePapersToFolder(paperIds: string[], folderId: string | null) {

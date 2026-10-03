@@ -1,6 +1,7 @@
 import { useEffect, useRef, useId, type FormEvent } from 'react';
 import { Folder, Check, X } from 'lucide-react';
-export type FolderCreation = { parentId: string; name: string; error: string; saving: boolean; onNameChange(name: string): void; onSubmit(event: FormEvent<HTMLFormElement>): void | Promise<void>; onCancel(): void };
+/** `parentId: null` means a top-level draft (the library sidebar creates beside 默认资料库). */
+export type FolderCreation = { parentId: string | null; name: string; error: string; saving: boolean; onNameChange(name: string): void; onSubmit(event: FormEvent<HTMLFormElement>): void | Promise<void>; onCancel(): void };
 export function FolderDraftRow({ depth, parentName, creation }: { depth: number; parentName: string; creation: FolderCreation }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const composingRef = useRef(false);

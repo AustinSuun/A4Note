@@ -112,6 +112,7 @@ pub fn run() {
             library_papers::create_folder,
             library_papers::rename_folder,
             library_papers::delete_folder,
+            library_papers::move_folder,
             library_papers::move_papers_to_folder,
             library_annotations::create_annotation,
             library_annotations::restore_annotation,

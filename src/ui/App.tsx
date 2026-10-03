@@ -12,6 +12,7 @@ import { onSummaryNoteSaved } from '../platform/library/summaryNotes';
 import { useCaptureLibraryUpdates } from '../features/library';
 import { flushPendingSaves } from '../platform/pendingSaves';
 import { isLibrarySmartView, selectLibraryView } from '../core/libraryViews';
+import { applyLibraryFolderMove } from '../features/library/folderOrdering';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, LayoutDashboard, Settings as SettingsGlyph } from 'lucide-react';
 import { createAsterCore } from '../core/asterCore';
@@ -108,6 +109,7 @@ import {
   revealPaperFile,
   revealAsterPath,
   renameNativeFolder,
+  moveNativeFolder,
   restoreLibraryBackup,
   restartAfterLibraryRestore,
   selectPluginPackage,
@@ -2328,6 +2330,21 @@ function AppContent() {
       onSelectFolder: selectLibraryFolder,
       onSelectTag: setActiveTag,
       onSelectPaper: selectLibraryPaper,
+      // Reordering and re-parenting share one command: the sidebar already refused
+      // cycles and the immutable root, the store just persists parent + position.
+      onMoveFolder: async (folderId, parentId, index) => {
+        try {
+          if (!isTauriRuntime()) {
+            setLibraryFolders((current) => applyLibraryFolderMove(current, folderId, parentId, index));
+            return;
+          }
+          await moveNativeFolder(folderId, parentId, index);
+          await refreshNativeFolders();
+        } catch (error) {
+          setLibraryStatus(error instanceof Error ? error.message : String(error));
+          throw error;
+        }
+      },
       onCreateFolder: async (name, parentId) => {
         try {
           if (!isTauriRuntime()) {

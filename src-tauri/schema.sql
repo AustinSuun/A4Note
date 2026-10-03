@@ -173,6 +173,9 @@ CREATE TABLE IF NOT EXISTS folders (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   parent_id TEXT,
+  -- User-visible sibling order inside one parent (0-based). NULL never happens
+  -- on a migrated database; the UI falls back to name order for such rows.
+  sort_order INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (parent_id) REFERENCES folders(id) ON DELETE CASCADE
