@@ -22,6 +22,10 @@ const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /* ---------- 1. the archive matches its own build-info ---------- */
+if (!fs.existsSync(path.join(packRoot, 'build-info.json'))) {
+  console.error('artifacts/browser-extension/build-info.json 不存在：先运行 node scripts/package-capture-extension.mjs（CI 由 .github/workflows/ci.yml 的 Build capture extension package 步骤生成）。');
+  process.exit(1);
+}
 const info = JSON.parse(fs.readFileSync(path.join(packRoot, 'build-info.json'), 'utf8'));
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apps/browser-extension/manifest.json'), 'utf8'));
 const zipPath = path.join(packRoot, info.filename);
