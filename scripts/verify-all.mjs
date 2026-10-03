@@ -31,6 +31,7 @@ const steps = [
   ['npm', ['run', 'test:shortcuts']],
   ['node', ['scripts/verify-shortcut-cycle.mjs']],
   ['npm', ['run', 'test:pdf-find-entry']],
+  ['npm', ['run', 'test:doc2x-entry-browser']],
   ['npm', ['run', 'test:project-tasks']],
   ['npm', ['run', 'test:capture']],
   ['npm', ['run', 'test:extension-updates']],
