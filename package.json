@@ -43,6 +43,8 @@
     "test:pdf-text-layer-offset-browser": "node scripts/verify-pdf-text-layer-offset-browser.mjs",
     "test:pdf-annotation-geometry": "node --experimental-strip-types scripts/verify-pdf-annotation-geometry.mjs",
     "test:pdf-annotation-geometry-browser": "node scripts/verify-pdf-annotation-geometry-browser.mjs",
+    "test:pdf-links": "node --experimental-strip-types scripts/verify-pdf-links.mjs",
+    "test:pdf-links-browser": "node scripts/verify-pdf-links-browser.mjs",
     "test:pdf-eraser-alignment": "node scripts/verify-pdf-eraser-alignment-browser.mjs",
     "test:pdf-eraser-precision": "node --experimental-strip-types scripts/verify-pdf-eraser-precision.mjs",
     "test:pdf-text-annotation": "node --experimental-strip-types scripts/verify-pdf-text-annotation.mjs",

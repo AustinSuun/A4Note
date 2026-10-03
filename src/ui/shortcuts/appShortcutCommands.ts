@@ -7,6 +7,8 @@ export type AppShortcutOptions = {
   focusedAnnotation: boolean; canUndo: boolean; canRedo: boolean;
   palette: () => void; openScene: (id: string) => void; importPdf: () => void; librarySearch: () => void;
   pdfSearch: () => void; undo: () => void; redo: () => void; deleteAnnotation: () => void; cancel: () => boolean;
+  /** Pops the visible PDF's link-jump stack (card e4c2fa22); a no-op when nothing was jumped from. */
+  linkBack: () => void;
   selectTool: (tool: ReaderTool) => void; selectReaderFileMode: (mode: ReaderFileMode) => void;
   pdfZoom: (delta: number) => void; fitWidth: () => void; uiZoom: (delta: number | null) => void;
 };
@@ -34,6 +36,7 @@ export function createAppShortcutCommands(a: AppShortcutOptions): ShortcutComman
     { id: 'reader.zoomIn', title: '放大 PDF', group: '阅读', scope: reader, defaultBindings: [], fixedGesture: wheel('up'), isVisible: pdf },
     { id: 'reader.zoomOut', title: '缩小 PDF', group: '阅读', scope: reader, defaultBindings: [], fixedGesture: wheel('down'), isVisible: pdf },
     { id: 'reader.fitWidth', title: 'PDF 适合宽度', group: '阅读', scope: reader, defaultBindings: [key('0')], isEnabled: pdf, execute: a.fitWidth },
+    { id: 'reader.linkBack', title: '返回链接跳转前的位置', group: '阅读', scope: reader, defaultBindings: [key('ArrowLeft', { ctrl: false, alt: true })], isEnabled: pdf, execute: a.linkBack },
     { id: 'reader.undo', title: '撤销标注', group: '标注操作', scope: reader, defaultBindings: [key('z')], isEnabled: () => pdf() && a.canUndo, execute: a.undo },
     { id: 'reader.redo', title: '重做标注', group: '标注操作', scope: reader, defaultBindings: [key('y'), key('z', { shift: true })], isEnabled: () => pdf() && a.canRedo, execute: a.redo },
     { id: 'reader.delete', title: '删除选中标注', group: '标注操作', scope: reader, defaultBindings: [key('Delete', { ctrl: false }), key('Backspace', { ctrl: false })], isEnabled: () => pdf() && a.focusedAnnotation, execute: a.deleteAnnotation },

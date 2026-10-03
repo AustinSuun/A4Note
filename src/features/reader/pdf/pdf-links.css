@@ -1,0 +1,58 @@
+/* PDF link annotations + 「返回」 after a link jump (card e4c2fa22).
+   Layering inside .pdf-render-layer: canvas < .pdf-text-layer (z 1) < .pdf-link-layer (z 2, this file)
+   < .annotation-overlay (z 2 as well, but later in DOM order, so marks paint and hit-test above links).
+   Boxes are page percentages: zoom and rotation come from the shared box, never from a multiplier. */
+.pdf-link-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.pdf-link {
+  position: absolute; box-sizing: border-box; margin: 0; padding: 0; border: 0; border-radius: 2px;
+  background: color-mix(in srgb, var(--accent, #4d836b) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-strong, #2f6a4f) 55%, transparent);
+  cursor: pointer; pointer-events: none; user-select: none; -webkit-user-select: none;
+  opacity: 0; transition: opacity 120ms ease;
+}
+.pdf-link:hover, .pdf-link:focus-visible { opacity: 1; }
+.pdf-link:focus-visible { outline: 2px solid var(--accent-strong, #2f6a4f); outline-offset: 1px; }
+/* Hover tip (target page / citation number / full URL) as a styled pseudo-element instead of a native title:
+   it follows the theme, appears after a short delay and shows up in CDP screenshots; the same text is the
+   button's aria-label. It hangs below the box, flush left, or flush right for links in the right column. */
+.pdf-link::after {
+  content: attr(data-tip); position: absolute; top: calc(100% + 5px); left: 0; z-index: 3; box-sizing: border-box;
+  max-width: min(460px, 70vw); padding: 4px 8px; border-radius: 6px;
+  background: color-mix(in srgb, var(--ink, #243b31) 92%, transparent); color: var(--surface, #fff);
+  font: 12px/1.35 var(--font-ui, sans-serif); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgba(26, 41, 33, .18); pointer-events: none; opacity: 0; transition: opacity 80ms ease 0ms;
+}
+.pdf-link[data-tip-side="right"]::after { left: auto; right: 0; }
+.pdf-link:hover::after, .pdf-link:focus-visible::after { opacity: 1; transition-delay: 320ms; }
+/* Pointer policy: only the cursor (select) tool talks to links, and never during a text drag or a space-pan.
+   Every other tool (highlight, underline, eraser, ink, shapes, comment, text, hand) sees through the layer. */
+.pdf-document.cursor-mode:not(.pan-ready):not(.panning):not([data-text-selecting="true"]) .pdf-link { pointer-events: auto; }
+
+/* One-shot landing flash on the target line: opacity only, ≤ 600 ms. */
+.pdf-link-flash {
+  position: absolute; left: 0; right: 0; min-height: 18px; pointer-events: none; border-radius: 3px;
+  background: color-mix(in srgb, var(--accent, #4d836b) 38%, transparent);
+  opacity: 0; animation: pdf-link-flash 560ms ease-out forwards;
+}
+@keyframes pdf-link-flash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pdf-link-flash { animation-duration: 360ms; } }
+
+/* Back button: right side, lower middle of the reading surface — below the note edge handle
+   (top 50 % ± 48 px), clear of the page control (top-left) and the annotation dock (bottom centre).
+   The surface is the drawer's left neighbour, so an open drawer pushes the button along with it. */
+.pdf-link-back {
+  position: absolute; right: 18px; top: calc(50% + 88px); z-index: 45;
+  display: inline-flex; align-items: center; gap: 7px; box-sizing: border-box; height: 32px; padding: 0 13px 0 11px;
+  border: 1px solid var(--line, #d7ded9); border-radius: 999px;
+  background: color-mix(in srgb, var(--surface, #fff) 94%, var(--ink, #243b31) 6%);
+  color: var(--ink, #243b31); font: 12.5px/1 var(--font-ui, sans-serif); font-variant-numeric: tabular-nums; white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(26, 41, 33, .08);
+  cursor: pointer; pointer-events: none; -webkit-app-region: no-drag;
+  opacity: 0; transform: translate3d(10px, 0, 0);
+  transition: opacity 160ms ease, transform 160ms ease, background 120ms ease, color 120ms ease;
+}
+.pdf-link-back.is-visible { opacity: 1; transform: none; pointer-events: auto; }
+.pdf-link-back:hover, .pdf-link-back:focus-visible { background: var(--accent-soft, #e6f0ea); color: var(--accent-strong, #2f6a4f); border-color: color-mix(in srgb, var(--accent-strong, #2f6a4f) 32%, var(--line, #d7ded9)); }
+.pdf-link-back:focus-visible { outline: 2px solid var(--accent-strong, #2f6a4f); outline-offset: 2px; }
+.pdf-link-back svg { flex: none; }
+@media (prefers-reduced-motion: reduce) { .pdf-link-back { transition-duration: 1ms; transform: none; } }

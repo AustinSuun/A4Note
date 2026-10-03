@@ -3226,3 +3226,17 @@ the final visual check still needs a manual refresh of the dev preview.
 ## 目录树彩虹层级线退回恢复（青岚，2026-09-22）
 
 rainbow-tree-recovery-qinglan：用户退回 7876734f 后完成恢复修订。审计确认被退回版新增水平连接臂并让父级竖线提前截止，破坏原有纯竖线和完整子树连续性；现删除 branch DOM/CSS/API，恢复父 rail 覆盖完整可见子树，同时保留 CSS zoom 局部坐标反变换与共享深度轴归一化。Explorer/Library 真实 React DOM 24 组（1–6级、UI80/100/125/150%、DPR1/1.25/1.5）零水平线，最大轴误差0.03125px、步长0、完整子树末端0.203125px，pageerror/console error 0；library、note51/51、note browser42/42、reader、tsc、build通过。完整 verify 通过（A4Note verification passed；Rust 215 passed / 5 ignored）。未打包安装推送发布。详见 docs/mcp-rainbow-tree-qinglan-2026-09-22.md。
+
+## PDF 链接跳转与外部 URL 打开（云枢 → 接手机器人，2026-10-03）
+
+完成任务 `e4c2fa22-5f19-4985-9fd2-eb8f19abea7e`（spec_revision 1）：每页 pdf.js `/Link` 注解层（`getAnnotations({intent:'display'})`，懒加载与渲染并行）、页面百分比几何（`convertToViewportPoint` 两角点，不再乘 zoom/DPR）、内部跳转（数组/命名 dest + XYZ/FitH/Fit/FitR/FitB + `/Named` Next/Prev/First/Last 页 + 闪烁 3.2% 页高）、右侧「返回 第 N 页」按钮与返回栈（Alt+← 走既有快捷键系统、Esc 不触发、手动回到原位 ≤0.4 视口高自动淡出、切换文档清空）、外链白名单（仅绝对 http(s)，`javascript:`/`mailto:`/`file:` 拒绝并提示）复用唯一出口 `open_external_url`。链接层只在原文 PDF 模式渲染，非光标工具下 `pointer-events:none`。
+
+接手（云枢 2026-09-29 提交 0e7b557 后离线，任务停在 in_progress）：补齐 dev:live 实机取证驱动 `scripts/verify-pdf-links-live.mjs`（真实 WebView2 + CDP + 真实鼠标；脚本自行把窗口放宽到 ≥2000×1300 让笔记工作区停靠，结束恢复）与 15 张实机证据；复跑旧代码对照与全部回归。
+
+验证结果：`test:pdf-links` 141 项、`test:pdf-links-browser` 54/54（旧代码分别在导入与「链接层 ready」处失败）、dev:live 实机 **59 项断言 / 15 图 / pageerror 0 / console.error 0**（arXiv 2505.13447 16 页 + 5 页夹具，浅/深色、笔记抽屉开合、150% 缩放与 /Rotate 90 对齐 geoDiff 0.01）、`npm run build` exit 0、`npm run verify` 唯一失败为主干既有 `test:ui-state`（对 `src/features/reader/ReaderToolbar.tsx` 的陈旧文本断言，本次 diff 未触碰任何 toolbar 文件）、Rust 249 passed / 0 failed / 7 ignored。
+
+驱动脚本自身修正的三个判据（避免误判为产品缺陷）：① 非活动场景也保留完整布局盒（仅 `visibility:hidden`），原先用 `.library-paper-index` 的 rect 判断「文献库已显示」，导致切场景被跳过、对文献库行的双击落在阅读器上（连续 5 轮表现为「双击夹具行打不开」）；② 视口外链接的矩形无意义（/Rotate 90 页实测 `cy=-10660`），取点前先居中进视口；③ `__TAURI_INTERNALS__` 上 `invoke`/`postMessage` 均 `writable:false`/`configurable:false`，包裹 `invoke` 会静默失效，改为在传输层取证（`window.fetch` → `http://ipc.localhost/<cmd>`，回退 `chrome.webview.postMessage`）并对 `open_external_url` 就地应答，既不弹系统浏览器又能逐字段核对参数。
+
+已知风险/未完成：真实系统浏览器弹出未实测（用传输层取证换取 IPC 参数可核对，见交付文档 §3）；引用文本→参考文献仅出可行性评估（建议独立任务 + 误判率标注）；未安装、未打包、未发布、未重启任务服务（43319）、未触碰正式资料库。详见 `docs/mcp-pdf-links-yunshu-2026-10-03.md`。
+
+更新：2026-10-03T17:10:00+08:00
