@@ -67,6 +67,7 @@
     "test:library-export": "node scripts/verify-library-export.mjs",
     "test:error-boundary": "node scripts/verify-error-boundary.mjs",
     "test:agent-status": "node scripts/verify-agent-status.mjs",
+    "test:issue-intake": "node scripts/verify-issue-intake.mjs",
     "test:plugin-security": "node --experimental-strip-types scripts/verify-plugin-security.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
