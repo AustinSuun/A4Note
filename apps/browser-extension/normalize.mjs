@@ -1,4 +1,5 @@
 import { enrichPage } from './enrich-page.mjs';
+import { authorsFromLinks, gatedEntryPoints, linkIdentifiers } from './dom-fallbacks.mjs';
 /** Pure, bounded parsing. Raw metadata remains available when fields conflict. */
 export function httpUrl(value, base) {
   try {
@@ -23,14 +24,19 @@ export function normalizePage(page, captureId, capturedAt) {
   const evidence = [];
   function field(name, keys) {
     const rows = entries(keys);
-    for (const m of rows) evidence.push({ field: name, value: m.content, source: sourceUrl, method: m.name, capturedAt });
+    for (const m of rows) {
+      // og:/twitter: properties are site templates unless the value is a self-contained
+      // absolute URL; only then can they serve as page-specific evidence (see popup signal).
+      const social = /^(?:og:|twitter:)/.test(m.name);
+      evidence.push({ field: name, value: m.content, source: sourceUrl, method: m.name, capturedAt, verified: social ? /^https?:\/\//i.test(m.content.trim()) : undefined });
+    }
     const choices = [...new Set(rows.map(m => m.content.trim()))];
     if (choices.length > 1 && name !== 'authors') warnings.push(`${name} 有多个候选，已保留来源`);
     // Prefer keys in the declared order, not DOM order.
     for (const key of keys) { const row = rows.find(m => m.name === key); if (row) return row.content.trim(); }
     return undefined;
   }
-  const title = field('title', ['citation_title', 'dc.title', 'dcterms.title', 'eprints.title', 'og:title']) || '';
+  const title = field('title', ['citation_title', 'dc.title', 'dcterms.title', 'eprints.title', 'og:title', 'twitter:title']) || '';
   field('authors', ['citation_author', 'dc.creator', 'dcterms.creator', 'eprints.creators_name']);
   const authorKeys = ['citation_author', 'dc.creator', 'dcterms.creator', 'eprints.creators_name'];
   const selectedAuthorKey = authorKeys.find(key => values([key]).length);
@@ -51,6 +57,26 @@ export function normalizePage(page, captureId, capturedAt) {
   if (pmcid) identifiers.pmcid = pmcid;
   const pmid = field('identifiers.pmid', ['citation_pmid']);
   if (pmid && /^\d+$/.test(pmid)) identifiers.pmid = pmid;
+  // Pages without citation_* (IEEE Xplore and other SPAs) still link to canonical
+  // identifier URLs; those links are page-specific evidence, unlike share meta.
+  const linked = linkIdentifiers(page.links, sourceUrl);
+  if (!identifiers.doi && linked.doi) { const value = normalizeDoi(linked.doi); if (value) identifiers.doi = value; }
+  if (!identifiers.pmid && linked.pmid) identifiers.pmid = linked.pmid;
+  if (!identifiers.pmcid && linked.pmcid) identifiers.pmcid = linked.pmcid;
+  if (!identifiers.arxiv && linked.arxiv) {
+    identifiers.arxiv = linked.arxiv;
+    if (linked.arxivVersion) identifiers.arxivVersion = linked.arxivVersion;
+  }
+  for (const [key, method] of [['doi', 'doi_link'], ['pmid', 'pubmed_link'], ['pmcid', 'pmc_link'], ['arxiv', 'arxiv_link']]) {
+    if (linked[key] && identifiers[key]) evidence.push({ field: `identifiers.${key}`, value: identifiers[key], source: sourceUrl, method, capturedAt, verified: true });
+  }
+  if (!authors.length) {
+    const linkedAuthors = authorsFromLinks(page.links, sourceUrl);
+    if (linkedAuthors.length) {
+      authors.push(...linkedAuthors);
+      evidence.push({ field: 'authors', value: linkedAuthors.map(a => a.name), source: sourceUrl, method: 'author_links', capturedAt, verified: true });
+    }
+  }
   for (const key of ['arxiv', 'pmcid']) if (identifiers[key]) evidence.push({ field: `identifiers.${key}`, value: identifiers[key], source: sourceUrl, method: 'url', capturedAt });
   const metadata = {
     title, authors, identifiers,
@@ -88,12 +114,14 @@ export function normalizePage(page, captureId, capturedAt) {
   }
   const artifacts = [];
   const seen = new Set();
-  function add(url, role, label, method) {
+  function add(url, role, label, method, extra) {
     const safe = httpUrl(url, sourceUrl);
     if (!safe || seen.has(safe) || artifacts.length >= 100) return;
     seen.add(safe);
     const id = `artifact-${artifacts.length + 1}`;
-    artifacts.push({ id, role, url: safe, label: label || role, state: 'discovered', version: arxiv ? 'preprint' : 'unknown' });
+    // state stays 'discovered': the native wire validator rejects any other value, so
+    // access limits are carried by gated/access instead of a fake download state.
+    artifacts.push({ id, role, url: safe, label: label || role, state: 'discovered', version: arxiv ? 'preprint' : 'unknown', ...extra });
     evidence.push({ field: `artifacts.${id}.url`, value: safe, source: sourceUrl, method, capturedAt });
   }
   for (const value of structuredPdfs) add(value,'fulltext','结构化正文 PDF','jsonld');
@@ -127,10 +155,19 @@ export function normalizePage(page, captureId, capturedAt) {
     if(candidates.length===1)add(candidates[0].url,'fulltext',candidates[0].label||'正文 PDF','explicit_pdf_link');
     else if(candidates.length>1)warnings.push('多个正文下载候选无法唯一确定，请在下载帮助中核对；未猜测其他论文的PDF');
   }
+  // Publisher entry points that demand a session (IEEE stamp.jsp, ref=download, …).
+  // They are surfaced as gated artifacts so the UI can say so; nothing is fetched or
+  // bypassed, and the native importer still receives a valid 'discovered' artifact.
+  const gated = gatedEntryPoints(page.links, sourceUrl);
+  for (const entry of gated) add(entry.url, 'fulltext', entry.label, 'gated_entry', { gated: true, access: entry.access });
   if (!metadata.title) warnings.push('缺少可信论文标题；未用网页标题猜测');
   if (!metadata.authors.length) warnings.push('缺少作者列表');
   if (!metadata.abstract) warnings.push('缺少摘要');
-  if (!artifacts.some(a => a.role === 'fulltext')) warnings.push('尚未发现正文 PDF');
+  if (!artifacts.some(a => a.role === 'fulltext' && !a.gated)) {
+    warnings.push(artifacts.some(a => a.gated)
+      ? '正文 PDF 需要登录或订阅，未尝试绕过权限；请在浏览器中登录后自行下载，或使用「浏览器辅助获取 PDF」'
+      : '尚未发现正文 PDF');
+  }
   if (page.truncated) warnings.push('页面元素超过扫描上限，采集结果可能不完整');
   warnings.push('链接仅为候选，未经下载与内容校验；附件列表不保证完整');
   return { schemaVersion: 1, captureId, origin: 'browser', capturedAt, sourceUrl, metadata, evidence, artifacts, raw: { meta: raw, jsonLd: (page.jsonLd || []).slice(0,20), domAbstract: page.domAbstract }, warnings };

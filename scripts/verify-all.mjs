@@ -34,6 +34,7 @@ const steps = [
   ['npm', ['run', 'test:doc2x-entry-browser']],
   ['npm', ['run', 'test:project-tasks']],
   ['npm', ['run', 'test:capture']],
+  ['npm', ['run', 'test:capture-popup-browser']],
   ['npm', ['run', 'test:extension-updates']],
   ['npm', ['run', 'test:capture-native']],
   ['npm', ['run', 'test:capture-native-registration']],

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { normalizePage, normalizeDoi, httpUrl } from '../apps/browser-extension/normalize.mjs';
+import { authorsFromLinks, gatedEntryPoints, hasVerifiedTitleEvidence, linkIdentifiers } from '../apps/browser-extension/dom-fallbacks.mjs';
 const time = '2026-09-11T14:00:00Z';
 const row = (name, content) => ({ name, content });
 const parse = page => normalizePage({ meta: [], links: [], ...page }, 'fixture-id', time);
@@ -50,6 +51,74 @@ const doiFallback = parse({ url: 'https://example.org/paper', meta: [row('dc.ide
 assert.equal(doiFallback.metadata.identifiers.doi, '10.1000/valid');
 
 console.log('Capture parser and least-privilege contract checks passed (synthetic fixtures; not live-site/browser E2E).');
+
+// IEEE Xplore shape (task 5fd94c28): an Angular SPA with og: meta only, DOI and author
+// links, and a stamp.jsp entry point. The title must survive, the DOI must come from the
+// in-page link, authors from author-profile links, and the gated PDF must be reported
+// honestly instead of being fetched.
+const ieee = parse({ url: 'https://ieeexplore.ieee.org/document/9903612',
+  meta: [row('og:title', 'MD3D: Mixture-Density-Based 3D Object Detection in Point Clouds'),
+    row('og:description', 'The design factors of anchor boxes'), row('twitter:title', 'MD3D share title')],
+  links: [
+    { href: 'https://doi.org/10.1109/ACCESS.2022.3210108', label: '10.1109/ACCESS.2022.3210108' },
+    { href: 'https://ieeexplore.ieee.org/author/37085648258', label: 'Jaeseok Choi' },
+    { href: '/author/37089195857', label: 'Yeji Song' },
+    { href: 'javascript:void()', label: 'All Authors' },
+    { href: 'https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9903612', label: 'Download PDF', gated: true },
+    { href: 'https://twitter.com/IEEEXplore?ref_src=twsrc%5Egoogle', label: 'IEEE Xplore' },
+  ] });
+assert.equal(ieee.metadata.title, 'MD3D: Mixture-Density-Based 3D Object Detection in Point Clouds');
+assert.equal(ieee.metadata.identifiers.doi, '10.1109/access.2022.3210108');
+assert.deepEqual(ieee.metadata.authors.map(a => a.name), ['Jaeseok Choi', 'Yeji Song']);
+assert.equal(ieee.artifacts.length, 1);
+assert.equal(ieee.artifacts[0].state, 'discovered');
+assert.equal(ieee.artifacts[0].gated, true);
+assert.equal(ieee.artifacts[0].access, 'login_or_subscription');
+assert.ok(ieee.warnings.some(w => w.includes('登录或订阅')));
+assert.ok(!ieee.warnings.includes('尚未发现正文 PDF'));
+assert.equal(ieee.evidence.find(e => e.field === 'title').method, 'og:title');
+
+// A site-template og:title (relative path) must never count as a paper signal, and the
+// signal helper must not accept evidence that is unrelated to the title.
+const spoiled = parse({ url: 'https://example.org/paper/1', meta: [row('og:title', '/images/header.jpg')] });
+assert.equal(hasVerifiedTitleEvidence(spoiled.evidence), false);
+assert.equal(spoiled.metadata.title, '/images/header.jpg');
+const unrelated = parse({ url: 'https://example.org/paper/1', meta: [row('og:url', 'https://example.org/paper/1')] });
+assert.equal(hasVerifiedTitleEvidence(unrelated.evidence), false);
+
+// Canonical identifier links on an otherwise meta-thin page.
+const linked = parse({ url: 'https://journal.example/a', meta: [row('og:title', 'A study')], links: [
+  { href: 'https://pubmed.ncbi.nlm.nih.gov/39012345/', label: 'PubMed' },
+  { href: 'https://arxiv.org/abs/2401.12345v2', label: 'arXiv' },
+  { href: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234567/', label: 'PMC' }] });
+assert.equal(linked.metadata.identifiers.pmid, '39012345');
+assert.equal(linked.metadata.identifiers.arxiv, '2401.12345');
+assert.equal(linked.metadata.identifiers.arxivVersion, 'v2');
+assert.equal(linked.metadata.identifiers.pmcid, 'PMC1234567');
+assert.ok(linked.evidence.some(e => e.method === 'pubmed_link'));
+
+// citation_* still wins; fallbacks only fill gaps.
+const preferMeta = parse({ url: 'https://journal.example/b',
+  meta: [row('citation_title', 'Real title'), row('og:title', 'Share title')],
+  links: [{ href: 'https://doi.org/10.1000/meta', label: '10.1000/meta' }] });
+assert.equal(preferMeta.metadata.title, 'Real title');
+assert.equal(preferMeta.metadata.identifiers.doi, '10.1000/meta');
+
+// Author-link hygiene: no cross-origin profiles, no toggles, no numeric fragments.
+assert.deepEqual(authorsFromLinks([
+  { href: 'https://twitter.com/IEEEXplore?ref_src=twsrc%5Egoogle', label: 'IEEE Xplore' },
+  { href: '/author/1', label: 'All Authors' },
+  { href: '/author/2', label: '37085648' },
+  { href: '/author/3', label: 'Ada Lovelace' },
+], 'https://ieeexplore.ieee.org/document/9903612'), [{ name: 'Ada Lovelace', affiliations: [] }]);
+assert.deepEqual(linkIdentifiers([{ href: 'https://evil.example/10.1234/fake', label: '10.9999/label' }], 'https://journal.example/a'), {});
+// …but a same-origin link whose visible text is the DOI still counts (publisher redirects).
+assert.deepEqual(linkIdentifiers([{ href: '/document/9903612', label: '10.1109/ACCESS.2022.3210108' }], 'https://ieeexplore.ieee.org/document/9903612'),
+  { doi: '10.1109/ACCESS.2022.3210108' });
+assert.deepEqual(gatedEntryPoints([{ href: '/stamp/stamp.jsp?tp=&arnumber=1', label: 'PDF' }], 'https://ieeexplore.ieee.org/document/1'),
+  [{ url: 'https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1', label: 'PDF', access: 'login_or_subscription' }]);
+// Issue/volume navigation must not be mistaken for a full-text entry point.
+assert.deepEqual(gatedEntryPoints([{ href: '/xpl/tocresult.jsp?isnumber=9668973&punumber=6287639', label: 'Volume: 10' }], 'https://ieeexplore.ieee.org/document/1'), []);
 
 const revisedArxiv = parse({ url: 'https://arxiv.org/abs/1706.03762', meta: [row('citation_date','2017/06/12'),row('citation_online_date','2023/08/02')] });
 assert.equal(revisedArxiv.metadata.dates.online, undefined);

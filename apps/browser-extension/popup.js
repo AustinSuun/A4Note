@@ -3,6 +3,7 @@ import { browserAssist } from './browser-assist.mjs';
 import { setupBridge } from './bridge-ui.js';
 import { collectPage } from './collector.js';
 import { normalizePage } from './normalize.mjs';
+import { hasVerifiedTitleEvidence } from './dom-fallbacks.mjs';
 const get = id => document.getElementById(id);
 let envelope;
 const status = message => { get('status').textContent = message; };
@@ -15,12 +16,17 @@ async function scan() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('没有可读取的标签页');
-    const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: collectPage });
+    let result;
+    try {
+      [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: collectPage });
+    } catch {
+      throw new Error('此页面不允许读取（浏览器系统页或权限未授予）；请在普通论文详情页重试');
+    }
     if (!result?.result) throw new Error('页面不可读取；浏览器内置PDF查看器可返回论文详情页重试');
     const detected = normalizePage(result.result, crypto.randomUUID(), new Date().toISOString());
     const paperSignal = ['doi','arxiv','pmcid','pmid'].some(key => detected.metadata.identifiers[key])
-      || detected.evidence.some(item => item.field === 'title' && /citation_|dc\.|dcterms\.|eprints\.|jsonld/i.test(item.method || ''));
-    if (!detected.metadata.title?.trim() || !paperSignal) throw new Error('未识别到可信论文信息，请打开论文详情页后重试');
+      || hasVerifiedTitleEvidence(detected.evidence);
+    if (!detected.metadata.title?.trim() || !paperSignal) throw new Error(identifyHint(detected));
     envelope = detected;
     get('title').textContent = envelope.metadata.title || '未识别到论文标题';
     get('title').title = envelope.metadata.title;
@@ -32,10 +38,18 @@ async function scan() {
     get('files').replaceChildren(...envelope.artifacts.map((artifact, index) => {
       const row = document.createElement('div'); row.className = 'file';
       const label = document.createElement('p'); label.textContent = `${artifact.label} · ${new URL(artifact.url).hostname}`;
-      const button = document.createElement('button'); button.textContent = '仅保存文件到电脑';
+      const gated = artifact.gated === true;
+      const button = document.createElement('button'); button.textContent = gated ? '在浏览器中打开' : '仅保存文件到电脑';
       button.addEventListener('click', async () => {
         button.disabled = true;
         try {
+          if (gated) {
+            // Publisher endpoints behind a session are opened for the user; the extension
+            // never logs in, never bypasses a paywall and never claims a download.
+            await chrome.tabs.create({ url: artifact.url, active: true });
+            status('已在浏览器打开正文入口；该链接可能需要登录或订阅，插件不会代替你登录或绕过权限。');
+            return;
+          }
           // Browser manages credentials and lifetime. Accepted != completed or validated.
           await chrome.downloads.download({ url: artifact.url, saveAs: true, conflictAction: 'uniquify' });
           status('已交给浏览器下载。请在下载列表核对文件；尚未验证文件内容或导入 A4 Note。');
@@ -43,7 +57,7 @@ async function scan() {
         finally { button.disabled = false; }
       });
       row.append(label, button);
-      if (artifact.role==='fulltext'||artifact.role==='supplement'&&/\.pdf(?:$|[?#])/i.test(artifact.url)) {
+      if (!gated && (artifact.role==='fulltext'||artifact.role==='supplement'&&/\.pdf(?:$|[?#])/i.test(artifact.url))) {
         const assist=document.createElement('button');assist.textContent='浏览器辅助获取 PDF';assist.dataset.assist='true';assist.disabled=true;
         assist.addEventListener('click',async()=>{assist.disabled=true;try{await bridge.assist(index,browserAssist);}catch(e){status(`辅助入库：${e.message}`);}});
         row.append(assist);
@@ -51,9 +65,17 @@ async function scan() {
       return row;
     }));
     get('result').hidden = false;
-    status(envelope.artifacts.some(a=>a.role==='fulltext')?'已识别，选择文件夹即可保存。':'未找到正文链接；不会创建缺PDF条目，请检查论文详情或下载帮助。');
-  } catch (error) { status(`识别失败：${error.message}\n请在普通论文详情页重试，浏览器系统页不允许访问。`); }
+    const openFulltext = envelope.artifacts.some(a=>a.role==='fulltext'&&!a.gated);
+    status(openFulltext?'已识别，选择文件夹即可保存。'
+      : envelope.artifacts.some(a=>a.gated)?'已识别论文；正文 PDF 需要登录或订阅，请在浏览器中打开后自行下载。'
+      : '未找到正文链接；不会创建缺PDF条目，请检查论文详情或下载帮助。');
+  } catch (error) { status(`识别失败：${error.message}`); }
   finally { await bridge.scanned(); }
+}
+/** Names the failed step instead of a catch-all: users need the next action, not silence. */
+function identifyHint(capture) {
+  if (!capture.metadata.title?.trim()) return '未在本页找到论文标题（页面缺少 citation_*/og: 标题元数据）；请打开论文详情页后重试';
+  return '页面只提供了站点级分享标题，且没有 DOI/arXiv/PubMed 等标识；请打开论文详情页后重试';
 }
 get('scan').addEventListener('click', () => void scan());
 void scan();
@@ -74,7 +96,8 @@ function renderMetadata(capture) {
   const dl=document.createElement('dl');let count=0;
   for(const [label,value] of entries){if(!value)continue;count++;const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;if(label==='摘要')dd.className='abstract';dl.append(dt,dd);}
   get('metadata-details').replaceChildren(dl);get('metadata-summary').textContent=`${count} 项已识别`;
-  get('pdf-evidence').textContent=capture.artifacts.some(a=>a.role==='fulltext')?'＋ 正文 PDF 链接':'正文 PDF 待补充';
+  get('pdf-evidence').textContent=capture.artifacts.some(a=>a.role==='fulltext'&&!a.gated)?'＋ 正文 PDF 链接'
+    :capture.artifacts.some(a=>a.gated)?'正文 PDF 需要登录或订阅':'正文 PDF 待补充';
 }
 
 function renderPaperLinks(capture) {
@@ -82,7 +105,8 @@ function renderPaperLinks(capture) {
   get('paper-links').replaceChildren(...items.map(item=>{
     const row=document.createElement('div');row.className='paper-link-row';
     const link=document.createElement('a');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=item.label;link.title=item.url;
-    const state=document.createElement('span');state.className='paper-link-state';state.textContent=item.id?'已发现，未下载':'当前识别来源';
+    const state=document.createElement('span');state.className='paper-link-state';
+    state.textContent=!item.id?'当前识别来源':item.gated?'需要登录或订阅':'已发现，未下载';
     if(item.id)row.dataset.artifactId=item.id;
     row.append(link,state);return row;
   }));

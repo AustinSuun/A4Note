@@ -1,0 +1,834 @@
+{
+ "_fixture": "recorded from https://ieeexplore.ieee.org/document/9903612 via the real collector.js in Chrome; links trimmed for the popup UI regression",
+ "url": "https://ieeexplore.ieee.org/document/9903612",
+ "title": "MD3D: Mixture-Density-Based 3D Object Detection in Point Clouds | IEEE Journals & Magazine | IEEE Xplore",
+ "meta": [
+  {
+   "name": "google-site-verification",
+   "content": "qibYCgIKpiVF_VVjPYutgStwKn-0-KBB6Gw4Fc57FZg"
+  },
+  {
+   "name": "description",
+   "content": "The design factors of anchor boxes, such as shape, placement, and target assignment policy, greatly influence the performance and latency of the 3D object detec"
+  },
+  {
+   "name": "viewport",
+   "content": "width=device-width, initial-scale=1.0"
+  },
+  {
+   "name": "bingbot",
+   "content": "nocache"
+  },
+  {
+   "name": "og:image",
+   "content": "https://ieeexplore.ieee.org/ielx7/6287639/9668973/9903612/graphical_abstract/access-gagraphic-3210108.jpg"
+  },
+  {
+   "name": "og:image:secure_url",
+   "content": "https://ieeexplore.ieee.org/ielx7/6287639/9668973/9903612/graphical_abstract/access-gagraphic-3210108.jpg"
+  },
+  {
+   "name": "twitter:image",
+   "content": "https://ieeexplore.ieee.org/ielx7/6287639/9668973/9903612/graphical_abstract/access-gagraphic-3210108.jpg"
+  },
+  {
+   "name": "twitter:card",
+   "content": "summary_large_image"
+  },
+  {
+   "name": "twitter:title",
+   "content": "MD3D: Mixture-Density-Based 3D Object Detection in Point Clouds"
+  },
+  {
+   "name": "og:title",
+   "content": "MD3D: Mixture-Density-Based 3D Object Detection in Point Clouds"
+  },
+  {
+   "name": "twitter:description",
+   "content": "The design factors of anchor boxes, such as shape, placement, and target assignment policy, greatly influence the performance and latency of the 3D object detectors. Unlike image-based 2D anchors, 3D anchors must be placed in a 3D space and determined differently for each class of different sizes. This imposes a significant burden on the design complexity. To tackle this issue, various studies have been conducted on how to set the anchor form. However, for practical reasons, anchor-based methods select the anchor design by compromising between performance and latency. Consequently, only objects that are similar in shape and size to an anchor can obtain high accuracy. In this paper, we propose a Mixture-Density-based 3D Object Detection (MD3D) in point clouds to predict the distribution of 3D bounding boxes using a Gaussian Mixture Model (GMM). With an anchor-free detection head, MD3D requires few hand-crafted design factors and eliminates the inefficiency of separating the regression channel for each class, and thus offering both latency and memory benefits. MD3D is designed to utilize various types of feature encoding; therfore, it can be applied flexibly by replacing only the detection head of the existing detectors. Experimental results on the KITTI and Waymo open datasets show that the proposed method outperforms its counterparts that are based on the conventional anchor-based detection head in its overall performance, latency, and memory. The code is publicly available at <monospace xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"><uri>https://github.com/sky77764/MD3D</uri></monospace>"
+  },
+  {
+   "name": "og:description",
+   "content": "The design factors of anchor boxes, such as shape, placement, and target assignment policy, greatly influence the performance and latency of the 3D object detectors. Unlike image-based 2D anchors, 3D anchors must be placed in a 3D space and determined differently for each class of different sizes. This imposes a significant burden on the design complexity. To tackle this issue, various studies have been conducted on how to set the anchor form. However, for practical reasons, anchor-based methods select the anchor design by compromising between performance and latency. Consequently, only objects that are similar in shape and size to an anchor can obtain high accuracy. In this paper, we propose a Mixture-Density-based 3D Object Detection (MD3D) in point clouds to predict the distribution of 3D bounding boxes using a Gaussian Mixture Model (GMM). With an anchor-free detection head, MD3D requires few hand-crafted design factors and eliminates the inefficiency of separating the regression channel for each class, and thus offering both latency and memory benefits. MD3D is designed to utilize various types of feature encoding; therfore, it can be applied flexibly by replacing only the detection head of the existing detectors. Experimental results on the KITTI and Waymo open datasets show that the proposed method outperforms its counterparts that are based on the conventional anchor-based detection head in its overall performance, latency, and memory. The code is publicly available at <monospace xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"><uri>https://github.com/sky77764/MD3D</uri></monospace>"
+  },
+  {
+   "name": "ctoken",
+   "content": "eyJhbGciOiJIUzUxMiIsInppcCI6IkRFRiJ9.eNqqVkosKFCyUoooyMkvSlXSUcosLgZyK2Dc1AqgrKG5paGBobGFkRFQPrEEJmBkaWRUCwAAAP__.Z4XRZ6onlfuMF1K3uZhXl9yh67UTwKpKs23UF1MD-q2Rb3XiKZrfHHH-nfg7PzQR72K8XoM4nGTFAgWJRii2JA"
+  }
+ ],
+ "links": [
+  {
+   "href": "https://ieeexplore.ieee.org/document/9903612",
+   "label": "",
+   "type": "",
+   "rel": "canonical",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9903612",
+   "label": "PDF",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": true,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/author/37085648258",
+   "label": "Jaeseok Choi",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/author/37089195857",
+   "label": "Yeji Song",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/author/37089557496",
+   "label": "Yerim Kim",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/author/37087247651",
+   "label": "Jaeyoung Yoo",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/author/37337755300",
+   "label": "Nojun Kwak",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/document/9903612",
+   "label": "Abstract",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/document/9903612/authors",
+   "label": "Authors",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/document/9903612/figures",
+   "label": "Figures",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/document/9903612/references",
+   "label": "References",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/document/9903612/citations",
+   "label": "Citations",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/document/9903612/keywords",
+   "label": "Keywords",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/document/9903612/metrics",
+   "label": "Metrics",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/document/9903612/similar",
+   "label": "More Like This",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9903612",
+   "label": "Download PDF",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": true,
+   "supplementary": false
+  },
+  {
+   "href": "https://doi.org/10.1109/ACCESS.2022.3210108",
+   "label": "10.1109/ACCESS.2022.3210108",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://www.ieee.org/security-privacy.html",
+   "label": "Privacy Policy",
+   "type": "",
+   "rel": "noopener",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/document/#ab172786-5cba-4776-a781-a0fc123b8216",
+   "label": "Storage Preferences",
+   "type": "",
+   "rel": "noopener",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/assets/img/favicon.ico",
+   "label": "",
+   "type": "image/x-icon",
+   "rel": "icon",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/assets/css/osano-cookie-consent-xplore.css",
+   "label": "",
+   "type": "text/css",
+   "rel": "stylesheet",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/assets/css/simplePassMeter.min.css?cv=20260901_00000",
+   "label": "",
+   "type": "",
+   "rel": "stylesheet",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/assets/dist/ng-new/styles.css?cv=20260901_00000",
+   "label": "",
+   "type": "text/css",
+   "rel": "stylesheet",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/assets/dist/ng-new/customStyles.css?cv=20260901_00000",
+   "label": "",
+   "type": "text/css",
+   "rel": "stylesheet",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/assets/vendor/swiper/dist/idangerous.swiper.css?cv=20260901_00000",
+   "label": "",
+   "type": "",
+   "rel": "stylesheet",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/assets/css/jquery-ui-1.8.19.custom.css?cv=20260901_00000",
+   "label": "",
+   "type": "text/css",
+   "rel": "stylesheet",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/document/",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/rest/api/hpdata",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://www.ieee.org/",
+   "label": "IEEE.org",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/Xplore/home.jsp",
+   "label": "IEEE Xplore",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://standards.ieee.org/",
+   "label": "IEEE SA",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://spectrum.ieee.org/",
+   "label": "IEEE Spectrum",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://www.ieee.org/sitemap.html",
+   "label": "More Sites",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://innovate.ieee.org/Xplore/Subscribebutton",
+   "label": "Subscribe",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://www.ieee.org/give",
+   "label": "Donate",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://www.ieee.org/cart/public/myCart/page.html?refSite=https://ieeexplore.ieee.org&refSiteName=IEEE%20Xplore",
+   "label": "Cart",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "View Cart",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "Create Account",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "Create Account",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "Create Account",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "Personal Sign In",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "Sign In",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/Xplore/home.jsp",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "Delivering full text access to the world's highest quality technical literature in engineering and technology",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "Institutional Sign In",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/search/advanced",
+   "label": "ADVANCED SEARCH",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/search/advanced",
+   "label": "ADVANCED SEARCH",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/browse/periodicals/title/",
+   "label": "Journals & Magazines",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=6287639",
+   "label": "IEEE Access",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/xpl/tocresult.jsp?isnumber=9668973&punumber=6287639",
+   "label": "Volume: 10",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/Xplorehelp/ieee-xplore-training/working-with-documents#interactive-html",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://orcid.org/0000-0002-9636-3484",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://orcid.org/0000-0002-5436-5801",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://orcid.org/0000-0003-2940-743X",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://orcid.org/0000-0002-9874-9436",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://orcid.org/0000-0002-1792-0327",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "All Authors",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "Alerts",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/alerts/citation",
+   "label": "Manage Content Alerts",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "Add to Citation Alerts",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://creativecommons.org/licenses/by/4.0/",
+   "label": "Creative Commons License",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "I.Introduction",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "II.Related Work",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "III.Method",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "IV.Experiment",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "V.Conclusion",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "Download References",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=6287639",
+   "label": "IEEE Access",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "http://ieeexplore.ieee.org/Xplorehelp/Help_Pubdates.html",
+   "label": "",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "[1]",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "[2]",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "[3]",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "[4]",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "[5]",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "[6]",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  },
+  {
+   "href": "javascript:void()",
+   "label": "[7]",
+   "type": "",
+   "rel": "",
+   "primaryPdf": false,
+   "title": "",
+   "gated": false,
+   "supplementary": false
+  }
+ ],
+ "jsonLd": [],
+ "domAbstract": "The design factors of anchor boxes, such as shape, placement, and target assignment policy, greatly influence the performance and latency of the 3D object detectors. Unli...",
+ "truncated": false
+}
