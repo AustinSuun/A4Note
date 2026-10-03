@@ -175,6 +175,7 @@ try {
   const beforeTop = await topLevelNames();
   const reorder = await dragFolder(newFolderId, `[data-library-folder-id="gen"]`, 'before');
   check(reorder.hover.dropTarget === 'before', '拖到同级上半区显示“放在其前”指示', reorder.hover.dropTarget);
+  await shot('02-drag-hover-before-drop');
   await reorder.drop(); await pause(200); await reorder.end(); await pause(120);
   const reorderCall = (await moveCalls()).at(-1);
   // index 1: 默认资料库 occupies position 0 on that level.
