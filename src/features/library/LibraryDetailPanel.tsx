@@ -1,6 +1,6 @@
 import { PaperCaptureDetails } from './PaperCaptureDetails';
 import { type ReactNode, useMemo } from 'react';
-import { BookOpen, BookCheck, Star } from 'lucide-react';
+import { BookOpen, BookCheck, Star, Sparkles } from 'lucide-react';
 import { buildPaperRelationView, type AnnotationTrace } from '../../core/relations';
 import type { AnnotationType, KnowledgeObject, Relation } from '../../core/types';
 import { zh } from '../../ui/zh';
@@ -12,6 +12,7 @@ export function LibraryDetailPanel({
   onOpenReader,
   onOpenRelations,
   onOpenTranslationImport,
+  doc2xEntry,
   onRevealSourcePdf,
   onRevealTranslatedPdf,
   onOpenSourcePdfExternal,
@@ -137,6 +138,16 @@ export function LibraryDetailPanel({
         <button type="button" onClick={onOpenTranslationImport}>
           {zh.library.importTranslationPdf}
         </button>
+        {doc2xEntry?.enabled ? (
+          <button
+            type="button"
+            disabled={doc2xEntry.busy}
+            title="用你自己的 Doc2X 账号在本机翻译，译文回到同一篇文献"
+            onClick={() => void doc2xEntry.onTranslate(paper.paperId)}
+          >
+            <Sparkles size={14} aria-hidden="true" /> Doc2X 翻译（本机 CLI）
+          </button>
+        ) : null}
         <button type="button" onClick={onOpenMetadataEdit}>
           {zh.library.edit}
         </button>

@@ -21,6 +21,12 @@ import { DiffResourceTab, FileTab, FileTreePanel, TerminalResourceTab } from '..
 import { createBoardFile, setBoardWorkspaceRoot } from '../features/board';
 import { ImportDialog, TagInput, useImportFlow, usePaperState, type LibrarySortDirection, type LibrarySortKey } from '../features/library';
 import {
+  DOC2X_ENTRY_HINT_STORAGE_KEY,
+  Doc2xCommandHost,
+  doc2xEntryFirstRunHint,
+  useDoc2xLibraryEntry,
+} from '../features/doc2x';
+import {
   createBuiltinSceneUiContributions,
   resolveSceneUiContributions,
   type BuiltinSceneUiRuntime,
@@ -2185,6 +2191,45 @@ function AppContent() {
   // Core plugins register React-free identities. The host supplies trusted
   // first-party adapters through one feature-owned factory, then intersects
   // them with the live plugin registry before exposing them to the workbench.
+  // Doc2X entries (65aab909): one host-owned implementation feeds the library
+  // context menu, the detail panel and the plugin commands, so all three work
+  // without opening the Doc2X workbench panel first.
+  const doc2xEntryApi = useDoc2xLibraryEntry({ papers: filteredPapers, settingValues: pluginSettingValues });
+  const [doc2xNotice, setDoc2xNotice] = useState('');
+  const [doc2xFirstRunHint, setDoc2xFirstRunHint] = useState('');
+  useEffect(() => {
+    if (!doc2xEntryApi.enabled) return;
+    try {
+      if (localStorage.getItem(DOC2X_ENTRY_HINT_STORAGE_KEY)) return;
+    } catch {
+      return;
+    }
+    setDoc2xFirstRunHint(doc2xEntryFirstRunHint());
+  }, [doc2xEntryApi.enabled]);
+  const libraryDoc2xEntry = useMemo(() => ({
+    enabled: doc2xEntryApi.enabled,
+    onTranslate: async (paperId: string) => {
+      setDoc2xNotice('正在准备 Doc2X 翻译…完成后译文会回到该文献。');
+      const message = await doc2xEntryApi.translate([paperId]);
+      setDoc2xNotice(message);
+      return message;
+    },
+    notice: doc2xNotice || doc2xFirstRunHint,
+    onDismissNotice: () => {
+      setDoc2xNotice('');
+      setDoc2xFirstRunHint('');
+      try {
+        localStorage.setItem(DOC2X_ENTRY_HINT_STORAGE_KEY, '1');
+      } catch {
+        // Storage unavailable: the hint may reappear, the entry still works.
+      }
+    },
+  }), [doc2xEntryApi, doc2xNotice, doc2xFirstRunHint]);
+  const doc2xCommandPaperIds = useMemo(
+    () => (bulkSelectedPaperIds.length ? bulkSelectedPaperIds : selectedPaper ? [selectedPaper.paperId] : []),
+    [bulkSelectedPaperIds, selectedPaper],
+  );
+
   builtinSceneUiRuntimeRef.current = {
     overview: {
       isActive: activeScene === 'overview',
@@ -2209,6 +2254,7 @@ function AppContent() {
       aiThreadContexts: selectedPaper ? getAiThreadContextsForPaper(selectedPaper.paperId) : [],
       bulkSelectedPaperIds,
       searchInputRef: librarySearchRef,
+      doc2xEntry: libraryDoc2xEntry,
       sidePanels: librarySidePanelDefinitions,
       onQueryChange: setQuery,
       onSelectPaper: selectLibraryPaper,
@@ -2414,6 +2460,7 @@ function AppContent() {
       onOpenReader: () => selectedPaper && openReaderForPaper(selectedPaper.paperId),
       onOpenRelations: () => selectedPaper && openReaderRelationsForPaper(selectedPaper.paperId),
       onOpenTranslationImport: importTranslatedPdf,
+      doc2xEntry: libraryDoc2xEntry,
       onRevealSourcePdf: () => void revealSelectedPaperFile('source'),
       onRevealTranslatedPdf: () => void revealSelectedPaperFile('translated'),
       onOpenSourcePdfExternal: () => void openSelectedPaperFile('source'),
@@ -2924,6 +2971,7 @@ function AppContent() {
 
   return (
     <DocumentToolbarProvider enabled={['markdown', 'reader', 'library', 'tasks'].includes(activeScene ?? '') && !settingsOpen}>
+    <Doc2xCommandHost entry={doc2xEntryApi} paperIds={doc2xCommandPaperIds} />
     <WorkbenchShell
       brandAccessory={<BrandUpdateNotice />}
       edgeSwitcher={sceneEdgeSwitcherEnabled ? (
