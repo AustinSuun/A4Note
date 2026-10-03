@@ -37,6 +37,7 @@ const steps = [
   ['npm', ['run', 'test:library-folder-order']],
   ['npm', ['run', 'test:library-folder-drag-browser']],
   ['npm', ['run', 'test:capture-popup-browser']],
+  ['npm', ['run', 'test:extension-package']],
   ['npm', ['run', 'test:extension-updates']],
   ['npm', ['run', 'test:capture-native']],
   ['npm', ['run', 'test:capture-native-registration']],

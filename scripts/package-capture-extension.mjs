@@ -1,10 +1,21 @@
 // Dependency-free, deterministic STORE ZIP; only explicitly allowed shipping files.
 import {readFile,writeFile,mkdir,cp} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
-const files=['manifest.json','popup.html','popup.css','popup.js','collector.js','normalize.mjs','enrich-page.mjs','bridge.mjs','native-bridge.mjs','bridge-ui.js','compact-view.js','compact-view.css','task-progress.js','browser-assist.mjs','README.md','extension-updates.mjs','update-ui.js','folder-tree-model.mjs','folder-tree.js','folder-tree.css','icons/16.png','icons/32.png','icons/48.png','icons/128.png'];
+import path from 'node:path';
+const files=['manifest.json','popup.html','popup.css','popup.js','collector.js','normalize.mjs','dom-fallbacks.mjs','enrich-page.mjs','bridge.mjs','native-bridge.mjs','bridge-ui.js','compact-view.js','compact-view.css','task-progress.js','browser-assist.mjs','README.md','extension-updates.mjs','update-ui.js','folder-tree-model.mjs','folder-tree.js','folder-tree.css','icons/16.png','icons/32.png','icons/48.png','icons/128.png'];
 const source=new URL('../apps/browser-extension/',import.meta.url);
 const root=new URL('../artifacts/browser-extension/',import.meta.url);
 const manifest=JSON.parse(await readFile(new URL('manifest.json',source),'utf8'));
+// A shipped module that imports a module outside the list would produce a zip that
+// fails at runtime (task 5fd94c28 added dom-fallbacks.mjs exactly this way), so the
+// list is verified against the real import graph before anything is written.
+for(const file of files.filter(file=>/\.(m?js)$/.test(file))){
+ const text=await readFile(new URL(file,source),'utf8');
+ for(const match of text.matchAll(/from\s+'(\.[^']+)'/g)){
+  const target=path.posix.normalize(path.posix.join(path.posix.dirname(file),match[1]));
+  if(!files.includes(target)){console.error(`packaging error: ${file} imports ${target}, which is not in the shipping list`);process.exit(1);}
+ }
+}
 const table=Array.from({length:256},(_,i)=>{for(let j=0;j<8;j++)i=(i&1)?0xedb88320^(i>>>1):i>>>1;return i>>>0;});
 const crc=b=>{let c=0xffffffff;for(const n of b)c=table[(c^n)&255]^(c>>>8);return(c^0xffffffff)>>>0;};
 const sha=b=>createHash('sha256').update(b).digest('hex');
