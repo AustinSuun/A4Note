@@ -89,6 +89,7 @@ const steps = [
   ['node', ['scripts/verify-brand-update.mjs']],
 
   ['npm', ['run', 'test:architecture']],
+  ['npm', ['run', 'test:chrome-port-readiness']],
   ['npm', ['run', 'test:scene-plugins']],
   ['npm', ['run', 'test:plugin-bindings']],
   ['npm', ['run', 'test:declarative-plugin-runtime']],

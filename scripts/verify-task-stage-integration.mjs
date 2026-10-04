@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { waitForChromeDebugPort } from './wait-for-chrome-debug-port.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
@@ -205,9 +206,7 @@ export const launchLocalTasks = async (port = 4319, chooseProject = false, expli
     'about:blank',
   ], { windowsHide: true, stdio: 'ignore' });
 
-  const portFile = path.join(profile, 'DevToolsActivePort');
-  for (let i = 0; i < 150 && !fs.existsSync(portFile); i++) await pause(100);
-  const port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
+  const port = await waitForChromeDebugPort(profile);
   const target = (await (await fetch('http://127.0.0.1:' + port + '/json/list')).json()).find(t => t.type === 'page');
   ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });

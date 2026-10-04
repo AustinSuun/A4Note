@@ -15,6 +15,7 @@
 //     fade-out/re-entrance (also for the narrow-window fallback);
 //   - prefers-reduced-motion opens instantly with no transition at all.
 import fs from 'node:fs';
+import { waitForChromeDebugPort } from './wait-for-chrome-debug-port.mjs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -137,17 +138,9 @@ try {
     '--headless=new', '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check',
     '--disable-extensions', '--disable-background-networking', '--disable-component-update', '--user-data-dir=' + profile, '--window-size=1568,760', 'about:blank',
   ], { stdio: 'ignore' });
-  // Windows can create DevToolsActivePort before releasing its write lock.
-  // Existence alone is not readiness: retry transient EBUSY/ENOENT, not other errors.
-  let port = 0;
-  for (let index = 0; index < 150 && !port; index += 1) {
-    try { port = Number(fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]); }
-    catch (error) {
-      if (error.code !== 'EBUSY' && error.code !== 'ENOENT') throw error;
-    }
-    if (!port) await pause(100);
-  }
-  if (!Number.isInteger(port) || port < 1) throw Error('Chrome did not publish a readable DevToolsActivePort');
+  // 端口就绪判定交给共享 helper：文件出现 ≠ 可读（Windows 写锁竞态）。
+
+  const port = await waitForChromeDebugPort(profile);
   const tabs = await (await fetch('http://127.0.0.1:' + port + '/json/list')).json();
   const target = tabs.find(tab => tab.type === 'page');
   ws = new WebSocket(target.webSocketDebuggerUrl);
