@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全问题 / 漏洞（私密报告）
+    url: https://github.com/AustinSuun/A4Note/security/advisories/new
+    about: 请勿在公开 issue 里写安全问题。用这个入口私密报告，我们会私下跟进。
+  - name: 使用与安装说明
+    url: https://github.com/AustinSuun/A4Note#readme
+    about: 先看 README 的安装与快速上手，很多问题在那里已有答案。

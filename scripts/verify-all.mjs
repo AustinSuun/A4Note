@@ -116,6 +116,7 @@ const steps = [
   ['npm', ['run', 'test:error-boundary']],
   ['npm', ['run', 'test:agent-status']],
   ['npm', ['run', 'test:plugin-security']],
+  ['npm', ['run', 'test:issue-intake']],
   ['cargo', ['test', '--manifest-path', 'src-tauri/Cargo.toml']],
 ];
 

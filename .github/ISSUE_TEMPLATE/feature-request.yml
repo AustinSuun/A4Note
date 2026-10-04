@@ -1,0 +1,46 @@
+name: 功能建议
+description: 想要的新能力、体验改进、流程调整。
+title: "[建议] "
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        说清楚「你在做什么事时被卡住了」比「我要一个 XX 按钮」更有用——前者能让我们找到更好的做法。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你想解决的问题
+      description: 现在的流程里，哪一步让你觉得费劲、重复或容易出错？
+      placeholder: 我在……的时候，必须……，这让我……
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你期望的形态
+      description: 有具体想法就写；没有也可以只写「我不知道怎么做好」。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 你试过的替代做法（可选）
+      description: 现在你是用什么办法绕过去的？这能帮我们判断优先级。
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: 大致属于哪块
+      options:
+        - 资料库 / 文件夹
+        - 阅读器 / PDF 标注
+        - Markdown / 笔记
+        - 总览表格 / 文献信息
+        - 采集（浏览器扩展）/ 导入
+        - AI 助手 / 自动化
+        - 安装升级 / 性能
+        - 其他
+    validations:
+      required: true
