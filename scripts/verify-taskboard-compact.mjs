@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { waitForChromeDebugPort } from './wait-for-chrome-debug-port.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
@@ -86,9 +87,7 @@ try {
   if (!exe) throw Error('Set TASKBOARD_TEST_BROWSER to an installed Chromium executable');
   const profile = path.join(scratch, 'profile');
   browser = spawn(exe, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-extensions', '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1', '--user-data-dir=' + profile, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
-  const portFile = path.join(profile, 'DevToolsActivePort');
-  for (let i = 0; i < 150 && !fs.existsSync(portFile); i++) await pause(100);
-  const port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
+  const port = await waitForChromeDebugPort(profile);
   const target = (await (await fetch('http://127.0.0.1:' + port + '/json/list')).json()).find(t => t.type === 'page');
   ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });

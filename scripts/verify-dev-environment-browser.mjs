@@ -4,6 +4,7 @@
 // behaviour — not isolation itself. Evidence: .tmp/dev-environment/<run>/ (gitignored).
 // CHROME_PATH overrides the browser.
 import fs from 'node:fs';
+import { waitForChromeDebugPort } from './wait-for-chrome-debug-port.mjs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createServer } from 'vite';
@@ -77,9 +78,7 @@ try {
   const staticUrl = `${base}?dev=0`; // production bundle (tauri build / installed app)
   chrome = spawn(chromePath, ['--headless=new', '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-extensions', '--user-data-dir=' + profile, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   chrome.stderr.on('data', () => {});
-  const portFile = path.join(profile, 'DevToolsActivePort');
-  for (let i = 0; i < 150 && !fs.existsSync(portFile); i++) await pause(100);
-  const port = Number(fs.readFileSync(portFile, 'utf8').split('\n')[0]);
+  const port = await waitForChromeDebugPort(profile);
   const tabs = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
   const target = tabs.find((tab) => tab.type === 'page');
   ws = new WebSocket(target.webSocketDebuggerUrl);

@@ -6,6 +6,7 @@
 // assertion below fails on that old layout and passes on the fixed one.
 // Scope: DOM geometry and computed style in headless Chrome. Not native persistence or acceptance.
 import fs from 'node:fs';
+import { waitForChromeDebugPort } from './wait-for-chrome-debug-port.mjs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createServer } from 'vite';
@@ -93,9 +94,8 @@ try {
   const port = server.httpServer.address().port;
   chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--user-data-dir=' + profile, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   chrome.stderr.on('data', () => {});
-  for (let i = 0; i < 150 && !fs.existsSync(path.join(profile, 'DevToolsActivePort')); i += 1) await pause(100);
   stage('chrome-profile');
-  const cdpPort = Number(fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+  const cdpPort = await waitForChromeDebugPort(profile);
   const tabs = await (await fetch('http://127.0.0.1:' + cdpPort + '/json/list')).json();
   const target = tabs.find((tab) => tab.type === 'page');
   ws = new WebSocket(target.webSocketDebuggerUrl);

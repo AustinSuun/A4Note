@@ -5,6 +5,7 @@
 // review actions live at the end of the scrolling body instead of a fixed footer, so they never cover evidence.
 // Usage: MODAL_PHASE=before|after node scripts/verify-task-detail-review-ui-browser.mjs
 import fs from 'node:fs';
+import { waitForChromeDebugPort } from './wait-for-chrome-debug-port.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
@@ -184,9 +185,7 @@ export const launchLocalTasks = async () => ({ url: 'http://127.0.0.1:${serverPo
   assert.ok(exe, 'Chrome or Edge required');
   const profile = path.join(scratch, 'profile');
   browser = spawn(exe, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1', '--user-data-dir=' + profile, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
-  const portFile = path.join(profile, 'DevToolsActivePort');
-  for (let i = 0; i < 150 && !fs.existsSync(portFile); i++) await pause(100);
-  const cdpPort = fs.readFileSync(portFile, 'utf8').split('\n')[0];
+  const cdpPort = await waitForChromeDebugPort(profile);
   const target = (await (await fetch('http://127.0.0.1:' + cdpPort + '/json/list')).json()).find(t => t.type === 'page');
   ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });

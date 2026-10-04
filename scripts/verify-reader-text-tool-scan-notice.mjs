@@ -5,6 +5,7 @@
 //   node scripts/verify-reader-text-tool-scan-notice.mjs
 // Evidence: .tmp/shots/text-tool-scan-notice/*.png + result.json
 import fs from 'node:fs';
+import { waitForChromeDebugPort } from './wait-for-chrome-debug-port.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
@@ -192,9 +193,7 @@ createRoot(document.getElementById('root')!).render(<Harness />);
   const exe = process.env.TASKBOARD_TEST_BROWSER || ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(p => fs.existsSync(p));
   assert.ok(exe, 'Chrome or Edge required');
   browser = spawn(exe, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1', '--user-data-dir=' + path.join(scratch, 'profile'), '--lang=zh-CN', 'about:blank'], { windowsHide: true, stdio: 'ignore' });
-  const portFile = path.join(scratch, 'profile', 'DevToolsActivePort');
-  for (let i = 0; i < 150 && !fs.existsSync(portFile); i++) await pause(100);
-  const cdpPort = fs.readFileSync(portFile, 'utf8').split('\n')[0];
+  const cdpPort = await waitForChromeDebugPort(path.join(scratch, 'profile'));
   const target = (await (await fetch('http://127.0.0.1:' + cdpPort + '/json/list')).json()).find(t => t.type === 'page');
   ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
